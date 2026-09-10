@@ -61,6 +61,11 @@ public abstract class AbstractScriptManager {
                     return null;
                 }
                 engine = sem.getEngineByName("nashorn");
+                if (engine == null) {
+                    // Nashorn was dropped from the JDK in 15; from there on it only
+                    // exists if nashorn-core and the asm jars are on the classpath.
+                    throw new IllegalStateException("No 'nashorn' script engine found. Put nashorn-core and the asm jars on the classpath.");
+                }
                 
                 if (c != null) {
                     c.setScriptEngine(path, engine);

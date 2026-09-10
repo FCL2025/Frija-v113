@@ -58,7 +58,7 @@ public class MapleFamily implements java.io.Serializable {
 
         try {
             Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM families WHERE familyid = ?");
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM families WHERE familyid = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             ps.setInt(1, fid);
             ResultSet rs = ps.executeQuery();
 

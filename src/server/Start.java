@@ -22,6 +22,7 @@ import server.Timer.*;
 import server.events.MapleOxQuizFactory;
 import server.life.MapleLifeFactory;
 import server.quest.MapleQuest;
+import tools.Encodings;
 
 public class Start {
 
@@ -79,7 +80,7 @@ public class Start {
         World.registerRespawn();
         LoginServer.setOn();
         System.out.println("Loaded Complete :::");
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in, Encodings.NATIVE));
     }
 
     public static class Shutdown implements Runnable {

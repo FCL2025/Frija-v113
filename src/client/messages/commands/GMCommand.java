@@ -87,7 +87,6 @@ import tools.Pair;
 import tools.StringUtil;
 import tools.packet.MobPacket;
 import tools.packet.PlayerShopPacket;
-import com.mysql.jdbc.Connection;
 
 /**
  *

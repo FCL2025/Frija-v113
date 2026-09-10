@@ -81,13 +81,13 @@ import server.maps.MapleReactorStats;
 import server.quest.MapleQuest;
 import tools.ArrayMap;
 import tools.CPUSampler;
+import tools.Encodings;
 import tools.MaplePacketCreator;
 import tools.MockIOSession;
 import tools.Pair;
 import tools.StringUtil;
 import tools.packet.MobPacket;
 import tools.packet.PlayerShopPacket;
-import com.mysql.jdbc.Connection;
 import java.util.concurrent.ScheduledFuture;
 
 /**
@@ -3159,7 +3159,7 @@ public class AdminCommand {
                     return 0;
                 }
                 sampler.stop();
-                FileWriter fw = new FileWriter(file);
+                FileWriter fw = new FileWriter(file, Encodings.NATIVE);
                 sampler.save(fw, 1, 10);
                 fw.close();
             } catch (IOException e) {

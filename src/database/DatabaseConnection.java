@@ -97,13 +97,28 @@ public class DatabaseConnection {
 
         public static final Collection<Connection> allConnections = new LinkedList<Connection>();
 
+        /**
+         * Connector/J 8 renamed the driver class from com.mysql.jdbc.Driver to
+         * com.mysql.cj.jdbc.Driver. DriverManager discovers either one through
+         * the service loader by itself, so this exists only so that a classpath
+         * without the jar fails with a message a human can act on instead of a
+         * bare "No suitable driver".
+         */
+        private static void touchDriver() {
+            for (final String driver : new String[]{"com.mysql.cj.jdbc.Driver", "com.mysql.jdbc.Driver"}) {
+                try {
+                    Class.forName(driver);
+                    return;
+                } catch (final ClassNotFoundException e) {
+                    // Not that one - fall through to the older name.
+                }
+            }
+            System.err.println("ERROR: no MySQL JDBC driver on the classpath.");
+        }
+
         @Override
         protected final Connection initialValue() {
-            try {
-                Class.forName("com.mysql.jdbc.Driver"); // touch the mysql driver
-            } catch (final ClassNotFoundException e) {
-                System.err.println("ERROR" + e);
-            }
+            touchDriver();
             try {
                 Properties props = new Properties();
                 props.put("user", ServerProperties.getProperty("tms.User"));

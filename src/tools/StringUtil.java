@@ -20,7 +20,6 @@
  */
 package tools;
 
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.IOException;
@@ -46,7 +45,7 @@ public class StringUtil {
      */
     public static final String getLeftPaddedStr(final String in, final char padchar, final int length) {
         StringBuilder builder = new StringBuilder(length);
-        for (int x = in.getBytes().length; x < length; x++) {
+        for (int x = getlength(in); x < length; x++) {
             builder.append(padchar);
         }
         builder.append(in);
@@ -63,13 +62,13 @@ public class StringUtil {
      * @return The padded string.
      */
     public static final int getlength(final String str) {
-        byte[] bt = str.getBytes(Charset.forName("BIG5"));
+        byte[] bt = str.getBytes(Encodings.BIG5);
         return bt.length;
     }
 
     public static final String getRightPaddedStr(final String in, final char padchar, final int length) {
         StringBuilder builder = new StringBuilder(in);
-        for (int x = in.getBytes().length; x < length; x++) {
+        for (int x = getlength(in); x < length; x++) {
             builder.append(padchar);
         }
         return builder.toString();
@@ -135,7 +134,7 @@ public class StringUtil {
      */
     public static final int countCharacters(final String str, final char chr) {
         int ret = 0;
-        for (int i = 0; i < str.getBytes().length; i++) {
+        for (int i = 0; i < str.length(); i++) {
             if (str.charAt(i) == chr) {
                 ret++;
             }
@@ -223,7 +222,7 @@ public class StringUtil {
 	public static String readFileAsString(String path){
 		StringBuilder builder = new StringBuilder();
 		try {
-			for(String str : Files.readAllLines(Paths.get(path) ,Charset.forName("BIG5") )){
+			for(String str : Files.readAllLines(Paths.get(path) ,Encodings.BIG5 )){
 				builder.append(str + System.lineSeparator());
 			}
 			return builder.toString();

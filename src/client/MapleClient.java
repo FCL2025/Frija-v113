@@ -186,7 +186,15 @@ public class MapleClient implements Serializable {
 
     private Calendar getTempBanCalendar(ResultSet rs) throws SQLException {
         Calendar lTempban = Calendar.getInstance();
-        if (rs.getLong("tempban") == 0) { // basically if timestamp in db is 0000-00-00
+        // Read the column as text before anything else touches it. An account
+        // that has never been banned carries the column's 0000-00-00 00:00:00
+        // default, and Connector/J 8 refuses to hand that value to getTimestamp
+        // ("Zero date value prohibited") or to getLong ("Unsupported conversion
+        // from TIMESTAMP to java.lang.Long"). getString returns it verbatim.
+        // This test used to read getLong("tempban") == 0, which worked only on
+        // the pre-8 connector.
+        final String rawTempban = rs.getString("tempban");
+        if (rawTempban == null || rawTempban.startsWith("0000-00-00")) {
             lTempban.setTimeInMillis(0);
             return lTempban;
         }

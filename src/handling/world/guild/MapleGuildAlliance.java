@@ -51,7 +51,7 @@ public class MapleGuildAlliance implements java.io.Serializable {
 
         try {
             Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM alliances WHERE id = ?");
+            PreparedStatement ps = con.prepareStatement("SELECT * FROM alliances WHERE id = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             ps.setInt(1, id);
             ResultSet rs = ps.executeQuery();
             if (!rs.first()) {
@@ -117,7 +117,7 @@ public class MapleGuildAlliance implements java.io.Serializable {
         }
         Connection con = DatabaseConnection.getConnection();
         try {
-            PreparedStatement ps = con.prepareStatement("SELECT id FROM alliances WHERE name = ?");
+            PreparedStatement ps = con.prepareStatement("SELECT id FROM alliances WHERE name = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             ps.setString(1, name);
             ResultSet rs = ps.executeQuery();
 

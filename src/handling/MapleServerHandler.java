@@ -48,6 +48,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import server.Randomizer;
+import tools.Encodings;
 import tools.MapleAESOFB;
 import tools.packet.LoginPacket;
 import tools.data.input.ByteArrayByteStream;
@@ -102,11 +103,11 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         }
         logIPMap.clear();
         try {
-            Scanner sc = new Scanner(loggedIPs);
+            Scanner sc = new Scanner(loggedIPs, Encodings.NATIVE);
             while (sc.hasNextLine()) {
                 String line = sc.nextLine().trim();
                 if (line.length() > 0) {
-                    FileWriter fw = new FileWriter(new File("PacketLog_" + line + ".txt"), true);
+                    FileWriter fw = new FileWriter(new File("PacketLog_" + line + ".txt"), Encodings.NATIVE, true);
                     fw.write("=== Creating Log ===");
                     fw.write(nl);
                     fw.flush();
@@ -208,7 +209,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
 
     public void writeLog() {
         try {
-            FileWriter fw = new FileWriter(Packet_Log_Output, true);
+            FileWriter fw = new FileWriter(Packet_Log_Output, Encodings.NATIVE, true);
             try {
                 Packet_Log_Lock.readLock().lock();
                 String nl = System.getProperty("line.separator");
@@ -400,7 +401,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                     }
                     if (c.getPlayer() != null && c.isMonitored()) {
                         if (!blocked.contains(recv)) {
-                            FileWriter fw = new FileWriter(new File("Logs/MonitorLogs/" + c.getPlayer().getName() + "_log.txt"), true);
+                            FileWriter fw = new FileWriter(new File("Logs/MonitorLogs/" + c.getPlayer().getName() + "_log.txt"), Encodings.NATIVE, true);
                             fw.write(String.valueOf(recv) + " (" + Integer.toHexString(header_num) + ") Handled: \r\n" + slea.toString() + "\r\n");
                             fw.flush();
                             fw.close();

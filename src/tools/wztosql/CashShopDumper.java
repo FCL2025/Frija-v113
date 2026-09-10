@@ -30,6 +30,7 @@ import provider.MapleDataTool;
 import server.CashItemFactory;
 import server.CashItemInfo.CashModInfo;
 import server.MapleItemInformationProvider;
+import tools.Encodings;
 
 /**
  *
@@ -141,6 +142,14 @@ public class CashShopDumper {
         for (Integer key : dics.keySet()) {
 
             File fout = new File("cashshopItems/" + key.toString() + ".sql");
+            // cashshopItems/ is output, not input, and is not kept in the repo -
+            // create it, or createNewFile below throws "the system cannot find
+            // the path specified" once per category and nothing gets written.
+            final File outDir = fout.getParentFile();
+            if (outDir != null && !outDir.isDirectory() && !outDir.mkdirs()) {
+                System.out.println("Could not create " + outDir.getPath());
+                continue;
+            }
             List<String> l = dics.get(key);
             FileOutputStream fos = null;
             try {
@@ -148,7 +157,7 @@ public class CashShopDumper {
                     fout.createNewFile();
                 }
                 fos = new FileOutputStream(fout);
-                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+                BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos, Encodings.NATIVE));
                 for (int i = 0; i < l.size(); i++) {
                     bw.write(l.get(i));
                     bw.newLine();

@@ -17,7 +17,7 @@ public class AutoRegister {
         boolean accountExists = false;
         Connection con = DatabaseConnection.getConnection();
         try {
-            PreparedStatement ps = con.prepareStatement("SELECT name FROM accounts WHERE name = ?");
+            PreparedStatement ps = con.prepareStatement("SELECT name FROM accounts WHERE name = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             ps.setString(1, login);
             ResultSet rs = ps.executeQuery();
             if (rs.first()) {
@@ -42,7 +42,7 @@ public class AutoRegister {
 
         try {
             ResultSet rs;
-            PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?");
+            PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 
             ipc.setString(1, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
             rs = ipc.executeQuery();

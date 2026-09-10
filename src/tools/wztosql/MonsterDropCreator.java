@@ -20,6 +20,7 @@
 /*     */ import provider.MapleDataProvider;
 /*     */ import provider.MapleDataProviderFactory;
 /*     */ import provider.MapleDataTool;
+/*     */ import tools.Encodings;
 /*     */ import tools.Pair;
 /*     */ import tools.StringUtil;
 /*     */
@@ -264,7 +265,7 @@
                     /*     */                }
                 /*     */            }
         }
-        /* 272 */ out.write(SQL.toString().getBytes());
+        /* 272 */ out.write(SQL.toString().getBytes(Encodings.NATIVE));
         /* 273 */ out.close();
         /* 274 */ long time = System.currentTimeMillis() - currtime;
         /* 275 */ time /= 1000L;

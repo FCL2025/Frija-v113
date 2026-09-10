@@ -50,8 +50,8 @@ public class FileoutputUtil {
         FileOutputStream out = null;
         try {
             out = new FileOutputStream(file, true);
-            out.write(("\n------------------------ " + CurrentReadable_Time() + " ------------------------\n").getBytes());
-            out.write(msg.getBytes());
+            out.write(("\n------------------------ " + CurrentReadable_Time() + " ------------------------\n").getBytes(Encodings.NATIVE));
+            out.write(msg.getBytes(Encodings.NATIVE));
         } catch (IOException ess) {
         } finally {
             try {
@@ -67,8 +67,8 @@ public class FileoutputUtil {
         FileOutputStream out = null;
         try {
             out = new FileOutputStream(file, true);
-            out.write(("\n------------------------ " + CurrentReadable_Time() + " ------------------------\n").getBytes());
-            out.write(getString(t).getBytes());
+            out.write(("\n------------------------ " + CurrentReadable_Time() + " ------------------------\n").getBytes(Encodings.NATIVE));
+            out.write(getString(t).getBytes(Encodings.NATIVE));
         } catch (IOException ess) {
         } finally {
             try {

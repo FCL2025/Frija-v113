@@ -44,7 +44,21 @@ public class PortalScriptManager {
 
     private static final PortalScriptManager instance = new PortalScriptManager();
     private final Map<String, PortalScript> scripts = new HashMap<String, PortalScript>();
-    private final static ScriptEngineFactory sef = new ScriptEngineManager().getEngineByName("nashorn").getFactory();
+    private final static ScriptEngineFactory sef = findNashorn();
+
+    /**
+     * Nashorn was dropped from the JDK in 15, so from JDK 15 on it only exists
+     * if nashorn-core and the asm jars are on the classpath. Say so plainly:
+     * without this the field above is simply null and every portal in the game
+     * dies inside a static initialiser with no hint as to why.
+     */
+    private static ScriptEngineFactory findNashorn() {
+        final ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
+        if (engine == null) {
+            throw new IllegalStateException("No 'nashorn' script engine found. Put nashorn-core and the asm jars on the classpath.");
+        }
+        return engine.getFactory();
+    }
 
     public final static PortalScriptManager getInstance() {
         return instance;

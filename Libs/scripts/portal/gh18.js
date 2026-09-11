@@ -1,6 +1,6 @@
-// gh00 = å‡ºå£ã€ gh01 = å…¥å£
+// gh00 = ¥X¤f¡B gh01 = ¤J¤f
 
-// å…¥å£
+// ¤J¤f
 function enter(pi) {
 	var map = 749050400;
 	var target = pi.getClient().getChannelServer().getMapFactory().getMap(map);

@@ -21,8 +21,8 @@
 package server.maps;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import provider.MapleData;
 import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
@@ -33,7 +33,7 @@ import tools.StringUtil;
 public class MapleReactorFactory {
 
     private static final MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Reactor.wz"));
-    private static Map<Integer, MapleReactorStats> reactorStats = new HashMap<Integer, MapleReactorStats>();
+    private static final Map<Integer, MapleReactorStats> reactorStats = new ConcurrentHashMap<>();
 
     public static final MapleReactorStats getReactor(int rid) {
         MapleReactorStats stats = reactorStats.get(Integer.valueOf(rid));

@@ -259,7 +259,11 @@ public enum SendPacketOpcode implements WritableIntValueHolder {
     BEANS_TIPS,
     BEANS_GAME1,
     BEANS_GAME2;
-    private short code = -2;
+    /**
+     * Volatile because {@code !reloadops} rewrites these from a command thread
+     * while every handler thread is reading them to build outbound packets.
+     */
+    private volatile short code = -2;
 
     @Override
     public void setValue(short code) {

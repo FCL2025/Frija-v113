@@ -23,9 +23,9 @@ package client;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import provider.MapleData;
 import provider.MapleDataProvider;
@@ -37,12 +37,25 @@ import tools.StringUtil;
 
 public class SkillFactory {
 
-    private static final Map<Integer, ISkill> skills = new HashMap<Integer, ISkill>();
-    private static final Map<Integer, List<Integer>> skillsByJob = new HashMap<Integer, List<Integer>>();
-    private static final Map<Integer, SummonSkillEntry> SummonSkillInformation = new HashMap<Integer, SummonSkillEntry>();
+    private static final Map<Integer, ISkill> skills = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<Integer>> skillsByJob = new ConcurrentHashMap<>();
+    private static final Map<Integer, SummonSkillEntry> SummonSkillInformation = new ConcurrentHashMap<>();
     private final static MapleData stringData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/String.wz")).getData("Skill.img");
 
     public static final ISkill getSkill(final int id) {
+        if (skills.size() != 0) {
+            return skills.get(Integer.valueOf(id));
+        }
+        return loadSkills(id);
+    }
+
+    // Bulk-loads every skill the first time getSkill() is called. Guarded so
+    // that concurrent callers block instead of racing to populate the maps
+    // together (which corrupted the old plain HashMaps). Preserves the
+    // original quirk where the very first (loading) caller gets back null;
+    // any caller that arrives while loading is in progress waits for it to
+    // finish and gets the real answer instead of triggering a second load.
+    private static final synchronized ISkill loadSkills(final int id) {
         if (skills.size() != 0) {
             return skills.get(Integer.valueOf(id));
         }

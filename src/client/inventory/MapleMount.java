@@ -57,14 +57,14 @@ public class MapleMount implements Serializable {
         if (!changed) {
             return;
         }
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("UPDATE mountdata set `Level` = ?, `Exp` = ?, `Fatigue` = ? WHERE characterid = ?");
-        ps.setByte(1, level);
-        ps.setInt(2, exp);
-        ps.setByte(3, fatigue);
-        ps.setInt(4, charid);
-        ps.executeUpdate();
-        ps.close();
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("UPDATE mountdata set `Level` = ?, `Exp` = ?, `Fatigue` = ? WHERE characterid = ?")) {
+            ps.setByte(1, level);
+            ps.setInt(2, exp);
+            ps.setByte(3, fatigue);
+            ps.setInt(4, charid);
+            ps.executeUpdate();
+        }
     }
 
     public int getItemId() {

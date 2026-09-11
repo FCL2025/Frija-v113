@@ -89,44 +89,21 @@ public class MapleInventoryIdentifier implements Serializable {
         if (grabRunningUID() > 0) {
             return grabRunningUID();
         }
-        try {
-            int[] ids = new int[4];
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT MAX(uniqueid) FROM inventoryitems");
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[0] = rs.getInt(1) + 1;
-            }
-            rs.close();
-            ps.close();
-
-            ps = con.prepareStatement("SELECT MAX(petid) FROM pets");
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[1] = rs.getInt(1) + 1;
-            }
-            rs.close();
-            ps.close();
-
-            ps = con.prepareStatement("SELECT MAX(ringid) FROM rings");
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[2] = rs.getInt(1) + 1;
-            }
-            rs.close();
-            ps.close();
-
-            ps = con.prepareStatement("SELECT MAX(partnerringid) FROM rings");
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[3] = rs.getInt(1) + 1; //biggest pl0x. but if this happens -> o_O
-            }
-            rs.close();
-            ps.close();
-
-            for (int i = 0; i < 4; i++) {
-                if (ids[i] > ret) {
-                    ret = ids[i];
+        // The highest id already handed out by any of the four tables that
+        // draw from this one sequence.
+        final String[] queries = {
+            "SELECT MAX(uniqueid) FROM inventoryitems",
+            "SELECT MAX(petid) FROM pets",
+            "SELECT MAX(ringid) FROM rings",
+            "SELECT MAX(partnerringid) FROM rings"
+        };
+        try (Connection con = DatabaseConnection.getConnection()) {
+            for (final String query : queries) {
+                try (PreparedStatement ps = con.prepareStatement(query);
+                        ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        ret = Math.max(ret, rs.getInt(1) + 1);
+                    }
                 }
             }
         } catch (Exception e) {

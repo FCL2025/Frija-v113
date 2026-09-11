@@ -21,16 +21,24 @@
 package handling.world;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MapleParty implements Serializable {
 
     private static final long serialVersionUID = 9179541993413738569L;
-    private MaplePartyCharacter leader;
-    private List<MaplePartyCharacter> members = new LinkedList<MaplePartyCharacter>();
+    // World.Party serializes every mutator call (addMember/removeMember/
+    // updateMember/setLeader) under its own lock, but getMembers() is read from
+    // many other threads (handlers, scripts, MapleCharacter, MapleMonster, ...)
+    // with no lock at all. A plain LinkedList would let those readers observe a
+    // structurally-corrupted list (or throw ConcurrentModificationException)
+    // while World.Party is mutating it; CopyOnWriteArrayList makes every read a
+    // safe, consistent snapshot regardless of concurrent mutation.
+    private volatile MaplePartyCharacter leader;
+    private final List<MaplePartyCharacter> members = new CopyOnWriteArrayList<MaplePartyCharacter>();
     private int id;
 
     public MapleParty(int id, MaplePartyCharacter chrfor) {
@@ -74,7 +82,11 @@ public class MapleParty implements Serializable {
     }
 
     public Collection<MaplePartyCharacter> getMembers() {
-        return new LinkedList<MaplePartyCharacter>(members);
+        // Defensive snapshot rather than a live view - callers iterate this freely
+        // (handlers, scripts, packet builders) without knowing about World.Party's
+        // lock, so a live reference here would be a ConcurrentModificationException
+        // (or a torn read) waiting to happen even with a thread-safe backing list.
+        return Collections.unmodifiableList(new ArrayList<MaplePartyCharacter>(members));
     }
 
     public int getId() {

@@ -32,6 +32,7 @@ import constants.ServerConstants.CommandType;
 import constants.ServerConstants.PlayerGMRank;
 import database.DatabaseConnection;
 import java.lang.reflect.Modifier;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collections;
@@ -147,9 +148,11 @@ public class CommandProcessor {
     }
 
     private static void logGMCommandToDB(MapleCharacter player, String command) {
-        PreparedStatement ps = null;
-        try {
-            ps = DatabaseConnection.getConnection().prepareStatement("INSERT INTO gmlog (cid, command, mapid) VALUES (?, ?, ?)");
+        // The old finally block called ps.close() unconditionally, so a failure
+        // in prepareStatement itself threw a NullPointerException out of the
+        // finally and replaced the SQLException that caused it.
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("INSERT INTO gmlog (cid, command, mapid) VALUES (?, ?, ?)")) {
             ps.setInt(1, player.getId());
             ps.setString(2, command);
             ps.setInt(3, player.getMap().getId());
@@ -157,12 +160,6 @@ public class CommandProcessor {
         } catch (SQLException ex) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, ex);
             ex.printStackTrace();
-        } finally {
-            try {
-                ps.close();
-            } catch (SQLException e) {/*Err.. Fuck?*/
-
-            }
         }
     }
 }

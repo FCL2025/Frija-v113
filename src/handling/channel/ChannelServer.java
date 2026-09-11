@@ -36,8 +36,9 @@ import handling.ByteArrayMaplePacket;
 import handling.MaplePacket;
 import handling.MapleServerHandler;
 import handling.login.LoginServer;
-import handling.mina.MapleCodecFactory;
+import handling.mina.MapleAcceptor;
 import handling.world.CheaterData;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import scripting.EventScriptManager;
 import server.MapleSquad;
@@ -46,12 +47,6 @@ import server.maps.MapleMapFactory;
 import server.shops.HiredMerchant;
 import tools.MaplePacketCreator;
 import server.life.PlayerNPC;
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.SimpleByteBufferAllocator;
-import org.apache.mina.common.IoAcceptor;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
 import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -78,10 +73,14 @@ public class ChannelServer implements Serializable {
     private boolean shutdown = false, finishedShutdown = false, MegaphoneMuteState = false, adminOnly = false;
     private PlayerStorage players;
     private MapleServerHandler serverHandler;
-    private IoAcceptor acceptor;
+    private volatile InetSocketAddress boundAddress;
     private final MapleMapFactory mapFactory;
     private EventScriptManager eventSM;
-    private static final Map<Integer, ChannelServer> instances = new HashMap<Integer, ChannelServer>();
+    /**
+     * Every channel registers itself here from its own startup, and any thread
+     * on any channel looks channels up through it - so it has to be concurrent.
+     */
+    private static final Map<Integer, ChannelServer> instances = new ConcurrentHashMap<>();
     private final Map<MapleSquadType, MapleSquad> mapleSquads = new ConcurrentEnumMap<MapleSquadType, MapleSquad>(MapleSquadType.class);
     private final Map<Integer, HiredMerchant> merchants = new HashMap<Integer, HiredMerchant>();
     private final Map<Integer, PlayerNPC> playerNPCs = new HashMap<Integer, PlayerNPC>();
@@ -134,20 +133,12 @@ public class ChannelServer implements Serializable {
 
         ip = ServerProperties.getProperty("tms.IP") + ":" + port;
 
-        ByteBuffer.setUseDirectBuffers(false);
-        ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
-
-        acceptor = new SocketAcceptor();
-        final SocketAcceptorConfig acceptor_config = new SocketAcceptorConfig();
-        acceptor_config.getSessionConfig().setTcpNoDelay(true);
-        acceptor_config.setDisconnectOnUnbind(true);
-        acceptor_config.getFilterChain().addLast("codec", new ProtocolCodecFilter(new MapleCodecFactory()));
         players = new PlayerStorage(channel);
         loadEvents();
 
         try {
             this.serverHandler = new MapleServerHandler(channel, false);
-            acceptor.bind(new InetSocketAddress(port), serverHandler, acceptor_config);
+            this.boundAddress = MapleAcceptor.bind(port, serverHandler);
             System.out.println("Channel " + channel + ": Listening on port " + port + "");
             eventSM.init();
         } catch (IOException e) {
@@ -173,8 +164,8 @@ public class ChannelServer implements Serializable {
 
         System.out.println("Channel " + channel + ", Unbinding...");
 
-        acceptor.unbindAll();
-        acceptor = null;
+        MapleAcceptor.unbind(boundAddress);
+        boundAddress = null;
 
         //temporary while we dont have !addchannel
         instances.remove(channel);
@@ -188,7 +179,7 @@ public class ChannelServer implements Serializable {
     }
 
     public final void unbind() {
-        acceptor.unbindAll();
+        MapleAcceptor.unbind(boundAddress);
     }
 
     public final boolean hasFinishedShutdown() {

@@ -145,10 +145,9 @@ public class MTSStorage {
         int lastPackage = 0;
         int cId;
         Map<Integer, Pair<IItem, MapleInventoryType>> items;
-        final Connection con = DatabaseConnection.getConnection();
-        try {
-            final PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE tab = 1");
-            final ResultSet rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE tab = 1");
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 lastPackage = rs.getInt("id");
                 cId = rs.getInt("characterid");
@@ -162,8 +161,6 @@ public class MTSStorage {
                     }
                 }
             }
-            rs.close();
-            ps.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -182,39 +179,38 @@ public class MTSStorage {
         final List<Integer> toRemove = new ArrayList<Integer>();
         final long now = System.currentTimeMillis();
         final Map<Integer, ArrayList<Pair<IItem, MapleInventoryType>>> items = new HashMap<Integer, ArrayList<Pair<IItem, MapleInventoryType>>>();
-        final Connection con = DatabaseConnection.getConnection();
         mutex.writeLock().lock(); //lock wL so rL will also be locked
-        try {
-            PreparedStatement ps = con.prepareStatement("DELETE FROM mts_items WHERE tab = 1");
-            ps.execute();
-            ps.close();
-            ps = con.prepareStatement("INSERT INTO mts_items VALUES (?, ?, ?, ?, ?, ?)");
-            for (MTSItemInfo m : buyNow.values()) {
-                if (now > m.getEndingDate()) {
-                    if (!expire.containsKey(m.getCharacterId())) {
-                        expire.put(m.getCharacterId(), new ArrayList<IItem>());
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM mts_items WHERE tab = 1")) {
+                ps.execute();
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO mts_items VALUES (?, ?, ?, ?, ?, ?)")) {
+                for (MTSItemInfo m : buyNow.values()) {
+                    if (now > m.getEndingDate()) {
+                        if (!expire.containsKey(m.getCharacterId())) {
+                            expire.put(m.getCharacterId(), new ArrayList<IItem>());
+                        }
+                        expire.get(m.getCharacterId()).add(m.getItem());
+                        toRemove.add(m.getId());
+                        items.put(m.getId(), null); //destroy from the mtsitems.
+                    } else {
+                        ps.setInt(1, m.getId());
+                        ps.setByte(2, (byte) 1);
+                        ps.setInt(3, m.getPrice());
+                        ps.setInt(4, m.getCharacterId());
+                        ps.setString(5, m.getSeller());
+                        ps.setLong(6, m.getEndingDate());
+                        ps.executeUpdate();
+                        if (!items.containsKey(m.getId())) {
+                            items.put(m.getId(), new ArrayList<Pair<IItem, MapleInventoryType>>());
+                        }
+                        items.get(m.getId()).add(new Pair<IItem, MapleInventoryType>(m.getItem(), GameConstants.getInventoryType(m.getItem().getItemId())));
                     }
-                    expire.get(m.getCharacterId()).add(m.getItem());
-                    toRemove.add(m.getId());
-                    items.put(m.getId(), null); //destroy from the mtsitems.
-                } else {
-                    ps.setInt(1, m.getId());
-                    ps.setByte(2, (byte) 1);
-                    ps.setInt(3, m.getPrice());
-                    ps.setInt(4, m.getCharacterId());
-                    ps.setString(5, m.getSeller());
-                    ps.setLong(6, m.getEndingDate());
-                    ps.executeUpdate();
-                    if (!items.containsKey(m.getId())) {
-                        items.put(m.getId(), new ArrayList<Pair<IItem, MapleInventoryType>>());
-                    }
-                    items.get(m.getId()).add(new Pair<IItem, MapleInventoryType>(m.getItem(), GameConstants.getInventoryType(m.getItem().getItemId())));
+                }
+                for (int i : toRemove) {
+                    buyNow.remove(i);
                 }
             }
-            for (int i : toRemove) {
-                buyNow.remove(i);
-            }
-            ps.close();
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {

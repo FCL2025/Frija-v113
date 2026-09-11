@@ -1,6 +1,8 @@
 package server;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -25,19 +27,35 @@ public class AutobanManager implements Runnable {
             this.points = points;
         }
 
-        public int compareTo(AutobanManager.ExpirationEntry o) {
-            return (int) (time - o.time);
+        /**
+         * These live in a {@link TreeSet}, which means the ordering has to be
+         * a total order consistent with {@link #equals} or entries vanish. The
+         * old {@code (int) (time - o.time)} was neither: it overflowed for
+         * timestamps more than 24 days apart, and it called every two entries
+         * scheduled in the same millisecond equal, so the second one was
+         * silently dropped instead of being stored.
+         */
+        @Override
+        public int compareTo(final AutobanManager.ExpirationEntry o) {
+            return ORDER.compare(this, o);
         }
 
         @Override
-        public boolean equals(Object oth) {
-            if (!(oth instanceof AutobanManager.ExpirationEntry)) {
-                return false;
-            }
-            final AutobanManager.ExpirationEntry ee = (AutobanManager.ExpirationEntry) oth;
-            return (time == ee.time && points == ee.points && acc == ee.acc);
+        public boolean equals(final Object oth) {
+            return oth instanceof AutobanManager.ExpirationEntry ee
+                    && time == ee.time && points == ee.points && acc == ee.acc;
+        }
+
+        @Override
+        public int hashCode() {
+            return Long.hashCode(time) * 31 * 31 + acc * 31 + points;
         }
     }
+
+    private static final Comparator<ExpirationEntry> ORDER =
+            Comparator.comparingLong((ExpirationEntry e) -> e.time)
+                    .thenComparingInt(e -> e.acc)
+                    .thenComparingInt(e -> e.points);
     private Map<Integer, Integer> points = new HashMap<Integer, Integer>();
     private Map<Integer, List<String>> reasons = new HashMap<Integer, List<String>>();
     private Set<ExpirationEntry> expirations = new TreeSet<ExpirationEntry>();
@@ -108,14 +126,38 @@ public class AutobanManager implements Runnable {
         }
     }
 
+    /**
+     * Decays points whose expiry has passed. Scheduled once a minute onto
+     * {@code CheatTimer}.
+     *
+     * <p>This never ran until the timer pools were made self-starting, which is
+     * why two bugs in it went unnoticed: it walked {@code expirations} without
+     * taking the lock that every writer takes, and it subtracted an entry's
+     * points without ever removing the entry - so once live it would have
+     * re-subtracted the same points every minute forever and driven every
+     * account's score to negative infinity, quietly disabling the autoban
+     * entirely. It now removes what it decays, under the lock.
+     */
     public final void run() {
         final long now = System.currentTimeMillis();
-        for (final ExpirationEntry e : expirations) {
-            if (e.time <= now) {
-                this.points.put(e.acc, this.points.get(e.acc) - e.points);
-            } else {
-                return;
+        lock.lock();
+        try {
+            final Iterator<ExpirationEntry> it = expirations.iterator();
+            while (it.hasNext()) {
+                final ExpirationEntry e = it.next();
+                // The set is sorted by time, so the first entry still in the
+                // future ends the sweep.
+                if (e.time > now) {
+                    return;
+                }
+                final Integer current = points.get(e.acc);
+                if (current != null) {
+                    points.put(e.acc, current - e.points);
+                }
+                it.remove();
             }
+        } finally {
+            lock.unlock();
         }
     }
 }

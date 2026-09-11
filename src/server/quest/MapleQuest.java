@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import client.MapleCharacter;
 import client.MapleQuestStatus;
@@ -23,7 +24,10 @@ import tools.Pair;
 public class MapleQuest implements Serializable {
 
     private static final long serialVersionUID = 9179541993413738569L;
-    private static Map<Integer, MapleQuest> quests = new LinkedHashMap<Integer, MapleQuest>();
+    // Was a LinkedHashMap, but nothing in this class ever iterates `quests`
+    // in insertion order (only get/put by id), so ConcurrentHashMap is a
+    // drop-in, race-free replacement.
+    private static final Map<Integer, MapleQuest> quests = new ConcurrentHashMap<>();
     protected int id;
     protected List<MapleQuestRequirement> startReqs;
     protected List<MapleQuestRequirement> completeReqs;
@@ -36,11 +40,20 @@ public class MapleQuest implements Serializable {
     private boolean repeatable = false, customend = false;
     private int viewMedalItem = 0, selectedSkillID = 0;
     protected String name = "";
-    private static MapleDataProvider questData;
-    private static MapleData actions;
-    private static MapleData requirements;
-    private static MapleData info;
-    private static MapleData pinfo;
+    // clearQuests()/initQuests() (from !reloadquests) reassign these from
+    // whatever thread runs the GM command while other threads may be reading
+    // them inside loadQuest(); volatile at least guarantees each individual
+    // field's new value becomes visible instead of a thread being stuck with
+    // a stale reference indefinitely. It does NOT make the 5-field swap
+    // atomic as a whole - a reader could still observe requirements from the
+    // new dataset alongside actions from the old one during a reload. Fixing
+    // that fully would need the fields bundled into one object swapped with
+    // a single reference assignment (or reads/writes taken under a lock).
+    private static volatile MapleDataProvider questData;
+    private static volatile MapleData actions;
+    private static volatile MapleData requirements;
+    private static volatile MapleData info;
+    private static volatile MapleData pinfo;
 
     protected MapleQuest(final int id) {
         relevantMobs = new LinkedHashMap<Integer, Integer>();
@@ -174,22 +187,31 @@ public class MapleQuest implements Serializable {
 
     public static MapleQuest getInstance(int id) {
         MapleQuest ret = quests.get(id);
-        if (ret == null) {
-            ret = new MapleQuest(id);
-            try {
-                if (GameConstants.isCustomQuest(id) || !loadQuest(ret, id)) {
-                    ret = new MapleCustomQuest(id);
-                }
-                quests.put(id, ret);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
-                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Caused by questID " + id);
-                System.out.println("Caused by questID " + id);
-                return new MapleCustomQuest(id);
-            }
+        if (ret != null) {
+            return ret;
         }
-        return ret;
+        // loadQuest()/the MapleQuestRequirement/MapleQuestAction constructors it
+        // calls can plausibly look up other quests, so this must not use
+        // computeIfAbsent (which would deadlock/throw if it re-entered `quests`
+        // from inside its own mapping function). A plain load-outside-the-map
+        // + putIfAbsent tolerates that re-entrancy and any redundant load a
+        // race causes, while still letting every caller converge on one
+        // canonical instance per id.
+        MapleQuest built;
+        try {
+            built = new MapleQuest(id);
+            if (GameConstants.isCustomQuest(id) || !loadQuest(built, id)) {
+                built = new MapleCustomQuest(id);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
+            FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Caused by questID " + id);
+            System.out.println("Caused by questID " + id);
+            return new MapleCustomQuest(id);
+        }
+        final MapleQuest existing = quests.putIfAbsent(id, built);
+        return existing != null ? existing : built;
     }
 
     public boolean canStart(MapleCharacter c, Integer npcid) {

@@ -27,8 +27,8 @@ import java.util.Collection;
 public class MapleMessenger implements Serializable {
 
     private static final long serialVersionUID = 9179541993413738569L;
-    private MapleMessengerCharacter[] members = new MapleMessengerCharacter[3];
-    private String[] silentLink = new String[3];
+    private final MapleMessengerCharacter[] members = new MapleMessengerCharacter[3];
+    private final String[] silentLink = new String[3];
     private int id;
 
     public MapleMessenger(int id, MapleMessengerCharacter chrfor) {
@@ -141,6 +141,12 @@ public class MapleMessenger implements Serializable {
     }
 
     public Collection<MapleMessengerCharacter> getMembers() {
-        return Arrays.asList(members);
+        // Defensive copy of the backing array rather than a live Arrays.asList()
+        // view over it: World.Messenger's methods run entirely under its
+        // ReentrantReadWriteLock (readers included), so this copy is always taken
+        // under that lock and is therefore a consistent snapshot; without the copy,
+        // a caller iterating the live view could observe individual slots being
+        // reassigned mid-iteration by a concurrent mutator.
+        return Arrays.asList(Arrays.copyOf(members, members.length));
     }
 }

@@ -30,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 
 import constants.GameConstants;
@@ -67,7 +68,28 @@ public class MapleMonster extends AbstractLoadedMapleLife {
 
     private MapleMonsterStats stats;
     private OverrideMonsterStats ostats = null;
-    private long hp;
+    /**
+     * Volatile because every player attacking this monster reads it from their
+     * own handler thread; the writes themselves happen under
+     * {@link #damageLock}.
+     */
+    private volatile long hp;
+    /**
+     * Serialises the damage bookkeeping: the attacker table, the HP
+     * subtraction, and the decision that this monster has just died.
+     *
+     * <p>Without it, two players hitting the same monster at the same moment
+     * could both read {@code hp > 0}, both subtract, and both then read
+     * {@code hp <= 0} - and call {@code map.killMonster} twice. That is the
+     * classic duplicate-drop, duplicate-EXP bug. Damage was also being lost
+     * outright, since {@code hp -= rDamage} on a plain field is a
+     * read-modify-write that two threads can interleave.
+     *
+     * <p>A private lock, not the monster itself, and never held across
+     * {@code map.killMonster} or a broadcast - those take the map's own locks
+     * and would invite a deadlock.
+     */
+    private final Object damageLock = new Object();
     private int mp;
     private byte venom_counter, carnivalTeam;
     private MapleMap map;
@@ -75,7 +97,14 @@ public class MapleMonster extends AbstractLoadedMapleLife {
     private int linkoid = 0, lastNode = -1, lastNodeController = -1, highestDamageChar = 0; // Just a reference for monster EXP distribution after dead
     private WeakReference<MapleCharacter> controller = new WeakReference<MapleCharacter>(null);
     private boolean fake, dropsDisabled, controllerHasAggro, controllerKnowsAboutAggro;
-    private final Collection<AttackerEntry> attackers = new LinkedList<AttackerEntry>();
+    /**
+     * Copy-on-write because it is added to under {@link #damageLock} but walked
+     * from all over the class - and from every attacker's own thread - without
+     * it. As a {@code LinkedList} that walk was a
+     * {@code ConcurrentModificationException} waiting for the second player to
+     * join a fight.
+     */
+    private final Collection<AttackerEntry> attackers = new CopyOnWriteArrayList<AttackerEntry>();
     private EventInstanceManager eventInstance;
     private MonsterListener listener = null;
     private MaplePacket reflectpack = null, nodepack = null;
@@ -205,22 +234,38 @@ public class MapleMonster extends AbstractLoadedMapleLife {
         } else {
             attacker = new SingleAttackerEntry(from, map.getChannel());
         }
-        boolean replaced = false;
-        for (final AttackerEntry aentry : attackers) {
-            if (aentry.equals(attacker)) {
-                attacker = aentry;
-                replaced = true;
-                break;
+        final long rDamage;
+        final boolean killedByThisHit;
+        // Everything that reads-then-writes hp or the attacker table happens
+        // in here, and nothing else does. The branches below only act on the
+        // answers, so no map call or broadcast runs while the lock is held.
+        synchronized (damageLock) {
+            boolean replaced = false;
+            for (final AttackerEntry aentry : attackers) {
+                if (aentry.equals(attacker)) {
+                    attacker = aentry;
+                    replaced = true;
+                    break;
+                }
             }
+            if (!replaced) {
+                attackers.add(attacker);
+            }
+            rDamage = Math.max(0, Math.min(damage, hp));
+            attacker.addDamage(from, rDamage, updateAttackTime);
+            hp -= rDamage;
+            // rDamage is capped at the HP that was left, so a positive rDamage
+            // means this hit is the one that took the last of it. Exactly one
+            // thread can see this true, and only that one may kill the monster.
+            killedByThisHit = rDamage > 0 && hp <= 0;
         }
-        if (!replaced) {
-            attackers.add(attacker);
+        if (rDamage <= 0) {
+            // Another thread got the last of its HP first; it is already dying
+            // and this hit has nothing left to take.
+            return;
         }
-        final long rDamage = Math.max(0, Math.min(damage, hp));
-        attacker.addDamage(from, rDamage, updateAttackTime);
 
         if (stats.getSelfD() != -1) {
-            hp -= rDamage;
             if (hp > 0) {
                 if (hp < stats.getSelfDHp()) { // HP is below the selfd level
                     map.killMonster(this, from, false, false, stats.getSelfD(), lastSkill);
@@ -239,61 +284,82 @@ public class MapleMonster extends AbstractLoadedMapleLife {
                 map.killMonster(this, from, true, false, (byte) 1, lastSkill);
             }
         } else {
-            if (sponge.get() != null) {
-                if (sponge.get().hp > 0) { // If it's still alive, dont want double/triple rewards
-                    // Sponge are always in the same map, so we can use this.map
-                    // The only mob that uses sponge are PB/HT
-                    sponge.get().hp -= rDamage;
-
-                    if (sponge.get().hp <= 0) {
-                        map.killMonster(sponge.get(), from, true, false, (byte) 1, lastSkill);
-                    } else {
-                        map.broadcastMessage(MobPacket.showBossHP(sponge.get()));
+            final MapleMonster spongeMob = sponge.get();
+            if (spongeMob != null) {
+                // Sponge are always in the same map, so we can use this.map
+                // The only mob that uses sponge are PB/HT
+                switch (spongeMob.absorb(rDamage)) {
+                    case KILLED -> // "dont want double/triple rewards"
+                        map.killMonster(spongeMob, from, true, false, (byte) 1, lastSkill);
+                    case DAMAGED ->
+                        map.broadcastMessage(MobPacket.showBossHP(spongeMob));
+                    case ALREADY_DEAD -> {
                     }
                 }
             }
-            if (hp > 0) {
-                hp -= rDamage;
-                if (eventInstance != null) {
-                    eventInstance.monsterDamaged(from, this, (int) rDamage);
-                } else {
-                    final EventInstanceManager em = from.getEventInstance();
-                    if (em != null) {
-                        em.monsterDamaged(from, this, (int) rDamage);
-                    }
+            if (eventInstance != null) {
+                eventInstance.monsterDamaged(from, this, (int) rDamage);
+            } else {
+                final EventInstanceManager em = from.getEventInstance();
+                if (em != null) {
+                    em.monsterDamaged(from, this, (int) rDamage);
                 }
-                if (sponge.get() == null && hp > 0) {
-                    switch (stats.getHPDisplayType()) {
-                        case 0:
-                            map.broadcastMessage(MobPacket.showBossHP(this), this.getPosition());
-                            break;
-                        case 1:
-                            map.broadcastMessage(from, MobPacket.damageFriendlyMob(this, damage, true), false);
-                            break;
-                        case 2:
-                            map.broadcastMessage(MobPacket.showMonsterHP(getObjectId(), (int) Math.ceil((hp * 100.0) / getMobMaxHp())));
-                            from.mulung_EnergyModify(true);
-                            break;
-                        case 3:
-                            for (final AttackerEntry mattacker : attackers) {
-                                for (final AttackingMapleCharacter cattacker : mattacker.getAttackers()) {
-                                    if (cattacker.getAttacker().getMap() == from.getMap()) { // current attacker is on the map of the monster
-                                        if (cattacker.getLastAttackTime() >= System.currentTimeMillis() - 4000) {
-                                            cattacker.getAttacker().getClient().getSession().write(MobPacket.showMonsterHP(getObjectId(), (int) Math.ceil((hp * 100.0) / getMobMaxHp())));
-                                        }
+            }
+            if (sponge.get() == null && hp > 0) {
+                switch (stats.getHPDisplayType()) {
+                    case 0:
+                        map.broadcastMessage(MobPacket.showBossHP(this), this.getPosition());
+                        break;
+                    case 1:
+                        map.broadcastMessage(from, MobPacket.damageFriendlyMob(this, damage, true), false);
+                        break;
+                    case 2:
+                        map.broadcastMessage(MobPacket.showMonsterHP(getObjectId(), (int) Math.ceil((hp * 100.0) / getMobMaxHp())));
+                        from.mulung_EnergyModify(true);
+                        break;
+                    case 3:
+                        for (final AttackerEntry mattacker : attackers) {
+                            for (final AttackingMapleCharacter cattacker : mattacker.getAttackers()) {
+                                if (cattacker.getAttacker().getMap() == from.getMap()) { // current attacker is on the map of the monster
+                                    if (cattacker.getLastAttackTime() >= System.currentTimeMillis() - 4000) {
+                                        cattacker.getAttacker().getClient().getSession().write(MobPacket.showMonsterHP(getObjectId(), (int) Math.ceil((hp * 100.0) / getMobMaxHp())));
                                     }
                                 }
                             }
-                            break;
-                    }
+                        }
+                        break;
                 }
+            }
 
-                if (hp <= 0) {
-                    map.killMonster(this, from, true, false, (byte) 1, lastSkill);
-                }
+            if (killedByThisHit) {
+                map.killMonster(this, from, true, false, (byte) 1, lastSkill);
             }
         }
         startDropItemSchedule();
+    }
+
+    /** What {@link #absorb} did with the damage it was handed. */
+    private enum Absorbed {
+        ALREADY_DEAD, DAMAGED, KILLED
+    }
+
+    /**
+     * Takes damage on behalf of the monsters linked to this sponge. Sponges -
+     * Pink Bean and Horntail - pool the damage dealt to every one of their
+     * parts, so this is called from the thread of whoever hit a part, and
+     * several parts can be hit at once.
+     *
+     * @return {@code KILLED} for the one caller whose damage took the last of
+     * the sponge's HP, so that only that caller rewards the kill
+     */
+    private Absorbed absorb(final long damage) {
+        synchronized (damageLock) {
+            if (hp <= 0) {
+                return Absorbed.ALREADY_DEAD;
+            }
+            hp -= Math.min(damage, hp);
+            return hp <= 0 ? Absorbed.KILLED : Absorbed.DAMAGED;
+        }
     }
 
     public final void heal(int hp, int mp, final boolean broadcast) {

@@ -2880,15 +2880,15 @@ public final class MapleMap {
             if (squad != null) {
                 z = z.substring(0, z.length() - 1);
             }
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("INSERT INTO speedruns(`type`, `leader`, `timestring`, `time`, `members`) VALUES (?,?,?,?,?)");
-            ps.setString(1, type.name());
-            ps.setString(2, leader);
-            ps.setString(3, time);
-            ps.setLong(4, timz);
-            ps.setString(5, z);
-            ps.executeUpdate();
-            ps.close();
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement ps = con.prepareStatement("INSERT INTO speedruns(`type`, `leader`, `timestring`, `time`, `members`) VALUES (?,?,?,?,?)")) {
+                ps.setString(1, type.name());
+                ps.setString(2, leader);
+                ps.setString(3, time);
+                ps.setLong(4, timz);
+                ps.setString(5, z);
+                ps.executeUpdate();
+            }
 
             if (SpeedRunner.getInstance().getSpeedRunData(type) == null) { //great, we just add it
                 SpeedRunner.getInstance().addSpeedRunData(type, SpeedRunner.getInstance().addSpeedRunData(new StringBuilder("#rThese are the speedrun times for " + type + ".#k\r\n\r\n"), new HashMap<Integer, String>(), z, leader, 1, time));

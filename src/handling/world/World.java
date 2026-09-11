@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import client.BuddylistEntry;
@@ -47,7 +48,7 @@ import tools.packet.PetPacket;
 
 public class World {
 
-    public static boolean isShutDown = false;
+    public static volatile boolean isShutDown = false;
     //Touch everything...
     public static void init() {
         World.Find.findChannel(0);
@@ -142,111 +143,138 @@ public class World {
 
     public static class Party {
 
-        private static Map<Integer, MapleParty> parties = new HashMap<Integer, MapleParty>();
+        private static final Map<Integer, MapleParty> parties = new HashMap<Integer, MapleParty>();
+        private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         private static final AtomicInteger runningPartyId = new AtomicInteger();
 
         static {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps;
-            try {
-                ps = con.prepareStatement("SELECT MAX(party)+2 FROM characters");
-                ResultSet rs = ps.executeQuery();
+            try (Connection con = DatabaseConnection.getConnection();
+                    PreparedStatement ps = con.prepareStatement("SELECT MAX(party)+2 FROM characters");
+                    ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 runningPartyId.set(rs.getInt(1));
-                rs.close();
-                ps.close();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
 
         public static void partyChat(int partyid, String chattext, String namefrom) {
-            MapleParty party = getParty(partyid);
-            if (party == null) {
-                throw new IllegalArgumentException("no party with the specified partyid exists");
-            }
+            lock.readLock().lock();
+            try {
+                MapleParty party = parties.get(partyid);
+                if (party == null) {
+                    throw new IllegalArgumentException("no party with the specified partyid exists");
+                }
 
-            for (MaplePartyCharacter partychar : party.getMembers()) {
-                int ch = Find.findChannel(partychar.getName());
-                if (ch > 0) {
-                    MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(partychar.getName());
-                    if (chr != null && !chr.getName().equalsIgnoreCase(namefrom)) { //Extra check just in case
-                        chr.getClient().getSession().write(MaplePacketCreator.multiChat(namefrom, chattext, 1));
+                for (MaplePartyCharacter partychar : party.getMembers()) {
+                    int ch = Find.findChannel(partychar.getName());
+                    if (ch > 0) {
+                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(partychar.getName());
+                        if (chr != null && !chr.getName().equalsIgnoreCase(namefrom)) { //Extra check just in case
+                            chr.getClient().getSession().write(MaplePacketCreator.multiChat(namefrom, chattext, 1));
+                        }
                     }
                 }
+            } finally {
+                lock.readLock().unlock();
             }
         }
 
         public static void updateParty(int partyid, PartyOperation operation, MaplePartyCharacter target) {
-            MapleParty party = getParty(partyid);
-            if (party == null) {
-                return; //Don't update, just return. And definitely don't throw a damn exception.
-                //throw new IllegalArgumentException("no party with the specified partyid exists");
-            }
-            switch (operation) {
-                case JOIN:
-                    party.addMember(target);
-                    break;
-                case EXPEL:
-                case LEAVE:
-                    party.removeMember(target);
-                    break;
-                case DISBAND:
-                    disbandParty(partyid);
-                    break;
-                case SILENT_UPDATE:
-                case LOG_ONOFF:
-                    party.updateMember(target);
-                    break;
-                case CHANGE_LEADER:
-                case CHANGE_LEADER_DC:
-                    party.setLeader(target);
-                    break;
-                default:
-                    throw new RuntimeException("Unhandeled updateParty operation " + operation.name());
-            }
+            // Lookup + mutation + broadcast is one compound operation: several channel
+            // threads can race to update the same party (join/leave/leader-change
+            // arriving on different channels at once), so the whole sequence runs
+            // under a single write lock instead of being split into independent
+            // map operations that could interleave.
+            lock.writeLock().lock();
+            try {
+                MapleParty party = parties.get(partyid);
+                if (party == null) {
+                    return; //Don't update, just return. And definitely don't throw a damn exception.
+                    //throw new IllegalArgumentException("no party with the specified partyid exists");
+                }
+                switch (operation) {
+                    case JOIN:
+                        party.addMember(target);
+                        break;
+                    case EXPEL:
+                    case LEAVE:
+                        party.removeMember(target);
+                        break;
+                    case DISBAND:
+                        parties.remove(partyid);
+                        break;
+                    case SILENT_UPDATE:
+                    case LOG_ONOFF:
+                        party.updateMember(target);
+                        break;
+                    case CHANGE_LEADER:
+                    case CHANGE_LEADER_DC:
+                        party.setLeader(target);
+                        break;
+                    default:
+                        throw new RuntimeException("Unhandeled updateParty operation " + operation.name());
+                }
 
-            for (MaplePartyCharacter partychar : party.getMembers()) {
-                int ch = Find.findChannel(partychar.getName());
-                if (ch > 0) {
-                    MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(partychar.getName());
-                    if (chr != null) {
-                        if (operation == PartyOperation.DISBAND) {
-                            chr.setParty(null);
-                        } else {
-                            chr.setParty(party);
+                for (MaplePartyCharacter partychar : party.getMembers()) {
+                    int ch = Find.findChannel(partychar.getName());
+                    if (ch > 0) {
+                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(partychar.getName());
+                        if (chr != null) {
+                            if (operation == PartyOperation.DISBAND) {
+                                chr.setParty(null);
+                            } else {
+                                chr.setParty(party);
+                            }
+                            chr.getClient().getSession().write(MaplePacketCreator.updateParty(chr.getClient().getChannel(), party, operation, target));
                         }
-                        chr.getClient().getSession().write(MaplePacketCreator.updateParty(chr.getClient().getChannel(), party, operation, target));
                     }
                 }
-            }
-            switch (operation) {
-                case LEAVE:
-                case EXPEL:
-                    int ch = Find.findChannel(target.getName());
-                    if (ch > 0) {
-                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(target.getName());
-                        if (chr != null) {
-                            chr.getClient().getSession().write(MaplePacketCreator.updateParty(chr.getClient().getChannel(), party, operation, target));
-                            chr.setParty(null);
+                switch (operation) {
+                    case LEAVE:
+                    case EXPEL:
+                        int ch = Find.findChannel(target.getName());
+                        if (ch > 0) {
+                            MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(target.getName());
+                            if (chr != null) {
+                                chr.getClient().getSession().write(MaplePacketCreator.updateParty(chr.getClient().getChannel(), party, operation, target));
+                                chr.setParty(null);
+                            }
                         }
-                    }
+                }
+            } finally {
+                lock.writeLock().unlock();
             }
         }
 
         public static MapleParty createParty(MaplePartyCharacter chrfor) {
             int partyid = runningPartyId.getAndIncrement();
             MapleParty party = new MapleParty(partyid, chrfor);
-            parties.put(party.getId(), party);
+            lock.writeLock().lock();
+            try {
+                parties.put(party.getId(), party);
+            } finally {
+                lock.writeLock().unlock();
+            }
             return party;
         }
 
         public static MapleParty getParty(int partyid) {
-            return parties.get(partyid);
+            lock.readLock().lock();
+            try {
+                return parties.get(partyid);
+            } finally {
+                lock.readLock().unlock();
+            }
         }
 
         public static MapleParty disbandParty(int partyid) {
-            return parties.remove(partyid);
+            lock.writeLock().lock();
+            try {
+                return parties.remove(partyid);
+            } finally {
+                lock.writeLock().unlock();
+            }
         }
     }
 
@@ -344,7 +372,8 @@ public class World {
 
     public static class Messenger {
 
-        private static Map<Integer, MapleMessenger> messengers = new HashMap<Integer, MapleMessenger>();
+        private static final Map<Integer, MapleMessenger> messengers = new HashMap<Integer, MapleMessenger>();
+        private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         private static final AtomicInteger runningMessengerId = new AtomicInteger();
 
         static {
@@ -354,7 +383,12 @@ public class World {
         public static MapleMessenger createMessenger(MapleMessengerCharacter chrfor) {
             int messengerid = runningMessengerId.getAndIncrement();
             MapleMessenger messenger = new MapleMessenger(messengerid, chrfor);
-            messengers.put(messenger.getId(), messenger);
+            lock.writeLock().lock();
+            try {
+                messengers.put(messenger.getId(), messenger);
+            } finally {
+                lock.writeLock().unlock();
+            }
             return messenger;
         }
 
@@ -373,115 +407,154 @@ public class World {
         }
 
         public static MapleMessenger getMessenger(int messengerid) {
-            return messengers.get(messengerid);
+            lock.readLock().lock();
+            try {
+                return messengers.get(messengerid);
+            } finally {
+                lock.readLock().unlock();
+            }
         }
 
         public static void leaveMessenger(int messengerid, MapleMessengerCharacter target) {
-            MapleMessenger messenger = getMessenger(messengerid);
-            if (messenger == null) {
-                throw new IllegalArgumentException("No messenger with the specified messengerid exists");
-            }
-            int position = messenger.getPositionByName(target.getName());
-            messenger.removeMember(target);
-
-            for (MapleMessengerCharacter mmc : messenger.getMembers()) {
-                if (mmc != null) {
-                    int ch = Find.findChannel(mmc.getId());
-                    if (ch > 0) {
-                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(mmc.getName());
-                        if (chr != null) {
-                            chr.getClient().getSession().write(MaplePacketCreator.removeMessengerPlayer(position));
-                        }
-                    }
+            // Lookup, member removal and the resulting broadcast are kept under one
+            // lock: a leave racing a join (or another leave) on the same messenger
+            // window must not hand out a position computed against a member list
+            // that has since changed.
+            lock.writeLock().lock();
+            try {
+                MapleMessenger messenger = messengers.get(messengerid);
+                if (messenger == null) {
+                    throw new IllegalArgumentException("No messenger with the specified messengerid exists");
                 }
-            }
-        }
+                int position = messenger.getPositionByName(target.getName());
+                messenger.removeMember(target);
 
-        public static void silentLeaveMessenger(int messengerid, MapleMessengerCharacter target) {
-            MapleMessenger messenger = getMessenger(messengerid);
-            if (messenger == null) {
-                throw new IllegalArgumentException("No messenger with the specified messengerid exists");
-            }
-            messenger.silentRemoveMember(target);
-        }
-
-        public static void silentJoinMessenger(int messengerid, MapleMessengerCharacter target) {
-            MapleMessenger messenger = getMessenger(messengerid);
-            if (messenger == null) {
-                throw new IllegalArgumentException("No messenger with the specified messengerid exists");
-            }
-            messenger.silentAddMember(target);
-        }
-
-        public static void updateMessenger(int messengerid, String namefrom, int fromchannel) {
-            MapleMessenger messenger = getMessenger(messengerid);
-            int position = messenger.getPositionByName(namefrom);
-
-            for (MapleMessengerCharacter messengerchar : messenger.getMembers()) {
-                if (messengerchar != null && !messengerchar.getName().equals(namefrom)) {
-                    int ch = Find.findChannel(messengerchar.getName());
-                    if (ch > 0) {
-                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
-                        if (chr != null) {
-                            MapleCharacter from = ChannelServer.getInstance(fromchannel).getPlayerStorage().getCharacterByName(namefrom);
-                            chr.getClient().getSession().write(MaplePacketCreator.updateMessengerPlayer(namefrom, from, position, fromchannel - 1));
-                        }
-                    }
-                }
-            }
-        }
-
-        public static void joinMessenger(int messengerid, MapleMessengerCharacter target, String from, int fromchannel) {
-            MapleMessenger messenger = getMessenger(messengerid);
-            if (messenger == null) {
-                throw new IllegalArgumentException("No messenger with the specified messengerid exists");
-            }
-            messenger.addMember(target);
-            int position = messenger.getPositionByName(target.getName());
-            for (MapleMessengerCharacter messengerchar : messenger.getMembers()) {
-                if (messengerchar != null) {
-                    int mposition = messenger.getPositionByName(messengerchar.getName());
-                    int ch = Find.findChannel(messengerchar.getName());
-                    if (ch > 0) {
-                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
-                        if (chr != null) {
-                            if (!messengerchar.getName().equals(from)) {
-                                MapleCharacter fromCh = ChannelServer.getInstance(fromchannel).getPlayerStorage().getCharacterByName(from);
-                                chr.getClient().getSession().write(MaplePacketCreator.addMessengerPlayer(from, fromCh, position, fromchannel - 1));
-                                fromCh.getClient().getSession().write(MaplePacketCreator.addMessengerPlayer(chr.getName(), chr, mposition, messengerchar.getChannel() - 1));
-                            } else {
-                                chr.getClient().getSession().write(MaplePacketCreator.joinMessenger(mposition));
+                for (MapleMessengerCharacter mmc : messenger.getMembers()) {
+                    if (mmc != null) {
+                        int ch = Find.findChannel(mmc.getId());
+                        if (ch > 0) {
+                            MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(mmc.getName());
+                            if (chr != null) {
+                                chr.getClient().getSession().write(MaplePacketCreator.removeMessengerPlayer(position));
                             }
                         }
                     }
                 }
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        public static void silentLeaveMessenger(int messengerid, MapleMessengerCharacter target) {
+            lock.writeLock().lock();
+            try {
+                MapleMessenger messenger = messengers.get(messengerid);
+                if (messenger == null) {
+                    throw new IllegalArgumentException("No messenger with the specified messengerid exists");
+                }
+                messenger.silentRemoveMember(target);
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        public static void silentJoinMessenger(int messengerid, MapleMessengerCharacter target) {
+            lock.writeLock().lock();
+            try {
+                MapleMessenger messenger = messengers.get(messengerid);
+                if (messenger == null) {
+                    throw new IllegalArgumentException("No messenger with the specified messengerid exists");
+                }
+                messenger.silentAddMember(target);
+            } finally {
+                lock.writeLock().unlock();
+            }
+        }
+
+        public static void updateMessenger(int messengerid, String namefrom, int fromchannel) {
+            lock.readLock().lock();
+            try {
+                MapleMessenger messenger = messengers.get(messengerid);
+                int position = messenger.getPositionByName(namefrom);
+
+                for (MapleMessengerCharacter messengerchar : messenger.getMembers()) {
+                    if (messengerchar != null && !messengerchar.getName().equals(namefrom)) {
+                        int ch = Find.findChannel(messengerchar.getName());
+                        if (ch > 0) {
+                            MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
+                            if (chr != null) {
+                                MapleCharacter from = ChannelServer.getInstance(fromchannel).getPlayerStorage().getCharacterByName(namefrom);
+                                chr.getClient().getSession().write(MaplePacketCreator.updateMessengerPlayer(namefrom, from, position, fromchannel - 1));
+                            }
+                        }
+                    }
+                }
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public static void joinMessenger(int messengerid, MapleMessengerCharacter target, String from, int fromchannel) {
+            lock.writeLock().lock();
+            try {
+                MapleMessenger messenger = messengers.get(messengerid);
+                if (messenger == null) {
+                    throw new IllegalArgumentException("No messenger with the specified messengerid exists");
+                }
+                messenger.addMember(target);
+                int position = messenger.getPositionByName(target.getName());
+                for (MapleMessengerCharacter messengerchar : messenger.getMembers()) {
+                    if (messengerchar != null) {
+                        int mposition = messenger.getPositionByName(messengerchar.getName());
+                        int ch = Find.findChannel(messengerchar.getName());
+                        if (ch > 0) {
+                            MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
+                            if (chr != null) {
+                                if (!messengerchar.getName().equals(from)) {
+                                    MapleCharacter fromCh = ChannelServer.getInstance(fromchannel).getPlayerStorage().getCharacterByName(from);
+                                    chr.getClient().getSession().write(MaplePacketCreator.addMessengerPlayer(from, fromCh, position, fromchannel - 1));
+                                    fromCh.getClient().getSession().write(MaplePacketCreator.addMessengerPlayer(chr.getName(), chr, mposition, messengerchar.getChannel() - 1));
+                                } else {
+                                    chr.getClient().getSession().write(MaplePacketCreator.joinMessenger(mposition));
+                                }
+                            }
+                        }
+                    }
+                }
+            } finally {
+                lock.writeLock().unlock();
             }
         }
 
         public static void messengerChat(int messengerid, String chattext, String namefrom) {
-            MapleMessenger messenger = getMessenger(messengerid);
-            if (messenger == null) {
-                throw new IllegalArgumentException("No messenger with the specified messengerid exists");
-            }
+            lock.readLock().lock();
+            try {
+                MapleMessenger messenger = messengers.get(messengerid);
+                if (messenger == null) {
+                    throw new IllegalArgumentException("No messenger with the specified messengerid exists");
+                }
 
-            for (MapleMessengerCharacter messengerchar : messenger.getMembers()) {
-                if (messengerchar != null && !messengerchar.getName().equals(namefrom)) {
-                    int ch = Find.findChannel(messengerchar.getName());
-                    if (ch > 0) {
-                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
-                        if (chr != null) {
+                for (MapleMessengerCharacter messengerchar : messenger.getMembers()) {
+                    if (messengerchar != null && !messengerchar.getName().equals(namefrom)) {
+                        int ch = Find.findChannel(messengerchar.getName());
+                        if (ch > 0) {
+                            MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
+                            if (chr != null) {
 
-                            chr.getClient().getSession().write(MaplePacketCreator.messengerChat(chattext));
+                                chr.getClient().getSession().write(MaplePacketCreator.messengerChat(chattext));
+                            }
+                        }
+                    } //Whisp Monitor Code
+                    else if (messengerchar != null) {
+                        int ch = Find.findChannel(messengerchar.getName());
+                        if (ch > 0) {
+                            MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
                         }
                     }
-                } //Whisp Monitor Code
-                else if (messengerchar != null) {
-                    int ch = Find.findChannel(messengerchar.getName());
-                    if (ch > 0) {
-                        MapleCharacter chr = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(messengerchar.getName());
-                    }
+                    //
                 }
-                //
+            } finally {
+                lock.readLock().unlock();
             }
         }
 
@@ -529,26 +602,34 @@ public class World {
         }
 
         public static MapleGuild getGuild(int id) {
-            MapleGuild ret = null;
             lock.readLock().lock();
             try {
-                ret = guilds.get(id);
+                MapleGuild ret = guilds.get(id);
+                if (ret != null) {
+                    return ret;
+                }
             } finally {
                 lock.readLock().unlock();
             }
-            if (ret == null) {
-                lock.writeLock().lock();
-                try {
-                    ret = new MapleGuild(id);
-                    if (ret == null || ret.getId() <= 0 || !ret.isProper()) { //failed to load
-                        return null;
-                    }
-                    guilds.put(id, ret);
-                } finally {
-                    lock.writeLock().unlock();
+            // Re-check after taking the write lock: two threads can both miss the
+            // read-lock lookup above and race to load/insert the same guild, and
+            // without this re-check the second one would silently overwrite the
+            // first with a second, divergent MapleGuild instance.
+            lock.writeLock().lock();
+            try {
+                MapleGuild ret = guilds.get(id);
+                if (ret != null) {
+                    return ret;
                 }
+                ret = new MapleGuild(id);
+                if (ret.getId() <= 0 || !ret.isProper()) { //failed to load
+                    return null;
+                }
+                guilds.put(id, ret);
+                return ret;
+            } finally {
+                lock.writeLock().unlock();
             }
-            return ret; //Guild doesn't exist?
         }
 
         public static MapleGuild getGuildByName(String guildName) {
@@ -880,9 +961,9 @@ public class World {
 
     public static class Find {
 
-        private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        private static HashMap<Integer, Integer> idToChannel = new HashMap<Integer, Integer>();
-        private static HashMap<String, Integer> nameToChannel = new HashMap<String, Integer>();
+        private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        private static final Map<Integer, Integer> idToChannel = new HashMap<Integer, Integer>();
+        private static final Map<String, Integer> nameToChannel = new HashMap<String, Integer>();
 
         public static void register(int id, String name, int channel) {
             lock.writeLock().lock();
@@ -985,26 +1066,33 @@ public class World {
         }
 
         public static MapleGuildAlliance getAlliance(final int allianceid) {
-            MapleGuildAlliance ret = null;
             lock.readLock().lock();
             try {
-                ret = alliances.get(allianceid);
+                MapleGuildAlliance ret = alliances.get(allianceid);
+                if (ret != null) {
+                    return ret;
+                }
             } finally {
                 lock.readLock().unlock();
             }
-            if (ret == null) {
-                lock.writeLock().lock();
-                try {
-                    ret = new MapleGuildAlliance(allianceid);
-                    if (ret == null || ret.getId() <= 0) { //failed to load
-                        return null;
-                    }
-                    alliances.put(allianceid, ret);
-                } finally {
-                    lock.writeLock().unlock();
+            // Re-check after taking the write lock, same reasoning as Guild.getGuild:
+            // otherwise two racing callers can each load and insert their own
+            // MapleGuildAlliance for the same id, and the second put silently wins.
+            lock.writeLock().lock();
+            try {
+                MapleGuildAlliance ret = alliances.get(allianceid);
+                if (ret != null) {
+                    return ret;
                 }
+                ret = new MapleGuildAlliance(allianceid);
+                if (ret.getId() <= 0) { //failed to load
+                    return null;
+                }
+                alliances.put(allianceid, ret);
+                return ret;
+            } finally {
+                lock.writeLock().unlock();
             }
-            return ret;
         }
 
         public static int getAllianceLeader(final int allianceid) {
@@ -1223,11 +1311,17 @@ public class World {
             }
         }
     }
-	public static class Client {
+    public static class Client {
 
-        private static final ArrayList<MapleClient> clients = new ArrayList();
+        // Was a raw (ungenerified) ArrayList mutated from MapleServerHandler's
+        // sessionOpened/sessionClosed, i.e. concurrently from every MINA I/O
+        // thread, with no synchronization at all - live structural-corruption bug.
+        // CopyOnWriteArrayList makes individual add/remove/iterate calls safe;
+        // addClient is additionally synchronized so the "contains, then add"
+        // check-then-act stays a single atomic step.
+        private static final List<MapleClient> clients = new CopyOnWriteArrayList<MapleClient>();
 
-        public static void addClient(MapleClient c) {
+        public static synchronized void addClient(MapleClient c) {
             if (!clients.contains(c)) {
                 clients.add(c);
             }
@@ -1237,7 +1331,7 @@ public class World {
             return clients.remove(c);
         }
 
-        public static ArrayList<MapleClient> getClients() {
+        public static List<MapleClient> getClients() {
             return clients;
         }
     }
@@ -1257,26 +1351,33 @@ public class World {
         }
 
         public static MapleFamily getFamily(int id) {
-            MapleFamily ret = null;
             lock.readLock().lock();
             try {
-                ret = families.get(id);
+                MapleFamily ret = families.get(id);
+                if (ret != null) {
+                    return ret;
+                }
             } finally {
                 lock.readLock().unlock();
             }
-            if (ret == null) {
-                lock.writeLock().lock();
-                try {
-                    ret = new MapleFamily(id);
-                    if (ret == null || ret.getId() <= 0 || !ret.isProper()) { //failed to load
-                        return null;
-                    }
-                    families.put(id, ret);
-                } finally {
-                    lock.writeLock().unlock();
+            // Re-check after taking the write lock, same reasoning as Guild.getGuild:
+            // otherwise two racing callers can each load and insert their own
+            // MapleFamily for the same id, and the second put silently wins.
+            lock.writeLock().lock();
+            try {
+                MapleFamily ret = families.get(id);
+                if (ret != null) {
+                    return ret;
                 }
+                ret = new MapleFamily(id);
+                if (ret.getId() <= 0 || !ret.isProper()) { //failed to load
+                    return null;
+                }
+                families.put(id, ret);
+                return ret;
+            } finally {
+                lock.writeLock().unlock();
             }
-            return ret;
         }
 
         public static void memberFamilyUpdate(MapleFamilyCharacter mfc, MapleCharacter mc) {

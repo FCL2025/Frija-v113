@@ -30,6 +30,7 @@ import java.awt.Point;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.text.DateFormat;
@@ -1403,10 +1404,9 @@ public class AdminCommand {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            try {
-                PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(StringUtil.joinStringFrom(splitted, 1));
+            try (Connection con = DatabaseConnection.getConnection();
+                    PreparedStatement ps = con.prepareStatement(StringUtil.joinStringFrom(splitted, 1))) {
                 ps.executeUpdate();
-                ps.close();
             } catch (SQLException e) {
                 c.getPlayer().dropMessage(6, "An error occurred : " + e.getMessage());
             }
@@ -2457,8 +2457,8 @@ public class AdminCommand {
                 npc.setFh(c.getPlayer().getMap().getFootholds().findBelow(c.getPlayer().getPosition()).getId());
                 npc.setCustom(true);
 				
-                try {
-                    PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("INSERT INTO spawns ( idd, f, fh, cy, rx0, rx1, type, x, y, mid ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )");
+                try (Connection con = DatabaseConnection.getConnection();
+                        PreparedStatement ps = con.prepareStatement("INSERT INTO spawns ( idd, f, fh, cy, rx0, rx1, type, x, y, mid ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )")) {
                     ps.setInt(1, npcId);
                     ps.setInt(2, 0);
                     ps.setInt(3, c.getPlayer().getMap().getFootholds().findBelow(c.getPlayer().getPosition()).getId());

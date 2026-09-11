@@ -273,22 +273,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         ret.prefix = 0;
 		ret.gachexp = 0;
 
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps;
-            ps = con.prepareStatement("SELECT * FROM accounts WHERE id = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM accounts WHERE id = ?")) {
             ps.setInt(1, ret.accountid);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                ret.client.setAccountName(rs.getString("name"));
-                ret.acash = rs.getInt("ACash");
-                ret.maplepoints = rs.getInt("mPoints");
-                ret.points = rs.getInt("points");
-                ret.vpoints = rs.getInt("vpoints");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    ret.client.setAccountName(rs.getString("name"));
+                    ret.acash = rs.getInt("ACash");
+                    ret.maplepoints = rs.getInt("mPoints");
+                    ret.points = rs.getInt("points");
+                    ret.vpoints = rs.getInt("vpoints");
+                }
             }
-            rs.close();
-            ps.close();
         } catch (SQLException e) {
             System.err.println("Error getting character default" + e);
         }
@@ -454,12 +450,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         ret.client = client;
         ret.id = charid;
 
-        Connection con = DatabaseConnection.getConnection();
         PreparedStatement ps = null;
         PreparedStatement pse = null;
         ResultSet rs = null;
 
-        try {
+        try (Connection con = DatabaseConnection.getConnection()) {
             ps = con.prepareStatement("SELECT * FROM characters WHERE id = ?");
             ps.setInt(1, charid);
             rs = ps.executeQuery();
@@ -834,7 +829,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
     public static void saveNewCharToDB(final MapleCharacter chr, final int type, final boolean db) {
-        Connection con = DatabaseConnection.getConnection();
+        try (Connection con = DatabaseConnection.getConnection()) {
 
         PreparedStatement ps = null;
         PreparedStatement pse = null;
@@ -992,13 +987,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                 System.err.println("[charsave] Error going back to autocommit mode");
             }
         }
+        } catch (SQLException e) {
+            // Thrown by returning the connection to the pool; the save itself
+            // is already accounted for by the catch above.
+            System.err.println("[charsave] Error releasing the connection: " + e);
+        }
     }
 
     public void saveToDB(boolean dc, boolean fromcs) {
         if (isClone()) {
             return;
         }
-        Connection con = DatabaseConnection.getConnection();
+        try (Connection con = DatabaseConnection.getConnection()) {
 
         PreparedStatement ps = null;
         PreparedStatement pse = null;
@@ -1314,6 +1314,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             } catch (SQLException e) {
                 System.err.println(MapleClient.getLogMessage(this, "[charsave] Error going back to autocommit mode") + e);
             }
+        }
+        } catch (SQLException e) {
+            // Thrown by returning the connection to the pool; the save itself
+            // is already accounted for by the catch above.
+            System.err.println(MapleClient.getLogMessage(this, "[charsave] Error releasing the connection") + e);
         }
     }
 
@@ -3391,23 +3396,22 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             client.banMacs();
         }
 
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)");
-            ps.setString(1, client.getSession().getRemoteAddress().toString().split(":")[0]);
-            ps.execute();
-            ps.close();
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)")) {
+                ps.setString(1, client.getSession().getRemoteAddress().toString().split(":")[0]);
+                ps.execute();
+            }
 
             client.getSession().close();
 
-            ps = con.prepareStatement("UPDATE accounts SET tempban = ?, banreason = ?, greason = ? WHERE id = ?");
-            Timestamp TS = new Timestamp(duration.getTimeInMillis());
-            ps.setTimestamp(1, TS);
-            ps.setString(2, reason);
-            ps.setInt(3, greason);
-            ps.setInt(4, accountid);
-            ps.execute();
-            ps.close();
+            try (PreparedStatement ps = con.prepareStatement("UPDATE accounts SET tempban = ?, banreason = ?, greason = ? WHERE id = ?")) {
+                Timestamp TS = new Timestamp(duration.getTimeInMillis());
+                ps.setTimestamp(1, TS);
+                ps.setString(2, reason);
+                ps.setInt(3, greason);
+                ps.setInt(4, accountid);
+                ps.execute();
+            }
         } catch (SQLException ex) {
             System.err.println("Error while tempbanning" + ex);
         }
@@ -3418,37 +3422,36 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         if (lastmonthfameids == null) {
             throw new RuntimeException("Trying to ban a non-loaded character (testhack)");
         }
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("UPDATE accounts SET banned = ?, banreason = ? WHERE id = ?");
-            ps.setInt(1, autoban ? 2 : 1);
-            ps.setString(2, reason);
-            ps.setInt(3, accountid);
-            ps.execute();
-            ps.close();
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("UPDATE accounts SET banned = ?, banreason = ? WHERE id = ?")) {
+                ps.setInt(1, autoban ? 2 : 1);
+                ps.setString(2, reason);
+                ps.setInt(3, accountid);
+                ps.execute();
+            }
 
             if (IPMac) {
                 client.banMacs();
-                ps = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)");
-                ps.setString(1, client.getSessionIPAddress());
-                ps.execute();
-                ps.close();
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)")) {
+                    ps.setString(1, client.getSessionIPAddress());
+                    ps.execute();
+                }
 
                 if (hellban) {
-                    PreparedStatement psa = con.prepareStatement("SELECT * FROM accounts WHERE id = ?");
-                    psa.setInt(1, accountid);
-                    ResultSet rsa = psa.executeQuery();
-                    if (rsa.next()) {
-                        PreparedStatement pss = con.prepareStatement("UPDATE accounts SET banned = ?, banreason = ? WHERE email = ? OR SessionIP = ?");
-                        pss.setInt(1, autoban ? 2 : 1);
-                        pss.setString(2, reason);
-                        pss.setString(3, rsa.getString("email"));
-                        pss.setString(4, client.getSessionIPAddress());
-                        pss.execute();
-                        pss.close();
+                    try (PreparedStatement psa = con.prepareStatement("SELECT * FROM accounts WHERE id = ?")) {
+                        psa.setInt(1, accountid);
+                        try (ResultSet rsa = psa.executeQuery()) {
+                            if (rsa.next()) {
+                                try (PreparedStatement pss = con.prepareStatement("UPDATE accounts SET banned = ?, banreason = ? WHERE email = ? OR SessionIP = ?")) {
+                                    pss.setInt(1, autoban ? 2 : 1);
+                                    pss.setString(2, reason);
+                                    pss.setString(3, rsa.getString("email"));
+                                    pss.setString(4, client.getSessionIPAddress());
+                                    pss.execute();
+                                }
+                            }
+                        }
                     }
-                    rsa.close();
-                    psa.close();
                 }
             }
         } catch (SQLException ex) {
@@ -3460,70 +3463,67 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
     public static boolean ban(String id, String reason, boolean accountId, int gmlevel, boolean hellban) {
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps;
+        try (Connection con = DatabaseConnection.getConnection()) {
             if (id.matches("/[0-9]{1,3}\\..*")) {
-                ps = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)");
-                ps.setString(1, id);
-                ps.execute();
-                ps.close();
-                return true;
-            }
-            if (accountId) {
-                ps = con.prepareStatement("SELECT id FROM accounts WHERE name = ?");
-            } else {
-                ps = con.prepareStatement("SELECT accountid FROM characters WHERE name = ?");
-            }
-            boolean ret = false;
-            ps.setString(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                int z = rs.getInt(1);
-                PreparedStatement psb = con.prepareStatement("UPDATE accounts SET banned = 1, banreason = ? WHERE id = ? AND gm < ?");
-                psb.setString(1, reason);
-                psb.setInt(2, z);
-                psb.setInt(3, gmlevel);
-                psb.execute();
-                psb.close();
-
-                if (gmlevel > 100) { //admin ban
-                    PreparedStatement psa = con.prepareStatement("SELECT * FROM accounts WHERE id = ?");
-                    psa.setInt(1, z);
-                    ResultSet rsa = psa.executeQuery();
-                    if (rsa.next()) {
-                        String sessionIP = rsa.getString("sessionIP");
-                        if (sessionIP != null && sessionIP.matches("/[0-9]{1,3}\\..*")) {
-                            PreparedStatement psz = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)");
-                            psz.setString(1, sessionIP);
-                            psz.execute();
-                            psz.close();
-                        }
-                        if (rsa.getString("macs") != null) {
-                            String[] macData = rsa.getString("macs").split(", ");
-                            if (macData.length > 0) {
-                                MapleClient.banMacs(macData);
-                            }
-                        }
-                        if (hellban) {
-                            PreparedStatement pss = con.prepareStatement("UPDATE accounts SET banned = 1, banreason = ? WHERE email = ?" + (sessionIP == null ? "" : " OR SessionIP = ?"));
-                            pss.setString(1, reason);
-                            pss.setString(2, rsa.getString("email"));
-                            if (sessionIP != null) {
-                                pss.setString(3, sessionIP);
-                            }
-                            pss.execute();
-                            pss.close();
-                        }
-                    }
-                    rsa.close();
-                    psa.close();
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)")) {
+                    ps.setString(1, id);
+                    ps.execute();
+                    return true;
                 }
-                ret = true;
             }
-            rs.close();
-            ps.close();
-            return ret;
+            final PreparedStatement ps = accountId
+                    ? con.prepareStatement("SELECT id FROM accounts WHERE name = ?")
+                    : con.prepareStatement("SELECT accountid FROM characters WHERE name = ?");
+            try (ps) {
+                boolean ret = false;
+                ps.setString(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        int z = rs.getInt(1);
+                        try (PreparedStatement psb = con.prepareStatement("UPDATE accounts SET banned = 1, banreason = ? WHERE id = ? AND gm < ?")) {
+                            psb.setString(1, reason);
+                            psb.setInt(2, z);
+                            psb.setInt(3, gmlevel);
+                            psb.execute();
+                        }
+
+                        if (gmlevel > 100) { //admin ban
+                            try (PreparedStatement psa = con.prepareStatement("SELECT * FROM accounts WHERE id = ?")) {
+                                psa.setInt(1, z);
+                                try (ResultSet rsa = psa.executeQuery()) {
+                                    if (rsa.next()) {
+                                        String sessionIP = rsa.getString("sessionIP");
+                                        if (sessionIP != null && sessionIP.matches("/[0-9]{1,3}\\..*")) {
+                                            try (PreparedStatement psz = con.prepareStatement("INSERT INTO ipbans VALUES (DEFAULT, ?)")) {
+                                                psz.setString(1, sessionIP);
+                                                psz.execute();
+                                            }
+                                        }
+                                        if (rsa.getString("macs") != null) {
+                                            String[] macData = rsa.getString("macs").split(", ");
+                                            if (macData.length > 0) {
+                                                MapleClient.banMacs(macData);
+                                            }
+                                        }
+                                        if (hellban) {
+                                            try (PreparedStatement pss = con.prepareStatement("UPDATE accounts SET banned = 1, banreason = ? WHERE email = ?" + (sessionIP == null ? "" : " OR SessionIP = ?"))) {
+                                                pss.setString(1, reason);
+                                                pss.setString(2, rsa.getString("email"));
+                                                if (sessionIP != null) {
+                                                    pss.setString(3, sessionIP);
+                                                }
+                                                pss.execute();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ret = true;
+                    }
+                }
+                return ret;
+            }
         } catch (SQLException ex) {
             System.err.println("Error while banning" + ex);
         }
@@ -3785,13 +3785,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     public void hasGivenFame(MapleCharacter to) {
         lastfametime = System.currentTimeMillis();
         lastmonthfameids.add(Integer.valueOf(to.getId()));
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("INSERT INTO famelog (characterid, characterid_to) VALUES (?, ?)");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("INSERT INTO famelog (characterid, characterid_to) VALUES (?, ?)")) {
             ps.setInt(1, getId());
             ps.setInt(2, to.getId());
             ps.execute();
-            ps.close();
         } catch (SQLException e) {
             System.err.println("ERROR writing famelog for char " + getName() + " to " + to.getName() + e);
         }
@@ -4011,9 +4009,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
     public void saveFamilyStatus() {
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("UPDATE characters SET familyid = ?, seniorid = ?, junior1 = ?, junior2 = ? WHERE id = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("UPDATE characters SET familyid = ?, seniorid = ?, junior1 = ?, junior2 = ? WHERE id = ?")) {
             if (mfc == null) {
                 ps.setInt(1, 0);
                 ps.setInt(2, 0);
@@ -4027,7 +4024,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             }
             ps.setInt(5, id);
             ps.execute();
-            ps.close();
         } catch (SQLException se) {
             System.out.println("SQLException: " + se.getLocalizedMessage());
             se.printStackTrace();
@@ -4156,19 +4152,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                 coolDowns.put(cooldown.skillId, cooldown);
             }
         } else {
-            try {
-                Connection con = DatabaseConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement("SELECT SkillID,StartTime,length FROM skills_cooldowns WHERE charid = ?");
-                ps.setInt(1, getId());
-                ResultSet rs = ps.executeQuery();
-                while (rs.next()) {
-                    if (rs.getLong("length") + rs.getLong("StartTime") - System.currentTimeMillis() <= 0) {
-                        continue;
+            try (Connection con = DatabaseConnection.getConnection()) {
+                try (PreparedStatement ps = con.prepareStatement("SELECT SkillID,StartTime,length FROM skills_cooldowns WHERE charid = ?")) {
+                    ps.setInt(1, getId());
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            if (rs.getLong("length") + rs.getLong("StartTime") - System.currentTimeMillis() <= 0) {
+                                continue;
+                            }
+                            giveCoolDowns(rs.getInt("SkillID"), rs.getLong("StartTime"), rs.getLong("length"));
+                        }
                     }
-                    giveCoolDowns(rs.getInt("SkillID"), rs.getLong("StartTime"), rs.getLong("length"));
                 }
-                ps.close();
-                rs.close();
                 deleteWhereCharacterId(con, "DELETE FROM skills_cooldowns WHERE charid = ?");
 
             } catch (SQLException e) {
@@ -4253,41 +4248,38 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
     public void showNote() {
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM notes WHERE `to`=?", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM notes WHERE `to`=?", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
             ps.setString(1, getName());
-            ResultSet rs = ps.executeQuery();
-            rs.last();
-            int count = rs.getRow();
-            rs.first();
-            client.getSession().write(MTSCSPacket.showNotes(rs, count));
-            rs.close();
-            ps.close();
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.last();
+                int count = rs.getRow();
+                rs.first();
+                client.getSession().write(MTSCSPacket.showNotes(rs, count));
+            }
         } catch (SQLException e) {
             System.err.println("Unable to show note" + e);
         }
     }
 
     public void deleteNote(int id, int fame) {
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT gift FROM notes WHERE `id`=?");
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                if (rs.getInt("gift") == fame && fame > 0) { //not exploited! hurray
-                    addFame(fame);
-                    updateSingleStat(MapleStat.FAME, getFame());
-                    client.getSession().write(MaplePacketCreator.getShowFameGain(fame));
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT gift FROM notes WHERE `id`=?")) {
+                ps.setInt(1, id);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        if (rs.getInt("gift") == fame && fame > 0) { //not exploited! hurray
+                            addFame(fame);
+                            updateSingleStat(MapleStat.FAME, getFame());
+                            client.getSession().write(MaplePacketCreator.getShowFameGain(fame));
+                        }
+                    }
                 }
             }
-            rs.close();
-            ps.close();
-            ps = con.prepareStatement("DELETE FROM notes WHERE `id`=?");
-            ps.setInt(1, id);
-            ps.execute();
-            ps.close();
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM notes WHERE `id`=?")) {
+                ps.setInt(1, id);
+                ps.execute();
+            }
         } catch (SQLException e) {
             System.err.println("Unable to delete note" + e);
         }
@@ -4548,21 +4540,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
                public int getBossLog(String bossid) {
-        Connection con1 = DatabaseConnection.getConnection();
-        try {
+        try (Connection con1 = DatabaseConnection.getConnection();
+             PreparedStatement ps = con1.prepareStatement("select count(*) from bosslog where characterid = ? and bossid = ? and lastattempt >= subtime(current_timestamp, '1 0:0:0.0')")) {
             int ret_count = 0;
-            PreparedStatement ps;
-            ps = con1.prepareStatement("select count(*) from bosslog where characterid = ? and bossid = ? and lastattempt >= subtime(current_timestamp, '1 0:0:0.0')");
             ps.setInt(1, id);
             ps.setString(2, bossid);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                ret_count = rs.getInt(1);
-            } else {
-                ret_count = -1;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    ret_count = rs.getInt(1);
+                } else {
+                    ret_count = -1;
+                }
             }
-            rs.close();
-            ps.close();
             return ret_count;
         } catch (Exception Ex) {
             //log.error("Error while read bosslog.", Ex);
@@ -4571,14 +4560,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
     public void setBossLog(String bossid) {
-        Connection con1 = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps;
-            ps = con1.prepareStatement("insert into bosslog (characterid, bossid) values (?,?)");
+        try (Connection con1 = DatabaseConnection.getConnection();
+             PreparedStatement ps = con1.prepareStatement("insert into bosslog (characterid, bossid) values (?,?)")) {
             ps.setInt(1, id);
             ps.setString(2, bossid);
             ps.executeUpdate();
-            ps.close();
         } catch (Exception Ex) {
          //   log.error("Error while insert bosslog.", Ex);
         }

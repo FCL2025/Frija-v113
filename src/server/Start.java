@@ -9,6 +9,7 @@ import handling.login.LoginServer;
 import handling.cashshop.CashShopServer;
 import handling.login.LoginInformationProvider;
 import handling.world.World;
+import java.sql.Connection;
 import java.sql.SQLException;
 import database.DatabaseConnection;
 import handling.world.family.MapleFamilyBuff;
@@ -33,10 +34,9 @@ public class Start {
         if (Boolean.parseBoolean(ServerProperties.getProperty("tms.AutoRegister"))) {
             System.out.println("Loading Autoregister mode :::");
         }
-        try {
-            final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("UPDATE accounts SET loggedin = 0");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("UPDATE accounts SET loggedin = 0")) {
             ps.executeUpdate();
-            ps.close();
         } catch (SQLException ex) {
             throw new RuntimeException("[EXCEPTION] Please check if the SQL server is active.");
         }

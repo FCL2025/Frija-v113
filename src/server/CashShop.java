@@ -174,15 +174,14 @@ public class CashShop implements Serializable {
     }
 
     public void gift(int recipient, String from, String message, int sn, int uniqueid) {
-        try {
-            PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("INSERT INTO `gifts` VALUES (DEFAULT, ?, ?, ?, ?, ?)");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("INSERT INTO `gifts` VALUES (DEFAULT, ?, ?, ?, ?, ?)")) {
             ps.setInt(1, recipient);
             ps.setString(2, from);
             ps.setString(3, message);
             ps.setInt(4, sn);
             ps.setInt(5, uniqueid);
             ps.executeUpdate();
-            ps.close();
         } catch (SQLException sqle) {
             sqle.printStackTrace();
         }
@@ -190,33 +189,31 @@ public class CashShop implements Serializable {
 
     public List<Pair<IItem, String>> loadGifts() {
         List<Pair<IItem, String>> gifts = new ArrayList<Pair<IItem, String>>();
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM `gifts` WHERE `recipient` = ?");
-            ps.setInt(1, characterId);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                CashItemInfo cItem = CashItemFactory.getInstance().getItem(rs.getInt("sn"));
-                IItem item = toItem(cItem, rs.getInt("uniqueid"), rs.getString("from"));
-                gifts.add(new Pair<IItem, String>(item, rs.getString("message")));
-                uniqueids.add(item.getUniqueId());
-                List<CashItemInfo> packages = CashItemFactory.getInstance().getPackageItems(cItem.getId());
-                if (packages != null && packages.size() > 0) {
-                    for (CashItemInfo packageItem : packages) {
-                        addToInventory(toItem(packageItem, rs.getString("from")));
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM `gifts` WHERE `recipient` = ?")) {
+                ps.setInt(1, characterId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        CashItemInfo cItem = CashItemFactory.getInstance().getItem(rs.getInt("sn"));
+                        IItem item = toItem(cItem, rs.getInt("uniqueid"), rs.getString("from"));
+                        gifts.add(new Pair<IItem, String>(item, rs.getString("message")));
+                        uniqueids.add(item.getUniqueId());
+                        List<CashItemInfo> packages = CashItemFactory.getInstance().getPackageItems(cItem.getId());
+                        if (packages != null && packages.size() > 0) {
+                            for (CashItemInfo packageItem : packages) {
+                                addToInventory(toItem(packageItem, rs.getString("from")));
+                            }
+                        } else {
+                            addToInventory(item);
+                        }
                     }
-                } else {
-                    addToInventory(item);
                 }
             }
 
-            rs.close();
-            ps.close();
-            ps = con.prepareStatement("DELETE FROM `gifts` WHERE `recipient` = ?");
-            ps.setInt(1, characterId);
-            ps.executeUpdate();
-            ps.close();
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM `gifts` WHERE `recipient` = ?")) {
+                ps.setInt(1, characterId);
+                ps.executeUpdate();
+            }
             save();
         } catch (SQLException sqle) {
             sqle.printStackTrace();

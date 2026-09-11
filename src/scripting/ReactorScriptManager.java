@@ -72,34 +72,17 @@ public class ReactorScriptManager extends AbstractScriptManager {
         }
         ret = new LinkedList<ReactorDropEntry>();
 
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            ps = con.prepareStatement("SELECT * FROM reactordrops WHERE reactorid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM reactordrops WHERE reactorid = ?")) {
             ps.setInt(1, rid);
-            rs = ps.executeQuery();
-
-            while (rs.next()) {
-                ret.add(new ReactorDropEntry(rs.getInt("itemid"), rs.getInt("chance"), rs.getInt("questid")));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ret.add(new ReactorDropEntry(rs.getInt("itemid"), rs.getInt("chance"), rs.getInt("questid")));
+                }
             }
-            rs.close();
-            ps.close();
         } catch (final SQLException e) {
             System.err.println("Could not retrieve drops for reactor " + rid + e);
             return ret;
-        } finally {
-            try {
-                if (rs != null) {
-                    rs.close();
-                }
-                if (ps != null) {
-                    ps.close();
-                }
-            } catch (SQLException ignore) {
-                return ret;
-            }
         }
         drops.put(rid, ret);
         return ret;

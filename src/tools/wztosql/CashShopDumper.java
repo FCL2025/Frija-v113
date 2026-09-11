@@ -43,8 +43,8 @@ public class CashShopDumper {
     public static final CashModInfo getModInfo(int sn) {
         CashModInfo ret = null;
 
-        Connection con = DatabaseConnection.getConnection();
-        try (PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items WHERE serial = ?")) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items WHERE serial = ?")) {
             ps.setInt(1, sn);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -64,79 +64,82 @@ public class CashShopDumper {
         CashModInfo m = getModInfo(20000393);
         CashItemFactory.getInstance().initialize();
         Collection<CashModInfo> list = CashItemFactory.getInstance().getAllModInfo();
-        Connection con = DatabaseConnection.getConnection();
 
         final List<Integer> itemids = new ArrayList<Integer>();
         List<Integer> qq = new ArrayList<Integer>();
 
         Map<Integer, List<String>> dics = new HashMap<>();
 
-        for (MapleData field : data.getData("Commodity.img").getChildren()) {
-            try {
-                final int itemId = MapleDataTool.getIntConvert("ItemId", field, 0);
-                final int sn = MapleDataTool.getIntConvert("SN", field, 0);
-                final int count = MapleDataTool.getIntConvert("Count", field, 0);
-                final int price = MapleDataTool.getIntConvert("Price", field, 0);
-                final int priority = MapleDataTool.getIntConvert("Priority", field, 0);
-                final int period = MapleDataTool.getIntConvert("Period", field, 0);
-                final int gender = MapleDataTool.getIntConvert("Gender", field, -1);
-                final int meso = MapleDataTool.getIntConvert("Meso", field, 0);
-                //if(qq.contains(itemId))
-                //    continue;
-                if (itemId == 0) {
-                    continue;
-                }
+        try (Connection con = DatabaseConnection.getConnection()) {
+            for (MapleData field : data.getData("Commodity.img").getChildren()) {
+                try {
+                    final int itemId = MapleDataTool.getIntConvert("ItemId", field, 0);
+                    final int sn = MapleDataTool.getIntConvert("SN", field, 0);
+                    final int count = MapleDataTool.getIntConvert("Count", field, 0);
+                    final int price = MapleDataTool.getIntConvert("Price", field, 0);
+                    final int priority = MapleDataTool.getIntConvert("Priority", field, 0);
+                    final int period = MapleDataTool.getIntConvert("Period", field, 0);
+                    final int gender = MapleDataTool.getIntConvert("Gender", field, -1);
+                    final int meso = MapleDataTool.getIntConvert("Meso", field, 0);
+                    //if(qq.contains(itemId))
+                    //    continue;
+                    if (itemId == 0) {
+                        continue;
+                    }
 
-                int cat = itemId / 10000;
-                if (dics.get(cat) == null) {
-                    dics.put(cat, new ArrayList());
-                }
-                boolean check = false;
-                if (meso > 0) {
-                    check = true;
-                }
-                if (MapleItemInformationProvider.getInstance().getInventoryType(itemId) == MapleInventoryType.EQUIP) {
-                    if (!MapleItemInformationProvider.getInstance().isCashItem(itemId)) {
+                    int cat = itemId / 10000;
+                    if (dics.get(cat) == null) {
+                        dics.put(cat, new ArrayList());
+                    }
+                    boolean check = false;
+                    if (meso > 0) {
                         check = true;
                     }
-                }
-                if (MapleItemInformationProvider.getInstance().getInventoryType(itemId) == MapleInventoryType.EQUIP) {
-                    if (period > 0) {
-                        check = true;
+                    if (MapleItemInformationProvider.getInstance().getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+                        if (!MapleItemInformationProvider.getInstance().isCashItem(itemId)) {
+                            check = true;
+                        }
                     }
+                    if (MapleItemInformationProvider.getInstance().getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+                        if (period > 0) {
+                            check = true;
+                        }
+                    }
+
+                    if (check) {
+                        System.out.println(MapleItemInformationProvider.getInstance().getName(itemId));
+                        continue;
+                    }
+                    try (PreparedStatement ps = con.prepareStatement("INSERT INTO cashshop_modified_items (serial, showup,itemid,priority,period,gender,count,meso,discount_price,mark, unk_1, unk_2, unk_3, name) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+                        ps.setInt(1, sn);
+                        ps.setInt(2, 1);
+                        ps.setInt(3, 0);
+                        ps.setInt(4, 0);
+                        ps.setInt(5, period);
+                        ps.setInt(6, gender);
+                        ps.setInt(7, count > 1 ? count : 0);
+                        ps.setInt(8, meso);
+                        ps.setInt(9, price);
+
+                        qq.add(itemId);
+                        ps.setInt(10, 0);
+                        ps.setInt(11, 0);
+                        ps.setInt(12, 0);
+                        ps.setInt(13, 0);
+                        ps.setString(14, MapleItemInformationProvider.getInstance().getName(itemId));
+
+                        String sql = ps.toString().split(":")[1].trim() + ";";
+                        ps.executeUpdate();
+                        dics.get(cat).add("-- " + MapleItemInformationProvider.getInstance().getName(itemId) + "\n" + sql);
+                    }
+
+                } catch (SQLException ex) {
+                    System.out.println(ex);
                 }
 
-                if (check) {
-                    System.out.println(MapleItemInformationProvider.getInstance().getName(itemId));
-                    continue;
-                }
-                PreparedStatement ps = con.prepareStatement("INSERT INTO cashshop_modified_items (serial, showup,itemid,priority,period,gender,count,meso,discount_price,mark, unk_1, unk_2, unk_3, name) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                ps.setInt(1, sn);
-                ps.setInt(2, 1);
-                ps.setInt(3, 0);
-                ps.setInt(4, 0);
-                ps.setInt(5, period);
-                ps.setInt(6, gender);
-                ps.setInt(7, count > 1 ? count : 0);
-                ps.setInt(8, meso);
-                ps.setInt(9, price);
-
-                qq.add(itemId);
-                ps.setInt(10, 0);
-                ps.setInt(11, 0);
-                ps.setInt(12, 0);
-                ps.setInt(13, 0);
-                ps.setString(14, MapleItemInformationProvider.getInstance().getName(itemId));
-
-                String sql = ps.toString().split(":")[1].trim() + ";";
-                ps.executeUpdate();
-                dics.get(cat).add("-- " + MapleItemInformationProvider.getInstance().getName(itemId) + "\n" + sql);
-                ps.close();
-
-            } catch (SQLException ex) {
-                System.out.println(ex);
             }
-
+        } catch (SQLException ex) {
+            System.out.println(ex);
         }
 
         for (Integer key : dics.keySet()) {

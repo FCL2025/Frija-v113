@@ -322,13 +322,10 @@ public class EventManager {
     }
     
         public int online() {
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps;
-        ResultSet re;
         int count = 0;
-        try {
-            ps = con.prepareStatement("SELECT count(*) as cc FROM accounts WHERE loggedin = 2");
-            re = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT count(*) as cc FROM accounts WHERE loggedin = 2");
+             ResultSet re = ps.executeQuery()) {
             while (re.next()) {
                 count = re.getInt("cc");
             }
@@ -336,7 +333,7 @@ public class EventManager {
             Logger.getLogger(EventInstanceManager.class.getName()).log(Level.SEVERE, null, ex);
         }
         return count;
-    }    
+    }
 
     public MapleMapFactory getMapFactory() {
         return getChannelServer().getMapFactory();

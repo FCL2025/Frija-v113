@@ -23,9 +23,9 @@ package server.life;
 import java.awt.Point;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import provider.MapleData;
 import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
@@ -34,7 +34,7 @@ import tools.Pair;
 
 public class MobSkillFactory {
 
-    private static Map<Pair<Integer, Integer>, MobSkill> mobSkills = new HashMap<Pair<Integer, Integer>, MobSkill>();
+    private static final Map<Pair<Integer, Integer>, MobSkill> mobSkills = new ConcurrentHashMap<>();
     private static MapleDataProvider dataSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Skill.wz"));
     private static final MapleData skillRoot = dataSource.getData("MobSkill.img");
 

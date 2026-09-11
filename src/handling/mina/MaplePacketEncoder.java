@@ -46,6 +46,18 @@ public class MaplePacketEncoder implements ProtocolEncoder {
             System.arraycopy(inputInitialPacket, 0, unencrypted, 0, inputInitialPacket.length); // Copy the input > "unencrypted"
             final byte[] ret = new byte[unencrypted.length + 4]; // Create new bytes with length = "unencrypted" + 4
 
+            // The encode and the handover to the write queue have to happen
+            // under one lock, not just the encode.
+            //
+            // Anything can write to a session - the player's own handler
+            // thread, another player's thread broadcasting to the map, a timer
+            // task - so two threads can be in here for the same session at
+            // once. send_crypto chains its IV from one packet to the next, so
+            // the client will only decrypt them in the order they were
+            // encrypted. Releasing the lock before out.write let two threads
+            // encrypt in one order and queue in the other, and the client that
+            // received them the wrong way round could never resynchronise: it
+            // simply stops understanding the server.
             final Lock mutex = client.getLock();
             mutex.lock();
             try {
@@ -53,11 +65,11 @@ public class MaplePacketEncoder implements ProtocolEncoder {
 //		MapleCustomEncryption.encryptData(unencrypted); // Encrypting Data
                 send_crypto.crypt(unencrypted); // Crypt it with IV
                 System.arraycopy(header, 0, ret, 0, 4); // Copy the header > "Ret", first 4 bytes
+                System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length); // Copy the unencrypted > "ret"
+                out.write(ByteBuffer.wrap(ret));
             } finally {
                 mutex.unlock();
             }
-            System.arraycopy(unencrypted, 0, ret, 4, unencrypted.length); // Copy the unencrypted > "ret"
-            out.write(ByteBuffer.wrap(ret));
         } else { // no client object created yet, send unencrypted (hello)
             out.write(ByteBuffer.wrap(((MaplePacket) message).getBytes()));
         }

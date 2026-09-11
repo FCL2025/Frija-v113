@@ -75,21 +75,16 @@ public class HiredMerchantHandler {
     }
 
     private static final byte checkExistance(final int accid, final int charid) {
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("SELECT * from hiredmerch where accountid = ? OR characterid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * from hiredmerch where accountid = ? OR characterid = ?")) {
             ps.setInt(1, accid);
             ps.setInt(2, charid);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                ps.close();
-                rs.close();
-                return 1;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return 1;
+                }
+                return 0;
             }
-            rs.close();
-            ps.close();
-            return 0;
         } catch (SQLException se) {
             return -1;
         }
@@ -208,15 +203,12 @@ public class HiredMerchantHandler {
     }
 
     private static final boolean deletePackage(final int charid, final int accid, final int packageid) {
-        final Connection con = DatabaseConnection.getConnection();
-
-        try {
-            PreparedStatement ps = con.prepareStatement("DELETE from hiredmerch where characterid = ? OR accountid = ? OR packageid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("DELETE from hiredmerch where characterid = ? OR accountid = ? OR packageid = ?")) {
             ps.setInt(1, charid);
             ps.setInt(2, accid);
             ps.setInt(3, packageid);
             ps.execute();
-            ps.close();
             ItemLoader.HIRED_MERCHANT.saveItems(null, packageid, accid, charid);
             return true;
         } catch (SQLException e) {
@@ -225,29 +217,24 @@ public class HiredMerchantHandler {
     }
 
     private static final MerchItemPackage loadItemFrom_Database(final int charid, final int accountid) {
-        final Connection con = DatabaseConnection.getConnection();
-
-        try {
-            PreparedStatement ps = con.prepareStatement("SELECT * from hiredmerch where characterid = ? OR accountid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * from hiredmerch where characterid = ? OR accountid = ?")) {
             ps.setInt(1, charid);
             ps.setInt(2, accountid);
 
-            ResultSet rs = ps.executeQuery();
+            int packageid;
+            MerchItemPackage pack;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                packageid = rs.getInt("PackageId");
 
-            if (!rs.next()) {
-                ps.close();
-                rs.close();
-                return null;
+                pack = new MerchItemPackage();
+                pack.setPackageid(packageid);
+                pack.setMesos(rs.getInt("Mesos"));
+                pack.setSentTime(rs.getLong("time"));
             }
-            final int packageid = rs.getInt("PackageId");
-
-            final MerchItemPackage pack = new MerchItemPackage();
-            pack.setPackageid(packageid);
-            pack.setMesos(rs.getInt("Mesos"));
-            pack.setSentTime(rs.getLong("time"));
-
-            ps.close();
-            rs.close();
 
             Map<Integer, Pair<IItem, MapleInventoryType>> items = ItemLoader.HIRED_MERCHANT.loadItems(false, packageid, accountid, charid);
             if (items != null) {

@@ -22,10 +22,10 @@ package handling;
 
 import constants.ServerConstants;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import client.MapleClient;
@@ -68,13 +68,17 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
     public static final boolean Log_Packets = true;
     private int channel = -1;
     private boolean cs;
-    private final List<String> BlockedIP = new ArrayList<String>();
+    /**
+     * IPs that tripped the connection-flood check. Every accepted connection
+     * reads it and any of them can add to it, so it cannot be an ArrayList -
+     * which is what it was, with no lock anywhere near it.
+     */
+    private final Set<String> BlockedIP = ConcurrentHashMap.newKeySet();
     private final Map<String, Pair<Long, Byte>> tracker = new ConcurrentHashMap<String, Pair<Long, Byte>>();
-    //Screw locking. Doesn't matter.
-//    private static final ReentrantReadWriteLock IPLoggingLock = new ReentrantReadWriteLock();
-    private static final String nl = System.getProperty("line.separator");
+    private static final String nl = System.lineSeparator();
     private static final File loggedIPs = new File("Logs/LogIPs.txt");
-    private static final HashMap<String, FileWriter> logIPMap = new HashMap<String, FileWriter>();
+    /** Rebuilt wholesale by {@code !reloadipmonitor} while handlers read it. */
+    private static final Map<String, FileWriter> logIPMap = new ConcurrentHashMap<>();
     private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
     //Note to Zero: Use an enumset. Don't iterate through an array.
     private static final EnumSet<RecvPacketOpcode> blocked = EnumSet.noneOf(RecvPacketOpcode.class);
@@ -85,16 +89,16 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         blocked.addAll(Arrays.asList(block));
     }
 
-    public static void reloadLoggedIPs() {
-//        IPLoggingLock.writeLock().lock();
-//        try {
+    public static synchronized void reloadLoggedIPs() {
         for (FileWriter fw : logIPMap.values()) {
             if (fw != null) {
                 try {
-                    fw.write("=== Closing Log ===");
-                    fw.write(nl);
-                    fw.flush(); //Just in case.
-                    fw.close();
+                    synchronized (fw) {
+                        fw.write("=== Closing Log ===");
+                        fw.write(nl);
+                        fw.flush(); //Just in case.
+                        fw.close();
+                    }
                 } catch (IOException ex) {
                     System.out.println("Error closing Packet Log.");
                     System.out.println(ex);
@@ -102,8 +106,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             }
         }
         logIPMap.clear();
-        try {
-            Scanner sc = new Scanner(loggedIPs, Encodings.NATIVE);
+        try (Scanner sc = new Scanner(loggedIPs, Encodings.NATIVE)) {
             while (sc.hasNextLine()) {
                 String line = sc.nextLine().trim();
                 if (line.length() > 0) {
@@ -118,20 +121,44 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             System.out.println("Could not reload packet logged IPs.");
             System.out.println(e);
         }
-//        } finally {
-//            IPLoggingLock.writeLock().unlock();
-//        }
     }
 
     //Return the Filewriter if the IP is logged. Null otherwise.
     private static FileWriter isLoggedIP(IoSession sess) {
+        if (logIPMap.isEmpty()) {
+            // The common case by far, and it skips the string surgery below.
+            return null;
+        }
         String a = sess.getRemoteAddress().toString();
         String realIP = a.substring(a.indexOf('/') + 1, a.indexOf(':'));
         return logIPMap.get(realIP);
     }
+
+    /**
+     * One {@link FileWriter} per monitored IP is shared by every handler
+     * thread that sees that IP, and an unsynchronised {@code write} from two of
+     * them interleaves mid-line or worse. Every write to these goes through
+     * here.
+     */
+    private static void writeMonitorLog(final FileWriter fw, final String text) throws IOException {
+        synchronized (fw) {
+            fw.write(text);
+            fw.write(nl);
+            fw.flush();
+        }
+    }
 // <editor-fold defaultstate="collapsed" desc="Packet Log Implementation">
     private static final int Log_Size = 10000;
-    private static final ArrayList<LoggedPacket> Packet_Log = new ArrayList<LoggedPacket>(Log_Size);
+    /**
+     * A ring of the last {@value #Log_Size} packets.
+     *
+     * <p>This was an {@code ArrayList} that dropped its oldest entry with
+     * {@code remove(0)} - a ten-thousand element {@code arraycopy} on every
+     * single packet once the log filled up, performed while holding the one
+     * write lock that all sixteen handler threads have to queue behind. An
+     * {@link ArrayDeque} drops from the front in constant time.
+     */
+    private static final ArrayDeque<LoggedPacket> Packet_Log = new ArrayDeque<>(Log_Size);
     private static final ReentrantReadWriteLock Packet_Log_Lock = new ReentrantReadWriteLock();
     private static final File Packet_Log_Output = new File("PacketLog.txt");
 
@@ -139,11 +166,11 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         if (blocked.contains(op)) {
             return;
         }
+        Packet_Log_Lock.writeLock().lock();
         try {
-            Packet_Log_Lock.writeLock().lock();
             LoggedPacket logged = null;
             if (Packet_Log.size() == Log_Size) {
-                logged = Packet_Log.remove(0);
+                logged = Packet_Log.pollFirst();
             }
             //This way, we don't create new LoggedPacket objects, we reuse them =]
             if (logged == null) {
@@ -165,8 +192,9 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
 
     private static class LoggedPacket {
 
-        private static final String nl = System.getProperty("line.separator");
-        private String ip, accName, accId, chrName;
+        private static final String nl = System.lineSeparator();
+        private String ip, accName, chrName;
+        private int accId;
         private SeekableLittleEndianAccessor packet;
         private long timestamp;
         private RecvPacketOpcode op;
@@ -179,6 +207,10 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             this.ip = ip;
             this.op = op;
             packet = p;
+            // The account id was taken as a parameter and then thrown away -
+            // accId was a String nobody ever assigned, so every line of
+            // PacketLog.txt has always read "null" where the id belongs.
+            this.accId = id;
             this.accName = accName;
             this.chrName = chrName;
             timestamp = System.currentTimeMillis();
@@ -262,28 +294,29 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             session.close();
             return;
         }
-        final Pair<Long, Byte> track = tracker.get(address);
-
-        byte count;
-        if (track == null) {
-            count = 1;
-        } else {
-            count = track.right;
-
-            final long difference = System.currentTimeMillis() - track.left;
+        // Read-modify-write in one atomic step. Split across a get and a put,
+        // as it was, ten machines behind one NAT could each see the same stale
+        // count and none of them would ever reach the threshold.
+        final Pair<Long, Byte> updated = tracker.compute(address, (key, track) -> {
+            final long now = System.currentTimeMillis();
+            if (track == null) {
+                return new Pair<>(now, (byte) 1);
+            }
+            byte count = track.right;
+            final long difference = now - track.left;
             if (difference < 2000) { // Less than 2 sec
                 count++;
             } else if (difference > 20000) { // Over 20 sec
                 count = 1;
             }
-            if (count >= 10) {
-                BlockedIP.add(address);
-                tracker.remove(address); // Cleanup
-                session.close();
-                return;
-            }
+            return new Pair<>(now, count);
+        });
+        if (updated.right >= 10) {
+            BlockedIP.add(address);
+            tracker.remove(address); // Cleanup
+            session.close();
+            return;
         }
-        tracker.put(address, new Pair<Long, Byte>(System.currentTimeMillis(), count));
         // End of IP checking.
 
         if (channel > -1) {
@@ -337,16 +370,12 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         FileWriter fw = isLoggedIP(session);
         if (fw != null) {
             if (channel > -1) {
-                fw.write("=== Logged Into Channel " + channel + " ===");
-                fw.write(nl);
+                writeMonitorLog(fw, "=== Logged Into Channel " + channel + " ===");
             } else if (cs) {
-                fw.write("=== Logged Into CashShop Server ===");
-                fw.write(nl);
+                writeMonitorLog(fw, "=== Logged Into CashShop Server ===");
             } else {
-                fw.write("=== Logged Into Login Server ===");
-                fw.write(nl);
+                writeMonitorLog(fw, "=== Logged Into Login Server ===");
             }
-            fw.flush();
         }
     }
 
@@ -358,9 +387,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             try {
                 FileWriter fw = isLoggedIP(session);
                 if (fw != null) {
-                    fw.write("=== Session Closed ===");
-                    fw.write(nl);
-                    fw.flush();
+                    writeMonitorLog(fw, "=== Session Closed ===");
                 }
                 client.disconnect(true, cs);
             } finally {
@@ -380,62 +407,53 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 return;
             }
             final short header_num = slea.readShort();
-            // Console output part
-
-            for (final RecvPacketOpcode recv : RecvPacketOpcode.values()) {
-                if (recv.getValue() == header_num) {
-
-                    if (debugMode) {
-                        final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
-                        sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
-                        System.out.println(sb.toString());
-                    }
-                    final MapleClient c = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
-                    if (!c.isReceiving()) {
-                        return;
-                    }
-                    if (recv.NeedsChecking()) {
-                        if (!c.isLoggedIn()) {
-                            return;
-                        }
-                    }
-                    if (c.getPlayer() != null && c.isMonitored()) {
-                        if (!blocked.contains(recv)) {
-                            FileWriter fw = new FileWriter(new File("Logs/MonitorLogs/" + c.getPlayer().getName() + "_log.txt"), Encodings.NATIVE, true);
-                            fw.write(String.valueOf(recv) + " (" + Integer.toHexString(header_num) + ") Handled: \r\n" + slea.toString() + "\r\n");
-                            fw.flush();
-                            fw.close();
-                        }
-                    }
-                    if (Log_Packets) {
-                        log(slea, recv, c, session);
-                    }
-                    handlePacket(recv, slea, c, cs);
-
-                    //Log after the packet is handle. You'll see why =]
-                    FileWriter fw = isLoggedIP(session);
-                    if (fw != null && !blocked.contains(recv)) {
-                        if (recv == RecvPacketOpcode.PLAYER_LOGGEDIN && c != null) { // << This is why. Win.
-                            fw.write(">> [AccountName: "
-                                    + (c.getAccountName() == null ? "null" : c.getAccountName())
-                                    + "] | [IGN: "
-                                    + (c.getPlayer() == null || c.getPlayer().getName() == null ? "null" : c.getPlayer().getName())
-                                    + "] | [Time: "
-                                    + FileoutputUtil.CurrentReadable_Time()
-                                    + "]");
-                            fw.write(nl);
-                        }
-                        fw.write("[" + recv.toString() + "]" + slea.toString(true));
-                        fw.write(nl);
-                        fw.flush();
-                    }
-                    return;
+            // One hash lookup. This used to be a linear scan over all ~190
+            // enum constants, on every packet from every client.
+            final RecvPacketOpcode recv = RecvPacketOpcode.forValue(header_num);
+            if (recv == null) {
+                if (debugMode) {
+                    final StringBuilder sb = new StringBuilder("Received data 未處理 : ");
+                    sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
+                    System.out.println(sb.toString());
                 }
+                return;
             }
+
             if (debugMode) {
-                final StringBuilder sb = new StringBuilder("Received data 未處理 : ");
+                final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
                 sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
                 System.out.println(sb.toString());
+            }
+            final MapleClient c = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+            if (c == null || !c.isReceiving()) {
+                return;
+            }
+            if (recv.NeedsChecking() && !c.isLoggedIn()) {
+                return;
+            }
+            if (c.getPlayer() != null && c.isMonitored() && !blocked.contains(recv)) {
+                try (FileWriter fw = new FileWriter(new File("Logs/MonitorLogs/" + c.getPlayer().getName() + "_log.txt"), Encodings.NATIVE, true)) {
+                    fw.write(String.valueOf(recv) + " (" + Integer.toHexString(header_num) + ") Handled: \r\n" + slea.toString() + "\r\n");
+                }
+            }
+            if (Log_Packets) {
+                log(slea, recv, c, session);
+            }
+            handlePacket(recv, slea, c, cs);
+
+            //Log after the packet is handle. You'll see why =]
+            final FileWriter fw = isLoggedIP(session);
+            if (fw != null && !blocked.contains(recv)) {
+                if (recv == RecvPacketOpcode.PLAYER_LOGGEDIN) { // << This is why. Win.
+                    writeMonitorLog(fw, ">> [AccountName: "
+                            + (c.getAccountName() == null ? "null" : c.getAccountName())
+                            + "] | [IGN: "
+                            + (c.getPlayer() == null || c.getPlayer().getName() == null ? "null" : c.getPlayer().getName())
+                            + "] | [Time: "
+                            + FileoutputUtil.CurrentReadable_Time()
+                            + "]");
+                }
+                writeMonitorLog(fw, "[" + recv.toString() + "]" + slea.toString(true));
             }
         } catch (Exception e) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);

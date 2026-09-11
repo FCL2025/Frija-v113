@@ -43,49 +43,43 @@ public class MapleStorage implements Serializable {
     }
 
     public static int create(int id) throws SQLException {
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("INSERT INTO storages (accountid, slots, meso) VALUES (?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS);
-        ps.setInt(1, id);
-        ps.setInt(2, 4);
-        ps.setInt(3, 0);
-        ps.executeUpdate();
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("INSERT INTO storages (accountid, slots, meso) VALUES (?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, id);
+            ps.setInt(2, 4);
+            ps.setInt(3, 0);
+            ps.executeUpdate();
 
-        int storageid;
-        ResultSet rs = ps.getGeneratedKeys();
-        if (rs.next()) {
-            storageid = rs.getInt(1);
-            ps.close();
-            rs.close();
-            return storageid;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+            throw new DatabaseException("Inserting char failed.");
         }
-        ps.close();
-        rs.close();
-        throw new DatabaseException("Inserting char failed.");
     }
 
     public static MapleStorage loadStorage(int id) {
         MapleStorage ret = null;
         int storeId;
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM storages WHERE accountid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM storages WHERE accountid = ?")) {
             ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                storeId = rs.getInt("storageid");
-                ret = new MapleStorage(storeId, rs.getByte("slots"), rs.getInt("meso"), id);
-                rs.close();
-                ps.close();
-
+            boolean found;
+            try (ResultSet rs = ps.executeQuery()) {
+                found = rs.next();
+                if (found) {
+                    storeId = rs.getInt("storageid");
+                    ret = new MapleStorage(storeId, rs.getByte("slots"), rs.getInt("meso"), id);
+                } else {
+                    storeId = create(id);
+                    ret = new MapleStorage(storeId, (byte) 4, 0, id);
+                }
+            }
+            if (found) {
                 for (Pair<IItem, MapleInventoryType> mit : ItemLoader.STORAGE.loadItems(false, id).values()) {
                     ret.items.add(mit.getLeft());
                 }
-            } else {
-                storeId = create(id);
-                ret = new MapleStorage(storeId, (byte) 4, 0, id);
-                rs.close();
-                ps.close();
             }
         } catch (SQLException ex) {
             System.err.println("Error loading storage" + ex);
@@ -97,19 +91,17 @@ public class MapleStorage implements Serializable {
         if (!changed) {
             return;
         }
-        try {
-            Connection con = DatabaseConnection.getConnection();
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("UPDATE storages SET slots = ?, meso = ? WHERE storageid = ?")) {
 
-            PreparedStatement ps = con.prepareStatement("UPDATE storages SET slots = ?, meso = ? WHERE storageid = ?");
             ps.setInt(1, slots);
             ps.setInt(2, meso);
             ps.setInt(3, id);
             ps.executeUpdate();
-            ps.close();
 
-            List<Pair<IItem, MapleInventoryType>> listing = new ArrayList<Pair<IItem, MapleInventoryType>>();
+            List<Pair<IItem, MapleInventoryType>> listing = new ArrayList<>();
             for (final IItem item : items) {
-                listing.add(new Pair<IItem, MapleInventoryType>(item, GameConstants.getInventoryType(item.getItemId())));
+                listing.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
             }
             ItemLoader.STORAGE.saveItems(listing, accountId);
         } catch (SQLException ex) {

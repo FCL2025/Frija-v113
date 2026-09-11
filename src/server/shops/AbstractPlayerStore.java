@@ -133,30 +133,28 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
         if (getShopType() != IMaplePlayerShop.HIRED_MERCHANT) { //hired merch only
             return false;
         }
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("DELETE FROM hiredmerch WHERE accountid = ? OR characterid = ?");
-            ps.setInt(1, owneraccount);
-            ps.setInt(2, ownerId);
-            ps.execute();
-            ps.close();
-            ps = con.prepareStatement("INSERT INTO hiredmerch (characterid, accountid, Mesos, time) VALUES (?, ?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS);
-            ps.setInt(1, ownerId);
-            ps.setInt(2, owneraccount);
-            ps.setInt(3, meso.get());
-            ps.setLong(4, System.currentTimeMillis());
-
-            ps.executeUpdate();
-
-            ResultSet rs = ps.getGeneratedKeys();
-            if (!rs.next()) {
-                rs.close();
-                ps.close();
-                throw new RuntimeException("Error, adding merchant to DB");
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM hiredmerch WHERE accountid = ? OR characterid = ?")) {
+                ps.setInt(1, owneraccount);
+                ps.setInt(2, ownerId);
+                ps.execute();
             }
-            final int packageid = rs.getInt(1);
-            rs.close();
-            ps.close();
+            final int packageid;
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO hiredmerch (characterid, accountid, Mesos, time) VALUES (?, ?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, ownerId);
+                ps.setInt(2, owneraccount);
+                ps.setInt(3, meso.get());
+                ps.setLong(4, System.currentTimeMillis());
+
+                ps.executeUpdate();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (!rs.next()) {
+                        throw new RuntimeException("Error, adding merchant to DB");
+                    }
+                    packageid = rs.getInt(1);
+                }
+            }
             List<Pair<IItem, MapleInventoryType>> iters = new ArrayList<Pair<IItem, MapleInventoryType>>();
             IItem item;
             for (MaplePlayerShopItem pItems : items) {

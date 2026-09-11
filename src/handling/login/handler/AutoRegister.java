@@ -15,13 +15,13 @@ public class AutoRegister {
 
     public static boolean getAccountExists(String login) {
         boolean accountExists = false;
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("SELECT name FROM accounts WHERE name = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT name FROM accounts WHERE name = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
             ps.setString(1, login);
-            ResultSet rs = ps.executeQuery();
-            if (rs.first()) {
-                accountExists = true;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.first()) {
+                    accountExists = true;
+                }
             }
         } catch (SQLException ex) {
             System.out.println(ex);
@@ -31,7 +31,7 @@ public class AutoRegister {
 
     public static void createAccount(String login, String pwd, String eip) {
         String sockAddr = eip;
-        Connection con;
+        final Connection con;
 
         try {
             con = DatabaseConnection.getConnection();
@@ -40,7 +40,7 @@ public class AutoRegister {
             return;
         }
 
-        try {
+        try (con) {
             ResultSet rs;
             PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 

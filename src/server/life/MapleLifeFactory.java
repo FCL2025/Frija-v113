@@ -24,8 +24,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import provider.MapleData;
 import provider.MapleDataDirectoryEntry;
@@ -45,10 +45,10 @@ public class MapleLifeFactory {
     private static final MapleData mobStringData = stringDataWZ.getData("Mob.img");
     private static final MapleData npcStringData = stringDataWZ.getData("Npc.img");
     private static final MapleData npclocData = etcDataWZ.getData("NpcLocation.img");
-    private static Map<Integer, String> npcNames = new HashMap<Integer, String>();
-    private static Map<Integer, MapleMonsterStats> monsterStats = new HashMap<Integer, MapleMonsterStats>();
-    private static Map<Integer, Integer> NPCLoc = new HashMap<Integer, Integer>();
-    private static Map<Integer, List<Integer>> questCount = new HashMap<Integer, List<Integer>>();
+    private static final Map<Integer, String> npcNames = new ConcurrentHashMap<>();
+    private static final Map<Integer, MapleMonsterStats> monsterStats = new ConcurrentHashMap<>();
+    private static final Map<Integer, Integer> NPCLoc = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<Integer>> questCount = new ConcurrentHashMap<>();
 
     public static AbstractLoadedMapleLife getLife(int id, String type) {
         if (type.equalsIgnoreCase("n")) {
@@ -62,15 +62,20 @@ public class MapleLifeFactory {
     }
 
     public static int getNPCLocation(int npcid) {
-        if (NPCLoc.containsKey(npcid)) {
-            return NPCLoc.get(npcid);
-        }
-        final int map = MapleDataTool.getIntConvert(Integer.toString(npcid) + "/0", npclocData, -1);
-        NPCLoc.put(npcid, map);
-        return map;
+        // No re-entrancy into NPCLoc from the loader, so computeIfAbsent is safe.
+        return NPCLoc.computeIfAbsent(npcid, id -> MapleDataTool.getIntConvert(Integer.toString(id) + "/0", npclocData, -1));
     }
 
     public static final void loadQuestCounts() {
+        if (questCount.size() > 0) {
+            return;
+        }
+        loadQuestCountsSync();
+    }
+
+    // Bulk-load guarded so concurrent first-callers block instead of racing
+    // to populate questCount together (which corrupted the old plain HashMap).
+    private static final synchronized void loadQuestCountsSync() {
         if (questCount.size() > 0) {
             return;
         }
@@ -98,13 +103,23 @@ public class MapleLifeFactory {
     }
 
     public static MapleMonster getMonster(int mid) {
-        MapleMonsterStats stats = monsterStats.get(Integer.valueOf(mid));
-
+        // The loader never re-enters monsterStats (link targets are read straight
+        // from WZ, not via getMonster()), so computeIfAbsent is safe; returning
+        // null from the mapping function keeps the original "don't cache a
+        // missing mob" behaviour intact.
+        MapleMonsterStats stats = monsterStats.computeIfAbsent(Integer.valueOf(mid), MapleLifeFactory::loadMonsterStats);
         if (stats == null) {
+            return null;
+        }
+        return new MapleMonster(mid, stats);
+    }
+
+    private static MapleMonsterStats loadMonsterStats(final int mid) {
             MapleData monsterData = data.getData(StringUtil.getLeftPaddedStr(Integer.toString(mid) + ".img", '0', 11));
             if (monsterData == null) {
                 return null;
             }
+            MapleMonsterStats stats;
             MapleData monsterInfoData = monsterData.getChildByPath("info");
             stats = new MapleMonsterStats();
 
@@ -216,9 +231,7 @@ public class MapleLifeFactory {
             }
             stats.setHPDisplayType(hpdisplaytype);
 
-            monsterStats.put(Integer.valueOf(mid), stats);
-        }
-        return new MapleMonster(mid, stats);
+            return stats;
     }
 
     public static final void decodeElementalString(MapleMonsterStats stats, String elemAttr) {

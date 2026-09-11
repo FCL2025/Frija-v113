@@ -36,7 +36,6 @@ public class RankingWorker {
     private final Map<Integer, List<RankingInformation>> rankings = new HashMap<Integer, List<RankingInformation>>();
     private final Map<String, Integer> jobCommands = new HashMap<String, Integer>();
     private static RankingWorker instance;
-    private Connection con;
 
     public static final RankingWorker getInstance() {
         if (instance == null) {
@@ -60,9 +59,8 @@ public class RankingWorker {
     public final void run() {
         System.out.println("Loading Ranking Server :::");
         loadJobCommands();
-        try {
-            con = DatabaseConnection.getConnection();
-            updateRanking();
+        try (Connection con = DatabaseConnection.getConnection()) {
+            updateRanking(con);
         } catch (Exception ex) {
             ex.printStackTrace();
             System.err.println("Could not update rankings");
@@ -70,41 +68,39 @@ public class RankingWorker {
         //System.out.println("排行啟動完成 :::"); //keep
     }
 
-    private void updateRanking() throws Exception {
+    private void updateRanking(Connection con) throws Exception {
         StringBuilder sb = new StringBuilder("SELECT c.id, c.job, c.exp, c.level, c.name, c.jobRank, c.jobRankMove, c.rank, c.rankMove");
         sb.append(", a.lastlogin AS lastlogin, a.loggedin FROM characters AS c LEFT JOIN accounts AS a ON c.accountid = a.id WHERE c.gm = 0 AND a.banned = 0 ");
         sb.append("ORDER BY c.level DESC , c.exp DESC , c.fame DESC , c.meso DESC , c.rank ASC");
 
-        PreparedStatement charSelect = con.prepareStatement(sb.toString());
-        ResultSet rs = charSelect.executeQuery();
-        PreparedStatement ps = con.prepareStatement("UPDATE characters SET jobRank = ?, jobRankMove = ?, rank = ?, rankMove = ? WHERE id = ?");
-        int rank = 0; //for "all"
-        final Map<Integer, Integer> rankMap = new LinkedHashMap<Integer, Integer>();
-        for (int i : jobCommands.values()) {
-            rankMap.put(i, 0); //job to rank
-            rankings.put(i, new ArrayList<RankingInformation>());
-        }
-        while (rs.next()) {
-            int job = rs.getInt("job");
-            if (!rankMap.containsKey(job / 100)) { //not supported.
-                continue;
+        try (PreparedStatement charSelect = con.prepareStatement(sb.toString());
+             ResultSet rs = charSelect.executeQuery();
+             PreparedStatement ps = con.prepareStatement("UPDATE characters SET jobRank = ?, jobRankMove = ?, rank = ?, rankMove = ? WHERE id = ?")) {
+            int rank = 0; //for "all"
+            final Map<Integer, Integer> rankMap = new LinkedHashMap<Integer, Integer>();
+            for (int i : jobCommands.values()) {
+                rankMap.put(i, 0); //job to rank
+                rankings.put(i, new ArrayList<RankingInformation>());
             }
-            int jobRank = rankMap.get(job / 100) + 1;
-            rankMap.put(job / 100, jobRank);
-            rank++;
-            rankings.get(-1).add(new RankingInformation(rs.getString("name"), job, rs.getInt("level"), rs.getInt("exp"), rank));
-            rankings.get(job / 100).add(new RankingInformation(rs.getString("name"), job, rs.getInt("level"), rs.getInt("exp"), jobRank));
-            ps.setInt(1, jobRank);
-            ps.setInt(2, rs.getInt("jobRank") - jobRank);
-            ps.setInt(3, rank);
-            ps.setInt(4, rs.getInt("rank") - rank);
-            ps.setInt(5, rs.getInt("id"));
-            ps.addBatch();
+            while (rs.next()) {
+                int job = rs.getInt("job");
+                if (!rankMap.containsKey(job / 100)) { //not supported.
+                    continue;
+                }
+                int jobRank = rankMap.get(job / 100) + 1;
+                rankMap.put(job / 100, jobRank);
+                rank++;
+                rankings.get(-1).add(new RankingInformation(rs.getString("name"), job, rs.getInt("level"), rs.getInt("exp"), rank));
+                rankings.get(job / 100).add(new RankingInformation(rs.getString("name"), job, rs.getInt("level"), rs.getInt("exp"), jobRank));
+                ps.setInt(1, jobRank);
+                ps.setInt(2, rs.getInt("jobRank") - jobRank);
+                ps.setInt(3, rank);
+                ps.setInt(4, rs.getInt("rank") - rank);
+                ps.setInt(5, rs.getInt("id"));
+                ps.addBatch();
+            }
+            ps.executeBatch(); //Batch update should be faster.
         }
-        ps.executeBatch(); //Batch update should be faster.
-        rs.close();
-        charSelect.close();
-        ps.close();
     }
 
     public final void loadJobCommands() {

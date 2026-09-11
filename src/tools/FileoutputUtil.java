@@ -20,13 +20,33 @@
  */
 package tools;
 
-import java.util.Calendar;
-import java.text.SimpleDateFormat;
 import java.io.StringWriter;
 import java.io.PrintWriter;
 import java.io.IOException;
 import java.io.FileOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
+/**
+ * Append-only logging to the {@code Logs/*.rtf} files, from any thread.
+ *
+ * <p>Two things in here were not safe to call concurrently, and everything
+ * calls them concurrently - every swallowed packet exception, every script
+ * error, every timer task that throws.
+ *
+ * <p>The timestamps were formatted through two shared static
+ * {@code SimpleDateFormat} instances. {@code SimpleDateFormat} keeps parse
+ * state in a field, so two threads formatting at once corrupt each other:
+ * usually a mangled date, sometimes an {@code ArrayIndexOutOfBoundsException}
+ * or a {@code NumberFormatException} thrown from inside {@code Calendar} - out
+ * of the error logger, on the error path. {@link DateTimeFormatter} is
+ * immutable and has no such state.
+ *
+ * <p>And each entry was written to the file in two calls, a header and then the
+ * body. Appends are atomic per write, so two threads logging at the same moment
+ * could interleave into "header, header, body, body" and leave a stack trace
+ * filed under the wrong timestamp. Each entry is now one write.
+ */
 public class FileoutputUtil {
 
     // Logging output file
@@ -43,71 +63,41 @@ public class FileoutputUtil {
             PacketEx_Log = "Logs/Log_Packet_Except.rtf" // I cba looking for every error, adding this back in.
             + "";
     // End
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private static final SimpleDateFormat sdf_ = new SimpleDateFormat("yyyy-MM-dd");
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public static void log(final String file, final String msg) {
-        FileOutputStream out = null;
-        try {
-            out = new FileOutputStream(file, true);
-            out.write(("\n------------------------ " + CurrentReadable_Time() + " ------------------------\n").getBytes(Encodings.NATIVE));
-            out.write(msg.getBytes(Encodings.NATIVE));
-        } catch (IOException ess) {
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException ignore) {
-            }
-        }
+        append(file, msg);
     }
 
     public static void outputFileError(final String file, final Throwable t) {
-        FileOutputStream out = null;
-        try {
-            out = new FileOutputStream(file, true);
-            out.write(("\n------------------------ " + CurrentReadable_Time() + " ------------------------\n").getBytes(Encodings.NATIVE));
-            out.write(getString(t).getBytes(Encodings.NATIVE));
-        } catch (IOException ess) {
-        } finally {
-            try {
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException ignore) {
-            }
+        append(file, getString(t));
+    }
+
+    /** One entry, one header, one write. */
+    private static void append(final String file, final String body) {
+        final String entry = "\n------------------------ " + CurrentReadable_Time()
+                + " ------------------------\n" + body;
+        try (FileOutputStream out = new FileOutputStream(file, true)) {
+            out.write(entry.getBytes(Encodings.NATIVE));
+        } catch (final IOException ess) {
+            // The logger is the last resort; there is nowhere left to report to.
         }
     }
 
     public static String CurrentReadable_Date() {
-        return sdf_.format(Calendar.getInstance().getTime());
+        return DATE.format(LocalDateTime.now());
     }
 
     public static String CurrentReadable_Time() {
-        return sdf.format(Calendar.getInstance().getTime());
+        return TIME.format(LocalDateTime.now());
     }
 
     public static String getString(final Throwable e) {
-        String retValue = null;
-        StringWriter sw = null;
-        PrintWriter pw = null;
-        try {
-            sw = new StringWriter();
-            pw = new PrintWriter(sw);
+        final StringWriter sw = new StringWriter();
+        try (PrintWriter pw = new PrintWriter(sw)) {
             e.printStackTrace(pw);
-            retValue = sw.toString();
-        } finally {
-            try {
-                if (pw != null) {
-                    pw.close();
-                }
-                if (sw != null) {
-                    sw.close();
-                }
-            } catch (IOException ignore) {
-            }
         }
-        return retValue;
+        return sw.toString();
     }
 }

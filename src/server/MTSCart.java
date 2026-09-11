@@ -122,55 +122,58 @@ public class MTSCart implements Serializable {
         }
 
         ItemLoader.MTS_TRANSFER.saveItems(itemsWithType, characterId);
-        final Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("DELETE FROM mts_cart WHERE characterid = ?");
-        ps.setInt(1, characterId);
-        ps.execute();
-        ps.close();
-        ps = con.prepareStatement("INSERT INTO mts_cart VALUES(DEFAULT, ?, ?)");
-        ps.setInt(1, characterId);
-        for (int i : cart) {
-            ps.setInt(2, i);
-            ps.executeUpdate();
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM mts_cart WHERE characterid = ?")) {
+                ps.setInt(1, characterId);
+                ps.execute();
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO mts_cart VALUES(DEFAULT, ?, ?)")) {
+                ps.setInt(1, characterId);
+                for (int i : cart) {
+                    ps.setInt(2, i);
+                    ps.executeUpdate();
+                }
+                if (owedNX > 0) {
+                    ps.setInt(2, -owedNX);
+                    ps.executeUpdate();
+                }
+            }
         }
-        if (owedNX > 0) {
-            ps.setInt(2, -owedNX);
-            ps.executeUpdate();
-        }
-        ps.close();
         //notYetSold shouldnt be saved here
     }
 
     public void loadCart() throws SQLException {
-        final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM mts_cart WHERE characterid = ?");
-        ps.setInt(1, characterId);
-        final ResultSet rs = ps.executeQuery();
-        int iId;
-        while (rs.next()) {
-            iId = rs.getInt("itemid");
-            if (iId < 0) {
-                owedNX -= iId;
-            } else if (MTSStorage.getInstance().check(iId)) {
-                cart.add(iId);
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_cart WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                int iId;
+                while (rs.next()) {
+                    iId = rs.getInt("itemid");
+                    if (iId < 0) {
+                        owedNX -= iId;
+                    } else if (MTSStorage.getInstance().check(iId)) {
+                        cart.add(iId);
+                    }
+                }
             }
         }
-        rs.close();
-        ps.close();
     }
 
     public void loadNotYetSold() throws SQLException {
-        final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM mts_items WHERE characterid = ?");
-        ps.setInt(1, characterId);
-        final ResultSet rs = ps.executeQuery();
-        int pId;
-        while (rs.next()) {
-            pId = rs.getInt("id");
-            if (MTSStorage.getInstance().check(pId)) {
-                notYetSold.add(pId);
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                int pId;
+                while (rs.next()) {
+                    pId = rs.getInt("id");
+                    if (MTSStorage.getInstance().check(pId)) {
+                        notYetSold.add(pId);
+                    }
+                }
             }
         }
-        rs.close();
-        ps.close();
     }
 
     public void changeInfo(final int tab, final int type, final int page) {

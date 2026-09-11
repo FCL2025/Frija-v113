@@ -896,25 +896,20 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
 
     public void giveMerchantMesos() {
         long mesos = 0;
-        try {
-            Connection con = (Connection) DatabaseConnection.getConnection();
-            PreparedStatement ps = (PreparedStatement) con.prepareStatement("SELECT * FROM hiredmerchants WHERE merchantid = ?");
-            ps.setInt(1, getPlayer().getId());
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) {
-                rs.close();
-                ps.close();
-            } else {
-                mesos = rs.getLong("mesos");
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM hiredmerchants WHERE merchantid = ?")) {
+                ps.setInt(1, getPlayer().getId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        mesos = rs.getLong("mesos");
+                    }
+                }
             }
-            rs.close();
-            ps.close();
 
-            ps = (PreparedStatement) con.prepareStatement("UPDATE hiredmerchants SET mesos = 0 WHERE merchantid = ?");
-            ps.setInt(1, getPlayer().getId());
-            ps.executeUpdate();
-            ps.close();
-
+            try (PreparedStatement ps = con.prepareStatement("UPDATE hiredmerchants SET mesos = 0 WHERE merchantid = ?")) {
+                ps.setInt(1, getPlayer().getId());
+                ps.executeUpdate();
+            }
         } catch (SQLException ex) {
             System.err.println("Error gaining mesos in hired merchant" + ex);
         }
@@ -928,19 +923,14 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     }
     public long getMerchantMesos() {
         long mesos = 0;
-        try {
-            Connection con = (Connection) DatabaseConnection.getConnection();
-            PreparedStatement ps = (PreparedStatement) con.prepareStatement("SELECT * FROM hiredmerchants WHERE merchantid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM hiredmerchants WHERE merchantid = ?")) {
             ps.setInt(1, getPlayer().getId());
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) {
-                rs.close();
-                ps.close();
-            } else {
-                mesos = rs.getLong("mesos");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    mesos = rs.getLong("mesos");
+                }
             }
-            rs.close();
-            ps.close();
         } catch (SQLException ex) {
             System.err.println("Error gaining mesos in hired merchant" + ex);
         }

@@ -8,9 +8,9 @@ import handling.cashshop.CashShopServer;
 import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
 import provider.MapleData;
 import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
@@ -21,10 +21,19 @@ public class CashItemFactory {
 
     private final static CashItemFactory instance = new CashItemFactory();
     private final static int[] bestItems = new int[]{50400003, 50300092, 30200034, 50100010, 50300099};
-    private boolean initialized = false;
-    private final Map<Integer, CashItemInfo> itemStats = new HashMap<Integer, CashItemInfo>();
-    private final Map<Integer, List<CashItemInfo>> itemPackage = new HashMap<Integer, List<CashItemInfo>>();
-    private final Map<Integer, CashModInfo> itemMods = new HashMap<Integer, CashModInfo>();
+    // volatile: read unsynchronized by getModInfo()/getAllModInfo() from any
+    // handler thread, written under the initialize() lock below.
+    private volatile boolean initialized = false;
+    // These three are fully populated by initialize() and, once initialized
+    // flips true, never written again (getModInfo()'s only put() is guarded
+    // by "if (initialized) return null;"), so they're a load-once/read-many
+    // cache. Still moved to ConcurrentHashMap: getAllModInfo()'s
+    // "if (!initialized) initialize();" is itself an unsynchronized
+    // check-then-act, so two threads racing to warm the cache before startup
+    // finishes could otherwise corrupt a plain HashMap.
+    private final Map<Integer, CashItemInfo> itemStats = new ConcurrentHashMap<>();
+    private final Map<Integer, List<CashItemInfo>> itemPackage = new ConcurrentHashMap<>();
+    private final Map<Integer, CashModInfo> itemMods = new ConcurrentHashMap<>();
     private final MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Etc.wz"));
 
     public static final CashItemFactory getInstance() {
@@ -34,7 +43,13 @@ public class CashItemFactory {
     protected CashItemFactory() {
     }
 
-    public void initialize() {
+    public synchronized void initialize() {
+        // getAllModInfo() calls this lazily via "if (!initialized) initialize();",
+        // an unsynchronized check-then-act; guard against two threads racing
+        // through that and both re-running the full load concurrently.
+        if (initialized) {
+            return;
+        }
         System.out.println("Loading CashItemFactory :::");
         final List<Integer> itemids = new ArrayList<Integer>();
         for (MapleData field : data.getData("Commodity.img").getChildren()) {
@@ -80,8 +95,9 @@ public class CashItemFactory {
     }
 
     public final List<CashItemInfo> getPackageItems(int itemId) {
-        if (itemPackage.get(itemId) != null) {
-            return itemPackage.get(itemId);
+        final List<CashItemInfo> cached = itemPackage.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final List<CashItemInfo> packageItems = new ArrayList<CashItemInfo>();
 
@@ -102,17 +118,16 @@ public class CashItemFactory {
             if (initialized) {
                 return null;
             }
-            try {
-                Connection con = DatabaseConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items WHERE serial = ?");
-                ps.setInt(1, sn);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next()) {
-                    ret = new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags"));
-                    itemMods.put(sn, ret);
+            try (Connection con = DatabaseConnection.getConnection()) {
+                try (PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items WHERE serial = ?")) {
+                    ps.setInt(1, sn);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            ret = new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags"));
+                            itemMods.put(sn, ret);
+                        }
+                    }
                 }
-                rs.close();
-                ps.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }

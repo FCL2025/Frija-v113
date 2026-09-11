@@ -22,7 +22,6 @@ package server.maps;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +34,7 @@ import java.sql.ResultSet;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import provider.MapleData;
 import provider.MapleDataProvider;
@@ -53,9 +53,11 @@ public class MapleMapFactory {
 
     private static final MapleDataProvider source = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Map.wz"));
     private static final MapleData nameData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/String.wz")).getData("Map.img");
-    private final Map<Integer, MapleMap> maps = new HashMap<Integer, MapleMap>();
-    private final Map<Integer, MapleMap> instanceMap = new HashMap<Integer, MapleMap>();
-    private static final Map<Integer, MapleNodes> mapInfos = new HashMap<Integer, MapleNodes>();
+    private final Map<Integer, MapleMap> maps = new ConcurrentHashMap<>();
+    private final Map<Integer, MapleMap> instanceMap = new ConcurrentHashMap<>();
+    // Shared across every channel's MapleMapFactory (each has its own `lock`),
+    // so loadNodes() below cannot rely on that per-instance lock to protect it.
+    private static final Map<Integer, MapleNodes> mapInfos = new ConcurrentHashMap<>();
     private final ReentrantLock lock = new ReentrantLock(true);
     private int channel;
 
@@ -140,30 +142,30 @@ public class MapleMapFactory {
                     bossid = MapleDataTool.getInt(mapData.getChildByPath("info/timeMob/id"), 0);
                     msg = MapleDataTool.getString(mapData.getChildByPath("info/timeMob/message"), null);
                 }
-				try
+				try (Connection con = DatabaseConnection.getConnection();
+						PreparedStatement ps = con.prepareStatement("SELECT * FROM spawns WHERE mid = ?"))
 				{
-					Connection con = DatabaseConnection.getConnection();
-					PreparedStatement ps = con.prepareStatement("SELECT * FROM spawns WHERE mid = ?");
 					ps.setInt(1, omapid);
-					ResultSet rs = ps.executeQuery();
-					while (rs.next()) {
-						int id = rs.getInt("idd");
-						int f = rs.getInt("f"); 
-						boolean hide = false; 
-						String type = rs.getString("type");
-						int _fh = rs.getInt("fh");
-						int cy = rs.getInt("cy");
-						int rx0 = rs.getInt("rx0");
-						int rx1 = rs.getInt("rx1");
-						int x = rs.getInt("x");
-						int y = rs.getInt("y");
-						int mobTime = rs.getInt("mobtime");
+					try (ResultSet rs = ps.executeQuery()) {
+						while (rs.next()) {
+							int id = rs.getInt("idd");
+							int f = rs.getInt("f");
+							boolean hide = false;
+							String type = rs.getString("type");
+							int _fh = rs.getInt("fh");
+							int cy = rs.getInt("cy");
+							int rx0 = rs.getInt("rx0");
+							int rx1 = rs.getInt("rx1");
+							int x = rs.getInt("x");
+							int y = rs.getInt("y");
+							int mobTime = rs.getInt("mobtime");
 
-						AbstractLoadedMapleLife myLife = loadLife(id, f, hide, _fh, cy, rx0, rx1, x, y, type);
+							AbstractLoadedMapleLife myLife = loadLife(id, f, hide, _fh, cy, rx0, rx1, x, y, type);
 
-						if(type.equals("n"))
-						{
-							map.addMapObject(myLife);
+							if(type.equals("n"))
+							{
+								map.addMapObject(myLife);
+							}
 						}
 					}
 				} catch(SQLException e) {
@@ -258,6 +260,14 @@ public class MapleMapFactory {
     }
 
     public MapleMap CreateInstanceMap(int mapid, boolean respawns, boolean npcs, boolean reactors, int instanceid) {
+        if (isInstanceMapLoaded(instanceid)) {
+            return getInstanceMap(instanceid);
+        }
+        // Building an instance map has side effects (spawning monsters/reactors,
+        // DB reads) that must not run twice for the same instanceid, so this
+        // reuses the same lock getMap() uses for the same reason.
+        lock.lock();
+        try {
         if (isInstanceMapLoaded(instanceid)) {
             return getInstanceMap(instanceid);
         }
@@ -383,6 +393,9 @@ public class MapleMapFactory {
 
         instanceMap.put(instanceid, map);
         return map;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public int getLoadedMaps() {
@@ -815,7 +828,14 @@ public class MapleMapFactory {
                     }
                 }
             }
-            mapInfos.put(mapid, nodeInfo);
+            // mapInfos is shared by every channel's MapleMapFactory, each with its
+            // own `lock`, so two channels can race to build the same mapid's
+            // MapleNodes here; putIfAbsent makes every caller converge on the
+            // same winning instance instead of corrupting the map.
+            final MapleNodes existing = mapInfos.putIfAbsent(mapid, nodeInfo);
+            if (existing != null) {
+                nodeInfo = existing;
+            }
         }
         return nodeInfo;
     }

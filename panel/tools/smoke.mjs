@@ -248,6 +248,44 @@ try {
   await ev(`(() => { const li = [...document.querySelectorAll('li')].find((l) => l.textContent.includes('/10.255.255.254')); li?.querySelector('button')?.click() })()`); await sleep(1500)
   check('IP 封鎖：解除', !(await api('/api/bans/ip')).items.some((b) => b.id === banId))
 
+
+  // --- 掉寶與商店 ---------------------------------------------------------
+  t = await go('data', 2500)
+  check('掉寶：分頁載入', /掉寶與商店/.test(t) && /全域掉寶/.test(t))
+  // 用名稱搜尋框選一隻怪：打字 → 等下拉 → 點第一個
+  await setInput(`[...document.querySelectorAll('input[role=combobox]')][0]`, '嫩寶'); await sleep(1200)
+  const picked = await ev(`(() => { const o = document.querySelector('[role=listbox] [role=option]'); if (!o) return null; const name = o.textContent; o.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return name })()`); await sleep(1500)
+  check('掉寶：名稱搜尋選到怪物', !!picked, picked ?? '')
+  t = await text()
+  check('掉寶：表格有資料', /嫩寶/.test(t) && /%/.test(t))
+  await shot('18-drops')
+  // 新增一筆 → 刪除
+  const before = (await api('/api/drops?mob=100100&size=200')).total
+  check('掉寶：開新增對話框', await clickButton('新增掉寶')); await sleep(800)
+  await setInput(`[...document.querySelectorAll('[role=dialog] input[role=combobox]')][0]`, '紅色藥水'); await sleep(1200)
+  await ev(`document.querySelector('[role=dialog] [role=listbox] [role=option]')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`); await sleep(400)
+  await setInput(`document.getElementById('drop-chance')`, '4321'); await sleep(100)
+  check('掉寶：存檔', await clickButton('存檔並重載掉寶')); await sleep(1800)
+  const after = await api('/api/drops?mob=100100&size=200')
+  check('掉寶：新增成功', after.total === before + 1, `${before} → ${after.total}`)
+  const added = after.items.find((d) => d.chance === 4321 && d.itemid === 2000000)
+  if (added) {
+    await ev(`(() => { const tr = [...document.querySelectorAll('tr')].find((r) => r.textContent.includes('#' + ${added.id}) || r.firstElementChild?.textContent?.trim() === String(${added.id})); const b = tr && [...tr.querySelectorAll('button')].find((x) => x.title === '刪除'); window.confirm = () => true; b?.click() })()`); await sleep(1500)
+    check('掉寶：刪除成功', (await api('/api/drops?mob=100100&size=200')).total === before)
+  }
+  check('全域掉寶：切換分頁', await clickTab('全域掉寶')); await sleep(1500)
+  check('全域掉寶：列表', /新增全域掉寶/.test(await text()))
+  check('商店：切換分頁', await clickTab('商店')); await sleep(1500)
+  await ev(`document.querySelector('ul button')?.click()`); await sleep(1500)
+  t = await text()
+  check('商店：品項表格', /加入道具/.test(t) && /position/.test(t))
+  await shot('19-shops')
+  check('商城：切換分頁', await clickTab('商城')); await sleep(1500)
+  await setInput(`[...document.querySelectorAll('input')].find((x) => x.placeholder.includes('SN'))`, '潛水鏡'); await sleep(1500)
+  t = await text()
+  check('商城：搜尋結果', /潛水鏡/.test(t) && /共 \d+ 筆/.test(t))
+  await shot('20-cashshop')
+
   // --- 深色模式與登出 -----------------------------------------------------
   await ev(`document.querySelector('button[aria-label*="深色"]')?.click()`); await sleep(500)
   await go('dashboard', 1500); await shot('14-dashboard-dark')

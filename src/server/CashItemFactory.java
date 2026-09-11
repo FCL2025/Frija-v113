@@ -120,6 +120,30 @@ public class CashItemFactory {
      * the size of this map goes out on the wire in the CS_OPEN packet.
      */
     private void loadModInfo() {
+        loadModInfo(itemMods);
+    }
+
+    /**
+     * Re-reads cashshop_modified_items into the live map, for the panel's cash
+     * shop editor. Rows are loaded into a scratch map first so that a reader
+     * on a handler thread never sees the map half-empty; then the serials the
+     * table no longer has are dropped and the rest replaced in place.
+     */
+    public synchronized void reloadModInfo() {
+        if (!initialized) {
+            initialize();
+            return;
+        }
+        final Map<Integer, CashModInfo> fresh = new java.util.HashMap<>();
+        loadModInfo(fresh);
+        itemMods.keySet().retainAll(fresh.keySet());
+        itemMods.putAll(fresh);
+        for (int i : itemStats.keySet()) {
+            getItem(i);
+        }
+    }
+
+    private void loadModInfo(final Map<Integer, CashModInfo> into) {
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items");
              ResultSet rs = ps.executeQuery()) {
@@ -128,7 +152,7 @@ public class CashItemFactory {
                 if (!itemStats.containsKey(sn)) {
                     continue;
                 }
-                itemMods.put(sn, new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags")));
+                into.put(sn, new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags")));
             }
         } catch (Exception e) {
             e.printStackTrace();

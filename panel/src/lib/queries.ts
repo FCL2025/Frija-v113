@@ -8,14 +8,21 @@ import type {
   AccountUpdateResponse,
   BanList,
   BroadcastResponse,
+  CashItemPatch,
+  CashItemRow,
   BroadcastType,
   ChannelInfo,
   CharacterPatch,
   CharacterRow,
   CharacterUpdateResponse,
+  DropPatch,
+  DropsResponse,
+  GlobalDropPatch,
+  GlobalDropRow,
   KickResponse,
   LogFileInfo,
   LogTailResponse,
+  NameHit,
   Paged,
   PingResponse,
   PlayerInfo,
@@ -32,8 +39,12 @@ import type {
   ScriptSearchResponse,
   ServerMessageResponse,
   SettingsResponse,
+  ShopDetail,
+  ShopItemPatch,
+  ShopSummary,
   ShutdownResponse,
   StatusResponse,
+  WriteResponse,
 } from '@/lib/types'
 
 /** 各端點的輪詢間隔（毫秒） */
@@ -384,5 +395,174 @@ export function useRemoveBan(kind: 'ip' | 'mac') {
   return useMutation({
     mutationFn: (id: number) => apiSend<{ ok: boolean; id: number }>('DELETE', `/api/bans/${kind}/${id}`),
     onSettled: () => void qc.invalidateQueries({ queryKey: accountKeys.bans(kind) }),
+  })
+}
+
+/* ---------------------------------------------------------------------- */
+/* Phase 5：掉寶 / 商店 / 商城                                               */
+/* ---------------------------------------------------------------------- */
+
+export const dataKeys = {
+  names: (kind: 'items' | 'mobs' | 'npcs', q: string) => ['names', kind, q] as const,
+  drops: (mob: number, item: number, page: number, size: number) => ['drops', mob, item, page, size] as const,
+  globalDrops: ['drops', 'global'] as const,
+  shops: ['shops'] as const,
+  shop: (id: number) => ['shops', id] as const,
+  cash: (q: string, filter: string, page: number, size: number) => ['cashshop', q, filter, page, size] as const,
+}
+
+export function useNames(kind: 'items' | 'mobs' | 'npcs', q: string) {
+  const query = q.trim()
+  return useQuery({
+    queryKey: dataKeys.names(kind, query),
+    queryFn: () => apiFetch<NameHit[]>(`/api/names/${kind}?q=${encodeURIComponent(query)}&limit=30`),
+    enabled: query.length > 0,
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useDrops(mob: number, item: number, page: number, size: number) {
+  return useQuery({
+    queryKey: dataKeys.drops(mob, item, page, size),
+    queryFn: () => apiFetch<DropsResponse>(`/api/drops?mob=${mob}&item=${item}&page=${page}&size=${size}`),
+    enabled: mob > 0 || item > 0,
+    placeholderData: keepPreviousData,
+  })
+}
+
+function invalidateDrops(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['drops'] })
+}
+
+export function useSaveDrop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id?: number; patch: DropPatch }) =>
+      v.id ? apiSend<WriteResponse>('PUT', `/api/drops/${v.id}`, v.patch) : apiSend<WriteResponse>('POST', '/api/drops', v.patch),
+    onSettled: () => invalidateDrops(qc),
+  })
+}
+
+export function useDeleteDrop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiSend<WriteResponse>('DELETE', `/api/drops/${id}`),
+    onSettled: () => invalidateDrops(qc),
+  })
+}
+
+export function useGlobalDrops() {
+  return useQuery({ queryKey: dataKeys.globalDrops, queryFn: () => apiFetch<GlobalDropRow[]>('/api/drops/global') })
+}
+
+export function useSaveGlobalDrop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id?: number; patch: GlobalDropPatch }) =>
+      v.id
+        ? apiSend<WriteResponse>('PUT', `/api/drops/global/${v.id}`, v.patch)
+        : apiSend<WriteResponse>('POST', '/api/drops/global', v.patch),
+    onSettled: () => invalidateDrops(qc),
+  })
+}
+
+export function useDeleteGlobalDrop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiSend<WriteResponse>('DELETE', `/api/drops/global/${id}`),
+    onSettled: () => invalidateDrops(qc),
+  })
+}
+
+export function useShops() {
+  return useQuery({ queryKey: dataKeys.shops, queryFn: () => apiFetch<ShopSummary[]>('/api/shops') })
+}
+
+export function useShop(id: number | null) {
+  return useQuery({
+    queryKey: dataKeys.shop(id ?? 0),
+    queryFn: () => apiFetch<ShopDetail>(`/api/shops/${id}`),
+    enabled: id !== null,
+  })
+}
+
+function invalidateShops(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['shops'] })
+}
+
+export function useCreateShop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (npcid: number) => apiSend<WriteResponse>('POST', '/api/shops', { npcid }),
+    onSettled: () => invalidateShops(qc),
+  })
+}
+
+export function useDeleteShop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (shopid: number) => apiSend<WriteResponse>('DELETE', `/api/shops/${shopid}`),
+    onSettled: () => invalidateShops(qc),
+  })
+}
+
+export function useAddShopItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { shopid: number; patch: ShopItemPatch }) => apiSend<WriteResponse>('POST', `/api/shops/${v.shopid}/items`, v.patch),
+    onSettled: () => invalidateShops(qc),
+  })
+}
+
+export function useUpdateShopItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { shopitemid: number; patch: ShopItemPatch }) => apiSend<WriteResponse>('PUT', `/api/shopitems/${v.shopitemid}`, v.patch),
+    onSettled: () => invalidateShops(qc),
+  })
+}
+
+export function useDeleteShopItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (shopitemid: number) => apiSend<WriteResponse>('DELETE', `/api/shopitems/${shopitemid}`),
+    onSettled: () => invalidateShops(qc),
+  })
+}
+
+export function useReorderShop() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { shopid: number; ids: number[] }) => apiSend<WriteResponse>('POST', `/api/shops/${v.shopid}/reorder`, { ids: v.ids }),
+    onSettled: () => invalidateShops(qc),
+  })
+}
+
+export function useCashItems(q: string, filter: string, page: number, size: number) {
+  return useQuery({
+    queryKey: dataKeys.cash(q, filter, page, size),
+    queryFn: () =>
+      apiFetch<Paged<CashItemRow>>(`/api/cashshop?q=${encodeURIComponent(q)}&filter=${encodeURIComponent(filter)}&page=${page}&size=${size}`),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useSaveCashItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { serial: number; create: boolean; patch: CashItemPatch }) =>
+      v.create
+        ? apiSend<WriteResponse>('POST', '/api/cashshop', { ...v.patch, serial: v.serial })
+        : apiSend<WriteResponse>('PUT', `/api/cashshop/${v.serial}`, v.patch),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ['cashshop'] }),
+  })
+}
+
+export function useDeleteCashItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (serial: number) => apiSend<WriteResponse>('DELETE', `/api/cashshop/${serial}`),
+    onSettled: () => void qc.invalidateQueries({ queryKey: ['cashshop'] }),
   })
 }

@@ -412,3 +412,113 @@ export interface BanList {
   /** macbans 是 MEMORY 引擎，MySQL 重啟就清空 */
   volatile: boolean
 }
+
+/* ---------------------------------------------------------------------- */
+/* Phase 5：掉寶 / 商店 / 商城                                               */
+/* ---------------------------------------------------------------------- */
+
+export interface NameHit {
+  id: number
+  name: string
+}
+
+export interface DropRow {
+  id: number
+  dropperid: number
+  mobName: string | null
+  /** 0 表示楓幣 */
+  itemid: number
+  itemName: string | null
+  minimum_quantity: number
+  maximum_quantity: number
+  questid: number
+  /** 0–999999，分母 1,000,000 */
+  chance: number
+}
+
+export interface DropsResponse extends Paged<DropRow> {
+  mob: NameHit | null
+  item: NameHit | null
+}
+
+export type DropPatch = Partial<Pick<DropRow, 'dropperid' | 'itemid' | 'minimum_quantity' | 'maximum_quantity' | 'questid' | 'chance'>>
+
+export interface GlobalDropRow {
+  id: number
+  /** -1 = 全部；1 位數比對大洲、2 位數比對區域、3 位數比對地圖前綴 */
+  continent: number
+  dropType: number
+  itemid: number
+  itemName: string | null
+  minimum_quantity: number
+  maximum_quantity: number
+  questid: number
+  chance: number
+  comments: string | null
+}
+
+export type GlobalDropPatch = Partial<Omit<GlobalDropRow, 'id' | 'itemName'>>
+
+export interface ShopSummary {
+  shopid: number
+  npcid: number
+  npcName: string | null
+  items: number
+}
+
+export interface ShopItemRow {
+  shopitemid: number
+  itemid: number
+  itemName: string | null
+  price: number
+  pitch: number
+  position: number
+  reqitem: number
+  reqitemName: string | null
+  reqitemq: number
+}
+
+export interface ShopDetail {
+  shopid: number
+  npcid: number
+  npcName: string | null
+  items: ShopItemRow[]
+}
+
+export type ShopItemPatch = Partial<Pick<ShopItemRow, 'itemid' | 'price' | 'pitch' | 'position' | 'reqitem' | 'reqitemq'>>
+
+export interface CashItemRow {
+  name: string
+  serial: number
+  discount_price: number
+  mark: number
+  showup: number
+  itemid: number
+  priority: number
+  package: number
+  period: number
+  gender: number
+  count: number
+  meso: number
+  unk_1: number
+  unk_2: number
+  unk_3: number
+  extra_flags: number
+  /** itemid 為 0 時由 Commodity.img 解析出的道具 */
+  resolvedItemId: number
+  itemName: string | null
+  /** 客戶端實際看到的價格（折扣 / 楓幣價 / 原價） */
+  effectivePrice: number | null
+}
+
+export type CashItemPatch = Partial<Omit<CashItemRow, 'serial' | 'resolvedItemId' | 'itemName' | 'effectivePrice'>>
+
+export interface WriteResponse {
+  ok: boolean
+  id?: number
+  shopid?: number
+  shopitemid?: number
+  serial?: number
+  position?: number
+  reloaded?: 'drops' | 'shops' | 'cashshop'
+}

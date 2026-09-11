@@ -108,6 +108,7 @@ public final class PanelServer {
         SettingsApi.register(router);
         ScriptsApi.register(router);
         AccountsApi.register(router);
+        DataApi.register(router);
         server.createContext("/api", router);
         server.createContext("/", new StaticHandler());
         server.start();

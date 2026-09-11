@@ -100,6 +100,7 @@ SN 各發一次 `SELECT … WHERE serial = ?`，等於為一張 6653 列的表�
 | 即時操作 | 改倍率（四種倍率同時套用到每個頻道並寫回 ini）、廣播、頻道公告、七組 `!reload…`、優雅關機 |
 | 設定檔 | `Settings.ini` 逐項檢視與修改，保留 BOM、CRLF、註解與對齊；每項標明「即時 / 記憶體 / 需重啟」 |
 | 帳號與角色 | `accounts` / `characters` 的查詢與編輯（密碼欄位不會離開伺服器）、踢人、IP / MAC 封鎖清單；線上角色拒絕寫入，因為記憶體才是真相 |
+| 掉寶與商店 | `drop_data` / `drop_data_global` / `shops` + `shopitems` / `cashshop_modified_items` 的編輯器，道具、怪物、NPC 都用名稱搜尋；每次寫入自動清掉對應的快取 |
 | 腳本 | `Libs/scripts/` 的 2456 支腳本：檔案瀏覽、全文搜尋、CodeMirror 編輯；以 UTF-8 編輯、存檔轉回 BIG5，無法以 BIG5 表示的字元會擋下並指出行列 |
 
 設定項（都在 `Settings.ini`，見 `Settings.ini.example` 的說明）：`tms.PanelPort`（預設 8080，`0` 停用）、

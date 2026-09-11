@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Code2, FileText, LayoutDashboard, Radio, Settings2, Users, Zap } from 'lucide-react'
+import { Code2, FileText, LayoutDashboard, Radio, Settings2, UserCog, Users, Zap } from 'lucide-react'
 
 export type SectionId =
   | 'dashboard'
@@ -9,6 +9,7 @@ export type SectionId =
   | 'settings'
   | 'actions'
   | 'scripts'
+  | 'accounts'
 
 export type SectionGroup = '監控' | '管理'
 
@@ -26,6 +27,7 @@ export const SECTIONS: readonly SectionMeta[] = [
   { id: 'logs', label: '日誌', icon: FileText, group: '監控' },
   { id: 'actions', label: '即時操作', icon: Zap, group: '管理' },
   { id: 'settings', label: '設定檔', icon: Settings2, group: '管理' },
+  { id: 'accounts', label: '帳號與角色', icon: UserCog, group: '管理' },
   { id: 'scripts', label: '腳本', icon: Code2, group: '管理' },
 ]
 

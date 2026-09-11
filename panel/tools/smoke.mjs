@@ -192,6 +192,62 @@ try {
   if (openedBroken) check('腳本：壞掉的 UTF-8 傳送點被標示', /不是合法的 BIG5/.test(await text()))
   await shot('13-scripts-broken-portal')
 
+
+  // --- 帳號與角色 ---------------------------------------------------------
+  t = await go('accounts', 2500)
+  check('帳號：分頁載入', /帳號與角色/.test(t) && /IP 封鎖/.test(t))
+  const accounts = await api('/api/accounts?size=1')
+  if (accounts.total > 0) {
+    const acc = accounts.items[0]
+    check('帳號：表格有資料', t.includes(acc.name), acc.name)
+    await ev(`[...document.querySelectorAll('td button')].find((b) => b.textContent.trim() === ${JSON.stringify(acc.name)})?.click()`); await sleep(1500)
+    t = await text()
+    // innerText 不保證 flex 子元素之間有空白，所以名稱與標題之間允許任意空白
+    check('帳號：對話框開啟', t.replace(/\s+/g, '').includes('帳號' + acc.name) && /封鎖狀態/.test(t))
+    await shot('15-account-dialog')
+    // points +1 → 儲存 → 還原
+    await setInput(`document.getElementById('acc-points')`, String(acc.points + 1)); await sleep(100)
+    check('帳號：儲存', await clickButton('儲存')); await sleep(1500)
+    check('帳號：寫入結果', (await text()).replace(/\s+/g, '').includes('已寫入points'))
+    check('帳號：資料庫已更新', (await api('/api/accounts/' + acc.id)).account.points === acc.points + 1)
+    await setInput(`document.getElementById('acc-points')`, String(acc.points)); await clickButton('儲存'); await sleep(1200)
+    check('帳號：還原', (await api('/api/accounts/' + acc.id)).account.points === acc.points)
+    await ev(`document.querySelector('[role=dialog] button[aria-label], [role=dialog] [data-slot="dialog-close"]')?.click()`); await sleep(500)
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`); await sleep(500)
+  } else {
+    check('帳號：空狀態', /沒有符合的帳號/.test(t))
+  }
+  check('角色：切換分頁', await clickTab('角色')); await sleep(2000)
+  t = await text()
+  const chars = await api('/api/characters?size=1')
+  if (chars.total > 0) {
+    const chr = chars.items[0]
+    check('角色：表格有資料', t.includes(chr.name), chr.name)
+    await ev(`[...document.querySelectorAll('td button')].find((b) => b.textContent.trim() === ${JSON.stringify(chr.name)})?.click()`); await sleep(1500)
+    t = await text()
+    check('角色：對話框開啟', /角色 /.test(t) && /最大 HP/.test(t))
+    await shot('16-character-dialog')
+    if (!chr.online) {
+      await setInput(`document.getElementById('chr-fame')`, String(chr.fame + 1)); await sleep(100)
+      check('角色：儲存', await clickButton('儲存')); await sleep(1500)
+      check('角色：寫入結果', (await text()).replace(/\s+/g, '').includes('已寫入fame'))
+      await setInput(`document.getElementById('chr-fame')`, String(chr.fame)); await clickButton('儲存'); await sleep(1200)
+      check('角色：還原', (await api('/api/characters/' + chr.id)).fame === chr.fame)
+    } else {
+      check('角色：線上角色拒絕編輯', /儲存會被拒絕/.test(t))
+    }
+    await ev(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`); await sleep(500)
+  }
+  check('IP 封鎖：切換分頁', await clickTab('IP 封鎖')); await sleep(1500)
+  await setInput(`[...document.querySelectorAll('input')].find((x) => x.placeholder.includes('IP'))`, '10.255.255.254'); await sleep(100)
+  check('IP 封鎖：新增', await clickButton('新增封鎖')); await sleep(1500)
+  t = await text()
+  check('IP 封鎖：列表顯示', /\/10\.255\.255\.254/.test(t))
+  await shot('17-ip-bans')
+  const banId = (await api('/api/bans/ip')).items.find((b) => b.value === '/10.255.255.254')?.id
+  await ev(`(() => { const li = [...document.querySelectorAll('li')].find((l) => l.textContent.includes('/10.255.255.254')); li?.querySelector('button')?.click() })()`); await sleep(1500)
+  check('IP 封鎖：解除', !(await api('/api/bans/ip')).items.some((b) => b.id === banId))
+
   // --- 深色模式與登出 -----------------------------------------------------
   await ev(`document.querySelector('button[aria-label*="深色"]')?.click()`); await sleep(500)
   await go('dashboard', 1500); await shot('14-dashboard-dark')

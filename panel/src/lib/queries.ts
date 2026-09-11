@@ -1,12 +1,22 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiSend } from '@/lib/api'
 import { useRefetchInterval } from '@/lib/polling'
 import type {
+  AccountDetail,
+  AccountPatch,
+  AccountRow,
+  AccountUpdateResponse,
+  BanList,
   BroadcastResponse,
   BroadcastType,
   ChannelInfo,
+  CharacterPatch,
+  CharacterRow,
+  CharacterUpdateResponse,
+  KickResponse,
   LogFileInfo,
   LogTailResponse,
+  Paged,
   PingResponse,
   PlayerInfo,
   PutSettingResponse,
@@ -244,5 +254,135 @@ export function useSaveScript() {
       void qc.invalidateQueries({ queryKey: scriptKeys.list(v.kind) })
       void qc.invalidateQueries({ queryKey: scriptKeys.kinds })
     },
+  })
+}
+
+/* ---------------------------------------------------------------------- */
+/* Phase 4：帳號 / 角色 / 封鎖                                               */
+/* ---------------------------------------------------------------------- */
+
+export const accountKeys = {
+  list: (q: string, filter: string, page: number, size: number) => ['accounts', 'list', q, filter, page, size] as const,
+  detail: (id: number) => ['accounts', 'detail', id] as const,
+  characters: (q: string, page: number, size: number) => ['characters', 'list', q, page, size] as const,
+  character: (id: number) => ['characters', 'detail', id] as const,
+  bans: (kind: 'ip' | 'mac') => ['bans', kind] as const,
+}
+
+export function useAccounts(q: string, filter: string, page: number, size: number) {
+  return useQuery({
+    queryKey: accountKeys.list(q, filter, page, size),
+    queryFn: () =>
+      apiFetch<Paged<AccountRow>>(
+        `/api/accounts?q=${encodeURIComponent(q)}&filter=${encodeURIComponent(filter)}&page=${page}&size=${size}`,
+      ),
+    placeholderData: keepPreviousData,
+    refetchInterval: useRefetchInterval(10_000),
+  })
+}
+
+export function useAccount(id: number | null) {
+  return useQuery({
+    queryKey: accountKeys.detail(id ?? 0),
+    queryFn: () => apiFetch<AccountDetail>(`/api/accounts/${id}`),
+    enabled: id !== null,
+  })
+}
+
+export function useUpdateAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id: number; patch: AccountPatch }) =>
+      apiSend<AccountUpdateResponse>('PUT', `/api/accounts/${v.id}`, v.patch),
+    onSettled: (_r, _e, v) => {
+      void qc.invalidateQueries({ queryKey: accountKeys.detail(v.id) })
+      void qc.invalidateQueries({ queryKey: ['accounts', 'list'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.players })
+    },
+  })
+}
+
+export function useKickAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiSend<KickResponse>('POST', `/api/accounts/${id}/kick`),
+    onSettled: (_r, _e, id) => {
+      // 斷線是非同步的（MINA 執行緒），稍等再重抓
+      setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: accountKeys.detail(id) })
+        void qc.invalidateQueries({ queryKey: ['accounts', 'list'] })
+        void qc.invalidateQueries({ queryKey: queryKeys.players })
+      }, 800)
+    },
+  })
+}
+
+export function useCharacters(q: string, page: number, size: number) {
+  return useQuery({
+    queryKey: accountKeys.characters(q, page, size),
+    queryFn: () => apiFetch<Paged<CharacterRow>>(`/api/characters?q=${encodeURIComponent(q)}&page=${page}&size=${size}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: useRefetchInterval(10_000),
+  })
+}
+
+export function useCharacter(id: number | null) {
+  return useQuery({
+    queryKey: accountKeys.character(id ?? 0),
+    queryFn: () => apiFetch<CharacterRow>(`/api/characters/${id}`),
+    enabled: id !== null,
+  })
+}
+
+export function useUpdateCharacter() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { id: number; patch: CharacterPatch }) =>
+      apiSend<CharacterUpdateResponse>('PUT', `/api/characters/${v.id}`, v.patch),
+    onSettled: (_r, _e, v) => {
+      void qc.invalidateQueries({ queryKey: accountKeys.character(v.id) })
+      void qc.invalidateQueries({ queryKey: ['characters', 'list'] })
+      void qc.invalidateQueries({ queryKey: ['accounts', 'detail'] })
+    },
+  })
+}
+
+export function useKickCharacter() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiSend<KickResponse>('POST', `/api/characters/${id}/kick`),
+    onSettled: (_r, _e, id) => {
+      setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: accountKeys.character(id) })
+        void qc.invalidateQueries({ queryKey: ['characters', 'list'] })
+        void qc.invalidateQueries({ queryKey: ['accounts'] })
+        void qc.invalidateQueries({ queryKey: queryKeys.players })
+      }, 800)
+    },
+  })
+}
+
+export function useBans(kind: 'ip' | 'mac') {
+  return useQuery({
+    queryKey: accountKeys.bans(kind),
+    queryFn: () => apiFetch<BanList>(`/api/bans/${kind}`),
+    refetchInterval: useRefetchInterval(15_000),
+  })
+}
+
+export function useAddBan(kind: 'ip' | 'mac') {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (value: string) =>
+      apiSend<{ ok: boolean; id: number; value: string }>('POST', `/api/bans/${kind}`, { [kind]: value }),
+    onSettled: () => void qc.invalidateQueries({ queryKey: accountKeys.bans(kind) }),
+  })
+}
+
+export function useRemoveBan(kind: 'ip' | 'mac') {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => apiSend<{ ok: boolean; id: number }>('DELETE', `/api/bans/${kind}/${id}`),
+    onSettled: () => void qc.invalidateQueries({ queryKey: accountKeys.bans(kind) }),
   })
 }

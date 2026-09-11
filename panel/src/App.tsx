@@ -24,6 +24,7 @@ import { SettingsSection } from '@/sections/settings'
 
 // 腳本編輯器帶著 CodeMirror，佔了一半以上的 bundle；只有點進去才載入。
 const ScriptsSection = lazy(() => import('@/sections/scripts').then((m) => ({ default: m.ScriptsSection })))
+const AccountsSection = lazy(() => import('@/sections/accounts').then((m) => ({ default: m.AccountsSection })))
 
 export default function App() {
   const token = useSyncExternalStore(subscribeToken, getToken)
@@ -132,6 +133,11 @@ function Shell({ onLogout }: { onLogout: () => void }) {
             {section === 'logs' && <LogsSection />}
             {section === 'actions' && <ActionsSection />}
             {section === 'settings' && <SettingsSection />}
+            {section === 'accounts' && (
+              <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">載入中…</div>}>
+                <AccountsSection />
+              </Suspense>
+            )}
             {section === 'scripts' && (
               <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">載入編輯器…</div>}>
                 <ScriptsSection />

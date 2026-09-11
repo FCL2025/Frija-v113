@@ -270,3 +270,145 @@ export interface UnencodableChar {
   char: string
   codePoint: string
 }
+
+/* ---------------------------------------------------------------------- */
+/* Phase 4：帳號 / 角色 / 封鎖                                               */
+/* ---------------------------------------------------------------------- */
+
+export interface Paged<T> {
+  items: T[]
+  total: number
+  page: number
+  size: number
+}
+
+/** accounts 的一列（永遠不含 password / salt / 2ndpassword / salt2） */
+export interface AccountRow {
+  id: number
+  name: string
+  loggedin: number
+  /** 此刻有角色在記憶體裡（比 loggedin 準） */
+  online: boolean
+  onlineCharacter: string | null
+  onlineChannel: number | null
+  lastlogin: number | null
+  createdat: number | null
+  birthday: string | null
+  banned: number
+  banreason: string | null
+  gm: number
+  email: string | null
+  macs: string | null
+  /** 尚未到期的暫時封鎖時間（本機時間字串），沒有則 null */
+  tempban: string | null
+  greason: number | null
+  ACash: number
+  mPoints: number
+  points: number
+  vpoints: number
+  gender: number
+  sessionIP: string | null
+  lastlogon: number | null
+  expiration: number | null
+}
+
+export interface CharacterRow {
+  id: number
+  accountId: number
+  name: string
+  level: number
+  exp: number
+  job: number
+  jobName: string
+  str: number
+  dex: number
+  int: number
+  luk: number
+  hp: number
+  mp: number
+  maxhp: number
+  maxmp: number
+  meso: number
+  fame: number
+  ap: number
+  sp: string
+  map: number
+  spawnpoint: number
+  gm: number
+  hair: number
+  face: number
+  skincolor: number
+  gender: number
+  party: number
+  guildid: number
+  guildrank: number
+  familyid: number
+  marriageId: number
+  beans: number
+  gachexp: number
+  createdate: number | null
+  online: boolean
+  onlineChannel: number | null
+  onlineMap: number | null
+  /** 只有 GET /api/characters/{id} 才有 */
+  editable?: string[]
+}
+
+export interface AccountDetail {
+  account: AccountRow
+  characters: CharacterRow[]
+}
+
+/** PUT /api/accounts/{id} 可寫欄位 */
+export interface AccountPatch {
+  banned?: number
+  banreason?: string
+  tempban?: string | null
+  gm?: number
+  greason?: number
+  email?: string
+  ACash?: number
+  mPoints?: number
+  points?: number
+  vpoints?: number
+  gender?: number
+  birthday?: string | null
+}
+
+export interface AccountUpdateResponse {
+  id: number
+  saved: { ok: boolean; columns: string[] }
+  applied: { ok: boolean; online: boolean; live: string[]; nextLogin: string[] }
+  kicked: boolean
+}
+
+export type CharacterPatch = Partial<
+  Pick<
+    CharacterRow,
+    | 'level' | 'exp' | 'str' | 'dex' | 'luk' | 'int' | 'hp' | 'mp' | 'maxhp' | 'maxmp' | 'meso' | 'job'
+    | 'fame' | 'ap' | 'map' | 'spawnpoint' | 'gm' | 'hair' | 'face' | 'skincolor' | 'gender' | 'beans' | 'sp'
+  >
+>
+
+export interface CharacterUpdateResponse {
+  id: number
+  saved: { ok: boolean; columns: string[] }
+  applied: { ok: boolean; online: boolean; error: string | null }
+}
+
+export interface KickResponse {
+  ok: boolean
+  character: string
+  channel: number
+}
+
+export interface BanRow {
+  id: number
+  value: string
+}
+
+export interface BanList {
+  items: BanRow[]
+  /** macbans 是 MEMORY 引擎，MySQL 重啟就清空 */
+  volatile: boolean
+}

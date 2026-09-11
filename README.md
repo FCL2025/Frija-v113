@@ -21,13 +21,19 @@
 
 需要 **JDK 26**。原始碼是 UTF-8 且含有中文識別字，`javac` 必須帶 `-encoding UTF-8`。
 
+整個專案只有一個 `Launcher.bat`，它會在啟動前自動建置：只要 `src\`、`JarLib\` 或
+`manifest.mf` 裡有任何檔案比 `dist\TMS113.jar` 新，就先編譯打包再啟動；沒有改動就直接啟動。
+工作目錄必須是專案根目錄。
+
 ```
-build.bat        編譯 src\ 並打包成 dist\TMS113.jar
-Launcher.bat     啟動伺服器（工作目錄必須是專案根目錄）
+Launcher.bat            需要的話先建置，然後啟動伺服器
+Launcher.bat run        不建置，直接啟動
+Launcher.bat build      強制重新建置，建置完就結束（不啟動伺服器）
+Launcher.bat cashshop   改跑 tools.wztosql.CashShopDumper
 ```
 
 `build.xml` 是 NetBeans 產生的殼，會 `<import>` 未納入版控的 `nbproject\build-impl.xml`，
-所以從乾淨的 checkout 直接跑 `ant` 是不會動的；請改用 `build.bat`。
+所以從乾淨的 checkout 直接跑 `ant` 是不會動的；請改用 `Launcher.bat`。
 
 執行前需要：
 

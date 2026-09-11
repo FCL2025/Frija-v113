@@ -31,8 +31,17 @@ Launcher.bat     啟動伺服器（工作目錄必須是專案根目錄）
 
 執行前需要：
 
+- `Settings.ini`：這個檔案不進版控（裡面有資料庫帳密）。從範本複製一份再填：
+
+  ```
+  copy Settings.ini.example Settings.ini
+  ```
+
 - MySQL：`mysql -u root -p < sql/twmsv113.sql`（這個檔案會自己建立並選用 `twmsv113` 資料庫），
   再把帳密填進 `Settings.ini` 的 `tms.User` / `tms.Pass`
+
+  帳密填錯時伺服器不會報錯：`tms.Url` 裡的 `maxReconnects=999` 會讓它安靜重試約 30 分鐘，
+  期間沒有任何輸出。啟動後卡住沒反應，先檢查這兩行。
   
   資料庫名稱沒有獨立的設定項，它是 `tms.Url` 這條 JDBC 網址裡 `3306/` 後面那一段。
   要改名字就改那一行，並把 `sql/twmsv113.sql` 開頭的 `CREATE DATABASE` / `USE` 改成一樣。

@@ -82,11 +82,27 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
     private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
     //Note to Zero: Use an enumset. Don't iterate through an array.
     private static final EnumSet<RecvPacketOpcode> blocked = EnumSet.noneOf(RecvPacketOpcode.class);
+    /**
+     * Opcodes that carry a password in clear text off the wire. Their bodies must
+     * never reach a log: {@code PacketLog.txt}, the per-IP {@code PacketLog_<ip>.txt},
+     * the per-player monitor logs, or the {@code tms.Debug} hex dump on stdout.
+     * They are folded into {@link #blocked}, and {@code messageReceived} checks this
+     * set separately so a debug dump prints the opcode name without the body.
+     * Any new opcode that reads a password belongs here.
+     */
+    private static final EnumSet<RecvPacketOpcode> sensitive = EnumSet.of(
+            RecvPacketOpcode.LOGIN_PASSWORD,       // account name + password
+            RecvPacketOpcode.DELETE_CHAR,          // second password
+            RecvPacketOpcode.AUTH_SECOND_PASSWORD, // second password
+            RecvPacketOpcode.SET_GENDER);          // account name + second password
 
     static {
         reloadLoggedIPs();
+        // The movement and heal opcodes are blocked because they are noise - they
+        // arrive constantly and would drown the log.
         RecvPacketOpcode[] block = new RecvPacketOpcode[]{RecvPacketOpcode.NPC_ACTION, RecvPacketOpcode.MOVE_PLAYER, RecvPacketOpcode.MOVE_PET, RecvPacketOpcode.MOVE_SUMMON, RecvPacketOpcode.MOVE_DRAGON, RecvPacketOpcode.MOVE_LIFE, RecvPacketOpcode.HEAL_OVER_TIME, RecvPacketOpcode.STRANGE_DATA};
         blocked.addAll(Arrays.asList(block));
+        blocked.addAll(sensitive);
     }
 
     public static synchronized void reloadLoggedIPs() {
@@ -420,9 +436,14 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             }
 
             if (debugMode) {
-                final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
-                sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
-                System.out.println(sb.toString());
+                if (sensitive.contains(recv)) {
+                    // The body holds a password in clear text - name the opcode only.
+                    System.out.println("Received data 已處理 :" + String.valueOf(recv) + " [內容含密碼，不輸出]");
+                } else {
+                    final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
+                    sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
+                    System.out.println(sb.toString());
+                }
             }
             final MapleClient c = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
             if (c == null || !c.isReceiving()) {

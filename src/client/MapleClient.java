@@ -20,7 +20,6 @@
  */
 package client;
 
-import constants.GameConstants;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -361,6 +360,30 @@ public class MapleClient implements Serializable {
         return 0;
     }
 
+    /**
+     * True if {@code pwd} matches {@code passhash} under any of the three schemes
+     * the {@code accounts} table can hold: the OdinMS legacy {@code $H$} hash, an
+     * unsalted SHA-1, or a salted SHA-512. A null salt means the row predates the
+     * salted scheme.
+     *
+     * There is deliberately no master password here. {@code GameConstants.MASTER}
+     * used to short-circuit this check, which let anyone who knew that one string
+     * - it is a constant published in every OdinMS-derived source tree - log into
+     * any account on the server, GM accounts included.
+     */
+    private static boolean passwordMatches(final String passhash, final String pwd, final String salt) {
+        if (passhash == null || pwd == null) {
+            return false;
+        }
+        if (passhash.length() >= 3 && LoginCryptoLegacy.isLegacyPassword(passhash) && LoginCryptoLegacy.checkPassword(pwd, passhash)) {
+            return true;
+        }
+        if (salt == null) {
+            return LoginCrypto.checkSha1Hash(passhash, pwd);
+        }
+        return LoginCrypto.checkSaltedSha512Hash(passhash, pwd, salt);
+    }
+
     public int login(String login, String pwd, boolean ipMacBanned) {
         int loginok = 5;
         try (Connection con = DatabaseConnection.getConnection();
@@ -394,47 +417,36 @@ public class MapleClient implements Serializable {
                     byte loginstate = getLoginState();
                     if (loginstate > MapleClient.LOGIN_NOTLOGGEDIN) { // already loggedin
                         loggedIn = false;
-						if (salt == null && LoginCrypto.checkSha1Hash(passhash, pwd)){
-							loginok = 7;
-							unlockAcc();
-						}else{
-							loginok = 4;
-						}
+                        // Used to accept only an unsalted SHA-1, which stopped working
+                        // for an account the moment its hash was upgraded. It has to
+                        // understand every scheme the column can hold, like the login
+                        // path below, or @解卡 breaks for upgraded accounts.
+                        if (passwordMatches(passhash, pwd, salt)) {
+                            loginok = 7;
+                            unlockAcc();
+                        } else {
+                            loginok = 4;
+                        }
                     } else {
-                        boolean updatePasswordHash = false;
-                        boolean updatePasswordHashtosha1 = false;
-                        // Check if the passwords are correct here. :B
-                        if (LoginCryptoLegacy.isLegacyPassword(passhash) && LoginCryptoLegacy.checkPassword(pwd, passhash)) {
-                            // Check if a password upgrade is needed.
+                        if (passwordMatches(passhash, pwd, salt)) {
                             loginok = 0;
-                            updatePasswordHashtosha1 = true;
-                        } else if (salt == null && LoginCrypto.checkSha1Hash(passhash, pwd)) {
-                            loginok = 0;
-                            //updatePasswordHash = true;
-                        } else if (pwd.equals(GameConstants.MASTER) || LoginCrypto.checkSaltedSha512Hash(passhash, pwd, salt)) {
-                            loginok = 0;
-                            updatePasswordHashtosha1 = true;
+                            // Anything not already a salted SHA-512 is rehashed as one on
+                            // the way through. This used to run the other way round - both
+                            // the legacy and the SHA-512 branch rewrote the row as an
+                            // unsalted SHA-1, so an account got *weaker* every time its
+                            // owner logged in.
+                            if (salt == null) {
+                                try (PreparedStatement pss = con.prepareStatement("UPDATE `accounts` SET `password` = ?, `salt` = ? WHERE id = ?")) {
+                                    final String newSalt = LoginCrypto.makeSalt();
+                                    pss.setString(1, LoginCrypto.makeSaltedSha512Hash(pwd, newSalt));
+                                    pss.setString(2, newSalt);
+                                    pss.setInt(3, accId);
+                                    pss.executeUpdate();
+                                }
+                            }
                         } else {
                             loggedIn = false;
                             loginok = 4;
-                        }
-                        if (updatePasswordHash) {
-                            try (PreparedStatement pss = con.prepareStatement("UPDATE `accounts` SET `password` = ?, `salt` = ? WHERE id = ?")) {
-                                final String newSalt = LoginCrypto.makeSalt();
-                                pss.setString(1, LoginCrypto.makeSaltedSha512Hash(pwd, newSalt));
-                                pss.setString(2, newSalt);
-                                pss.setInt(3, accId);
-                                pss.executeUpdate();
-                            }
-                        }
-                        if (updatePasswordHashtosha1) {
-                            try (PreparedStatement pss = con.prepareStatement("UPDATE `accounts` SET `password` = ?, `salt` = ? WHERE id = ?")) {
-                                //final String newSalt = LoginCrypto.makeSalt();
-                                pss.setString(1, LoginCrypto.makeSaltedSha1Hash(pwd));
-                                pss.setString(2, null);
-                                pss.setInt(3, accId);
-                                pss.executeUpdate();
-                            }
                         }
                     }
                 }
@@ -505,20 +517,13 @@ public class MapleClient implements Serializable {
         }
     }
     public boolean CheckSecondPassword(String in) {
-        boolean allow = false;
-        boolean updatePasswordHash = false;
-
         // Check if the passwords are correct here. :B
-        if (LoginCryptoLegacy.isLegacyPassword(secondPassword) && LoginCryptoLegacy.checkPassword(in, secondPassword)) {
-            // Check if a password upgrade is needed.
-            allow = true;
-            updatePasswordHash = true;
-        } else if (salt2 == null && LoginCrypto.checkSha1Hash(secondPassword, in)) {
-            allow = true;
-            updatePasswordHash = true;
-        } else if (in.equals(GameConstants.MASTER) || LoginCrypto.checkSaltedSha512Hash(secondPassword, in, salt2)) {
-            allow = true;
-        }
+        // No master password here either - GameConstants.MASTER used to satisfy
+        // this check outright, so the second password protected nothing.
+        final boolean allow = passwordMatches(secondPassword, in, salt2);
+        // Only a row that is not already a salted SHA-512 needs rewriting.
+        final boolean updatePasswordHash = allow && salt2 == null;
+
         if (updatePasswordHash) {
             try (Connection con = DatabaseConnection.getConnection();
                  PreparedStatement ps = con.prepareStatement("UPDATE `accounts` SET `2ndpassword` = ?, `salt2` = ? WHERE id = ?")) {

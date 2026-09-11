@@ -152,15 +152,16 @@ public class MapleCharacterUtil {
                 return 1;
             }
 
-            String SHA1hashedsecond;
-            try {
-                SHA1hashedsecond = LoginCryptoLegacy.encodeSHA1(newpassword);
-            } catch (Exception e) {
-                return -2;
-            }
+            // Store the new second password the same way MapleClient does:
+            // a salted SHA-512, wrapped by rand_s so rand_r can peel it back off
+            // on read. This used to write a bare legacy SHA-1 with a null salt2,
+            // which silently downgraded the account every time the player changed
+            // their second password.
+            final String newSalt = LoginCrypto.makeSalt();
+            final String hashedsecond = LoginCrypto.rand_s(LoginCrypto.makeSaltedSha512Hash(newpassword, newSalt));
             try (PreparedStatement ps = con.prepareStatement("UPDATE accounts set 2ndpassword = ?, salt2 = ? where id = ?")) {
-                ps.setString(1, SHA1hashedsecond);
-                ps.setString(2, null);
+                ps.setString(1, hashedsecond);
+                ps.setString(2, newSalt);
                 ps.setInt(3, accid);
 
                 if (!ps.execute()) {
@@ -176,15 +177,18 @@ public class MapleCharacterUtil {
 
     private static final boolean check_ifPasswordEquals(final String passhash, final String pwd, final String salt) {
         // Check if the passwords are correct here. :B
-        if (LoginCryptoLegacy.isLegacyPassword(passhash) && LoginCryptoLegacy.checkPassword(pwd, passhash)) {
-            // Check if a password upgrade is needed.
-            return true;
-        } else if (salt == null && LoginCrypto.checkSha1Hash(passhash, pwd)) {
-            return true;
-        } else if (LoginCrypto.checkSaltedSha512Hash(passhash, pwd, salt)) {
+        if (passhash == null || pwd == null) {
+            return false;
+        }
+        if (passhash.length() >= 3 && LoginCryptoLegacy.isLegacyPassword(passhash) && LoginCryptoLegacy.checkPassword(pwd, passhash)) {
             return true;
         }
-        return false;
+        if (salt == null) {
+            return LoginCrypto.checkSha1Hash(passhash, pwd);
+        }
+        // Guarded on salt != null: the salted check used to run with a null salt
+        // too, which hashed the literal string "null" onto the end of the password.
+        return LoginCrypto.checkSaltedSha512Hash(passhash, pwd, salt);
     }
 
     //id accountid gender

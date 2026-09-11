@@ -3,6 +3,7 @@ package client;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Random;
 import tools.HexTool;
 
@@ -11,7 +12,15 @@ public class LoginCrypto {
     protected final static int extralength = 6;
     private final static String[] Alphabet = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"};
     private final static String[] Number = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-    private final static Random rand = new Random();
+    /**
+     * SecureRandom, not java.util.Random: this feeds {@link #makeSalt()}, and a
+     * java.util.Random salt carries only 48 bits of seed state taken from the
+     * clock, so the salts a server hands out are predictable from each other.
+     * A predictable salt lets an attacker precompute against the whole account
+     * table at once, which is the thing salting is supposed to prevent.
+     * SecureRandom extends Random, so every other use here is unchanged.
+     */
+    private final static Random rand = new SecureRandom();
 
     public static String Generate_13DigitAsiasoftPassport() {
         StringBuilder sb = new StringBuilder();
@@ -32,6 +41,14 @@ public class LoginCrypto {
     private static String hashWithDigest(final String in, final String digest) {
         try {
             MessageDigest Digester = MessageDigest.getInstance(digest);
+            // NOTE: the length argument is in.length(), a count of chars, applied to
+            // an array of UTF-8 bytes. For a password that is not pure ASCII the two
+            // differ and the tail of the input - in practice the tail of the salt -
+            // is silently dropped from the hash. Left as it is on purpose: every
+            // stored hash was produced this way, so correcting it to
+            // in.getBytes("UTF-8").length would invalidate the password of every
+            // account that uses a non-ASCII one. Fix it only together with a forced
+            // password reset for those accounts.
             Digester.update(in.getBytes("UTF-8"), 0, in.length());
             byte[] sha1Hash = Digester.digest();
             return toSimpleHexString(sha1Hash);

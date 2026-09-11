@@ -4,8 +4,11 @@
 #sql/twmsv113.sql 開頭的 CREATE DATABASE / USE 也要改成同一個名字。
 #主機與埠號（localhost:3306）也是在這一行設定。
 tms.Url           = jdbc:mysql://localhost:3306/twmsv113?autoReconnect=true&maxReconnects=999&characterEncoding=BIG5
-tms.User          = root
-tms.Pass          = 
+#資料庫帳號密碼。請複製這個檔案成 Settings.ini 後再填寫；Settings.ini 本身不進版控。
+#注意：帳密填錯時不會報錯 —— tms.Url 裡的 maxReconnects=999 會讓伺服器安靜重試
+#約 30 分鐘才放棄，期間畫面上什麼都不會出現。連不上資料庫時請先檢查這兩行。
+tms.User          =
+tms.Pass          =
 
 #Channel Setting
 tms.Count         = 3

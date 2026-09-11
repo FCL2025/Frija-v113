@@ -48,14 +48,20 @@ public class AutoRegister {
             rs = ipc.executeQuery();
             if (rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP) {
 
-                PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?)");/*) {*/
+                PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, salt, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?, ?)");/*) {*/
 
+                // A new account is created with the salted SHA-512 straight away.
+                // This used to store an unsalted SHA-1, so every auto-registered
+                // account sat in the weakest of the three schemes until its owner
+                // next logged in.
+                final String salt = LoginCrypto.makeSalt();
                 ps.setString(1, login);
-                ps.setString(2, LoginCrypto.hexSha1(pwd));
-                ps.setString(3, "autoregister@mail.com");
-                ps.setString(4, "2008-04-07");
-                ps.setString(5, "00-00-00-00-00-00");
-                ps.setString(6, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
+                ps.setString(2, LoginCrypto.makeSaltedSha512Hash(pwd, salt));
+                ps.setString(3, salt);
+                ps.setString(4, "autoregister@mail.com");
+                ps.setString(5, "2008-04-07");
+                ps.setString(6, "00-00-00-00-00-00");
+                ps.setString(7, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
                 ps.executeUpdate();
             }
 

@@ -22,6 +22,7 @@ package tools;
 
 import java.io.StringWriter;
 import java.io.PrintWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.FileOutputStream;
 import java.time.LocalDateTime;
@@ -65,6 +66,20 @@ public class FileoutputUtil {
     // End
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    /**
+     * Creates the log directories, called once from {@code Start.main}.
+     *
+     * <p>Nothing else created them and {@code Logs/} is not in the repo, so on a
+     * fresh checkout every {@link #append} failed into the swallowed
+     * {@code IOException} and every error log went nowhere, while the per-player
+     * {@code !monitor} log in {@code MapleServerHandler} threw
+     * {@code FileNotFoundException} the first time a cheat check armed it.
+     * {@code mkdirs} makes {@code Logs} itself on the way.
+     */
+    public static void ensureLogDirs() {
+        new File("Logs/MonitorLogs").mkdirs();
+    }
 
     public static void log(final String file, final String msg) {
         append(file, msg);

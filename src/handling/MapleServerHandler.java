@@ -76,6 +76,24 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
     private final Set<String> BlockedIP = ConcurrentHashMap.newKeySet();
     private final Map<String, Pair<Long, Byte>> tracker = new ConcurrentHashMap<String, Pair<Long, Byte>>();
     private static final String nl = System.lineSeparator();
+    /**
+     * Opt-in list of IPs to keep a full packet log for, one address per line;
+     * blank lines and {@code #} comments are ignored. Each listed IP gets its
+     * own {@code Logs/PacketLog_<ip>.txt} holding every non-{@link #blocked}
+     * packet that address sends, plus session open/close markers and the
+     * account name it logs in with.
+     *
+     * <p>It is the only one of the three packet logs that covers the login
+     * server. The per-player {@code !monitor} log needs {@code c.getPlayer()},
+     * so it cannot see anything an address does before it picks a character,
+     * and {@code PacketLog.txt} is a 10k ring shared by everyone. This is what
+     * to reach for when one address is hammering the login server or failing at
+     * character select.
+     *
+     * <p>The file is not in the repo and is not expected to exist. Absent means
+     * "monitor nobody", which is the normal state and not an error: create it,
+     * list an address, and run {@code !reloadipmonitor}.
+     */
     private static final File loggedIPs = new File("Logs/LogIPs.txt");
     /** Rebuilt wholesale by {@code !reloadipmonitor} while handlers read it. */
     private static final Map<String, FileWriter> logIPMap = new ConcurrentHashMap<>();
@@ -122,17 +140,24 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             }
         }
         logIPMap.clear();
+        if (!loggedIPs.isFile()) {
+            // Monitoring nobody, which is the default. Not worth a word on
+            // stdout: the Scanner used to throw FileNotFoundException here and
+            // print it on every single startup.
+            return;
+        }
         try (Scanner sc = new Scanner(loggedIPs, Encodings.NATIVE)) {
             while (sc.hasNextLine()) {
                 String line = sc.nextLine().trim();
-                if (line.length() > 0) {
-                    FileWriter fw = new FileWriter(new File("PacketLog_" + line + ".txt"), Encodings.NATIVE, true);
+                if (line.length() > 0 && !line.startsWith("#")) {
+                    FileWriter fw = new FileWriter(new File("Logs/PacketLog_" + line + ".txt"), Encodings.NATIVE, true);
                     fw.write("=== Creating Log ===");
                     fw.write(nl);
                     fw.flush();
                     logIPMap.put(line, fw);
                 }
             }
+            System.out.println("[IP Monitor] 記錄封包中的 IP: " + logIPMap.keySet());
         } catch (Exception e) {
             System.out.println("Could not reload packet logged IPs.");
             System.out.println(e);

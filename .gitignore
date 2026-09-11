@@ -60,3 +60,9 @@ CLAUDE.md
 
 # Local config - copy Settings.ini.example and fill in the DB credentials
 /Settings.ini
+
+# Runtime logs (the server creates Logs/ itself on startup).
+# Logs/LogIPs.txt is the opt-in per-IP packet monitor list - create it by hand,
+# one address per line, then run !reloadipmonitor.
+/Logs
+/PacketLog.txt

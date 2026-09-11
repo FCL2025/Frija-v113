@@ -24,10 +24,12 @@ import server.events.MapleOxQuizFactory;
 import server.life.MapleLifeFactory;
 import server.quest.MapleQuest;
 import tools.Encodings;
+import tools.FileoutputUtil;
 
 public class Start {
 
     public final static void main(final String args[]) {
+        FileoutputUtil.ensureLogDirs();
         if (Boolean.parseBoolean(ServerProperties.getProperty("tms.Admin"))) {
             System.out.println("[!!! Admin Only Mode Active !!!]");
         }

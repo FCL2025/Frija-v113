@@ -188,9 +188,23 @@ try {
   await setInput(`[...document.querySelectorAll('input')].find((x) => x.placeholder.includes('全文搜尋'))`, ''); await sleep(500)
   check('腳本：切到傳送點分頁', await clickTab('傳送點')); await sleep(800)
   await setInput(`[...document.querySelectorAll('input')].find((x) => x.placeholder.includes('依檔名過濾'))`, 'gh17'); await sleep(600)
-  const openedBroken = await ev(`(() => { const b = [...document.querySelectorAll('ul button')].find((b) => b.textContent.includes('gh17.js')); if (!b) return false; b.click(); return true })()`); await sleep(2000)
-  if (openedBroken) check('腳本：壞掉的 UTF-8 傳送點被標示', /不是合法的 BIG5/.test(await text()))
-  await shot('13-scripts-broken-portal')
+  // gh17.js 是 Phase 7 修回 BIG5 的九支之一：現在要能正常開，而且不再掛「不是合法的 BIG5」警語。
+  const openedRepaired = await ev(`(() => { const b = [...document.querySelectorAll('ul button')].find((b) => b.textContent.includes('gh17.js')); if (!b) return false; b.click(); return true })()`); await sleep(2000)
+  if (openedRepaired) check('腳本：修好的傳送點不再被標示為壞檔', !/不是合法的 BIG5/.test(await text()))
+  const gh17 = await api('/api/scripts/file/portal/gh17.js')
+  check('腳本：gh17.js 讀回 encodingOk', gh17.encodingOk === true && gh17.detectedEncoding === 'BIG5')
+  await shot('13-scripts-repaired-portal')
+  // 編碼守門：塞一個 BIG5 寫不出來的字元，存檔必須被擋下並指出位置，而且不能碰到檔案。
+  const guard = await fetch(BASE.replace(/\/$/, '') + '/api/scripts/file/portal/gh17.js', {
+    method: 'PUT', headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: gh17.content + '\r\n// \u{1F600}\r\n' }),
+  })
+  const guardBody = await guard.json()
+  check('腳本：BIG5 編不出來的字元被擋下', guard.status === 400 && /無法以 BIG5 儲存/.test(guardBody.error ?? '')
+    && Array.isArray(guardBody.details?.unencodable) && guardBody.details.unencodable[0]?.codePoint === 'U+1F600',
+    guardBody.error ?? '')
+  const gh17After = await api('/api/scripts/file/portal/gh17.js')
+  check('腳本：被擋下的存檔沒有動到檔案', gh17After.modified === gh17.modified && gh17After.size === gh17.size)
 
 
   // --- 帳號與角色 ---------------------------------------------------------

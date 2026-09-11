@@ -16,7 +16,10 @@ import handling.world.family.MapleFamilyBuff;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.sql.PreparedStatement;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import server.Timer.*;
@@ -27,6 +30,32 @@ import tools.Encodings;
 import tools.FileoutputUtil;
 
 public class Start {
+
+    /** When the phase currently being timed began. */
+    private static long phaseStart = System.nanoTime();
+
+    /**
+     * Prints how long the phase that just finished took, and starts the clock
+     * for the next one. Cheap enough to leave on: a startup that suddenly gets
+     * slower says so on the next run instead of having to be bisected.
+     *
+     * <p>The labels are Chinese, so the column is padded by how wide the name
+     * prints rather than by how many characters it has - {@code %-20s} would
+     * count a full-width character as one column and stagger every line.
+     */
+    private static void phase(final String name) {
+        final long now = System.nanoTime();
+        int width = 0;
+        for (int i = 0; i < name.length(); i++) {
+            width += name.charAt(i) > 0x7F ? 2 : 1;
+        }
+        final StringBuilder pad = new StringBuilder();
+        for (int i = width; i < 20; i++) {
+            pad.append(' ');
+        }
+        System.out.println("[啟動] " + name + pad + String.format("%6d", (now - phaseStart) / 1000000L) + " ms");
+        phaseStart = now;
+    }
 
     public final static void main(final String args[]) {
         FileoutputUtil.ensureLogDirs();
@@ -42,6 +71,7 @@ public class Start {
         } catch (SQLException ex) {
             throw new RuntimeException("[EXCEPTION] Please check if the SQL server is active.");
         }
+        phase("資料庫連線");
 
         World.init();
         WorldTimer.getInstance().start();
@@ -51,6 +81,8 @@ public class Start {
         CloneTimer.getInstance().start();
         EventTimer.getInstance().start();
         BuffTimer.getInstance().start();
+        phase("世界與計時器");
+
         LoginInformationProvider.getInstance();
         MapleQuest.initQuests();
         MapleLifeFactory.loadQuestCounts();
@@ -60,14 +92,23 @@ public class Start {
         SkillFactory.getSkill(99999999);
         MapleOxQuizFactory.getInstance().initialize();
         MapleCarnivalFactory.getInstance();
+        phase("遊戲資料檔");
+
         MapleGuildRanking.getInstance().getRank();
         MapleFamilyBuff.getBuffEntry();
         MapleServerHandler.registerMBean();
         RankingWorker.getInstance().run();
         // MTSStorage.load();
+        phase("排行榜與家族");
+
         CashItemFactory.getInstance().initialize();
+        phase("購物商城道具");
+
         LoginServer.run_startup_configurations();
+        phase("登入伺服器");
+
         ChannelServer.startChannel_Main();
+        phase("頻道伺服器");
 
         System.out.println("[購物商城伺服器啟動中]");
         CashShopServer.run_startup_configurations();
@@ -81,7 +122,15 @@ public class Start {
         }
         World.registerRespawn();
         LoginServer.setOn();
-        System.out.println("Loaded Complete :::");
+        phase("購物商城伺服器");
+
+        // Uptime rather than a nanoTime taken in main(): it counts from the
+        // moment the JVM was launched, which is what the person who ran
+        // Launcher.bat actually waited for.
+        System.out.println("Loaded Complete ::: 啟動完成於 "
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                + "，共花費 "
+                + String.format("%.2f", ManagementFactory.getRuntimeMXBean().getUptime() / 1000.0) + " 秒");
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in, Encodings.NATIVE));
     }
 

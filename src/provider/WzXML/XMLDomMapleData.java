@@ -21,6 +21,7 @@
 package provider.WzXML;
 
 import java.awt.Point;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -45,6 +46,54 @@ import tools.FileoutputUtil;
 
 public class XMLDomMapleData implements MapleData, Serializable {
 
+    /**
+     * One factory for the whole server, and one builder per thread.
+     *
+     * <p>This used to be a {@code DocumentBuilderFactory.newInstance()} plus a
+     * {@code newDocumentBuilder()} for every single .img.xml opened, and every
+     * one of those pays for the full JAXP provider lookup - system properties,
+     * the {@code jaxp.properties} file, then a {@code ServiceLoader} scan of
+     * the classpath. Startup opens thousands of these files and a live server
+     * opens one more every time a map is first entered, so the lookup was
+     * costing more than some of the parses.
+     *
+     * <p>A {@code DocumentBuilder} is explicitly not thread-safe, hence the
+     * {@link ThreadLocal}: handler threads parse map data concurrently. The
+     * factory is only read after construction, which is safe to share.
+     */
+    private static final DocumentBuilderFactory FACTORY = newFactory();
+    private static final ThreadLocal<DocumentBuilder> BUILDER = ThreadLocal.withInitial(() -> {
+        try {
+            synchronized (FACTORY) {
+                return FACTORY.newDocumentBuilder();
+            }
+        } catch (ParserConfigurationException e) {
+            throw new RuntimeException(e);
+        }
+    });
+
+    private static DocumentBuilderFactory newFactory() {
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        // The WZ dumps are plain, namespace-free, DTD-free XML. Saying so up
+        // front skips work the parser would otherwise do per document, and
+        // closes the external-entity hole a data file could otherwise open.
+        factory.setNamespaceAware(false);
+        factory.setValidating(false);
+        factory.setExpandEntityReferences(false);
+        setFeature(factory, "http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        setFeature(factory, "http://xml.org/sax/features/external-general-entities", false);
+        setFeature(factory, "http://xml.org/sax/features/external-parameter-entities", false);
+        return factory;
+    }
+
+    private static void setFeature(final DocumentBuilderFactory factory, final String feature, final boolean value) {
+        try {
+            factory.setFeature(feature, value);
+        } catch (ParserConfigurationException e) {
+            // A parser that does not know the feature already behaves this way.
+        }
+    }
+
     private Node node;
     private File imageDataDir;
 
@@ -54,13 +103,11 @@ public class XMLDomMapleData implements MapleData, Serializable {
 
     public XMLDomMapleData(final FileInputStream fis, final File imageDataDir) {
         try {
-            DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
-            Document document = documentBuilder.parse(fis);
+            final DocumentBuilder documentBuilder = BUILDER.get();
+            documentBuilder.reset();
+            Document document = documentBuilder.parse(new BufferedInputStream(fis, 64 * 1024));
             this.node = document.getFirstChild();
 
-        } catch (ParserConfigurationException e) {
-            throw new RuntimeException(e);
         } catch (SAXException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {

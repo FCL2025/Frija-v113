@@ -24,13 +24,11 @@ public class CashItemFactory {
     // volatile: read unsynchronized by getModInfo()/getAllModInfo() from any
     // handler thread, written under the initialize() lock below.
     private volatile boolean initialized = false;
-    // These three are fully populated by initialize() and, once initialized
-    // flips true, never written again (getModInfo()'s only put() is guarded
-    // by "if (initialized) return null;"), so they're a load-once/read-many
-    // cache. Still moved to ConcurrentHashMap: getAllModInfo()'s
-    // "if (!initialized) initialize();" is itself an unsynchronized
-    // check-then-act, so two threads racing to warm the cache before startup
-    // finishes could otherwise corrupt a plain HashMap.
+    // These three are fully populated by initialize() and never written again,
+    // so they're a load-once/read-many cache. Still ConcurrentHashMap:
+    // getAllModInfo()/getPackageItems()'s "if (!initialized) initialize();" is
+    // an unsynchronized check-then-act, so a handler thread can be reading one
+    // of these while the startup thread is still filling it.
     private final Map<Integer, CashItemInfo> itemStats = new ConcurrentHashMap<>();
     private final Map<Integer, List<CashItemInfo>> itemPackage = new ConcurrentHashMap<>();
     private final Map<Integer, CashModInfo> itemMods = new ConcurrentHashMap<>();
@@ -51,7 +49,6 @@ public class CashItemFactory {
             return;
         }
         System.out.println("Loading CashItemFactory :::");
-        final List<Integer> itemids = new ArrayList<Integer>();
         for (MapleData field : data.getData("Commodity.img").getChildren()) {
             final int itemId = MapleDataTool.getIntConvert("ItemId", field, 0);
             final int SN = MapleDataTool.getIntConvert("SN", field, 0);
@@ -66,19 +63,76 @@ public class CashItemFactory {
             if (SN > 0) {
                 itemStats.put(SN, stats);
             }
-
-            if (itemId > 0) {
-                itemids.add(itemId);
-            }
         }
-        for (int i : itemids) {
-            getPackageItems(i);
-        }
+        loadPackages();
+        loadModInfo();
         for (int i : itemStats.keySet()) {
-            getModInfo(i);
             getItem(i); //init the modinfo's citem
         }
         initialized = true;
+    }
+
+    /**
+     * Reads every package in CashPackage.img in one pass.
+     *
+     * <p>This used to be a {@code getPackageItems(itemId)} call per ItemId in
+     * Commodity.img - about 7800 of them - and each of those re-opened and
+     * re-parsed the whole of CashPackage.img into a fresh DOM before scanning
+     * it linearly for one entry. Reading the file once and keying the result
+     * by ItemId is the same data for one parse instead of thousands, and it
+     * also means no handler thread ever has to touch that DOM again.
+     */
+    private void loadPackages() {
+        final MapleData packages = data.getData("CashPackage.img");
+        if (packages == null) {
+            return;
+        }
+        for (MapleData pack : packages.getChildren()) {
+            final MapleData sns = pack.getChildByPath("SN");
+            if (sns == null) {
+                continue;
+            }
+            final int itemId;
+            try {
+                itemId = Integer.parseInt(pack.getName());
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            final List<CashItemInfo> packageItems = new ArrayList<CashItemInfo>();
+            for (MapleData d : sns.getChildren()) {
+                // itemStats may not know the SN; the old code added the null too.
+                packageItems.add(itemStats.get(Integer.valueOf(MapleDataTool.getIntConvert(d))));
+            }
+            itemPackage.put(itemId, packageItems);
+        }
+    }
+
+    /**
+     * Loads cashshop_modified_items in one query.
+     *
+     * <p>The old code asked {@code WHERE serial = ?} once per SN found in
+     * Commodity.img, so a 6.6k-row table cost ~7800 round trips - by far the
+     * slowest thing in the whole startup. The table is small enough to read
+     * whole, and the rows it does not have were being looked up for nothing.
+     *
+     * <p>Serials Commodity.img does not know are skipped, because the old
+     * per-serial loop could only ever have found the ones it asked about, and
+     * the size of this map goes out on the wire in the CS_OPEN packet.
+     */
+    private void loadModInfo() {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                final int sn = rs.getInt("serial");
+                if (!itemStats.containsKey(sn)) {
+                    continue;
+                }
+                itemMods.put(sn, new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags")));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public final CashItemInfo getItem(int sn) {
@@ -94,45 +148,24 @@ public class CashItemFactory {
         return stats;
     }
 
+    /** Null when the item is not a cash package. Loaded by {@link #loadPackages()}. */
     public final List<CashItemInfo> getPackageItems(int itemId) {
-        final List<CashItemInfo> cached = itemPackage.get(itemId);
-        if (cached != null) {
-            return cached;
+        if (!initialized) {
+            initialize();
         }
-        final List<CashItemInfo> packageItems = new ArrayList<CashItemInfo>();
-
-        final MapleData b = data.getData("CashPackage.img");
-        if (b == null || b.getChildByPath(itemId + "/SN") == null) {
-            return null;
-        }
-        for (MapleData d : b.getChildByPath(itemId + "/SN").getChildren()) {
-            packageItems.add(itemStats.get(Integer.valueOf(MapleDataTool.getIntConvert(d))));
-        }
-        itemPackage.put(itemId, packageItems);
-        return packageItems;
+        return itemPackage.get(itemId);
     }
 
+    /**
+     * Null when the serial has no row in cashshop_modified_items.
+     *
+     * <p>Reads only the map {@link #loadModInfo()} filled: this is called from
+     * {@link CashItemInfo#onSale()} on the packet path, so it must not go near
+     * the database. It could not usefully do so anyway - the old fallback query
+     * here was already dead once {@code initialized} flipped true.
+     */
     public final CashModInfo getModInfo(int sn) {
-        CashModInfo ret = itemMods.get(sn);
-        if (ret == null) {
-            if (initialized) {
-                return null;
-            }
-            try (Connection con = DatabaseConnection.getConnection()) {
-                try (PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items WHERE serial = ?")) {
-                    ps.setInt(1, sn);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            ret = new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags"));
-                            itemMods.put(sn, ret);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        return ret;
+        return itemMods.get(sn);
     }
 
     public final Collection<CashModInfo> getAllModInfo() {

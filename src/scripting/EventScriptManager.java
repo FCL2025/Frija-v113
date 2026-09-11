@@ -23,6 +23,7 @@ package scripting;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 
@@ -53,15 +54,34 @@ public class EventScriptManager extends AbstractScriptManager {
         return runningInstanceMapId.addAndGet(1);
     }
 
+    /**
+     * Compiles every event script named by {@code tms.Events} for one channel.
+     *
+     * <p>Each script gets its own Nashorn engine, and each engine has to be
+     * created and then handed {@code mozilla_compat.js} plus the script itself
+     * to compile. There are about a hundred of them per channel and doing that
+     * one at a time was most of a channel's startup, so they are compiled in
+     * parallel - they are completely independent of each other, and nothing
+     * here is shared but the {@code ScriptEngineManager}, which is only read.
+     *
+     * <p>The results are collected back in the order {@code tms.Events} lists
+     * them, because {@link #init()} runs them in the map's iteration order.
+     * This is deliberately the common ForkJoinPool rather than a
+     * {@code server.Timer} pool: it is one bounded burst of CPU work at
+     * startup, not scheduled work that wants a named, shut-down-with-the-server
+     * pool.
+     */
     public EventScriptManager(final ChannelServer cserv, final String[] scripts) {
         super();
-        for (final String script : scripts) {
-            if (!script.equals("")) {
-                final Invocable iv = getInvocable("event/" + script + ".js", null);
-
-                if (iv != null) {
-                    events.put(script, new EventEntry(script, iv, new EventManager(cserv, iv, script)));
-                }
+        final Invocable[] loaded = new Invocable[scripts.length];
+        IntStream.range(0, scripts.length).parallel().forEach(i -> {
+            if (!scripts[i].equals("")) {
+                loaded[i] = getInvocable("event/" + scripts[i] + ".js", null);
+            }
+        });
+        for (int i = 0; i < scripts.length; i++) {
+            if (loaded[i] != null) {
+                events.put(scripts[i], new EventEntry(scripts[i], loaded[i], new EventManager(cserv, loaded[i], scripts[i])));
             }
         }
     }

@@ -55,3 +55,27 @@ Launcher.bat cashshop   改跑 tools.wztosql.CashShopDumper
 
 `dist\lib\` 內的相依：MINA 1.x、Nashorn（JDK 15 起已從 JDK 移除，改由 `nashorn-core` 提供）、
 Nashorn 需要的 asm、MySQL Connector/J、slf4j。
+
+## 啟動時間
+
+啟動過程中每個階段都會印出花費的毫秒數，最後一行 `Loaded Complete :::` 會標上完成時間與總秒數：
+
+```
+[啟動] 資料庫連線             741 ms
+[啟動] 世界與計時器            29 ms
+[啟動] 遊戲資料檔            1253 ms
+[啟動] 排行榜與家族           142 ms
+[啟動] 購物商城道具           251 ms
+[啟動] 登入伺服器              58 ms
+[啟動] 頻道伺服器            3592 ms
+[啟動] 購物商城伺服器          35 ms
+Loaded Complete ::: 啟動完成於 2026-09-11 14:46:40，共花費 6.18 秒
+```
+
+原本啟動要花約 29 秒，其中 20 秒耗在 `CashItemFactory`：它對 `Commodity.img` 裡約 7800 個道具
+各做一次 `getPackageItems()`，而每一次都把整份 `CashPackage.img` 重新解析成 DOM；同時還對每個
+SN 各發一次 `SELECT … WHERE serial = ?`，等於為一張 6653 列的表跑了 7800 次查詢。現在兩者都改成
+只讀一次。剩下最大的一塊是頻道：每個頻道都要為 `tms.Events` 裡約 100 支腳本各開一個 Nashorn
+引擎並編譯，這部分已改為平行編譯。
+
+總時間會隨機器核心數、`tms.Count`（頻道數）與 `tms.Events` 的長度而變。

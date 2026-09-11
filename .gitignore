@@ -52,6 +52,9 @@ Temporary Items
 # 腳本
 /scripts
 
+# 規劃
+/docs
+
 # Claude Code
 CLAUDE.md
 
@@ -69,3 +72,10 @@ CLAUDE.md
 # one address per line, then run !reloadipmonitor.
 /Logs
 /PacketLog.txt
+
+# Management panel frontend (panel/): dependencies and the Vite build output.
+# Launcher.bat rebuilds panel/dist when panel/ changes and copies it into the jar.
+/panel/node_modules
+/panel/dist
+/panel/tools/shots
+/panel/tools/.chrome-profile

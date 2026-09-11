@@ -79,3 +79,48 @@ SN 各發一次 `SELECT … WHERE serial = ?`，等於為一張 6653 列的表�
 引擎並編譯，這部分已改為平行編譯。
 
 總時間會隨機器核心數、`tms.Count`（頻道數）與 `tms.Events` 的長度而變。
+
+## 管理面板
+
+伺服器啟動後，用瀏覽器開 <http://127.0.0.1:8080/>。登入 Token 印在啟動輸出裡：
+
+```
+[面板] 管理面板：http://127.0.0.1:8080/  （8 條處理執行緒）
+[面板] 登入 Token：kGBVMZDI_2fwO3C8S3WJLya1YAObcCDO
+```
+
+面板活在遊戲伺服器的同一個 JVM 裡（`src/server/panel/`，用 JDK 內建的 `com.sun.net.httpserver`，
+沒有新增任何 jar），隨 `server.Start` 一起啟動、隨 `ShutdownServer` 一起關閉；**伺服器沒開就沒有面板，
+面板也無法重啟伺服器**。目前有：
+
+| 分頁 | 內容 |
+|---|---|
+| 儀表板 | 線上人數、各頻道人數、登入連線數、資料庫連線池、JVM 記憶體與執行緒、啟動耗時 |
+| 頻道 / 線上玩家 / 日誌 | `ChannelServer` 狀態與倍率、各頻道的線上角色（含帳號與 IP）、`Logs/*.rtf` 的 tail |
+| 即時操作 | 改倍率（四種倍率同時套用到每個頻道並寫回 ini）、廣播、頻道公告、七組 `!reload…`、優雅關機 |
+| 設定檔 | `Settings.ini` 逐項檢視與修改，保留 BOM、CRLF、註解與對齊；每項標明「即時 / 記憶體 / 需重啟」 |
+| 腳本 | `Libs/scripts/` 的 2456 支腳本：檔案瀏覽、全文搜尋、CodeMirror 編輯；以 UTF-8 編輯、存檔轉回 BIG5，無法以 BIG5 表示的字元會擋下並指出行列 |
+
+設定項（都在 `Settings.ini`，見 `Settings.ini.example` 的說明）：`tms.PanelPort`（預設 8080，`0` 停用）、
+`tms.PanelThreads`、`tms.PanelToken`（固定 Token；不設就每次啟動隨機產生）。
+
+面板只綁 `127.0.0.1`，但這不等於安全——同一台機器上任何網頁都能對 localhost 發請求。所以每個 `/api/*`
+都要 `Authorization: Bearer <token>`，並檢查 `Host` / `Origin`；密碼類欄位（`tms.Pass`、`tms.PanelToken`）
+永遠不會送到瀏覽器。不要把這個 port 開到公網。
+
+### 前端建置
+
+前端在 `panel/`（Vite + React + TypeScript + Tailwind + shadcn/ui），建置產物 `panel/dist` 會被
+`Launcher.bat` 複製進 `build\classes\server\panel\web\` 一起打進 jar。第一次要先裝依賴：
+
+```
+cd panel
+npm install
+```
+
+之後照常跑 `Launcher.bat` 即可：只要 `panel\` 底下（`node_modules\` 與 `dist\` 除外）有檔案比
+`panel\dist\index.html` 新，就會先 `npm run build` 再打包；只改 `.java` 時不會碰 npm，只是把現成的
+`panel\dist` 再複製一次。沒有 Node 或沒有 `node_modules` 時會印出警告並跳過前端建置，伺服器照常
+建置與啟動，面板首頁會顯示「前端尚未建置」。
+
+開發前端時可以 `npm run dev`，Vite 會把 `/api` 轉給 127.0.0.1:8080 的伺服器。

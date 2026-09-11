@@ -193,6 +193,12 @@ public final class DatabaseConnection {
         return p == null ? 0 : p.idle.size();
     }
 
+    /** The pool's upper bound, i.e. {@link #POOL_SIZE_PROPERTY} as it took effect. Exposed for diagnostics. */
+    public static int getPoolSize() {
+        final Pool p = pool;
+        return p == null ? 0 : p.size;
+    }
+
     private static Pool pool() {
         Pool p = pool;
         if (p == null) {
@@ -233,6 +239,7 @@ public final class DatabaseConnection {
          */
         private final Map<Thread, Handle> owners = new ConcurrentHashMap<>();
         private final Semaphore permits;
+        private final int size;
         private final long borrowTimeout;
         private final String url;
         private final Properties props;
@@ -241,6 +248,7 @@ public final class DatabaseConnection {
         Pool() {
             final int size = Math.max(1, intProperty(POOL_SIZE_PROPERTY, DEFAULT_POOL_SIZE));
             this.permits = new Semaphore(size, true);
+            this.size = size;
             this.borrowTimeout = Math.max(1000, intProperty(POOL_TIMEOUT_PROPERTY, DEFAULT_POOL_TIMEOUT));
             this.url = ServerProperties.getProperty("tms.Url");
             this.props = new Properties();

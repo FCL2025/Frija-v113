@@ -7,6 +7,7 @@ import database.DatabaseConnection;
 import handling.channel.ChannelServer;
 import handling.login.LoginServer;
 import handling.world.World;
+import server.panel.PanelServer;
 
 /**
  * The body of the JVM shutdown hook: stop accepting, save the world, then let
@@ -40,6 +41,11 @@ public class ShutdownServer implements Runnable {
             running = true;
         }
         World.isShutDown = true;
+
+        // 0. The panel first, before anything below starts tearing down what
+        //    its routes read - and well before step 6, which a request that
+        //    arrived during the drain would otherwise run into.
+        PanelServer.stop();
 
         // 1. Stop accepting anything new.
         try {

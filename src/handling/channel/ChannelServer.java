@@ -286,9 +286,20 @@ public class ChannelServer implements Serializable {
         return eventSM;
     }
 
+    /**
+     * Recompiles every {@code tms.Events} script for this channel.
+     *
+     * <p>This used to read the property {@code "K．"} - a mojibake remnant of
+     * {@code tms.Events} - which does not exist, so {@code split} threw an NPE.
+     * Worse, {@code cancel()} had already run, so {@code !reloadevents} left
+     * the channel with no event scripts at all until the next restart. The
+     * new manager is built before the old one is cancelled for the same
+     * reason: if compiling fails, the channel keeps what it had.
+     */
     public final void reloadEvents() {
+        final EventScriptManager fresh = new EventScriptManager(this, ServerProperties.getProperty("tms.Events").split(","));
         eventSM.cancel();
-        eventSM = new EventScriptManager(this, ServerProperties.getProperty("K．").split(","));
+        eventSM = fresh;
         eventSM.init();
     }
 

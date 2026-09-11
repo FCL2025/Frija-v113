@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import server.Timer.*;
 import server.events.MapleOxQuizFactory;
 import server.life.MapleLifeFactory;
+import server.panel.PanelServer;
 import server.quest.MapleQuest;
 import tools.Encodings;
 import tools.FileoutputUtil;
@@ -124,13 +125,20 @@ public class Start {
         LoginServer.setOn();
         phase("購物商城伺服器");
 
+        // Last, so that the first request it answers sees a fully started
+        // server. It never throws: a port clash prints and the game goes on.
+        PanelServer.start();
+        phase("管理面板");
+
         // Uptime rather than a nanoTime taken in main(): it counts from the
         // moment the JVM was launched, which is what the person who ran
         // Launcher.bat actually waited for.
+        final long startupMillis = ManagementFactory.getRuntimeMXBean().getUptime();
+        PanelServer.setStartupMillis(startupMillis);
         System.out.println("Loaded Complete ::: 啟動完成於 "
                 + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                 + "，共花費 "
-                + String.format("%.2f", ManagementFactory.getRuntimeMXBean().getUptime() / 1000.0) + " 秒");
+                + String.format("%.2f", startupMillis / 1000.0) + " 秒");
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in, Encodings.NATIVE));
     }
 

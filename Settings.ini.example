@@ -45,3 +45,14 @@ tms.Debug =
 #代表某處借了連線沒有關閉，調大這個數字只會拖延問題。
 #tms.DbPoolSize     = 64
 #tms.DbPoolTimeout  = 15000
+
+#Management Panel Setting
+#管理面板：伺服器啟動後在瀏覽器開 http://127.0.0.1:8080/ ，登入 Token 會印在 console。
+#面板只綁 127.0.0.1，隨伺服器一起啟動與關閉；port 被占用時伺服器照常啟動，只是沒有面板。
+#設為 0 可停用面板。
+#tms.PanelPort      = 8080
+#面板請求處理執行緒數，預設為 max(4, CPU 核心數)。
+#tms.PanelThreads   = 4
+#固定的登入 Token。不設定時每次啟動隨機產生一組並印在 console；
+#開發期間常重啟的話可以固定一組，省得每次重貼。
+#tms.PanelToken     = 

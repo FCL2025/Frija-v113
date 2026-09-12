@@ -382,9 +382,7 @@ public class MapleGuild implements java.io.Serializable {
             return;
         }
         final List<Integer> mem = new LinkedList<>();
-        final Iterator<MapleGuildCharacter> toRemove = members.iterator();
-        while (toRemove.hasNext()) {
-            MapleGuildCharacter mgc = toRemove.next();
+        for (MapleGuildCharacter mgc : members) {
             if (!mgc.isOnline()) {
                 continue;
             }
@@ -540,9 +538,7 @@ public class MapleGuild implements java.io.Serializable {
     public final void expelMember(final MapleGuildCharacter initiator, final String name, final int cid) {
         wL.lock();
         try {
-            final Iterator<MapleGuildCharacter> itr = members.iterator();
-            while (itr.hasNext()) {
-                final MapleGuildCharacter mgc = itr.next();
+            for (MapleGuildCharacter mgc : members) {
 
                 if (mgc.getId() == cid && initiator.getGuildRank() < mgc.getGuildRank()) {
                     broadcast(MaplePacketCreator.memberLeft(mgc, true));

@@ -117,11 +117,7 @@ public class SummonHandler {
         final int monsterIdFrom = slea.readInt();
         //       slea.readByte(); // stance
 
-        final Iterator<MapleSummon> iter = chr.getSummons().values().iterator();
-        MapleSummon summon;
-
-        while (iter.hasNext()) {
-            summon = iter.next();
+        for (MapleSummon summon : chr.getSummons().values()) {
             if (summon.isPuppet() && summon.getOwnerId() == chr.getId()) { //We can only have one puppet(AFAIK O.O) so this check is safe.
                 summon.addHP((short) -damage);
                 if (summon.getHP() <= 0) {

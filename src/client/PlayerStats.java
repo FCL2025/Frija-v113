@@ -453,9 +453,7 @@ public class PlayerStats implements Serializable {
                     equipLevelHandling.add((Equip) equip);
             }
         }
-        final Iterator<Entry<Integer, Integer>> iter = setHandling.entrySet().iterator();
-        while (iter.hasNext()) {
-            final Entry<Integer, Integer> entry = iter.next();
+        for (Entry<Integer, Integer> entry : setHandling.entrySet()) {
             final StructSetItem set = ii.getSetItem(entry.getKey());
             if (set != null) {
                 final Map<Integer, SetItem> itemz = set.getItems();

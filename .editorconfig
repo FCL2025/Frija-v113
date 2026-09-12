@@ -1,0 +1,73 @@
+# See CLAUDE.md's "Encoding rules" section before touching any of this -
+# this repo mixes three different on-disk encodings on purpose, and
+# .editorconfig can only describe two of them (it has no BOM setting).
+
+root = true
+
+# Java sources: UTF-8, CRLF, Chinese identifiers (e.g. PlayerCommand.丟裝).
+[*.java]
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# The only .bat in the tree (Launcher.bat) - CRLF, delayed expansion.
+[*.bat]
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Panel frontend (Vite + React + TypeScript): checked against panel/src -
+# LF, 2-space indent, no BOM.
+[panel/**/*.{ts,tsx,js,jsx,json,css}]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# NPC/quest/reactor/portal/event scripts under Libs/scripts are BIG5 on
+# disk (StringUtil.readFileAsString), not UTF-8 - see CLAUDE.md's
+# "Encoding rules" section. BIG5 is not a charset editorconfig understands,
+# so `charset` is deliberately NOT set here: writing "utf-8" (or anything
+# else) would be actively wrong and would invite an editor to re-save these
+# files as UTF-8, which is exactly the bug that made nine portal scripts and
+# eight NPC scripts silently dead until they were converted back to BIG5 in
+# 2026-09. Open these in an editor that can be told to decode/encode as
+# BIG5 (or MS950/CP950) by hand; do not trust an editor's auto-detection.
+[Libs/scripts/**.js]
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Settings.ini is UTF-8 **with BOM** (loaded as UTF-8 by server.ServerProperties).
+# editorconfig has no way to require a BOM, so `charset = utf-8` is
+# deliberately omitted below to avoid implying "no BOM" - do not strip the
+# BOM when editing Settings.ini. The file currently has no trailing newline
+# on its last line, hence insert_final_newline = false.
+[*.ini]
+end_of_line = crlf
+indent_style = space
+trim_trailing_whitespace = true
+insert_final_newline = false
+
+# sql/twmsv113.sql and friends: UTF-8, CRLF, no BOM.
+[*.sql]
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Documentation (CLAUDE.md, docs/*.md, README.md): UTF-8, LF, no BOM.
+[*.md]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true

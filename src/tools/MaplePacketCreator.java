@@ -4759,8 +4759,6 @@ public class MaplePacketCreator {
         mplew.writeShort(Pos);
         mplew.write(Type);
         mplew.writeInt(1/*Number*/);
-        //System.out.println("���鞊��"+bean.getNumber());
-        //System.out.println("鞊����"+mplew.getPacket());
         //mplew.write(HexTool.getByteArrayFromHexString("DA 01 00 05 BD 0F 01 60 00 00 00 FF 0E 01 61 00 00 00 69 0E 01 62 00 00 00 05 0F 01 63 00 00 00 C6 0F 01 64 00 00 00"));
         return mplew.getPacket();
     }

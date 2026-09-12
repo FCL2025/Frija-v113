@@ -23,9 +23,9 @@ public class MonsterDropCreator {
     private static int lastmonstercardid = 2388070;
     private static boolean addFlagData = false;
     protected static String monsterQueryData = "drop_data";
-    protected static List<Pair<Integer, String>> itemNameCache = new ArrayList();
-    protected static List<Pair<Integer, MobInfo>> mobCache = new ArrayList();
-    protected static Map<Integer, Boolean> bossCache = new HashMap();
+    protected static List<Pair<Integer, String>> itemNameCache = new ArrayList<>();
+    protected static List<Pair<Integer, MobInfo>> mobCache = new ArrayList<>();
+    protected static Map<Integer, Boolean> bossCache = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
         MapleData data = MapleDataProviderFactory.getDataProvider(new File(new StringBuilder().append(System.getProperty("wzpath")).append("String.wz").toString())).getData("MonsterBook.img");
@@ -45,13 +45,13 @@ public class MonsterDropCreator {
         StringBuilder sb = new StringBuilder();
         FileOutputStream out = new FileOutputStream("mobDrop.sql", true);
 
-        for (Map.Entry e : getDropsNotInMonsterBook().entrySet()) {
+        for (Map.Entry<Integer, List<Integer>> e : getDropsNotInMonsterBook().entrySet()) {
             boolean first = true;
 
             sb.append("INSERT INTO ").append(monsterQueryData).append(" VALUES ");
-            for (Integer monsterdrop : (List<Integer>) e.getValue()) {
+            for (Integer monsterdrop : e.getValue()) {
                 int itemid = monsterdrop.intValue();
-                int monsterId = ((Integer) e.getKey()).intValue();
+                int monsterId = e.getKey().intValue();
                 int rate = getChance(itemid, monsterId, bossCache.containsKey(Integer.valueOf(monsterId)));
 
                 if (rate <= 100000) {
@@ -112,17 +112,17 @@ public class MonsterDropCreator {
                     int itemid = MapleDataTool.getInt(drop);
                     int rate = getChance(itemid, idtoLog, bossCache.containsKey(Integer.valueOf(idtoLog)));
 
-                    for (Pair Pair : mobCache) {
-                        if (((Integer) Pair.getLeft()).intValue() == monsterId) {
-                            if ((((MobInfo) Pair.getRight()).getBoss() <= 0)
+                    for (Pair<Integer, MobInfo> Pair : mobCache) {
+                        if (Pair.getLeft().intValue() == monsterId) {
+                            if ((Pair.getRight().getBoss() <= 0)
                                 || (rate > 100000)) {
                                 break;
                             }
-                            if (((MobInfo) Pair.getRight()).rateItemDropLevel() == 2) {
+                            if (Pair.getRight().rateItemDropLevel() == 2) {
                                 rate *= 10;
                                 break;
                             }
-                            if (((MobInfo) Pair.getRight()).rateItemDropLevel() == 3) {
+                            if (Pair.getRight().rateItemDropLevel() == 3) {
                                 switch (monsterId) {
                                     case 8810018:
                                         rate *= 48;
@@ -197,17 +197,17 @@ public class MonsterDropCreator {
         System.out.println("載入: 怪物書數據.");
         StringBuilder SQL = new StringBuilder();
         StringBuilder bookName = new StringBuilder();
-        for (Pair Pair : itemNameCache) {
-            if ((((Integer) Pair.getLeft()).intValue() >= 2380000) && (((Integer) Pair.getLeft()).intValue() <= lastmonstercardid)) {
-                bookName.append((String) Pair.getRight());
+        for (Pair<Integer, String> Pair : itemNameCache) {
+            if ((Pair.getLeft().intValue() >= 2380000) && (Pair.getLeft().intValue() <= lastmonstercardid)) {
+                bookName.append(Pair.getRight());
 
                 if (bookName.toString().contains(" Card")) {
                     bookName.delete(bookName.length() - 5, bookName.length());
                 }
-                for (Pair Pair_ : mobCache) {
-                    if (((MobInfo) Pair_.getRight()).getName().equalsIgnoreCase(bookName.toString())) {
+                for (Pair<Integer, MobInfo> Pair_ : mobCache) {
+                    if (Pair_.getRight().getName().equalsIgnoreCase(bookName.toString())) {
                         int rate = 1000;
-                        if (((MobInfo) Pair_.getRight()).getBoss() > 0) {
+                        if (Pair_.getRight().getBoss() > 0) {
                             rate *= 25;
                         }
                         SQL.append("INSERT INTO ").append(monsterQueryData).append(" VALUES ");
@@ -221,7 +221,7 @@ public class MonsterDropCreator {
                         SQL.append("0, ");
                         SQL.append(rate);
                         SQL.append(");\n");
-                        SQL.append("-- 物品名 : ").append((String) Pair.getRight()).append("\n");
+                        SQL.append("-- 物品名 : ").append(Pair.getRight()).append("\n");
                         break;
                     }
                 }
@@ -232,22 +232,22 @@ public class MonsterDropCreator {
         SQL.append("\n");
         int i = 1;
         int lastmonsterbookid = 0;
-        for (Pair Pair : itemNameCache) {
-            if ((((Integer) Pair.getLeft()).intValue() >= 2380000) && (((Integer) Pair.getLeft()).intValue() <= lastmonstercardid)) {
-                bookName.append((String) Pair.getRight());
+        for (Pair<Integer, String> Pair : itemNameCache) {
+            if ((Pair.getLeft().intValue() >= 2380000) && (Pair.getLeft().intValue() <= lastmonstercardid)) {
+                bookName.append(Pair.getRight());
 
                 if (bookName.toString().contains(" Card")) {
                     bookName.delete(bookName.length() - 5, bookName.length());
                 }
-                if (((Integer) Pair.getLeft()).intValue() != lastmonsterbookid) {
-                    for (Pair Pair_ : mobCache) {
-                        if (((MobInfo) Pair_.getRight()).getName().equalsIgnoreCase(bookName.toString())) {
+                if (Pair.getLeft().intValue() != lastmonsterbookid) {
+                    for (Pair<Integer, MobInfo> Pair_ : mobCache) {
+                        if (Pair_.getRight().getName().equalsIgnoreCase(bookName.toString())) {
                             SQL.append("INSERT INTO ").append("monstercarddata").append(" VALUES (");
                             SQL.append(i).append(", ");
                             SQL.append(Pair.getLeft());
                             SQL.append(", ");
                             SQL.append(Pair_.getLeft()).append(");\n");
-                            lastmonsterbookid = ((Integer) Pair.getLeft()).intValue();
+                            lastmonsterbookid = Pair.getLeft().intValue();
                             i++;
                             break;
                         }
@@ -265,9 +265,9 @@ public class MonsterDropCreator {
     }
 
     private static void retriveNLogItemName(StringBuilder sb, int id) {
-        for (Pair Pair : itemNameCache) {
-            if (((Integer) Pair.getLeft()).intValue() == id) {
-                sb.append((String) Pair.getRight());
+        for (Pair<Integer, String> Pair : itemNameCache) {
+            if (Pair.getLeft().intValue() == id) {
+                sb.append(Pair.getRight());
                 return;
             }
         }
@@ -636,9 +636,9 @@ public class MonsterDropCreator {
     }
 
     private static Map<Integer, List<Integer>> getDropsNotInMonsterBook() {
-        Map drops = new HashMap();
+        Map<Integer, List<Integer>> drops = new HashMap<>();
 
-        List IndiviualMonsterDrop = new ArrayList();
+        List<Integer> IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4000139));
         IndiviualMonsterDrop.add(Integer.valueOf(2002011));
@@ -649,7 +649,7 @@ public class MonsterDropCreator {
 
         drops.put(Integer.valueOf(9400112), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4000140));
         IndiviualMonsterDrop.add(Integer.valueOf(2022027));
@@ -661,7 +661,7 @@ public class MonsterDropCreator {
 
         drops.put(Integer.valueOf(9400113), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4000141));
         IndiviualMonsterDrop.add(Integer.valueOf(2000004));
@@ -674,7 +674,7 @@ public class MonsterDropCreator {
 
         drops.put(Integer.valueOf(9400300), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4000225));
         IndiviualMonsterDrop.add(Integer.valueOf(2000006));
@@ -697,20 +697,20 @@ public class MonsterDropCreator {
 
         drops.put(Integer.valueOf(9400013), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(1372049));
 
         drops.put(Integer.valueOf(8800002), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4001094));
         IndiviualMonsterDrop.add(Integer.valueOf(2290125));
 
         drops.put(Integer.valueOf(8810018), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4000138));
         IndiviualMonsterDrop.add(Integer.valueOf(4010006));
@@ -738,7 +738,7 @@ public class MonsterDropCreator {
 
         drops.put(Integer.valueOf(9400121), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         IndiviualMonsterDrop.add(Integer.valueOf(4032024));
         IndiviualMonsterDrop.add(Integer.valueOf(4032025));
@@ -773,7 +773,7 @@ public class MonsterDropCreator {
 
         drops.put(Integer.valueOf(9400545), IndiviualMonsterDrop);
 
-        IndiviualMonsterDrop = new ArrayList();
+        IndiviualMonsterDrop = new ArrayList<>();
 
         return drops;
     }
@@ -781,20 +781,20 @@ public class MonsterDropCreator {
     private static void getAllItems() {
         MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(new StringBuilder().append(System.getProperty("wzpath")).append("/String.wz").toString()));
 
-        List itemPairs = new ArrayList();
+        List<Pair<Integer, String>> itemPairs = new ArrayList<>();
 
         MapleData itemsData = data.getData("Cash.img");
         for (MapleData itemFolder : itemsData.getChildren()) {
             int itemId = Integer.parseInt(itemFolder.getName());
             String itemName = MapleDataTool.getString("name", itemFolder, "NO-NAME");
-            itemPairs.add(new Pair(Integer.valueOf(itemId), itemName));
+            itemPairs.add(new Pair<>(Integer.valueOf(itemId), itemName));
         }
 
         itemsData = data.getData("Consume.img");
         for (MapleData itemFolder : itemsData.getChildren()) {
             int itemId = Integer.parseInt(itemFolder.getName());
             String itemName = MapleDataTool.getString("name", itemFolder, "NO-NAME");
-            itemPairs.add(new Pair(Integer.valueOf(itemId), itemName));
+            itemPairs.add(new Pair<>(Integer.valueOf(itemId), itemName));
         }
 
         itemsData = data.getData("Eqp.img").getChildByPath("Eqp");
@@ -802,7 +802,7 @@ public class MonsterDropCreator {
             for (MapleData itemFolder : eqpType.getChildren()) {
                 int itemId = Integer.parseInt(itemFolder.getName());
                 String itemName = MapleDataTool.getString("name", itemFolder, "NO-NAME");
-                itemPairs.add(new Pair(Integer.valueOf(itemId), itemName));
+                itemPairs.add(new Pair<>(Integer.valueOf(itemId), itemName));
             }
         }
 
@@ -810,27 +810,27 @@ public class MonsterDropCreator {
         for (MapleData itemFolder : itemsData.getChildren()) {
             int itemId = Integer.parseInt(itemFolder.getName());
             String itemName = MapleDataTool.getString("name", itemFolder, "NO-NAME");
-            itemPairs.add(new Pair(Integer.valueOf(itemId), itemName));
+            itemPairs.add(new Pair<>(Integer.valueOf(itemId), itemName));
         }
 
         itemsData = data.getData("Ins.img");
         for (MapleData itemFolder : itemsData.getChildren()) {
             int itemId = Integer.parseInt(itemFolder.getName());
             String itemName = MapleDataTool.getString("name", itemFolder, "NO-NAME");
-            itemPairs.add(new Pair(Integer.valueOf(itemId), itemName));
+            itemPairs.add(new Pair<>(Integer.valueOf(itemId), itemName));
         }
 
         itemsData = data.getData("Pet.img");
         for (MapleData itemFolder : itemsData.getChildren()) {
             int itemId = Integer.parseInt(itemFolder.getName());
             String itemName = MapleDataTool.getString("name", itemFolder, "NO-NAME");
-            itemPairs.add(new Pair(Integer.valueOf(itemId), itemName));
+            itemPairs.add(new Pair<>(Integer.valueOf(itemId), itemName));
         }
         itemNameCache.addAll(itemPairs);
     }
 
     public static void getAllMobs() {
-        List itemPairs = new ArrayList();
+        List<Pair<Integer, MobInfo>> itemPairs = new ArrayList<>();
         MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(new StringBuilder().append(System.getProperty("wzpath")).append("/String.wz").toString()));
         MapleDataProvider mobData = MapleDataProviderFactory.getDataProvider(new File(new StringBuilder().append(System.getProperty("wzpath")).append("/Mob.wz").toString()));
         MapleData mob = data.getData("Mob.img");
@@ -847,7 +847,7 @@ public class MonsterDropCreator {
 
                 MobInfo mobInfo = new MobInfo(boss, MapleDataTool.getIntConvert("rareItemDropLevel", monsterData.getChildByPath("info"), 0), MapleDataTool.getString("name", itemFolder, "NO-NAME"));
 
-                itemPairs.add(new Pair(Integer.valueOf(id), mobInfo));
+                itemPairs.add(new Pair<>(Integer.valueOf(id), mobInfo));
             } catch (Exception fe) {
             }
         }

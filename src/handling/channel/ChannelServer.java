@@ -408,10 +408,10 @@ public class ChannelServer implements Serializable {
 
         merchLock.readLock().lock();
         try {
-            final Iterator itr = merchants.values().iterator();
+            final Iterator<HiredMerchant> itr = merchants.values().iterator();
 
             while (itr.hasNext()) {
-                if (((HiredMerchant) itr.next()).getOwnerAccId() == accid) {
+                if (itr.next().getOwnerAccId() == accid) {
                     contains = true;
                     break;
                 }
@@ -426,10 +426,10 @@ public class ChannelServer implements Serializable {
         final List<HiredMerchant> list = new LinkedList<>();
         merchLock.readLock().lock();
         try {
-            final Iterator itr = merchants.values().iterator();
+            final Iterator<HiredMerchant> itr = merchants.values().iterator();
 
             while (itr.hasNext()) {
-                HiredMerchant hm = (HiredMerchant) itr.next();
+                HiredMerchant hm = itr.next();
                 if (hm.searchItem(itemSearch).size() > 0) {
                     list.add(hm);
                 }
@@ -559,7 +559,7 @@ public class ChannelServer implements Serializable {
 
    public void saveAll() {
     int ppl = 0;
-    for (Iterator i$ = this.players.getAllCharacters().iterator(); i$.hasNext(); ) { MapleCharacter chr = (MapleCharacter)i$.next();
+    for (MapleCharacter chr : this.players.getAllCharacters()) {
       ++ppl;
       chr.saveToDB(false, false);
     }

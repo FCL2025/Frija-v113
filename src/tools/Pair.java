@@ -92,7 +92,6 @@ public class Pair<E, F> implements Serializable {
     /**
      * Checks to see if two pairs are equal.
      */
-    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -104,7 +103,7 @@ public class Pair<E, F> implements Serializable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Pair other = (Pair) obj;
+        final Pair<?, ?> other = (Pair<?, ?>) obj;
         if (left == null) {
             if (other.left != null) {
                 return false;

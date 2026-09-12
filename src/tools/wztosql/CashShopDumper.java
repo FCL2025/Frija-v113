@@ -88,7 +88,7 @@ public class CashShopDumper {
 
                     int cat = itemId / 10000;
                     if (dics.get(cat) == null) {
-                        dics.put(cat, new ArrayList());
+                        dics.put(cat, new ArrayList<>());
                     }
                     boolean check = false;
                     if (meso > 0) {

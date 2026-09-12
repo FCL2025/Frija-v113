@@ -331,9 +331,9 @@ public class ItemMakerHandler {
         int itemid;
         final List<Integer> items = new ArrayList<>();
 
-        for (final Pair p : rewards) {
-            itemid = (Integer) p.getLeft();
-            for (int i = 0; i < (Integer) p.getRight(); i++) {
+        for (final Pair<Integer, Integer> p : rewards) {
+            itemid = p.getLeft();
+            for (int i = 0; i < p.getRight(); i++) {
                 items.add(itemid);
             }
         }

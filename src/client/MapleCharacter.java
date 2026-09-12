@@ -221,7 +221,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             wishlist = new int[10];
             rocks = new int[10];
             regrocks = new int[5];
-            clones = new WeakReference[25];
+            // 泛型陣列無法直接 new；陣列元素只由本類別以 WeakReference<MapleCharacter> 寫入，故轉型安全
+            @SuppressWarnings("unchecked")
+            final WeakReference<MapleCharacter>[] clonesArray = (WeakReference<MapleCharacter>[]) new WeakReference<?>[25];
+            clones = clonesArray;
             for (int i = 0; i < clones.length; i++) {
                 clones[i] = new WeakReference<>(null);
             }

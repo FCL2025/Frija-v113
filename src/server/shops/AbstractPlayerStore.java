@@ -66,7 +66,10 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
         this.pass = pass;
         this.map = owner.getMapId();
         this.channel = owner.getClient().getChannel();
-        chrs = new WeakReference[slots];
+        // 泛型陣列無法直接 new；陣列元素只由本類別以 WeakReference<MapleCharacter> 寫入，故轉型安全
+        @SuppressWarnings("unchecked")
+        final WeakReference<MapleCharacter>[] chrsArray = (WeakReference<MapleCharacter>[]) new WeakReference<?>[slots];
+        chrs = chrsArray;
         for (int i = 0; i < chrs.length; i++) {
             chrs[i] = new WeakReference<>(null);
         }

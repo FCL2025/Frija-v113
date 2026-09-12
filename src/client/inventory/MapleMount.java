@@ -125,7 +125,7 @@ public class MapleMount implements Serializable {
 
      public void startSchedule() {
 		final BuffTimer timerManager = BuffTimer.getInstance();
-		tirednessSchedule = timerManager.getInstance().register(new Runnable() {
+		tirednessSchedule = timerManager.register(new Runnable() {
 
 			public void run() {
 				increaseFatigue();

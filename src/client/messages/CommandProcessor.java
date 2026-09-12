@@ -58,7 +58,7 @@ public class CommandProcessor {
                 for (Class<?> c : a) {
                     try {
                         if (!Modifier.isAbstract(c.getModifiers()) && !c.isSynthetic()) {
-                            Object o = c.newInstance();
+                            Object o = c.getDeclaredConstructor().newInstance();
                             boolean enabled;
                             try {
                                 enabled = c.getDeclaredField("enabled").getBoolean(c.getDeclaredField("enabled"));

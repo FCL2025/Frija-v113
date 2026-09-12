@@ -1977,16 +1977,14 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         ISkill advcombo;
 
         switch (getJob()) {
-            case 1110:
-            case 1111:
-            case 1112:
+            case 1110, 1111, 1112 -> {
                 combo = SkillFactory.getSkill(11111001);
                 advcombo = SkillFactory.getSkill(11110005);
-                break;
-            default:
+            }
+            default -> {
                 combo = SkillFactory.getSkill(1111002);
                 advcombo = SkillFactory.getSkill(1120003);
-                break;
+            }
         }
 
         MapleStatEffect ceffect = null;
@@ -2020,13 +2018,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         ISkill combo;
 
         switch (getJob()) {
-            case 1110:
-            case 1111:
-                combo = SkillFactory.getSkill(11111001);
-                break;
-            default:
-                combo = SkillFactory.getSkill(1111002);
-                break;
+            case 1110, 1111 -> combo = SkillFactory.getSkill(11111001);
+            default -> combo = SkillFactory.getSkill(1111002);
         }
         if (getSkillLevel(combo) <= 0) {
             return;
@@ -3274,15 +3267,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         familyUpdate();
         if (GameConstants.isAran(job)) {
             switch (level) {
-                case 30:
+                case 30 ->
                     client.send(MaplePacketCreator.startMapEffect("You have reached level 30! To job advance, go back to Lirin of Rien.", 5120000, true));
-                    break;
-                case 70:
+                case 70 ->
                     client.send(MaplePacketCreator.startMapEffect("You have reached level 70! To job advance, talk to your job instructor in El Nath.", 5120000, true));
-                    break;
-                case 120:
+                case 120 ->
                     client.send(MaplePacketCreator.startMapEffect("You have reached level 120! To job advance, talk to your job instructor in Leafre.", 5120000, true));
-                    break;
             }
         }
         if (GameConstants.isKOC(job) && level == 70) {
@@ -3290,23 +3280,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         }
         if (GameConstants.isEvan(job)) {
             switch (level) {
-                case 9:
+                case 9 ->
                     client.send(MaplePacketCreator.startMapEffect("請確保您完成所有的任務需要達到10級之前，否則你將無法繼續.", 5120000, true));
-                    break;
-                case 10:
-                case 20:
-                case 30:
-                case 40:
-                case 50:
-                case 60:
-                case 80:
-                case 100:
-                case 120:
-                case 160:
+                case 10, 20, 30, 40, 50, 60, 80, 100, 120, 160 -> {
                     if (job < 2218) {
                         changeJob(job == 2001 ? 2200 : (job == 2200 ? 2210 : (job + 1))); //automatic
                     }
-                    break;
+                }
             }
         }
     }
@@ -3977,7 +3957,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     public void modifyCSPoints(int type, int quantity, boolean show) {
 
         switch (type) {
-            case 1:
+            case 1 -> {
                 if (acash + quantity < 0) {
                     if (show) {
                         dropMessage(-1, "You have gained the max cash. No cash will be awarded.");
@@ -3985,8 +3965,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                     return;
                 }
                 acash += quantity;
-                break;
-            case 2:
+            }
+            case 2 -> {
                 if (maplepoints + quantity < 0) {
                     if (show) {
                         dropMessage(-1, "You have gained the max maple points. No cash will be awarded.");
@@ -3994,9 +3974,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                     return;
                 }
                 maplepoints += quantity;
-                break;
-            default:
-                break;
+            }
+            default -> {
+            }
         }
         if (show && quantity != 0) {
             dropMessage(-1, "你" + (quantity > 0 ? "獲得了 " : "失去 ") + quantity + (type == 1 ? " CASH" : " 楓葉點數"));
@@ -4005,14 +3985,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     }
 
     public int getCSPoints(int type) {
-        switch (type) {
-            case 1:
-                return acash;
-            case 2:
-                return maplepoints;
-            default:
-                return 0;
-        }
+        return switch (type) {
+            case 1 -> acash;
+            case 2 -> maplepoints;
+            default -> 0;
+        };
     }
 
     public final boolean hasEquipped(int itemid) {

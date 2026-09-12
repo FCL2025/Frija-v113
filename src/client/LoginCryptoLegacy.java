@@ -23,6 +23,7 @@ package client;
 import java.util.Random;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -83,7 +84,12 @@ public class LoginCryptoLegacy {
      * otherwise.
      */
     public static final boolean checkPassword(String password, String hash) {
-        return (myCrypt(password, hash).equals(hash));
+        // MessageDigest.isEqual, not String.equals: equals answers at the first
+        // character that differs, so the time a rejected login takes says how much
+        // of the stored hash the guess already matched. Both sides are the ASCII
+        // of encode64 and the "$H$" seed, so US_ASCII encodes them exactly; a null
+        // hash still throws out of myCrypt, exactly as it did before.
+        return MessageDigest.isEqual(myCrypt(password, hash).getBytes(StandardCharsets.US_ASCII), hash.getBytes(StandardCharsets.US_ASCII));
     }
 
     public static final boolean isLegacyPassword(String hash) {

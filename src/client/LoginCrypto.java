@@ -1,6 +1,7 @@
 package client;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -69,11 +70,28 @@ public class LoginCrypto {
     }
 
     public static boolean checkSha1Hash(final String hash, final String password) {
-        return hash.equals(makeSaltedSha1Hash(password));
+        return hashEquals(hash, makeSaltedSha1Hash(password));
     }
 
     public static boolean checkSaltedSha512Hash(final String hash, final String password, final String salt) {
-        return hash.equals(makeSaltedSha512Hash(password, salt));
+        return hashEquals(hash, makeSaltedSha512Hash(password, salt));
+    }
+
+    /**
+     * MessageDigest.isEqual, not String.equals: equals answers as soon as it
+     * reaches a character that differs, so how long a rejected login takes says
+     * how much of the stored hash the guess already matched, and the hash can be
+     * recovered one character at a time instead of being brute-forced whole.
+     * isEqual reads every byte of an equal-length pair before it answers.
+     *
+     * Both sides are the lowercase hex of {@link #toSimpleHexString}, so US_ASCII
+     * encodes them exactly - the platform default is never named here on purpose.
+     * A null hash still throws, the way String.equals did, because both callers
+     * ({@code MapleClient.passwordMatches}, {@code MapleCharacterUtil}) already
+     * reject a null before they get this far.
+     */
+    private static boolean hashEquals(final String hash, final String computed) {
+        return MessageDigest.isEqual(hash.getBytes(StandardCharsets.US_ASCII), computed.getBytes(StandardCharsets.US_ASCII));
     }
 
     public static String makeSaltedSha512Hash(final String password, final String salt) {

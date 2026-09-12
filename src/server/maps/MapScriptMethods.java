@@ -467,6 +467,9 @@ public class MapScriptMethods {
         }
     }
 
+    // go10000 / go1020000 先送完進場解鎖封包後，刻意貫穿到後面共用的 MapNameDisplay；
+    // javac 不認 "// falls through" 註解，只認這個 annotation。
+    @SuppressWarnings("fallthrough")
     public static void startScript_User(MapleClient c, String scriptName) {
         if (c.getPlayer() == null) {
             return;
@@ -677,6 +680,7 @@ public class MapScriptMethods {
                 c.send(UIPacket.IntroDisableUI(false));
                 c.send(UIPacket.IntroLock(false));
                 c.send(MaplePacketCreator.enableActions());
+            // falls through —— 解鎖之後照樣要送下面那組 MapNameDisplay
             case go20000:
             case go30000:
             case go40000:

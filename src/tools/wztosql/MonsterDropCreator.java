@@ -124,6 +124,14 @@ public class MonsterDropCreator {
                             }
                             if (Pair.getRight().rateItemDropLevel() == 3) {
                                 switch (monsterId) {
+                                    // XXX 疑似漏寫 break（未修，行為保持原樣）：
+                                    // 8810018 目前會先 *48 再貫穿到下面 *45，等於 *2160，
+                                    // 而同組的 8800002 是 *45、default 是 *30。
+                                    // 這一段不是「共用結尾」型的貫穿，而是純粹的乘法累加，
+                                    // 唯獨這個 case 沒有 break，形狀就是典型的漏寫。
+                                    // 沒有測試可以驗證正確值，故不自行更動，也不用
+                                    // @SuppressWarnings("fallthrough") 把警告蓋掉——
+                                    // 留著讓 -Xlint 繼續提醒，等人決定。
                                     case 8810018:
                                         rate *= 48;
                                     case 8800002:
@@ -380,6 +388,10 @@ public class MonsterDropCreator {
         return 1;
     }
 
+    // 這張表的慣用寫法是「內層 switch 命中就 return，沒命中就貫穿到後面某個 case
+    // 共用的預設值」；case 112 與 case 400 都是這樣。javac 不認 "// falls through"
+    // 註解（實測過），只認這個 annotation。
+    @SuppressWarnings("fallthrough")
     private static int getChance(int id, int mobid, boolean boss) {
         switch (id / 10000) {
             case 100:
@@ -427,6 +439,7 @@ public class MonsterDropCreator {
                     case 1122012:
                         return 800000;
                 }
+            // falls through —— 沒列到的 112xxxx 走下面 case 130 那組，最後 return 700
             case 130:
             case 131:
             case 132:
@@ -536,6 +549,8 @@ public class MonsterDropCreator {
                         return 1000;
                     case 4002:
                 }
+            // falls through —— 沒列到的 400xxxx（含 4002xxx）走下面 case 401 那組，
+            // 最後 return 9000
             case 401:
             case 402:
                 switch (id) {

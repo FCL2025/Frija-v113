@@ -1480,14 +1480,14 @@ public class MapleMonster extends AbstractLoadedMapleLife {
             Collections.shuffle(dropEntry);
             IItem idrop;
             for (MonsterDropEntry d : dropEntry) {
-                if (d.itemId > 0 && d.questid == 0 && steal.getEffect(level).makeChanceResult()) { //kinda op
-                    if (GameConstants.getInventoryType(d.itemId) == MapleInventoryType.EQUIP) {
-                        Equip eq = (Equip) MapleItemInformationProvider.getInstance().getEquipById(d.itemId);
+                if (d.itemId() > 0 && d.questid() == 0 && steal.getEffect(level).makeChanceResult()) { //kinda op
+                    if (GameConstants.getInventoryType(d.itemId()) == MapleInventoryType.EQUIP) {
+                        Equip eq = (Equip) MapleItemInformationProvider.getInstance().getEquipById(d.itemId());
                         idrop = MapleItemInformationProvider.getInstance().randomizeStats(eq);
                     } else {
-                        idrop = new Item(d.itemId, (byte) 0, (short) (d.Maximum != 1 ? Randomizer.nextInt(d.Maximum - d.Minimum) + d.Minimum : 1), (byte) 0);
+                        idrop = new Item(d.itemId(), (byte) 0, (short) (d.Maximum() != 1 ? Randomizer.nextInt(d.Maximum() - d.Minimum()) + d.Minimum() : 1), (byte) 0);
                     }
-                    stolen = d.itemId;
+                    stolen = d.itemId();
                     map.spawnMobDrop(idrop, map.calcDropPos(new Point(getPosition()), getPosition()), this, chr, (byte) 0, (short) 0);
                     break;
                 }

@@ -453,29 +453,29 @@ public final class MapleMap {
         Collections.shuffle(dropEntry);
 
         for (final MonsterDropEntry de : dropEntry) {
-            if (de.itemId == mob.getStolen()) {
+            if (de.itemId() == mob.getStolen()) {
                 continue;
             }
-            if (Randomizer.nextInt(999999) < (int) (de.chance * chServerrate * chr.getDropMod() * (chr.getStat().dropBuff / 100.0) * (showdown / 100.0))) {
+            if (Randomizer.nextInt(999999) < (int) (de.chance() * chServerrate * chr.getDropMod() * (chr.getStat().dropBuff / 100.0) * (showdown / 100.0))) {
                 if (droptype == 3) {
                     pos.x = (mobpos + (d % 2 == 0 ? (40 * (d + 1) / 2) : -(40 * (d / 2))));
                 } else {
                     pos.x = (mobpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
                 }
-                if (de.itemId == 0) { // meso
-                    int mesos = Randomizer.nextInt(1 + Math.abs(de.Maximum - de.Minimum)) + de.Minimum;
+                if (de.itemId() == 0) { // meso
+                    int mesos = Randomizer.nextInt(1 + Math.abs(de.Maximum() - de.Minimum())) + de.Minimum();
 
                     if (mesos > 0) {
                         spawnMobMesoDrop((int) (mesos * (chr.getStat().mesoBuff / 100.0) * chr.getDropMod() * cmServerrate), calcDropPos(pos, mob.getPosition()), mob, chr, false, droptype);
                     }
                 } else {
-                    if (GameConstants.getInventoryType(de.itemId) == MapleInventoryType.EQUIP) {
-                        idrop = ii.randomizeStats((Equip) ii.getEquipById(de.itemId));
+                    if (GameConstants.getInventoryType(de.itemId()) == MapleInventoryType.EQUIP) {
+                        idrop = ii.randomizeStats((Equip) ii.getEquipById(de.itemId()));
                     } else {
-                        final int range = Math.abs(de.Maximum - de.Minimum);
-                        idrop = new Item(de.itemId, (byte) 0, (short) (de.Maximum != 1 ? Randomizer.nextInt(range <= 0 ? 1 : range) + de.Minimum : 1), (byte) 0);
+                        final int range = Math.abs(de.Maximum() - de.Minimum());
+                        idrop = new Item(de.itemId(), (byte) 0, (short) (de.Maximum() != 1 ? Randomizer.nextInt(range <= 0 ? 1 : range) + de.Minimum() : 1), (byte) 0);
                     }
-                    spawnMobDrop(idrop, calcDropPos(pos, mob.getPosition()), mob, chr, droptype, de.questid);
+                    spawnMobDrop(idrop, calcDropPos(pos, mob.getPosition()), mob, chr, droptype, de.questid());
                 }
                 d++;
             }
@@ -486,21 +486,21 @@ public final class MapleMap {
         final int cashModifier = (int) ((mob.getStats().isBoss() ? 0 : (mob.getMobExp() / 1000 + mob.getMobMaxHp() / 10000))); //no rate
         // Global Drops
         for (final MonsterGlobalDropEntry de : globalEntry) {
-            if (Randomizer.nextInt(999999) < de.chance && (de.continent < 0 || (de.continent < 10 && mapid / 100000000 == de.continent) || (de.continent < 100 && mapid / 10000000 == de.continent) || (de.continent < 1000 && mapid / 1000000 == de.continent))) {
+            if (Randomizer.nextInt(999999) < de.chance() && (de.continent() < 0 || (de.continent() < 10 && mapid / 100000000 == de.continent()) || (de.continent() < 100 && mapid / 10000000 == de.continent()) || (de.continent() < 1000 && mapid / 1000000 == de.continent()))) {
                 if (droptype == 3) {
                     pos.x = (mobpos + (d % 2 == 0 ? (40 * (d + 1) / 2) : -(40 * (d / 2))));
                 } else {
                     pos.x = (mobpos + ((d % 2 == 0) ? (25 * (d + 1) / 2) : -(25 * (d / 2))));
                 }
-                if (de.itemId == 0) {
+                if (de.itemId() == 0) {
                     chr.modifyCSPoints(1, (int) ((Randomizer.nextInt(cashz) + cashz + cashModifier) * (chr.getStat().cashBuff / 100.0) * chr.getCashMod()), true);
                 } else if (!gDropsDisabled) {
-                    if (GameConstants.getInventoryType(de.itemId) == MapleInventoryType.EQUIP) {
-                        idrop = ii.randomizeStats((Equip) ii.getEquipById(de.itemId));
+                    if (GameConstants.getInventoryType(de.itemId()) == MapleInventoryType.EQUIP) {
+                        idrop = ii.randomizeStats((Equip) ii.getEquipById(de.itemId()));
                     } else {
-                        idrop = new Item(de.itemId, (byte) 0, (short) (de.Maximum != 1 ? Randomizer.nextInt(de.Maximum - de.Minimum) + de.Minimum : 1), (byte) 0);
+                        idrop = new Item(de.itemId(), (byte) 0, (short) (de.Maximum() != 1 ? Randomizer.nextInt(de.Maximum() - de.Minimum()) + de.Minimum() : 1), (byte) 0);
                     }
-                    spawnMobDrop(idrop, calcDropPos(pos, mob.getPosition()), mob, chr, de.onlySelf ? 0 : droptype, de.questid);
+                    spawnMobDrop(idrop, calcDropPos(pos, mob.getPosition()), mob, chr, de.onlySelf() ? 0 : droptype, de.questid());
                     d++;
                 }
             }

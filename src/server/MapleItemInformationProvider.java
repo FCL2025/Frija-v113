@@ -1254,16 +1254,18 @@ public class MapleItemInformationProvider {
         List<StructRewardItem> all = new ArrayList<>();
 
         for (final MapleData reward : rewards) {
-            StructRewardItem struct = new StructRewardItem();
+            // 讀取順序與改成 record 之前逐欄位指派時完全一致；
+            // prob 保留原本的 (byte) 轉型（欄位型別是 short，byte 會加寬）。
+            final int rewardItemId = MapleDataTool.getInt("item", reward, 0);
+            final short prob = (byte) MapleDataTool.getInt("prob", reward, 0);
+            final short quantity = (short) MapleDataTool.getInt("count", reward, 0);
+            final String effect = MapleDataTool.getString("Effect", reward, "");
+            final String worldmsg = MapleDataTool.getString("worldMsg", reward, null);
+            final long period = MapleDataTool.getInt("period", reward, -1);
 
-            struct.itemid = MapleDataTool.getInt("item", reward, 0);
-            struct.prob = (byte) MapleDataTool.getInt("prob", reward, 0);
-            struct.quantity = (short) MapleDataTool.getInt("count", reward, 0);
-            struct.effect = MapleDataTool.getString("Effect", reward, "");
-            struct.worldmsg = MapleDataTool.getString("worldMsg", reward, null);
-            struct.period = MapleDataTool.getInt("period", reward, -1);
+            final StructRewardItem struct = new StructRewardItem(rewardItemId, period, prob, quantity, effect, worldmsg);
 
-            totalprob += struct.prob;
+            totalprob += struct.prob();
 
             all.add(struct);
         }

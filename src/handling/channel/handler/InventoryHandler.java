@@ -201,20 +201,20 @@ public class InventoryHandler {
                     boolean rewarded = false;
                     while (!rewarded) {
                         for (StructRewardItem reward : rewards.getRight()) {
-                            if (reward.prob > 0 && Randomizer.nextInt(rewards.getLeft()) < reward.prob) { // Total prob
-                                if (GameConstants.getInventoryType(reward.itemid) == MapleInventoryType.EQUIP) {
-                                    final IItem item = ii.getEquipById(reward.itemid);
-                                    if (reward.period > 0) {
-                                        item.setExpiration(System.currentTimeMillis() + (reward.period * 60 * 60 * 10));
+                            if (reward.prob() > 0 && Randomizer.nextInt(rewards.getLeft()) < reward.prob()) { // Total prob
+                                if (GameConstants.getInventoryType(reward.itemid()) == MapleInventoryType.EQUIP) {
+                                    final IItem item = ii.getEquipById(reward.itemid());
+                                    if (reward.period() > 0) {
+                                        item.setExpiration(System.currentTimeMillis() + (reward.period() * 60 * 60 * 10));
                                     }
                                     MapleInventoryManipulator.addbyItem(c, item);
                                 } else {
-                                    MapleInventoryManipulator.addById(c, reward.itemid, reward.quantity);
+                                    MapleInventoryManipulator.addById(c, reward.itemid(), reward.quantity());
                                 }
                                 MapleInventoryManipulator.removeById(c, GameConstants.getInventoryType(itemId), itemId, 1, false, false);
 
-                                c.send(InventoryPacket.showRewardItemAnimation(reward.itemid, reward.effect));
-                                chr.getMap().broadcastMessage(chr, InventoryPacket.showRewardItemAnimation(reward.itemid, reward.effect, chr.getId()), false);
+                                c.send(InventoryPacket.showRewardItemAnimation(reward.itemid(), reward.effect()));
+                                chr.getMap().broadcastMessage(chr, InventoryPacket.showRewardItemAnimation(reward.itemid(), reward.effect(), chr.getId()), false);
                                 rewarded = true;
                                 return true;
                             }

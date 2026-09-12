@@ -20,15 +20,10 @@
  */
 package server.life;
 
-public class MonsterDropEntry {
-
-    public MonsterDropEntry(int itemId, int chance, int Minimum, int Maximum, short questid) {
-        this.itemId = itemId;
-        this.chance = chance;
-        this.questid = questid;
-        this.Minimum = Minimum;
-        this.Maximum = Maximum;
-    }
-    public short questid;
-    public int itemId, chance, Minimum, Maximum;
+/**
+ * 單一怪物的掉寶項目。D6 改成 record：欄位本來就只在建構子裡寫入，
+ * 全樹沒有任何地方事後改它們。欄位名稱維持原樣（含大寫開頭的
+ * {@code Minimum} / {@code Maximum}），改名是 D13 的範圍。
+ */
+public record MonsterDropEntry(int itemId, int chance, int Minimum, int Maximum, short questid) {
 }

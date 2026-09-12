@@ -141,8 +141,8 @@ public class InterServerHandler {
             }
             final CharacterIdChannelPair[] onlineBuddies = Find.multiBuddyFind(player.getId(), buddyIds);
             for (CharacterIdChannelPair onlineBuddy : onlineBuddies) {
-                final BuddylistEntry ble = player.getBuddylist().get(onlineBuddy.getCharacterId());
-                ble.setChannel(onlineBuddy.getChannel());
+                final BuddylistEntry ble = player.getBuddylist().get(onlineBuddy.characterId());
+                ble.setChannel(onlineBuddy.channel());
                 player.getBuddylist().put(ble);
             }
             c.send(BuddyPacket.updateBuddylist(player.getBuddylist().getBuddies()));

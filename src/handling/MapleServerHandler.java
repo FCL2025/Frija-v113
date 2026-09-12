@@ -587,7 +587,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 CharLoginHandler.SetGenderRequest(slea, c);
                 break;
             case RSA_KEY: // Fix this somehow
-                c.getSession().write(LoginPacket.StrangeDATA());
+                c.send(LoginPacket.StrangeDATA());
                 break;
             // END OF LOGIN SERVER
             case CHANGE_CHANNEL:

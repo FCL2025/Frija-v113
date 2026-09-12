@@ -133,7 +133,7 @@ public class MobHandler {
         final Point startPos = slea.readPos();
         final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 2);
 
-        c.getSession().write(MobPacket.moveMonsterResponse(monster.getObjectId(), moveid, monster.getMp(), monster.isControllerHasAggro(), realskill, level));
+        c.send(MobPacket.moveMonsterResponse(monster.getObjectId(), moveid, monster.getMp(), monster.isControllerHasAggro(), realskill, level));
 
         if (res != null && chr != null) {
             if (slea.available() < 9 || slea.available() > 17) { //9.. 0 -> endPos? -> endPos again? -> 0 -> 0
@@ -243,7 +243,7 @@ public class MobHandler {
     public static final void DisplayNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         if (mob_from != null) {
-            chr.getClient().getSession().write(MaplePacketCreator.getNodeProperties(mob_from, chr.getMap()));
+            chr.getClient().send(MaplePacketCreator.getNodeProperties(mob_from, chr.getMap()));
         }
     }
 

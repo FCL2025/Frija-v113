@@ -242,7 +242,7 @@ public class PlayerStorage {
         rL.lock();
         try {
             for (final MapleCharacter chr : nameToChar.values()) {
-                chr.getClient().getSession().write(data);
+                chr.getClient().send(data);
             }
         } finally {
             rL.unlock();
@@ -254,7 +254,7 @@ public class PlayerStorage {
         try {
             for (final MapleCharacter chr : nameToChar.values()) {
                 if (chr.getClient().isLoggedIn() && chr.getSmega()) {
-                    chr.getClient().getSession().write(data);
+                    chr.getClient().send(data);
                 }
             }
         } finally {
@@ -267,7 +267,7 @@ public class PlayerStorage {
         try {
             for (final MapleCharacter chr : nameToChar.values()) {
                 if (chr.getClient().isLoggedIn() && chr.isGM()) {
-                    chr.getClient().getSession().write(data);
+                    chr.getClient().send(data);
                 }
             }
         } finally {

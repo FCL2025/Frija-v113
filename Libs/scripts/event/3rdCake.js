@@ -28,7 +28,7 @@ function setup(mapid) {
 function playerEntry(eim, player) {
     var map = eim.getMapInstance(0);
     player.changeMap(map, map.getPortal(0));
-	player.getClient().getSession().write(MaplePacketCreator.serverNotice(6, "請在限定時間內，避開薑餅人並點燃蠟燭！"));
+	player.getClient().send(MaplePacketCreator.serverNotice(6, "請在限定時間內，避開薑餅人並點燃蠟燭！"));
 	eim.startEventTimer(180000,player); 
 }
 
@@ -37,7 +37,7 @@ function playerEntry(eim, player) {
 function scheduledTimeout(eim,player) {
     eim.unregisterPlayer(player);
 
-	player.getClient().getSession().write(MaplePacketCreator.serverNotice(6, "時間到！"));
+	player.getClient().send(MaplePacketCreator.serverNotice(6, "時間到！"));
     var map = eim.getMapFactory().getMap(749020920);
     player.changeMap(map, map.getPortal(0));
     if (eim.disposeIfPlayerBelow(0, 0)) {

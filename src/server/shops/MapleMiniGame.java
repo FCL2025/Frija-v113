@@ -162,7 +162,7 @@ public class MapleMiniGame extends AbstractPlayerStore {
             closeShop(false, false);
             return;
         }
-        c.getSession().write(PlayerShopPacket.getMiniGame(c, this));
+        c.send(PlayerShopPacket.getMiniGame(c, this));
     }
 
     public void setReady(int slot) {

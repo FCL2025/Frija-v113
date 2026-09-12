@@ -142,7 +142,7 @@ public class MapleSnowball extends MapleEvent {
         public void broadcast(MapleMap map, int message) {
             for (MapleCharacter chr : map.getCharactersThreadsafe()) {
                 //if ((team == 0 && chr.getPosition().y > -80) || (team == 1 && chr.getPosition().y <= -80)) {
-                chr.getClient().getSession().write(MaplePacketCreator.snowballMessage(team, message));
+                chr.getClient().send(MaplePacketCreator.snowballMessage(team, message));
                 //}
             }
         }
@@ -190,8 +190,8 @@ public class MapleSnowball extends MapleEvent {
                     chr.getMap().broadcastMessage(MaplePacketCreator.hitSnowBall(team, damage, 0, 1));
                     if (damage == 0) {
                         if (Math.random() < 0.2) {
-                            chr.getClient().getSession().write(MaplePacketCreator.leftKnockBack());
-                            chr.getClient().getSession().write(MaplePacketCreator.enableActions());
+                            chr.getClient().send(MaplePacketCreator.leftKnockBack());
+                            chr.getClient().send(MaplePacketCreator.enableActions());
                         }
                     } else {
                         ball.setPositionX(ball.getPosition() + 1);

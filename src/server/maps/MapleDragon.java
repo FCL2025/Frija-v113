@@ -48,12 +48,12 @@ public class MapleDragon extends AbstractAnimatedMapleMapObject {
 
     @Override
     public void sendSpawnData(MapleClient client) {
-        client.getSession().write(MaplePacketCreator.spawnDragon(this));
+        client.send(MaplePacketCreator.spawnDragon(this));
     }
 
     @Override
     public void sendDestroyData(MapleClient client) {
-        client.getSession().write(MaplePacketCreator.removeDragon(this.owner));
+        client.send(MaplePacketCreator.removeDragon(this.owner));
     }
 
     public int getOwner() {

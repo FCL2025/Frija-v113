@@ -69,9 +69,9 @@ function playerEntry(eim, player) {
 		}
 	} else {
 		if (type != 0) {
-			player.getClient().getSession().write(MaplePacketCreator.getPVPPoints(parseInt(eim.getProperty("red")), parseInt(eim.getProperty("blue"))));
+			player.getClient().send(MaplePacketCreator.getPVPPoints(parseInt(eim.getProperty("red")), parseInt(eim.getProperty("blue"))));
 		}
-		player.getClient().getSession().write(MaplePacketCreator.getPVPScore(0, false));
+		player.getClient().send(MaplePacketCreator.getPVPScore(0, false));
 	}
 }
 
@@ -142,7 +142,7 @@ function addPVPScore(eim, player, score) {
 	if (parseInt(eim.getProperty("ice")) == player.getId()) {
 		var xx = java.lang.Math.min(100, parseInt(eim.getProperty("icegage")) + x);
 		eim.setProperty("icegage", "" + xx);
-		player.getClient().getSession().write(MaplePacketCreator.getPVPIceGage(xx));
+		player.getClient().send(MaplePacketCreator.getPVPIceGage(xx));
 		player.applyIceGage(xx);
 	}
 	
@@ -179,7 +179,7 @@ function getWinningTeam(eim) {
 }
 
 function playerDead(eim, player) {
-	player.getClient().getSession().write(MaplePacketCreator.getPVPKilled(player.getName() + " has been defeated."));
+	player.getClient().send(MaplePacketCreator.getPVPKilled(player.getName() + " has been defeated."));
 	if (parseInt(eim.getProperty("ice")) == player.getId()) {
 		eim.setProperty("ice", "0");
 		eim.setProperty("red", "99999");
@@ -231,7 +231,7 @@ function championCheck(eim) {
 	if (champion != null) {
 		eim.setProperty("champion", champion.getId() + "");
 		eim.broadcastPlayerMsg(-7, champion.getName() + " has been made the champion.");
-		champion.getClient().getSession().write(MaplePacketCreator.showOwnChampionEffect());
+		champion.getClient().send(MaplePacketCreator.showOwnChampionEffect());
 		champion.getMap().broadcastMessage(champion, MaplePacketCreator.showChampionEffect(champion.getId()), false);
 	}
 }
@@ -273,7 +273,7 @@ function updateScoreboard(eim, score) {
 			players.get(i).gainExp(exp, true, true, true);
 			players.get(i).setTotalBattleExp(players.get(i).getTotalBattleExp() + (((x / 10) * 1.5) | 0)); //PVP 1.5 EVENT!
 			players.get(i).setBattlePoints(players.get(i).getBattlePoints() + (((x / 10) * 1.5) | 0));
-			players.get(i).getClient().getSession().write(MaplePacketCreator.getPVPResult(c, exp, winningTeam + 1, players.get(i).getTeam() + 1));
+			players.get(i).getClient().send(MaplePacketCreator.getPVPResult(c, exp, winningTeam + 1, players.get(i).getTeam() + 1));
 		}
 	}
 }
@@ -305,7 +305,7 @@ function monsterValue(eim, mobId) {
 }
 
 function playerExit(eim, player) {
-	player.getClient().getSession().write(UIPacket.clearMidMsg());
+	player.getClient().send(UIPacket.clearMidMsg());
     eim.unregisterPlayer(player);
 	if (eim.getPlayerCount() > 0 && !eim.getProperty("started").equals("2") && (eim.getPlayerCount() < eim.getProperty("started").equals("1") ? 2 : 1 || parseInt(eim.getProperty("ice")) == player.getId())) {
 		end(eim);
@@ -321,7 +321,7 @@ function end(eim) {
 	updateScoreboard(eim, false);
 	var players = eim.getPlayers();
 	for (var i = 0; i < players.size(); i++) {
-		players.get(i).getClient().getSession().write(UIPacket.clearMidMsg());
+		players.get(i).getClient().send(UIPacket.clearMidMsg());
 		players.get(i).cancelAllBuffs();
 		players.get(i).dispelDebuffs();
 		players.get(i).changeRemoval();

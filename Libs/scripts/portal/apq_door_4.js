@@ -36,7 +36,7 @@ function enter(pi) {
 	var avail = eim.getProperty("3stageclear");
 	if (avail == null) {
 		// do nothing; send message to player
-		pi.getClient().getSession().write(MaplePacketCreator.serverNotice(6, "This door is closed."));
+		pi.getClient().send(MaplePacketCreator.serverNotice(6, "This door is closed."));
 		return false;	}
 	else {
 		pi.getPlayer().changeMap(target, targetPortal);

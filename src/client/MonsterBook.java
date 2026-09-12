@@ -148,7 +148,7 @@ public class MonsterBook implements Serializable {
     }
 
     public final void updateCard(final MapleClient c, final int cardid) {
-        c.getSession().write(MonsterBookPacket.changeCover(cardid));
+        c.send(MonsterBookPacket.changeCover(cardid));
     }
 
     public final void addCard(final MapleClient c, final int cardid) {
@@ -158,16 +158,16 @@ public class MonsterBook implements Serializable {
         if (cards.containsKey(cardid)) {
             final int levels = cards.get(cardid);
             if (levels >= 5) {
-                c.getSession().write(MonsterBookPacket.addCard(true, cardid, levels));
+                c.send(MonsterBookPacket.addCard(true, cardid, levels));
             } else {
                 if (GameConstants.isSpecialCard(cardid)) {
                     SpecialCard += 1;
                 } else {
                     NormalCard += 1;
                 }
-                c.getSession().write(MonsterBookPacket.addCard(false, cardid, levels));
-                c.getSession().write(MonsterBookPacket.showGainCard(cardid));
-                c.getSession().write(MaplePacketCreator.showSpecialEffect(13));
+                c.send(MonsterBookPacket.addCard(false, cardid, levels));
+                c.send(MonsterBookPacket.showGainCard(cardid));
+                c.send(MaplePacketCreator.showSpecialEffect(13));
                 cards.put(cardid, levels + 1);
                 calculateLevel();
             }
@@ -180,9 +180,9 @@ public class MonsterBook implements Serializable {
         }
         // New card
         cards.put(cardid, 1);
-        c.getSession().write(MonsterBookPacket.addCard(false, cardid, 1));
-        c.getSession().write(MonsterBookPacket.showGainCard(cardid));
-        c.getSession().write(MaplePacketCreator.showSpecialEffect(13));
+        c.send(MonsterBookPacket.addCard(false, cardid, 1));
+        c.send(MonsterBookPacket.showGainCard(cardid));
+        c.send(MaplePacketCreator.showSpecialEffect(13));
         calculateLevel();
     }
 }

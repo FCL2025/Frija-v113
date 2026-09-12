@@ -54,7 +54,7 @@ public class MapleCoconut extends MapleEvent {
 
     @Override
     public void onMapLoad(MapleCharacter chr) {
-        chr.getClient().getSession().write(MaplePacketCreator.coconutScore(getCoconutScore()));
+        chr.getClient().send(MaplePacketCreator.coconutScore(getCoconutScore()));
     }
 
     public MapleCoconuts getCoconut(int id) {
@@ -141,22 +141,22 @@ public class MapleCoconut extends MapleEvent {
             } else if (getMapleScore() > getStoryScore()) {
                 for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
                     if (chr.getCoconutTeam() == 0) {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/victory"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Victory"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/victory"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Victory"));
                     } else {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/lose"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Failed"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/lose"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Failed"));
                     }
                 }
                 warpOut();
             } else {
                 for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
                     if (chr.getCoconutTeam() == 1) {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/victory"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Victory"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/victory"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Victory"));
                     } else {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/lose"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Failed"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/lose"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Failed"));
                     }
                 }
                 warpOut();
@@ -169,29 +169,29 @@ public class MapleCoconut extends MapleEvent {
         EventTimer.getInstance().schedule(() -> {
             if (getMapleScore() == getStoryScore()) {
                 for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
-                    chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/lose"));
-                    chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Failed"));
+                    chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/lose"));
+                    chr.getClient().send(MaplePacketCreator.playSound("Coconut/Failed"));
                 }
                 warpOut();
             } else if (getMapleScore() > getStoryScore()) {
                 for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
                     if (chr.getCoconutTeam() == 0) {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/victory"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Victory"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/victory"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Victory"));
                     } else {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/lose"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Failed"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/lose"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Failed"));
                     }
                 }
                 warpOut();
             } else {
                 for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
                     if (chr.getCoconutTeam() == 1) {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/victory"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Victory"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/victory"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Victory"));
                     } else {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("event/coconut/lose"));
-                        chr.getClient().getSession().write(MaplePacketCreator.playSound("Coconut/Failed"));
+                        chr.getClient().send(MaplePacketCreator.showEffect("event/coconut/lose"));
+                        chr.getClient().send(MaplePacketCreator.playSound("Coconut/Failed"));
                     }
                 }
                 warpOut();

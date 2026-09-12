@@ -35,7 +35,7 @@ function playerEntry(eim, player) {
 function scheduledTimeout(eim,player) {
     eim.unregisterPlayer(player);
 
-	player.getClient().getSession().write(MaplePacketCreator.serverNotice(6, "時間內沒有驅逐蜈蚣王，失敗！"));
+	player.getClient().send(MaplePacketCreator.serverNotice(6, "時間內沒有驅逐蜈蚣王，失敗！"));
     var map = eim.getMapFactory().getMap(701010300);
     player.changeMap(map, map.getPortal(0));
     if (eim.disposeIfPlayerBelow(0, 0)) {

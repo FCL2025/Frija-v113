@@ -108,11 +108,11 @@ public class MapleDoor extends AbstractMapleMapObject {
             return;
         }
         if (target.getId() == client.getPlayer().getMapId() || getOwnerId() == client.getPlayer().getId() || (getOwner() != null && getOwner().getParty() != null && getOwner().getParty().getMemberById(client.getPlayer().getId()) != null)) {
-            client.getSession().write(MaplePacketCreator.spawnDoor(getOwnerId(), town.getId() == client.getPlayer().getMapId() ? townPortal.getPosition() : targetPosition, true));
+            client.send(MaplePacketCreator.spawnDoor(getOwnerId(), town.getId() == client.getPlayer().getMapId() ? townPortal.getPosition() : targetPosition, true));
             if (getOwner() != null && getOwner().getParty() != null && (getOwnerId() == client.getPlayer().getId() || getOwner().getParty().getMemberById(client.getPlayer().getId()) != null)) {
-                client.getSession().write(MaplePacketCreator.partyPortal(town.getId(), target.getId(), skillId, targetPosition));
+                client.send(MaplePacketCreator.partyPortal(town.getId(), target.getId(), skillId, targetPosition));
             }
-            client.getSession().write(MaplePacketCreator.spawnPortal(town.getId(), target.getId(), skillId, targetPosition));
+            client.send(MaplePacketCreator.spawnPortal(town.getId(), target.getId(), skillId, targetPosition));
         }
     }
 
@@ -123,10 +123,10 @@ public class MapleDoor extends AbstractMapleMapObject {
         }
         if (target.getId() == client.getPlayer().getMapId() || getOwnerId() == client.getPlayer().getId() || (getOwner() != null && getOwner().getParty() != null && getOwner().getParty().getMemberById(client.getPlayer().getId()) != null)) {
             if (getOwner().getParty() != null && (getOwnerId() == client.getPlayer().getId() || getOwner().getParty().getMemberById(client.getPlayer().getId()) != null)) {
-                client.getSession().write(MaplePacketCreator.partyPortal(999999999, 999999999, 0, new Point(-1, -1)));
+                client.send(MaplePacketCreator.partyPortal(999999999, 999999999, 0, new Point(-1, -1)));
             }
-            client.getSession().write(MaplePacketCreator.removeDoor(getOwnerId(), false));
-            client.getSession().write(MaplePacketCreator.removeDoor(getOwnerId(), true));
+            client.send(MaplePacketCreator.removeDoor(getOwnerId(), false));
+            client.send(MaplePacketCreator.removeDoor(getOwnerId(), true));
         }
     }
 
@@ -138,7 +138,7 @@ public class MapleDoor extends AbstractMapleMapObject {
                 chr.changeMap(town, townPortal);
             }
         } else {
-            chr.getClient().getSession().write(MaplePacketCreator.enableActions());
+            chr.getClient().send(MaplePacketCreator.enableActions());
         }
     }
 

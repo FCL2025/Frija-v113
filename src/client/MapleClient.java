@@ -40,6 +40,7 @@ import javax.script.ScriptEngine;
 
 import database.DatabaseConnection;
 import database.DatabaseException;
+import handling.MaplePacket;
 import handling.cashshop.CashShopServer;
 import handling.channel.ChannelServer;
 import handling.world.MapleMessengerCharacter;
@@ -115,6 +116,15 @@ public class MapleClient implements Serializable {
 
     public final IoSession getSession() {
         return session;
+    }
+
+    /**
+     * 送出一個封包給這個連線。整棵樹唯一直接呼叫 MINA
+     * {@link IoSession#write(Object)} 的地方；其餘程式碼一律走這裡，
+     * 日後更換網路層時只需動 handling/mina/。
+     */
+    public final void send(final MaplePacket packet) {
+        session.write(packet);
     }
 
     public final Lock getLock() {
@@ -500,7 +510,7 @@ public class MapleClient implements Serializable {
         }
     }
     public final void unLockDisconnect() {
-        getSession().write(MaplePacketCreator.serverNotice(1, "帳號被他人登入。"));
+        send(MaplePacketCreator.serverNotice(1, "帳號被他人登入。"));
         disconnect(serverTransition, getChannel() == -10);
         // Three seconds so the client can show the notice before its socket
         // goes away. This used to be a bare Thread that slept, which breaks the

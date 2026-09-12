@@ -40,12 +40,12 @@ public class FamilyHandler {
     public static final void RequestFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
         MapleCharacter chr = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
         if (chr != null) {
-            c.getSession().write(FamilyPacket.getFamilyPedigree(chr));
+            c.send(FamilyPacket.getFamilyPedigree(chr));
         }
     }
 
     public static final void OpenFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
-        c.getSession().write(FamilyPacket.getFamilyInfo(c.getPlayer()));
+        c.send(FamilyPacket.getFamilyInfo(c.getPlayer()));
     }
 
     public static final void UseFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
@@ -84,7 +84,7 @@ public class FamilyHandler {
                 } else if (victim.getTeleportName().length() > 0) {
                     c.getPlayer().dropMessage(1, "已經有其他玩家請求傳送");
                 } else if (victim.getFamilyId() == c.getPlayer().getFamilyId() && !FieldLimitType.VipRock.check(victim.getMap().getFieldLimit()) && victim.getId() != c.getPlayer().getId()) {
-                    victim.getClient().getSession().write(FamilyPacket.familySummonRequest(c.getPlayer().getName(), c.getPlayer().getMap().getMapName()));
+                    victim.getClient().send(FamilyPacket.familySummonRequest(c.getPlayer().getName(), c.getPlayer().getMap().getMapName()));
                     victim.setTeleportName(c.getPlayer().getName());
                 } else {
                     c.getPlayer().dropMessage(5, "召喚失敗，你現在的地圖或狀態無法允許召喚");
@@ -132,7 +132,7 @@ public class FamilyHandler {
         }
         if (success) { //again
             c.getPlayer().setCurrentRep(c.getPlayer().getCurrentRep() - entry.rep);
-            c.getSession().write(FamilyPacket.changeRep(-entry.rep));
+            c.send(FamilyPacket.changeRep(-entry.rep));
             c.getPlayer().useFamilyBuff(entry);
         } else {
             c.getPlayer().dropMessage(5, "An error occured.");
@@ -161,9 +161,9 @@ public class FamilyHandler {
         } else if (c.getPlayer().getJunior1() > 0 && c.getPlayer().getJunior2() > 0) {
             c.getPlayer().dropMessage(1, "你已經有兩個跟隨者");
         } else if (c.getPlayer().isGM() || !addChr.isGM()) {
-            addChr.getClient().getSession().write(FamilyPacket.sendFamilyInvite(c.getPlayer().getId(), c.getPlayer().getLevel(), c.getPlayer().getJob(), c.getPlayer().getName()));
+            addChr.getClient().send(FamilyPacket.sendFamilyInvite(c.getPlayer().getId(), c.getPlayer().getLevel(), c.getPlayer().getJob(), c.getPlayer().getName()));
         }
-        c.getSession().write(MaplePacketCreator.enableActions());
+        c.send(MaplePacketCreator.enableActions());
     }
 
     public static final void FamilyPrecept(final SeekableLittleEndianAccessor slea, MapleClient c) {
@@ -187,7 +187,7 @@ public class FamilyHandler {
             if (accepted) {
                 c.getPlayer().changeMap(tt.getMap(), tt.getMap().getPortal(0));
                 tt.setCurrentRep(tt.getCurrentRep() - cost.rep);
-                tt.getClient().getSession().write(FamilyPacket.changeRep(-cost.rep));
+                tt.getClient().send(FamilyPacket.changeRep(-cost.rep));
                 tt.useFamilyBuff(cost);
             } else {
                 tt.dropMessage(5, "召喚失敗，你現在的地圖或狀態無法允許召喚");
@@ -227,7 +227,7 @@ public class FamilyHandler {
             fam.resetPedigree();
         }
         c.getPlayer().dropMessage(1, "踢出了 (" + other.getName() + ").");
-        c.getSession().write(MaplePacketCreator.enableActions());
+        c.send(MaplePacketCreator.enableActions());
     }
 
     public static final void DeleteSenior(final SeekableLittleEndianAccessor slea, MapleClient c) {
@@ -255,16 +255,16 @@ public class FamilyHandler {
             fam.resetPedigree();
         }
         c.getPlayer().dropMessage(1, "退出了 (" + mgc.getName() + ") 的家族.");
-        c.getSession().write(MaplePacketCreator.enableActions());
+        c.send(MaplePacketCreator.enableActions());
     }
 
     public static final void AcceptFamily(SeekableLittleEndianAccessor slea, MapleClient c) {
         MapleCharacter inviter = c.getPlayer().getMap().getCharacterById(slea.readInt());
         if (inviter != null && c.getPlayer().getSeniorId() == 0 && (c.getPlayer().isGM() || !inviter.isHidden()) && inviter.getLevel() - 20 <= c.getPlayer().getLevel() && inviter.getLevel() >= 10 && inviter.getName().equals(slea.readMapleAsciiString()) && inviter.getNoJuniors() < 2 /*&& inviter.getFamily().getGens() < 1000*/ && c.getPlayer().getLevel() >= 10) {
             boolean accepted = slea.readByte() > 0;
-            inviter.getClient().getSession().write(FamilyPacket.sendFamilyJoinResponse(accepted, c.getPlayer().getName()));
+            inviter.getClient().send(FamilyPacket.sendFamilyJoinResponse(accepted, c.getPlayer().getName()));
             if (accepted) {
-                c.getSession().write(FamilyPacket.getSeniorMessage(inviter.getName()));
+                c.send(FamilyPacket.getSeniorMessage(inviter.getName()));
                 int old = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getFamilyId();
                 int oldj1 = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getJunior1();
                 int oldj2 = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getJunior2();
@@ -312,7 +312,7 @@ public class FamilyHandler {
 
                     }
                 }
-                c.getSession().write(FamilyPacket.getFamilyInfo(c.getPlayer()));
+                c.send(FamilyPacket.getFamilyInfo(c.getPlayer()));
             }
         }
     }

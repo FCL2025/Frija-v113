@@ -15,7 +15,7 @@ function action(mode, type, selection) {
 	cm.removeAll(4001120);
 	cm.removeAll(4001121);
 	cm.removeAll(4001122);
-	cm.sendSimple("#b#L0#æˆ‘è¦é›¢é–‹#l\r\n#L1#æˆ‘è¦å…Œæ›æµ·è³Šç‹å¸½å­#l#k");
+	cm.sendSimple("#b#L0#§Ú­nÂ÷¶}#l\r\n#L1#§Ú­n§I´«®ü¸é¤ı´U¤l#l#k");
     } else if (status == 1) {
 	if (selection == 0) {
 	    cm.gainExp(50000);

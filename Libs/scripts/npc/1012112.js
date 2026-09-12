@@ -73,14 +73,14 @@ function action(mode, type, selection) {
 	}
     } else { //broken glass
 	if (cm.haveItem(1002798,1)) {
-	    cm.sendOk("ä½ å·²ç¶“æœ‰äº†");
+	    cm.sendOk("§A¤w¸g¦³¤F");
 	} else if (!cm.canHold(1002798,1)) {
-	    cm.sendOk("ä½ å·²ç¶“æœ‰äº†");
+	    cm.sendOk("§A¤w¸g¦³¤F");
 	} else if (cm.haveItem(4001101,20)) {
 	    cm.gainItem(4001101,-20); //should handle automatically for "have"
 	    cm.gainItem(1002798,1);
 	} else {
-	    cm.sendOk("ä½ éœ€è¦20å€‹æœˆå¦™çš„å…ƒå®µ");
+	    cm.sendOk("§A»İ­n20­Ó¤ë§®ªº¤¸®d");
 	}
 	cm.dispose();
 

@@ -92,10 +92,10 @@ function action(mode, type, selection) {
     else
         status --;
     if (status == 0) {
-            cm.sendNext("è«‹ç¢ºèªä½ çš„å…¶ä»–æ¬„æœ‰æ²’æœ‰ç©ºå…©æ ¼,å¦å¤–æ¬„ä½ç©ºä¸€æ ¼å°±å¥½,ç¢ºèªéƒ½æœ‰ç©ºå†ä¾†è·Ÿæˆ‘å°è©±");
+            cm.sendNext("½Ğ½T»{§Aªº¨ä¥LÄæ¦³¨S¦³ªÅ¨â®æ,¥t¥~Äæ¦ìªÅ¤@®æ´N¦n,½T»{³£¦³ªÅ¦A¨Ó¸ò§Ú¹ï¸Ü");
     } else if (status == 1) {
 			if (!cm.canHold(4001158,1)) {
-				cm.sendOk("è«‹æª¢æŸ¥ä½ çš„å…¶ä»–æ¬„æœ‰æ²’æœ‰ç©ºæ ¼");
+				cm.sendOk("½ĞÀË¬d§Aªº¨ä¥LÄæ¦³¨S¦³ªÅ®æ");
 				cm.dispose();
 				return;
 			}

@@ -20,9 +20,7 @@
  */
 package client;
 
-import java.io.Serializable;
-
-public enum MapleBuffStat implements Serializable {
+public enum MapleBuffStat {
     //DICE = 0x100000, the roll is determined in the long-ass packet itself as buffedvalue
     //ENERGY CHARGE = 0x400000
     //teleport mastery = 0x800000
@@ -142,7 +140,6 @@ public enum MapleBuffStat implements Serializable {
     PUPPET(0x800000000000000L), // HACK - shares buffmask with pickpocket - odin special ^.-
 
     MESOGUARD(0x1000000000000000L),;
-    private static final long serialVersionUID = 0L;
     private final long buffstat;
     private final boolean first;
 

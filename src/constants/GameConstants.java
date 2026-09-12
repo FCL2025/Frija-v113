@@ -90,7 +90,7 @@ public class GameConstants {
     }
 
     public static int getBookLevel(final int level) {
-        return (int) ((5 * level) * (level + 1));
+        return ((5 * level) * (level + 1));
     }
 
     public static int getTimelessRequiredEXP(final int level) {

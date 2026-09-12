@@ -119,7 +119,7 @@ public class MapleReactor extends AbstractMapleMapObject {
     }
 
     public void forceHitReactor(final byte newState) {
-        setState((byte) newState);
+        setState(newState);
         setTimerActive(false);
         map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
     }

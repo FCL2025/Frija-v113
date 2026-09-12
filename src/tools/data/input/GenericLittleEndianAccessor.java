@@ -144,7 +144,7 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
     public final String readAsciiString(int n) {
         byte ret[] = new byte[n];
         for (int x = 0; x < n; x++) {
-            ret[x] = (byte) readByte();
+            ret[x] = readByte();
         }
         try {
             String str = new String(ret, "BIG5");//勿改

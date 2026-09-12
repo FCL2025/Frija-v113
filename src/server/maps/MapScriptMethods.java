@@ -178,7 +178,7 @@ public class MapScriptMethods {
         switch (onFirstUserEnter.fromString(scriptName)) {
             case dojang_Eff: {
                 int temp = (c.getPlayer().getMapId() - 925000000) / 100;
-                int stage = (int) (temp - ((temp / 100) * 100));
+                int stage = (temp - ((temp / 100) * 100));
 
                 sendDojoClock(c, getTiming(stage) * 60);
                 sendDojoStart(c, stage - getDojoStageDec(stage));

@@ -806,7 +806,7 @@ public class InventoryHandler {
                 c.getPlayer().dropMessage(5, "You already have this skill.");
             } else if (expiration_days > 0) {
                 MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.USE, slot, (byte) 1, false);
-                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(mountid), (byte) 1, (byte) 1, System.currentTimeMillis() + (long) (expiration_days * 24 * 60 * 60 * 1000));
+                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(mountid), (byte) 1, (byte) 1, System.currentTimeMillis() + (expiration_days * 24 * 60 * 60 * 1000));
                 c.getPlayer().dropMessage(5, "The skill has been attained.");
             }
         }
@@ -2089,7 +2089,7 @@ public class InventoryHandler {
             case 5152106:
             case 5152107:{
                 int color_num = (itemId - 5152100);
-                int current = (c.getPlayer().getFace()% 100) + ((int)(c.getPlayer().getFace()/1000))*1000;
+                int current = (c.getPlayer().getFace()% 100) + ((c.getPlayer().getFace()/1000))*1000;
                 int newface = current + (color_num * 100);
                 if (MapleItemInformationProvider.getInstance().faceExists(newface))
                 {
@@ -2238,7 +2238,7 @@ public class InventoryHandler {
         if (chr == null) {
             return;
         }
-        final byte petz = (byte) c.getPlayer().getPetIndex((int) slea.readLong/*Int*/());
+        final byte petz = c.getPlayer().getPetIndex((int) slea.readLong/*Int*/());
         final MaplePet pet = chr.getPet(petz);
         slea.skip(1); // [4] Zero, [4] Seems to be tickcount, [1] Always zero
         chr.updateTick(slea.readInt());

@@ -159,7 +159,7 @@ public class StatsHandling {
                     } else { // GameMaster
                         maxmp += Randomizer.rand(50, 100);
                     }
-                    maxmp += ((int)(stat.getTotalInt()/15) + (int)(stat.getTotalInt()/120));
+                    maxmp += ((stat.getTotalInt()/15) + (stat.getTotalInt()/120));
                     maxmp = (short) Math.min(30000, Math.abs(maxmp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
                     stat.setMaxMp(maxmp);

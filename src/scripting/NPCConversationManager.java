@@ -317,7 +317,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             sendNextS(text, type);
             return;
         }
-        c.getSession().write(MaplePacketCreator.getNPCTalk(npc, (byte) 4, text, "", (byte) type));
+        c.getSession().write(MaplePacketCreator.getNPCTalk(npc, (byte) 4, text, "", type));
         lastMsg = 4;
     }
 
@@ -1161,7 +1161,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             } else if (type.equalsIgnoreCase("ItemEXP")) {
                 eq.setItemEXP(eq.getItemEXP() + offset);
             } else if (type.equalsIgnoreCase("Expiration")) {
-                eq.setExpiration((long) (eq.getExpiration() + offset));
+                eq.setExpiration((eq.getExpiration() + offset));
             } else if (type.equalsIgnoreCase("Flag")) {
                 eq.setFlag((byte) (eq.getFlag() + offset));
             }

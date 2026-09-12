@@ -170,7 +170,7 @@ public class MaplePet implements Serializable {
             pse.setShort(4, (short) closeness);
             pse.setByte(5, (byte) fullness);
             pse.setInt(6, secondsLeft);
-            pse.setShort(7, (short) flag); //flags
+            pse.setShort(7, flag); //flags
             pse.executeUpdate();
         } catch (final SQLException ex) {
             ex.printStackTrace();

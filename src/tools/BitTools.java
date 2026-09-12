@@ -69,7 +69,7 @@ public class BitTools {
      * @return The string read.
      */
     public static final String getMapleString(final byte array[], final int index) {
-        final int length = ((int) (array[index]) & 0xFF) | ((int) (array[index + 1] << 8) & 0xFF00);
+        final int length = ((int) (array[index]) & 0xFF) | ((array[index + 1] << 8) & 0xFF00);
         return BitTools.getString(array, index + 2, length);
     }
 

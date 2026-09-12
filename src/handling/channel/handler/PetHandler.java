@@ -49,8 +49,8 @@ public class PetHandler {
 
     public static final void SpawnPet(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         chr.updateTick(slea.readInt());
-		final byte slot = slea.readByte();
-		slea.skip(1);
+        final byte slot = slea.readByte();
+        slea.skip(1);
         chr.spawnPet(slot, slea.readByte() > 0);
 
     }

@@ -753,33 +753,33 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     }
 
     public void increaseGuildCapacity(boolean UseGP) {
-		if(!UseGP){
-			if (c.getPlayer().getMeso() < 250000) {
-				c.getSession().write(MaplePacketCreator.serverNotice(1, "你沒有足夠的錢"));
-				return;
-			}
-			if(c.getPlayer().getGuild().getCapacity() >= 100){
-				c.getSession().write(MaplePacketCreator.serverNotice(1, "公會人數已經擴充超過100"));
-				return;
-			}
-			final int gid = c.getPlayer().getGuildId();
-			if (gid <= 0) {
-				return;
-			}
-			World.Guild.increaseGuildCapacity(gid);
-			c.getPlayer().gainMeso(-250000, true, false, true);
-		}else{
-			if (c.getPlayer().getGuild().getGP() < 2500) {
+        if(!UseGP){
+            if (c.getPlayer().getMeso() < 250000) {
+                c.getSession().write(MaplePacketCreator.serverNotice(1, "你沒有足夠的錢"));
+                return;
+            }
+            if(c.getPlayer().getGuild().getCapacity() >= 100){
+                c.getSession().write(MaplePacketCreator.serverNotice(1, "公會人數已經擴充超過100"));
+                return;
+            }
+            final int gid = c.getPlayer().getGuildId();
+            if (gid <= 0) {
+                return;
+            }
+            World.Guild.increaseGuildCapacity(gid);
+            c.getPlayer().gainMeso(-250000, true, false, true);
+        }else{
+            if (c.getPlayer().getGuild().getGP() < 2500) {
             c.getSession().write(MaplePacketCreator.serverNotice(1, "公會的GP不足."));
-				return;
-			}
-			final int gid = c.getPlayer().getGuildId();
-			if (gid <= 0) {
-				return;
-			}
-			World.Guild.increaseGuildCapacity(gid);
-			c.getPlayer().getGuild().gainGP(-2500);
-		}
+                return;
+            }
+            final int gid = c.getPlayer().getGuildId();
+            if (gid <= 0) {
+                return;
+            }
+            World.Guild.increaseGuildCapacity(gid);
+            c.getPlayer().getGuild().gainGP(-2500);
+        }
     }
 
     public void displayGuildRanks() {

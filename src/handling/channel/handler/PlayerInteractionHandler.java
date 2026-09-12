@@ -67,7 +67,7 @@ public class PlayerInteractionHandler {
             MAINTANCE_OFF = 0x24, //This is mispelled...
             MAINTANCE_ORGANISE = 0x25,
             CLOSE_MERCHANT = 0x26,
-			MERCHANT_GETMESO = 0x28, 
+            MERCHANT_GETMESO = 0x28, 
             ADMIN_STORE_NAMECHANGE = 0x2A,
             VIEW_MERCHANT_VISITOR = 0x2B,
             VIEW_MERCHANT_BLACKLIST = 0x2C,
@@ -335,9 +335,9 @@ public class PlayerInteractionHandler {
                 final short bundles = slea.readShort(); // How many in a bundle
                 final short perBundle = slea.readShort(); // Price per bundle
                 final int price = slea.readInt();
-				
-				final IItem ivItem = chr.getInventory(type).getItem(slot);
-				
+                
+                final IItem ivItem = chr.getInventory(type).getItem(slot);
+                
                 if (price <= 0 || (bundles <= 0 && !GameConstants.isRechargable(ivItem.getItemId())) || perBundle <= 0) {
                     return;
                 }
@@ -486,26 +486,26 @@ public class PlayerInteractionHandler {
             case MAINTANCE_OFF: {
                 final IMaplePlayerShop shop = chr.getPlayerShop();
                 if (shop != null && shop instanceof HiredMerchant && shop.isOwner(chr)) {
-					if (shop.getItems().size() == 0) {
-						boolean save = false;
+                    if (shop.getItems().size() == 0) {
+                        boolean save = false;
 
-						if (chr.getMeso() + shop.getMeso() < 0) {
-							save = true;
-						} else {
-							if (shop.getMeso() > 0) {
-								chr.gainMeso(shop.getMeso(), false);
-								shop.setMeso(0);
-							}
-						}
-						c.getSession().write(PlayerShopPacket.shopErrorMessage(0x11, 0));
-						shop.removeAllVisitors((byte) 16, (byte) 0);
-						shop.closeShop(save, true);
-					}else{
-						//boolean save = false;
-						shop.setOpen(true);
-						chr.setPlayerShop(null);
-						//shop.closeShop(save, true);
-					}
+                        if (chr.getMeso() + shop.getMeso() < 0) {
+                            save = true;
+                        } else {
+                            if (shop.getMeso() > 0) {
+                                chr.gainMeso(shop.getMeso(), false);
+                                shop.setMeso(0);
+                            }
+                        }
+                        c.getSession().write(PlayerShopPacket.shopErrorMessage(0x11, 0));
+                        shop.removeAllVisitors((byte) 16, (byte) 0);
+                        shop.closeShop(save, true);
+                    }else{
+                        //boolean save = false;
+                        shop.setOpen(true);
+                        chr.setPlayerShop(null);
+                        //shop.closeShop(save, true);
+                    }
                 }
                 break;
             }
@@ -565,32 +565,32 @@ public class PlayerInteractionHandler {
                             }
                         }
                     }
-					if(save){
-						c.getSession().write(MaplePacketCreator.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
-					}
-					merchant.removeAllVisitors(10, 1);
-					c.getSession().write(PlayerShopPacket.shopErrorMessage(0x15, 0));
+                    if(save){
+                        c.getSession().write(MaplePacketCreator.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
+                    }
+                    merchant.removeAllVisitors(10, 1);
+                    c.getSession().write(PlayerShopPacket.shopErrorMessage(0x15, 0));
                     merchant.closeShop(save, true);
                     chr.setPlayerShop(null);
                 }
                 break;
             }
-			case MERCHANT_GETMESO :{
-				final IMaplePlayerShop merchant = chr.getPlayerShop();
-				System.out.println(merchant.getShopType());
-				if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
-					if (chr.getMeso() + merchant.getMeso() < 0) {
+            case MERCHANT_GETMESO :{
+                final IMaplePlayerShop merchant = chr.getPlayerShop();
+                System.out.println(merchant.getShopType());
+                if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
+                    if (chr.getMeso() + merchant.getMeso() < 0) {
                         c.getSession().write(MaplePacketCreator.serverNotice(1, "您身上的楓幣太多了"));
                     } else {
-						if (merchant.getMeso() > 0) {
+                        if (merchant.getMeso() > 0) {
                             chr.gainMeso(merchant.getMeso(), false);
                         }
                         merchant.setMeso(0);
-						c.getSession().write(PlayerShopPacket.shopItemUpdate(merchant));
-					}
-				}
-				break;
-			}
+                        c.getSession().write(PlayerShopPacket.shopItemUpdate(merchant));
+                    }
+                }
+                break;
+            }
             case TRADE_SOMETHING:
             case ADMIN_STORE_NAMECHANGE: { // Changing store name, only Admin
                 // 01 00 00 00

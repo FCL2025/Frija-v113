@@ -941,29 +941,29 @@ public class InventoryHandler {
                 break;
             }
             case 5042000:
-				if(c.getPlayer().getEventInstance() == null){
-					final MapleMap target = c.getChannelServer().getMapFactory().getMap(701000000);
-					c.getPlayer().changeMap(target, target.getPortal(0));
-					used = true;
-				}
-				break;
-			case 5042001:
-				if(c.getPlayer().getEventInstance() == null){
-					final MapleMap target = c.getChannelServer().getMapFactory().getMap(741000000);
-					c.getPlayer().changeMap(target, target.getPortal(0));
-					used = true;
-				}
-				break;
+                if(c.getPlayer().getEventInstance() == null){
+                    final MapleMap target = c.getChannelServer().getMapFactory().getMap(701000000);
+                    c.getPlayer().changeMap(target, target.getPortal(0));
+                    used = true;
+                }
+                break;
+            case 5042001:
+                if(c.getPlayer().getEventInstance() == null){
+                    final MapleMap target = c.getChannelServer().getMapFactory().getMap(741000000);
+                    c.getPlayer().changeMap(target, target.getPortal(0));
+                    used = true;
+                }
+                break;
             case 5560000: // The Teleport tick
             case 5561000:{ // The VIP Teleport tick
                 slea.skip(1);
-				final MapleMap target = c.getChannelServer().getMapFactory().getMap(slea.readInt());
+                final MapleMap target = c.getChannelServer().getMapFactory().getMap(slea.readInt());
                 if (c.getPlayer().getEventInstance() == null) { //Makes sure this map doesn't have a forced return map
                     c.getPlayer().changeMap(target, target.getPortal(0));
                     used = true;
                 }
                 break;
-			}
+            }
             case 2320000: // The Teleport Rock
             case 5041000: // VIP Teleport Rock
             case 5040000: // The Teleport Rock
@@ -1289,26 +1289,26 @@ public class InventoryHandler {
                 }
                 break;
             }
-	    case 5050001: // SP Reset (1st job)
-	    case 5050002: // SP Reset (2nd job)
-	    case 5050003: // SP Reset (3rd job)
-	    case 5050004: { // SP Reset (4th job)
-		int skill1 = slea.readInt();
-		int skill2 = slea.readInt();
+        case 5050001: // SP Reset (1st job)
+        case 5050002: // SP Reset (2nd job)
+        case 5050003: // SP Reset (3rd job)
+        case 5050004: { // SP Reset (4th job)
+        int skill1 = slea.readInt();
+        int skill2 = slea.readInt();
 
-		ISkill skillSPTo = SkillFactory.getSkill(skill1);
-		ISkill skillSPFrom = SkillFactory.getSkill(skill2);
+        ISkill skillSPTo = SkillFactory.getSkill(skill1);
+        ISkill skillSPFrom = SkillFactory.getSkill(skill2);
 
-		if (skillSPTo.isBeginnerSkill() || skillSPFrom.isBeginnerSkill()) {
-		    break;
-		}
-		if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c.getPlayer().getSkillLevel(skillSPFrom) > 0) {
-		    c.getPlayer().changeSkillLevel(skillSPFrom, (byte) (c.getPlayer().getSkillLevel(skillSPFrom) - 1), c.getPlayer().getMasterLevel(skillSPFrom));
-		    c.getPlayer().changeSkillLevel(skillSPTo, (byte) (c.getPlayer().getSkillLevel(skillSPTo) + 1), c.getPlayer().getMasterLevel(skillSPTo));
-		    used = true;
-		}
-		break;
-	    }
+        if (skillSPTo.isBeginnerSkill() || skillSPFrom.isBeginnerSkill()) {
+            break;
+        }
+        if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c.getPlayer().getSkillLevel(skillSPFrom) > 0) {
+            c.getPlayer().changeSkillLevel(skillSPFrom, (byte) (c.getPlayer().getSkillLevel(skillSPFrom) - 1), c.getPlayer().getMasterLevel(skillSPFrom));
+            c.getPlayer().changeSkillLevel(skillSPTo, (byte) (c.getPlayer().getSkillLevel(skillSPTo) + 1), c.getPlayer().getMasterLevel(skillSPTo));
+            used = true;
+        }
+        break;
+        }
             case 5500000: { // Magic Hourglass 1 day
                 final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
                 final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
@@ -1595,7 +1595,7 @@ public class InventoryHandler {
                     sb.append(message);
                     final boolean ear = slea.readByte() != 0;
 
-					c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.serverNotice(2, sb.toString()));
+                    c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.serverNotice(2, sb.toString()));
                     used = true;
                 } else {
                     c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
@@ -1657,7 +1657,7 @@ public class InventoryHandler {
                     }
                     final boolean ear = slea.readByte() > 0;
 
-					World.Broadcast.broadcastSmega(MaplePacketCreator.tripleSmega(messages, ear, c.getChannel()).getBytes());
+                    World.Broadcast.broadcastSmega(MaplePacketCreator.tripleSmega(messages, ear, c.getChannel()).getBytes());
 
                     used = true;
                 } else {
@@ -1688,8 +1688,8 @@ public class InventoryHandler {
 
                     final boolean ear = slea.readByte() != 0;
 
-					World.Broadcast.broadcastSmega(MaplePacketCreator.serverNotice(11, c.getChannel(), sb.toString(), ear).getBytes());
-						
+                    World.Broadcast.broadcastSmega(MaplePacketCreator.serverNotice(11, c.getChannel(), sb.toString(), ear).getBytes());
+                        
                     used = true;
                 } else {
                     c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
@@ -2060,7 +2060,7 @@ public class InventoryHandler {
                     c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
                     break;
                 }
-				if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+                if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
                     c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
                     break;
                 }
@@ -2070,8 +2070,8 @@ public class InventoryHandler {
                         break;
                     }
                     final boolean ear = slea.readByte() != 0;
-					World.Broadcast.broadcastSmega(MaplePacketCreator.getAvatarMega(c.getPlayer(), c.getChannel(), itemId, text, ear).getBytes());
-					used = true;
+                    World.Broadcast.broadcastSmega(MaplePacketCreator.getAvatarMega(c.getPlayer(), c.getChannel(), itemId, text, ear).getBytes());
+                    used = true;
                 }
                 break;
             }
@@ -2080,28 +2080,28 @@ public class InventoryHandler {
                 MapleShopFactory.getInstance().getShop(61).sendShop(c);
                 break;
             }
-			case 5152100:
-			case 5152101:
-			case 5152102:
-			case 5152103:
-			case 5152104:
-			case 5152105:
-			case 5152106:
-			case 5152107:{
-				int color_num = (itemId - 5152100);
-				int current = (c.getPlayer().getFace()% 100) + ((int)(c.getPlayer().getFace()/1000))*1000;
-				int newface = current + (color_num * 100);
-				if (MapleItemInformationProvider.getInstance().faceExists(newface))
-				{
-					c.getPlayer().setFace(newface);
-					c.getPlayer().updateSingleStat(MapleStat.FACE, newface);
-					c.getPlayer().equipChanged();
-					used = true;
-				}else{
-					 c.getPlayer().dropMessage(6,"該臉部沒有此瞳孔顏色唷");
-				}
-				break;
-			}
+            case 5152100:
+            case 5152101:
+            case 5152102:
+            case 5152103:
+            case 5152104:
+            case 5152105:
+            case 5152106:
+            case 5152107:{
+                int color_num = (itemId - 5152100);
+                int current = (c.getPlayer().getFace()% 100) + ((int)(c.getPlayer().getFace()/1000))*1000;
+                int newface = current + (color_num * 100);
+                if (MapleItemInformationProvider.getInstance().faceExists(newface))
+                {
+                    c.getPlayer().setFace(newface);
+                    c.getPlayer().updateSingleStat(MapleStat.FACE, newface);
+                    c.getPlayer().equipChanged();
+                    used = true;
+                }else{
+                     c.getPlayer().dropMessage(6,"該臉部沒有此瞳孔顏色唷");
+                }
+                break;
+            }
             default:
                 if (itemId / 10000 == 512) {
                     final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
@@ -2431,7 +2431,7 @@ public class InventoryHandler {
         if (c.getPlayer().haveItem(5230000, 1, true, true) || c.getPlayer().haveItem(2310000, 1, true, true)) {
             if (c.getPlayer().getMapId() >= 910000000 && c.getPlayer().getMapId() <= 910000022) {
                 c.getSession().write(MaplePacketCreator.getOwlOpen());
-				System.out.println("TEST");
+                System.out.println("TEST");
             } else {
                 c.getPlayer().dropMessage(5, "只能在自由市場使用");
                 c.getSession().write(MaplePacketCreator.enableActions());

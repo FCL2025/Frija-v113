@@ -306,7 +306,7 @@ public class GameConstants {
         }
         return MapleInventoryType.getByType(type);
     }
-	
+    
     public static MapleWeaponType getWeaponType(final int itemId) {
         int cat = itemId / 10000;
         cat = cat % 100;
@@ -445,10 +445,10 @@ public class GameConstants {
         return id % 10000;
     }
 
-	public static boolean isSpear(final int itemId){
-		return (getWeaponType(itemId) == MapleWeaponType.SPEAR) || (getWeaponType(itemId) == MapleWeaponType.POLE_ARM);
-	}
-	
+    public static boolean isSpear(final int itemId){
+        return (getWeaponType(itemId) == MapleWeaponType.SPEAR) || (getWeaponType(itemId) == MapleWeaponType.POLE_ARM);
+    }
+    
     public static boolean isGem(final int id) {
         return id >= 4250000 && id <= 4251402;
     }

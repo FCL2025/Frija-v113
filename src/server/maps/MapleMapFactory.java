@@ -143,35 +143,35 @@ public class MapleMapFactory {
                     bossid = MapleDataTool.getInt(mapData.getChildByPath("info/timeMob/id"), 0);
                     msg = MapleDataTool.getString(mapData.getChildByPath("info/timeMob/message"), null);
                 }
-				try (Connection con = DatabaseConnection.getConnection();
-						PreparedStatement ps = con.prepareStatement("SELECT * FROM spawns WHERE mid = ?"))
-				{
-					ps.setInt(1, omapid);
-					try (ResultSet rs = ps.executeQuery()) {
-						while (rs.next()) {
-							int id = rs.getInt("idd");
-							int f = rs.getInt("f");
-							boolean hide = false;
-							String type = rs.getString("type");
-							int _fh = rs.getInt("fh");
-							int cy = rs.getInt("cy");
-							int rx0 = rs.getInt("rx0");
-							int rx1 = rs.getInt("rx1");
-							int x = rs.getInt("x");
-							int y = rs.getInt("y");
-							int mobTime = rs.getInt("mobtime");
+                try (Connection con = DatabaseConnection.getConnection();
+                        PreparedStatement ps = con.prepareStatement("SELECT * FROM spawns WHERE mid = ?"))
+                {
+                    ps.setInt(1, omapid);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            int id = rs.getInt("idd");
+                            int f = rs.getInt("f");
+                            boolean hide = false;
+                            String type = rs.getString("type");
+                            int _fh = rs.getInt("fh");
+                            int cy = rs.getInt("cy");
+                            int rx0 = rs.getInt("rx0");
+                            int rx1 = rs.getInt("rx1");
+                            int x = rs.getInt("x");
+                            int y = rs.getInt("y");
+                            int mobTime = rs.getInt("mobtime");
 
-							AbstractLoadedMapleLife myLife = loadLife(id, f, hide, _fh, cy, rx0, rx1, x, y, type);
+                            AbstractLoadedMapleLife myLife = loadLife(id, f, hide, _fh, cy, rx0, rx1, x, y, type);
 
-							if(type.equals("n"))
-							{
-								map.addMapObject(myLife);
-							}
-						}
-					}
-				} catch(SQLException e) {
-					FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
-				}
+                            if(type.equals("n"))
+                            {
+                                map.addMapObject(myLife);
+                            }
+                        }
+                    }
+                } catch(SQLException e) {
+                    FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
+                }
                 // load life data (npc, monsters)
                 String type;
                 AbstractLoadedMapleLife myLife;
@@ -331,7 +331,7 @@ public class MapleMapFactory {
             bossid = MapleDataTool.getInt(mapData.getChildByPath("info/timeMob/id"), 0);
             msg = MapleDataTool.getString(mapData.getChildByPath("info/timeMob/message"), null);
         }
-		
+        
         // load life data (npc, monsters)
         String type;
         AbstractLoadedMapleLife myLife;
@@ -446,17 +446,17 @@ public class MapleMapFactory {
         }
         return myLife;
     }
-	private AbstractLoadedMapleLife loadLife(int id, int f, boolean hide, int fh, int cy, int rx0, int rx1, int x, int y, String type) {
-		AbstractLoadedMapleLife myLife = MapleLifeFactory.getLife(id, type);
-		myLife.setCy(cy);
-		myLife.setF(f);
-		myLife.setFh(fh);
-		myLife.setRx0(rx0);
-		myLife.setRx1(rx1);
-		myLife.setPosition(new Point(x, y));
-		myLife.setHide(hide);
-		return myLife;
-	}
+    private AbstractLoadedMapleLife loadLife(int id, int f, boolean hide, int fh, int cy, int rx0, int rx1, int x, int y, String type) {
+        AbstractLoadedMapleLife myLife = MapleLifeFactory.getLife(id, type);
+        myLife.setCy(cy);
+        myLife.setF(f);
+        myLife.setFh(fh);
+        myLife.setRx0(rx0);
+        myLife.setRx1(rx1);
+        myLife.setPosition(new Point(x, y));
+        myLife.setHide(hide);
+        return myLife;
+    }
 
     private final MapleReactor loadReactor(final MapleData reactor, final String id, final byte FacingDirection) {
         final MapleReactorStats stats = MapleReactorFactory.getReactor(Integer.parseInt(id));

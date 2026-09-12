@@ -29,7 +29,7 @@ public class Item implements IItem, Serializable {
     private short position;
     private short quantity;
     private byte flag;
-	private int exp;
+    private int exp;
     private long expiration = -1;
     private MaplePet pet = null;
     private int uniqueid = -1;
@@ -168,15 +168,15 @@ public class Item implements IItem, Serializable {
     public String getGiftFrom() {
         return giftFrom;
     }
-	
-	@Override
-	public int getExp() {
-		return exp;
-	}
-	@Override
-	public void setExp(int exp) {
-		this.exp = exp;
-	}
+    
+    @Override
+    public int getExp() {
+        return exp;
+    }
+    @Override
+    public void setExp(int exp) {
+        this.exp = exp;
+    }
 
     @Override
     public int compareTo(IItem other) {

@@ -365,8 +365,8 @@ public class PlayersHandler {
             }
         }
     }
-	
-	public static void Solomon(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    
+    public static void Solomon(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         c.getSession().write(MaplePacketCreator.enableActions());
         c.getPlayer().updateTick(slea.readInt());
         IItem item = c.getPlayer().getInventory(MapleInventoryType.USE).getItem(slea.readShort());

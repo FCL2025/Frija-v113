@@ -406,7 +406,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         }
         sb.append("IoSession opened ").append(address);
         System.out.println(sb.toString());
-		World.Client.addClient(client);
+        World.Client.addClient(client);
 
         FileWriter fw = isLoggedIP(session);
         if (fw != null) {
@@ -432,7 +432,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 }
                 client.disconnect(true, cs);
             } finally {
-				World.Client.removeClient(client);
+                World.Client.removeClient(client);
                 session.close();
                 session.removeAttribute(MapleClient.CLIENT_KEY);
             }
@@ -586,7 +586,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 break;
             case ENTER_MTS:
 //                InterServerHandler.EnterCS(c, c.getPlayer(), true);
-				c.getPlayer().dropMessage(1, "目前暫停使用.");
+                c.getPlayer().dropMessage(1, "目前暫停使用.");
                 break;
             case MOVE_PLAYER:
                 PlayerHandler.MovePlayer(slea, c, c.getPlayer());

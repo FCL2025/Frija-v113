@@ -224,9 +224,9 @@ public class MapleSquad {
     }
 
     public int addMember(MapleCharacter member, boolean join) {
-	if (getLeader() == null) {
-	    return -1;
-	}
+    if (getLeader() == null) {
+        return -1;
+    }
         final String job = MapleCarnivalChallenge.getJobBasicNameById(member.getJob());
         if (join) {
             if (!containsMember(member) && !getAllNextPlayer().contains(member.getName())) {

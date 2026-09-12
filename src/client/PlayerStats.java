@@ -382,7 +382,7 @@ public class PlayerStats implements Serializable {
                 }
                 setHandling.put(set, value); //id of Set, number of items to go with the set
             }
-			/*
+            /*
             if (equip.getState() > 1) {
                 int[] potentials = {equip.getPotential1(), equip.getPotential2(), equip.getPotential3()};
                 for (int i : potentials) {
@@ -449,7 +449,7 @@ public class PlayerStats implements Serializable {
                     equipLevelHandling.add((Equip) equip);
                 }
             }*/
-			if (canEquipLevel && GameConstants.getMaxLevel(equip.getItemId()) > 0 && (GameConstants.getStatFromWeapon(equip.getItemId()) == null ? (equip.getEquipLevel() <= GameConstants.getMaxLevel(equip.getItemId())) : (equip.getEquipLevel() < GameConstants.getMaxLevel(equip.getItemId())))) {
+            if (canEquipLevel && GameConstants.getMaxLevel(equip.getItemId()) > 0 && (GameConstants.getStatFromWeapon(equip.getItemId()) == null ? (equip.getEquipLevel() <= GameConstants.getMaxLevel(equip.getItemId())) : (equip.getEquipLevel() < GameConstants.getMaxLevel(equip.getItemId())))) {
                     equipLevelHandling.add((Equip) equip);
             }
         }

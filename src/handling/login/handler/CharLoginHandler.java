@@ -172,7 +172,7 @@ public class CharLoginHandler {
     public static final void CreateChar(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final String name = slea.readMapleAsciiString();
         final int JobType = slea.readInt(); // 1 = Adventurer, 0 = Cygnus, 2 = Aran
-		/*
+        /*
         if (JobType == 0 || JobType == 2) {
             c.getSession().write(MaplePacketCreator.serverNotice(1, "只能創冒險家喔"));
             return;
@@ -327,7 +327,7 @@ public class CharLoginHandler {
          return;
          }
          if (c.getIdleTask() != null) {
-			c.getIdleTask().cancel(true);
+            c.getIdleTask().cancel(true);
          }
          c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION, c.getSessionIPAddress());
         c.getSession().write(MaplePacketCreator.getServerIP(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1]), charId));

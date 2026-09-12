@@ -573,5 +573,5 @@ public class PlayerShopPacket {
 
         return mplew.getPacket();
     }
-	
+    
 }

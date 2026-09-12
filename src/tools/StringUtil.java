@@ -218,17 +218,17 @@ public class StringUtil {
         int elapsedDays = elapsedHrs / 24;
         return elapsedDays;
     }
-	
-	public static String readFileAsString(String path){
-		StringBuilder builder = new StringBuilder();
-		try {
-			for(String str : Files.readAllLines(Paths.get(path) ,Encodings.BIG5 )){
-				builder.append(str + System.lineSeparator());
-			}
-			return builder.toString();
-		} catch (IOException e) {
-			System.out.println("Error while loading file " + path + " " + e.getMessage());
-		}
-		return "";
-	}
+    
+    public static String readFileAsString(String path){
+        StringBuilder builder = new StringBuilder();
+        try {
+            for(String str : Files.readAllLines(Paths.get(path) ,Encodings.BIG5 )){
+                builder.append(str + System.lineSeparator());
+            }
+            return builder.toString();
+        } catch (IOException e) {
+            System.out.println("Error while loading file " + path + " " + e.getMessage());
+        }
+        return "";
+    }
 }

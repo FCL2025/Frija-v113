@@ -1372,51 +1372,51 @@ public class MapleItemInformationProvider {
         }
         return getItemData(itemId) != null;
     }
-	public final void loadStyles(boolean reload)
-	{
-		if (reload) {
-			faceList.clear();
-		}
-		if (!faceList.isEmpty()) {
-			return;
-		}
-		final List<String> types = new ArrayList<String>();
-		types.add("Face");
-		for (final String type : types) {
-			for (MapleData c : stringData.getData("Eqp.img").getChildByPath("Eqp/" + type)) {
-				if (this.equipData.getData(type + "/" + StringUtil.getLeftPaddedStr(new StringBuilder().append(c.getName()).append(".img").toString(), '0', 12)) != null)
-				{
-					int dataid = Integer.parseInt(c.getName());
-					String name = MapleDataTool.getString("name", c, "無名稱");
-					if (type.equals("Face")) {
-						faceList.put(Integer.valueOf(dataid), name);
-					}
-				}
-			}
-		}
-	}
+    public final void loadStyles(boolean reload)
+    {
+        if (reload) {
+            faceList.clear();
+        }
+        if (!faceList.isEmpty()) {
+            return;
+        }
+        final List<String> types = new ArrayList<String>();
+        types.add("Face");
+        for (final String type : types) {
+            for (MapleData c : stringData.getData("Eqp.img").getChildByPath("Eqp/" + type)) {
+                if (this.equipData.getData(type + "/" + StringUtil.getLeftPaddedStr(new StringBuilder().append(c.getName()).append(".img").toString(), '0', 12)) != null)
+                {
+                    int dataid = Integer.parseInt(c.getName());
+                    String name = MapleDataTool.getString("name", c, "無名稱");
+                    if (type.equals("Face")) {
+                        faceList.put(Integer.valueOf(dataid), name);
+                    }
+                }
+            }
+        }
+    }
   
-	public boolean faceExists(int face)
-	{
-		if (faceList.isEmpty()) {
-			loadStyles(false);
-		}
-		return faceList.containsKey(Integer.valueOf(face));
-	}
+    public boolean faceExists(int face)
+    {
+        if (faceList.isEmpty()) {
+            loadStyles(false);
+        }
+        return faceList.containsKey(Integer.valueOf(face));
+    }
   
-	public final Map<Integer, String> getFaceList()
-	{
-		Map<Integer, String> list = new HashMap<>();
-		list.putAll(faceList);
-		return list;
-	}
+    public final Map<Integer, String> getFaceList()
+    {
+        Map<Integer, String> list = new HashMap<>();
+        list.putAll(faceList);
+        return list;
+    }
     public final boolean isCash(final int itemId) {
         if (getEquipStats(itemId) == null) {
             return getInventoryType(itemId) == MapleInventoryType.CASH;
         }
         return getInventoryType(itemId) == MapleInventoryType.CASH || getEquipStats(itemId).get("cash") > 0;
     }
-	public final MapleInventoryType getInventoryType(int itemId) {
+    public final MapleInventoryType getInventoryType(int itemId) {
         final MapleInventoryType cached = inventoryTypeCache.get(itemId);
         if (cached != null) {
             return cached;
@@ -1451,8 +1451,8 @@ public class MapleItemInformationProvider {
         inventoryTypeCache.put(itemId, ret);
         return ret;
     }
-	public short getPetFlagInfo(int itemId) {
-		System.out.println("ItemID = " + itemId);
+    public short getPetFlagInfo(int itemId) {
+        System.out.println("ItemID = " + itemId);
         final Short cached = this.petFlagInfo.get(itemId);
         if (cached != null) {
             return cached;
@@ -1489,8 +1489,8 @@ public class MapleItemInformationProvider {
         this.petFlagInfo.put(itemId, flag);
         return flag;
     }
-	
-	public boolean isCashItem(int itemId) {
+    
+    public boolean isCashItem(int itemId) {
 
         MapleData item = getItemData(itemId);
         if (item == null) {

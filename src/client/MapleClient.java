@@ -458,46 +458,46 @@ public class MapleClient implements Serializable {
         }
         return loginok;
     }
-	public void unlockAcc() {
-		boolean unLocked = false;
-		for (final MapleClient c: World.Client.getClients()) {
-			if (c.getAccID() == accId && c.isLoggedIn()) {
-				if (!c.getSession().isConnected()) {
+    public void unlockAcc() {
+        boolean unLocked = false;
+        for (final MapleClient c: World.Client.getClients()) {
+            if (c.getAccID() == accId && c.isLoggedIn()) {
+                if (!c.getSession().isConnected()) {
 //					c.disconnect(true, c.getChannel() == -10);
-					List<String> charName = c.loadCharacterNames(c.getWorld());
-					for (final String cha : charName) {
-						MapleCharacter chr = CashShopServer.getPlayerStorage().getCharacterByName(cha);
-						if (chr != null) {
-							chr.saveToDB(false,false);
-							CashShopServer.getPlayerStorage().deregisterPlayer(chr);
-							break;
+                    List<String> charName = c.loadCharacterNames(c.getWorld());
+                    for (final String cha : charName) {
+                        MapleCharacter chr = CashShopServer.getPlayerStorage().getCharacterByName(cha);
+                        if (chr != null) {
+                            chr.saveToDB(false,false);
+                            CashShopServer.getPlayerStorage().deregisterPlayer(chr);
+                            break;
                         }
                     }
                     for (ChannelServer cs : ChannelServer.getAllInstances()) {
                         for (final String cha : charName) {
                             MapleCharacter chr = cs.getPlayerStorage().getCharacterByName(cha);
                             if (chr != null) {
-								chr.saveToDB(false,false);
+                                chr.saveToDB(false,false);
                                 cs.removePlayer(chr);
                                 break;
                             }
                         }
                     }
-				}
+                }
                 c.unLockDisconnect();
                 unLocked = true;
-				break;
-			}
-		}
-		if (!unLocked) {
-			try (Connection con = DatabaseConnection.getConnection();
-				 PreparedStatement ps = con.prepareStatement("UPDATE accounts SET loggedin = 0 WHERE name = ?")) {
-				ps.setString(1, accountName);
-				ps.executeUpdate();
-			} catch (SQLException se) {
-				System.err.println("ERROR unlockAcc" + se);
-			}
-		}
+                break;
+            }
+        }
+        if (!unLocked) {
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement ps = con.prepareStatement("UPDATE accounts SET loggedin = 0 WHERE name = ?")) {
+                ps.setString(1, accountName);
+                ps.executeUpdate();
+            } catch (SQLException se) {
+                System.err.println("ERROR unlockAcc" + se);
+            }
+        }
     }
     public final void unLockDisconnect() {
         getSession().write(MaplePacketCreator.serverNotice(1, "帳號被他人登入。"));
@@ -742,16 +742,16 @@ public class MapleClient implements Serializable {
             final MapleMessengerCharacter chrm = new MapleMessengerCharacter(player);
             final MapleGuildCharacter chrg = player.getMGC();
             final MapleFamilyCharacter chrf = player.getMFC();
-			final IMaplePlayerShop ips = player.getPlayerShop();
-			
-			if (player.getTrade() != null) {
-				MapleTrade.cancelTrade(player.getTrade(), this);
-			}
-			if(ips != null ){
-				if (!ips.isAvailable() || (ips.isOwner(player) && ips.getShopType() != 1) || (ips.isOwner(player) && ips.getShopType() == 1 && !ips.isOpen())) {
-					ips.closeShop(true, true);
-				}
-			}
+            final IMaplePlayerShop ips = player.getPlayerShop();
+            
+            if (player.getTrade() != null) {
+                MapleTrade.cancelTrade(player.getTrade(), this);
+            }
+            if(ips != null ){
+                if (!ips.isAvailable() || (ips.isOwner(player) && ips.getShopType() != 1) || (ips.isOwner(player) && ips.getShopType() == 1 && !ips.isOpen())) {
+                    ips.closeShop(true, true);
+                }
+            }
 
             removalTask();
             player.saveToDB(true, fromCS);

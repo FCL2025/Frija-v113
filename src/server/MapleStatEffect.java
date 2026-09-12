@@ -257,9 +257,9 @@ public class MapleStatEffect implements Serializable {
                     statups.add(new Pair<MapleBuffStat, Integer>(MapleBuffStat.SHADOWPARTNER, ret.x));
                     break;
                 case 11101002: // All Final attack
-				case 21120002:
-					statups.add(new Pair<MapleBuffStat, Integer>(MapleBuffStat.FINAL_MEL_ATTACK, ret.x));
-					break;
+                case 21120002:
+                    statups.add(new Pair<MapleBuffStat, Integer>(MapleBuffStat.FINAL_MEL_ATTACK, ret.x));
+                    break;
                 case 13101002:
                     statups.add(new Pair<MapleBuffStat, Integer>(MapleBuffStat.FINALATTACK, ret.x));
                     break;
@@ -1091,8 +1091,8 @@ public class MapleStatEffect implements Serializable {
     public final void setDuration(int d) {
         this.duration = d;
     }
-	
-	public final int getEXP() {
+    
+    public final int getEXP() {
         return this.exp;
     }
 
@@ -1958,7 +1958,7 @@ public class MapleStatEffect implements Serializable {
         switch (sourceid) {
             case 13101002:
             case 11101002:
-			case 21120002: 
+            case 21120002: 
                 return skill;
         }
         return false;

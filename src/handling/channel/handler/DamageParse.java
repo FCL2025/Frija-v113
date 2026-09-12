@@ -160,23 +160,23 @@ public class DamageParse {
             }
             attackCount /= 2; // hack xD
         }
-		//combo reset 
-		switch(attack.skill){
-			case 21100004:
-			case 21110004:
-			case 21120006:
-				player.setLastCombo(System.currentTimeMillis());
-				player.setCombo((short)0);
-				break;
-		}
+        //combo reset 
+        switch(attack.skill){
+            case 21100004:
+            case 21110004:
+            case 21120006:
+                player.setLastCombo(System.currentTimeMillis());
+                player.setCombo((short)0);
+                break;
+        }
 
         byte overallAttackCount; // Tracking of Shadow Partner additional damage.
         double maxDamagePerHit = 0;
         MapleMonster monster;
         MapleMonsterStats monsterstats;
         boolean Tempest;
-		int d = 0;
-		
+        int d = 0;
+        
         for (final AttackPair oned : attack.allDamage) {
             monster = map.getMonsterByOid(oned.objectid);
 
@@ -298,7 +298,7 @@ public class DamageParse {
                     switch (attack.skill) {
                         case 4101005: //drain
                         case 5111004:  // Energy Drain
-						case 14101006:{ // Vampire
+                        case 14101006:{ // Vampire
                             stats.setHp((stats.getHp() + ((int) Math.min(monster.getMobMaxHp(), Math.min(((int) ((double) totDamage * (double) theSkill.getEffect(player.getSkillLevel(theSkill)).getX() / 100.0)), stats.getMaxHp() / 2)))), true);
                             break;
                         }
@@ -460,7 +460,7 @@ public class DamageParse {
                     }
                 }
             }
-			d+=113;
+            d+=113;
         }
         if (attack.skill == 4331003 && totDamageToOneMonster < hpMob) {
             return;
@@ -544,7 +544,7 @@ public class DamageParse {
 
         final MapleMap map = player.getMap();
 
-		int d = 0;
+        int d = 0;
         for (final AttackPair oned : attack.allDamage) {
             final MapleMonster monster = map.getMonsterByOid(oned.objectid);
 
@@ -632,7 +632,7 @@ public class DamageParse {
                     }
                 }
             }
-			d+=113;
+            d+=113;
         }
         if (attack.skill != 2301002) {
             effect.applyTo(player);

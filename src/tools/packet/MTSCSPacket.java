@@ -45,8 +45,8 @@ import tools.data.output.MaplePacketLittleEndianWriter;
 
 public class MTSCSPacket {
 
-	private static final byte[] warpCS = HexTool.getByteArrayFromHexString("00 00 0A 00 50 10 27 00 00 00 5A 00 00 00 00 00 00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00 00");
-	private static final byte[] warpCS2 = HexTool.getByteArrayFromHexString("06 00 00 00 31 00 30 00 31 00 00 00 00 00 00 00 05 00 0E 00 05 00 08 06 A0 01 14 00 C8 FE 8D 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 13 00 0A 01 0C 06 06 00 00 00 31 00 30 00 31 00 00 00 00 00 00 00 03 00 16 00 0D 00 0C 06 90 01 14 00 F8 36 8C 06 31 00 00 00 00 00 00 00 03 00 19 00 10 01 0C 06 06 00 00 00 31 00 30 00");
+    private static final byte[] warpCS = HexTool.getByteArrayFromHexString("00 00 0A 00 50 10 27 00 00 00 5A 00 00 00 00 00 00 00 00 00 00 00 00 FF 00 00 00 00 00 00 00 00 00");
+    private static final byte[] warpCS2 = HexTool.getByteArrayFromHexString("06 00 00 00 31 00 30 00 31 00 00 00 00 00 00 00 05 00 0E 00 05 00 08 06 A0 01 14 00 C8 FE 8D 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 13 00 0A 01 0C 06 06 00 00 00 31 00 30 00 31 00 00 00 00 00 00 00 03 00 16 00 0D 00 0C 06 90 01 14 00 F8 36 8C 06 31 00 00 00 00 00 00 00 03 00 19 00 10 01 0C 06 06 00 00 00 31 00 30 00");
   
     public static MaplePacket warpCS(MapleClient c) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
@@ -60,20 +60,20 @@ public class MTSCSPacket {
         mplew.writeInt(0);
         mplew.writeShort(cmi.size());
         for (CashModInfo cm : cmi) {
-			addModCashItemInfo(mplew, cm);
+            addModCashItemInfo(mplew, cm);
         }
-		mplew.write(warpCS);
-		mplew.write(warpCS2);
+        mplew.write(warpCS);
+        mplew.write(warpCS2);
 
         int[] itemz = CashItemFactory.getInstance().getBestItems();
         for (int i = 1; i <= 8; i++) {
-			for (int j = 0; j <= 1; j++) {
-				for (int item : itemz) {
-					mplew.writeInt(i);
-					mplew.writeInt(j);
-					mplew.writeInt(item);
-				}
-			}
+            for (int j = 0; j <= 1; j++) {
+                for (int item : itemz) {
+                    mplew.writeInt(i);
+                    mplew.writeInt(j);
+                    mplew.writeInt(item);
+                }
+            }
          }
         mplew.writeShort(0); //stock
         mplew.writeShort(0); //limited goods 1-> A2 35 4D 00 CE FD FD 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 FF FF FF FF FF FF FF FF 06 00 00 00 1F 1C 32 01 A7 3F 32 01 FF FF FF FF FF FF FF FF 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00
@@ -90,14 +90,14 @@ public class MTSCSPacket {
         return mplew.getPacket();
     }
 
-	public static MaplePacket showAcc(MapleClient c)
-	{
-		MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
-		mplew.writeShort(0x15F);
-		mplew.write(1);
-		mplew.writeMapleAsciiString(c.getAccountName());
-		return mplew.getPacket();
-	}
+    public static MaplePacket showAcc(MapleClient c)
+    {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+        mplew.writeShort(0x15F);
+        mplew.write(1);
+        mplew.writeMapleAsciiString(c.getAccountName());
+        return mplew.getPacket();
+    }
     public static MaplePacket useCharm(byte charmsleft, byte daysleft) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 

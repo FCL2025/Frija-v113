@@ -70,7 +70,7 @@ public class StaticLifeMovement extends AbstractLifeMovement {
                 break;
             case 1:
             case 2:
-			case 6: // fj
+            case 6: // fj
             case 12:
             case 13:
             case 16:
@@ -79,7 +79,7 @@ public class StaticLifeMovement extends AbstractLifeMovement {
             case 20:
             case 22:
             case 23:
-			case 24:
+            case 24:
                 lew.writePos(pixelsPerSecond);
                 break;
             case 3:
@@ -89,7 +89,7 @@ public class StaticLifeMovement extends AbstractLifeMovement {
             case 9:
             case 11:
                 lew.writePos(getPosition());
-				lew.writeShort(fh);
+                lew.writeShort(fh);
                 break;
             case 14:
                 lew.writePos(getPosition());
@@ -103,4 +103,4 @@ public class StaticLifeMovement extends AbstractLifeMovement {
             lew.write(wui);
         }
     }
-}
+}

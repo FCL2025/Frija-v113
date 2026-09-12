@@ -815,7 +815,7 @@ public abstract class AbstractPlayerInteraction {
         c.getSession().write(MaplePacketCreator.instantMapWarp((byte) 6));
     }
 
-	
+    
     public final boolean dojoAgent_NextMap(final boolean dojo, final boolean fromresting) {
         if (dojo) {
             return Event_DojoAgent.warpNextMap(c.getPlayer(), fromresting);
@@ -823,7 +823,7 @@ public abstract class AbstractPlayerInteraction {
         return Event_DojoAgent.warpNextMap_Agent(c.getPlayer(), fromresting);
     }
 
-	
+    
     public final int dojo_getPts() {
         return c.getPlayer().getDojo();
     }

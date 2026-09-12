@@ -1302,7 +1302,7 @@ public final class MapleMap {
         if (squadSchedule != null) {
             cancelSquadSchedule();
             broadcastMessage(MaplePacketCreator.stopClock());
-			broadcastMessage(MaplePacketCreator.getClock(60000*600));
+            broadcastMessage(MaplePacketCreator.getClock(60000*600));
         }
     }
 
@@ -1495,14 +1495,14 @@ public final class MapleMap {
                          ((MapleMonster) mo).applyStatus(owner, new MonsterStatusEffect(MonsterStatus.POISON, 1, mist.getSourceSkill().getId(), null, false), true, duration, false);
                          }
                          }*/
-						int d = 0 ;
+                        int d = 0 ;
                         for (final MapleMapObject mo : getMapObjectsInRect(mist.getBox(), Collections.singletonList(MapleMapObjectType.MONSTER))) {
                             /*if (mist.makeChanceResult() && ((MapleCharacter) mo).getId() != mist.getOwnerId()) {
                              ((MapleCharacter) mo).setDOT(mist.getSource().getDOT(), mist.getSourceSkill().getId(), mist.getSkillLevel());
                              } else */
                             if (mist.makeChanceResult() && !((MapleMonster) mo).isBuffed(MonsterStatus.POISON) && ((MapleMonster) mo).getHp() > 1 ) {
                                 ((MapleMonster) mo).applyStatus(owner, new MonsterStatusEffect(MonsterStatus.POISON, 1, mist.getSourceSkill().getId(), null, false), true, duration, false  , d  );
-								d += 137;
+                                d += 137;
                             }
                         }
                     }
@@ -2312,7 +2312,7 @@ public final class MapleMap {
             if (summon.getMovementType() == SummonMovementType.STATIONARY || summon.getMovementType() == SummonMovementType.CIRCLE_STATIONARY || summon.getMovementType() == SummonMovementType.WALK_STATIONARY) {
                 cancelSummons = true;
             } else {
-				broadcastMessage(MaplePacketCreator.removeSummon(summon, true));
+                broadcastMessage(MaplePacketCreator.removeSummon(summon, true));
                 summon.setChangedMap(true);
                 removeMapObject(summon);
             }

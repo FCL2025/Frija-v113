@@ -197,11 +197,11 @@ public class CheatTracker {
         lastDropTime = System.currentTimeMillis();
     }
     public boolean canAvatarSmega2() {
-	if (lastASmegaTime + 10000 > System.currentTimeMillis() && chr.get() != null && !chr.get().isGM()) {
-	    return false;
-	}
-	lastASmegaTime = System.currentTimeMillis();
-	return true;
+    if (lastASmegaTime + 10000 > System.currentTimeMillis() && chr.get() != null && !chr.get().isGM()) {
+        return false;
+    }
+    lastASmegaTime = System.currentTimeMillis();
+    return true;
     }
         public synchronized boolean GMSpam(int limit, int type) {
         if (type < 0 || lastTime.length < type) {

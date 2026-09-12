@@ -147,10 +147,10 @@ public class AdminCommand {
                     @Override
                     public void run() {
                         if (minutesLeft == 0) {
-			ShutdownServer.getInstance();
+            ShutdownServer.getInstance();
                             t.start();
                             ts.cancel(false);
-			return;
+            return;
                         }
                         World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
                         System.out.println("伺服器即將在 " + minutesLeft + "分鐘後關閉.");
@@ -166,15 +166,15 @@ public class AdminCommand {
     public static class saveall extends CommandExecute {
         private int p = 0;
         public int execute(MapleClient c, String[] splitted) {      
-			for (ChannelServer cserv : ChannelServer.getAllInstances()) {
-				for (MapleCharacter chr : cserv.getPlayerStorage().getAllCharacters()) {
-					p++;
-					chr.saveToDB(false, true);
-				}
-			}
-			c.getPlayer().dropMessage("[保存] "+p+"個玩家數據保存到數據中.");
-			return 0;
-		}
+            for (ChannelServer cserv : ChannelServer.getAllInstances()) {
+                for (MapleCharacter chr : cserv.getPlayerStorage().getAllCharacters()) {
+                    p++;
+                    chr.saveToDB(false, true);
+                }
+            }
+            c.getPlayer().dropMessage("[保存] "+p+"個玩家數據保存到數據中.");
+            return 0;
+        }
     }
 
 
@@ -2427,8 +2427,8 @@ public class AdminCommand {
             return 1;
         }
     }
-	
-	public static class PNPC extends CommandExecute {
+    
+    public static class PNPC extends CommandExecute {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
@@ -2441,7 +2441,7 @@ public class AdminCommand {
                 npc.setRx1(c.getPlayer().getPosition().x - 50);
                 npc.setFh(c.getPlayer().getMap().getFootholds().findBelow(c.getPlayer().getPosition()).getId());
                 npc.setCustom(true);
-				
+                
                 try (Connection con = DatabaseConnection.getConnection();
                         PreparedStatement ps = con.prepareStatement("INSERT INTO spawns ( idd, f, fh, cy, rx0, rx1, type, x, y, mid ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )")) {
                     ps.setInt(1, npcId);
@@ -2459,7 +2459,7 @@ public class AdminCommand {
                     System.err.println("SQL THROW");
                     SE.printStackTrace();
                 }
-				
+                
                 c.getPlayer().getMap().addMapObject(npc);
                 c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.spawnNPC(npc, true));
             } else {

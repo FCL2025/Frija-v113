@@ -92,28 +92,28 @@ public class HiredMerchant extends AbstractPlayerStore {
         }
 
          if (MapleInventoryManipulator.checkSpace(c, newItem.getItemId(), newItem.getQuantity(), newItem.getOwner())) {
-			final int gainmeso = getMeso() + theQuantity - GameConstants.EntrustedStoreTax(theQuantity);
-			if (gainmeso > 0) {
-				if(MapleInventoryManipulator.addFromDrop(c, newItem, false)){
-					setMeso(gainmeso);
-					pItem.bundles -= quantity; // Number remaining in the store
-					bought.add(new BoughtItem(newItem.getItemId(), quantity, theQuantity, c.getPlayer().getName()));
-					c.getPlayer().gainMeso(-theQuantity, false);
-					MapleCharacter chr = getMCOwnerWorld();
-					if (chr != null) {
-						chr.dropMessage(5, "物品 " + MapleItemInformationProvider.getInstance().getName(newItem.getItemId()) + " (" + perbundle + ") x " + quantity + " 已從精靈商店賣出. 還剩下 " + pItem.bundles + "個");
-					}
-				}else{
-					c.getPlayer().dropMessage(1, "您的背包滿了.");
-					c.getSession().write(MaplePacketCreator.enableActions());
-				}
-			} else {
-				c.getPlayer().dropMessage(1, "拍賣家有太多錢了.");
-				c.getSession().write(MaplePacketCreator.enableActions());
-			}
+            final int gainmeso = getMeso() + theQuantity - GameConstants.EntrustedStoreTax(theQuantity);
+            if (gainmeso > 0) {
+                if(MapleInventoryManipulator.addFromDrop(c, newItem, false)){
+                    setMeso(gainmeso);
+                    pItem.bundles -= quantity; // Number remaining in the store
+                    bought.add(new BoughtItem(newItem.getItemId(), quantity, theQuantity, c.getPlayer().getName()));
+                    c.getPlayer().gainMeso(-theQuantity, false);
+                    MapleCharacter chr = getMCOwnerWorld();
+                    if (chr != null) {
+                        chr.dropMessage(5, "物品 " + MapleItemInformationProvider.getInstance().getName(newItem.getItemId()) + " (" + perbundle + ") x " + quantity + " 已從精靈商店賣出. 還剩下 " + pItem.bundles + "個");
+                    }
+                }else{
+                    c.getPlayer().dropMessage(1, "您的背包滿了.");
+                    c.getSession().write(MaplePacketCreator.enableActions());
+                }
+            } else {
+                c.getPlayer().dropMessage(1, "拍賣家有太多錢了.");
+                c.getSession().write(MaplePacketCreator.enableActions());
+            }
          } else {
-			c.getPlayer().dropMessage(1, "您的背包滿了.");
-			c.getSession().write(MaplePacketCreator.enableActions());
+            c.getPlayer().dropMessage(1, "您的背包滿了.");
+            c.getSession().write(MaplePacketCreator.enableActions());
          }
     }
 

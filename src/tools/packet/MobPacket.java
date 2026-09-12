@@ -150,7 +150,7 @@ public class MobPacket {
         mplew.write(6);
         mplew.write(5);
 
-	//colour legend: (applies to both colours)
+    //colour legend: (applies to both colours)
         //1 = red, 2 = dark blue, 3 = light green, 4 = dark green, 5 = black, 6 = light blue, 7 = purple
         return mplew.getPacket();
     }

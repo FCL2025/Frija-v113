@@ -123,7 +123,7 @@ public class PlayerHandler {
             chr.getCheatTracker().registerOffense(CheatingOffense.USING_UNAVAILABLE_ITEM, Integer.toString(itemId));
             return;
         }
-		final int map = chr.getMapId();
+        final int map = chr.getMapId();
         if (/*itemId == 3011000*/map == 749050500 || map == 749050501 || map == 749050502) {
             boolean haz = false;
             for (IItem item : c.getPlayer().getInventory(MapleInventoryType.CASH).list()) {
@@ -146,7 +146,7 @@ public class PlayerHandler {
 
     public static final void CancelChair(final short id, final MapleClient c, final MapleCharacter chr) {
         if (id == -1) { // Cancel Chair
-			final int map = chr.getMapId();
+            final int map = chr.getMapId();
             if (/*itemId == 3011000*/map == 749050500 || map == 749050501 || map == 749050502) {
                 chr.cancelFishingTask();
             }

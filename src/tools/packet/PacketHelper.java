@@ -150,7 +150,7 @@ public class PacketHelper {
 
     public static final void addRingInfo(final MaplePacketLittleEndianWriter mplew, final MapleCharacter chr) {
         mplew.writeShort(0);
-	//01 00 = size
+    //01 00 = size
         //01 00 00 00 = gametype?
         //03 00 00 00 = win
         //00 00 00 00 = tie/loss
@@ -399,8 +399,8 @@ public class PacketHelper {
                 mplew.writeShort(equip.getExpPercentage() * 4); // Item Exp... 98% = 25%
 
                 if (!hasUniqueId) {
-					mplew.writeLong(item.getUniqueId());
-				}
+                    mplew.writeLong(item.getUniqueId());
+                }
                 mplew.writeLong(getTime(-2));
                 mplew.writeInt(-1);
             } else {

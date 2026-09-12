@@ -42,7 +42,7 @@ public class MovementParse {
             switch (command) {
                 case 0: // normal move
                 case 5:
-				case 15: // Jump Down
+                case 15: // Jump Down
                 case 17: // Float
                 {
                     final short xpos = lea.readShort();
@@ -50,10 +50,10 @@ public class MovementParse {
                     final short xwobble = lea.readShort();
                     final short ywobble = lea.readShort();
                     final short unk = lea.readShort();
-					short fh = 0;
-					if( command == 15 ){
-						fh = lea.readShort();
-					}
+                    short fh = 0;
+                    if( command == 15 ){
+                        fh = lea.readShort();
+                    }
                     final byte newstate = lea.readByte();
                     final short duration = lea.readShort();
                     final StaticLifeMovement mov = new StaticLifeMovement(command, new Point(xpos, ypos), duration, newstate, unk);
@@ -69,12 +69,12 @@ public class MovementParse {
                 case 12:
                 case 13:// Shot-jump-back thing
                 case 16:
-				case 18:// Float
-				case 19:
+                case 18:// Float
+                case 19:
                 case 20: // Aran Combat
-				case 22:
-				case 23:
-				case 24:{
+                case 22:
+                case 23:
+                case 24:{
                     final short xwobble = lea.readShort();
                     final short ywobble = lea.readShort();
                     final byte newstate = lea.readByte();
@@ -82,7 +82,7 @@ public class MovementParse {
                     final StaticLifeMovement mov = new StaticLifeMovement(command, new Point(xwobble, ywobble), duration, newstate, 0);
                     mov.setPixelsPerSecond(new Point(xwobble, ywobble));
                     res.add(mov);
-		    // log.trace("Relative move {},{} state {}, duration {}", new Object[] { xmod, ymod, newstate,
+            // log.trace("Relative move {},{} state {}, duration {}", new Object[] { xmod, ymod, newstate,
                     // duration });
                     break;
                 }
@@ -91,15 +91,15 @@ public class MovementParse {
                 case 7: // assaulter
                 case 8: // assassinate
                 case 9: // rush
-				case 11:{ // chair
-					final short xpos = lea.readShort();
-					final short ypos = lea.readShort();
-					final short fh = lea.readShort();
-					final byte newstate = lea.readByte();
-					final short duration = lea.readShort();
-					final StaticLifeMovement mov = new StaticLifeMovement(command, new Point(xpos, ypos), duration, newstate, 0);
-					mov.setFh(fh);
-					res.add(mov);
+                case 11:{ // chair
+                    final short xpos = lea.readShort();
+                    final short ypos = lea.readShort();
+                    final short fh = lea.readShort();
+                    final byte newstate = lea.readByte();
+                    final short duration = lea.readShort();
+                    final StaticLifeMovement mov = new StaticLifeMovement(command, new Point(xpos, ypos), duration, newstate, 0);
+                    mov.setFh(fh);
+                    res.add(mov);
                     break;
                 }
                 case 10:{ // change equip ???
@@ -121,7 +121,7 @@ public class MovementParse {
                     res.add(mov);
                     break;
                 }
-		case 21:{
+        case 21:{
                     final byte newstate = lea.readByte();
                     final short duration = lea.readShort();
                     final StaticLifeMovement mov = new StaticLifeMovement(command, null , duration, newstate,0);	

@@ -100,16 +100,16 @@ public class InterServerHandler {
         final int state = c.getLoginState();
         boolean allowLogin = false;
 
-		if (state != MapleClient.LOGIN_SERVER_TRANSITION || state != MapleClient.CHANGE_CHANNEL) {
-			if (!World.isCharacterListConnected(c.loadCharacterNames(c.getWorld()))) {
-				allowLogin = true;
-			}
-		}
-		if (!allowLogin) {
-			c.setPlayer(null);
-			c.getSession().close();
-			return;
-		}
+        if (state != MapleClient.LOGIN_SERVER_TRANSITION || state != MapleClient.CHANGE_CHANNEL) {
+            if (!World.isCharacterListConnected(c.loadCharacterNames(c.getWorld()))) {
+                allowLogin = true;
+            }
+        }
+        if (!allowLogin) {
+            c.setPlayer(null);
+            c.getSession().close();
+            return;
+        }
         c.updateLoginState(MapleClient.LOGIN_LOGGEDIN, c.getSessionIPAddress());
         channelServer.addPlayer(player);
 

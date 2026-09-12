@@ -71,11 +71,11 @@ public abstract class AbstractScriptManager {
                     c.setScriptEngine(path, engine);
                 }
 
-				StringBuilder builder = new StringBuilder();
-				builder.append("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
-				builder.append(StringUtil.readFileAsString(path));
+                StringBuilder builder = new StringBuilder();
+                builder.append("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
+                builder.append(StringUtil.readFileAsString(path));
 
-				engine.eval(builder.toString());
+                engine.eval(builder.toString());
             } else if (c != null && npc) {
                 c.getPlayer().dropMessage(1,"角色狀態異常，請使用@解卡/@ea 來解除異常狀態");
             }

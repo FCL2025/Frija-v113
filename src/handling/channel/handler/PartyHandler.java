@@ -128,7 +128,7 @@ public class PartyHandler {
                     if (invited.getParty() == null && party != null) {
                         if (party.getMembers().size() < 6) {
                             //c.getSession().write(MaplePacketCreator.partyStatusMessage(22, invited.getName()));
-							c.getSession().write(MaplePacketCreator.serverNotice(5,"發出隊伍邀請給'" + invited.getName()+"'"));
+                            c.getSession().write(MaplePacketCreator.serverNotice(5,"發出隊伍邀請給'" + invited.getName()+"'"));
                             invited.getClient().getSession().write(MaplePacketCreator.partyInvite(c.getPlayer()));
                         } else {
                             c.getSession().write(MaplePacketCreator.partyStatusMessage(16));

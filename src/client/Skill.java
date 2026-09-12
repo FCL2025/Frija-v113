@@ -267,9 +267,9 @@ public class Skill implements ISkill {
     public boolean canBeLearnedBy(int job) {
         int jid = job;
         int skillForJob = id / 10000;
-	if( skillForJob == 0 || skillForJob == 1000 || skillForJob == 2000 || skillForJob == 2001 || skillForJob == 3000){
+    if( skillForJob == 0 || skillForJob == 1000 || skillForJob == 2000 || skillForJob == 2001 || skillForJob == 3000){
             return true;
-	}else if (skillForJob == 2001 && GameConstants.isEvan(job)) {
+    }else if (skillForJob == 2001 && GameConstants.isEvan(job)) {
             return true; //special exception for evan -.-
         } else if (jid / 100 != skillForJob / 100) { // wrong job
             return false;

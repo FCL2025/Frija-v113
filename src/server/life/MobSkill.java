@@ -322,10 +322,10 @@ public class MobSkill {
 
         if (stats.size() > 0 && monster != null) {
             if (lt != null && rb != null && skill) {
-				int d = 0;
+                int d = 0;
                 for (MapleMapObject mons : getObjectsInRange(monster, MapleMapObjectType.MONSTER)) {
                     ((MapleMonster) mons).applyMonsterBuff(stats, getSkillId(), getDuration() + d, this, reflection);
-					d += 100;
+                    d += 100;
                 }
             } else {
                 monster.applyMonsterBuff(stats, getSkillId(), getDuration(), this, reflection);

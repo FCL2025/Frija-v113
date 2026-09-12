@@ -154,7 +154,7 @@ public class MaplePet implements Serializable {
     }
 
     public static final MaplePet createPet(final int itemid, final int uniqueid) {
-		MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         return createPet(itemid, ii.getName(itemid), 1, 0, 100, uniqueid, itemid == 5000054 ? 18000 : 0,ii.getPetFlagInfo(itemid));
     }
 

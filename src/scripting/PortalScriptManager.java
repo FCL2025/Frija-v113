@@ -89,9 +89,9 @@ public class PortalScriptManager {
             scripts.put(scriptName, Optional.<PortalScript>empty());
             return null;
         }
-		StringBuilder builder = new StringBuilder();
-		builder.append("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
-		builder.append(StringUtil.readFileAsString(scriptPath));
+        StringBuilder builder = new StringBuilder();
+        builder.append("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
+        builder.append(StringUtil.readFileAsString(scriptPath));
 
         //InputStreamReader fr = null;
         final ScriptEngine portal = sef.getScriptEngine();

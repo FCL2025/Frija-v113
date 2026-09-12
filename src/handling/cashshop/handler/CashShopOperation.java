@@ -92,7 +92,7 @@ public class CashShopOperation {
 
     public static void CSUpdate(final MapleClient c) {
         c.getSession().write(MTSCSPacket.getCSGifts(c));
-		c.getSession().write(MTSCSPacket.showAcc(c));
+        c.getSession().write(MTSCSPacket.showAcc(c));
         doCSPackets(c);
         c.getSession().write(MTSCSPacket.sendWishList(c.getPlayer(), false));
     }
@@ -269,7 +269,7 @@ public class CashShopOperation {
                     c.getSession().write(MTSCSPacket.sendCSFail(0xA4));
                 }
             } else {
-		byte inv = slea.readByte();
+        byte inv = slea.readByte();
                 final MapleInventoryType type = MapleInventoryType.getByType(inv);
 
                 if (chr.getCSPoints(useCash) >= 100 && chr.getInventory(type).getSlotLimit() < 93) {
@@ -331,7 +331,7 @@ public class CashShopOperation {
             IItem item = c.getPlayer().getInventory(type).findByUniqueId(uniqueid);
             if (item != null && item.getQuantity() > 0 && item.getUniqueId() > 0 && c.getPlayer().getCashInventory().getItemsSize() < 100) {
                 IItem item_ = item.copy();
-		c.getPlayer().getInventory(type).removeItem(item.getPosition(), item.getQuantity(), false);
+        c.getPlayer().getInventory(type).removeItem(item.getPosition(), item.getQuantity(), false);
                 if (item_.getPet() != null) {
                     c.getPlayer().removePetCS(item_.getPet());
                 }

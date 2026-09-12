@@ -310,7 +310,7 @@ public class MaplePacketCreator {
         mplew.write(summon.getMovementType().getValue());
         mplew.write(summon.getSummonType()); // 0 = Summon can't attack - but puppets don't attack with 1 either ^.-
         mplew.write(animated ? 0 : 1);
-		mplew.write(0);
+        mplew.write(0);
         final MapleCharacter chr = summon.getOwner();
         /*        mplew.write(summon.getSkill() == 4341006 && chr != null ? 1 : 0); //mirror target
          if (summon.getSkill() == 4341006 && chr != null) {
@@ -421,10 +421,10 @@ public class MaplePacketCreator {
         }
         return mplew.getPacket();
     }
-	public static MaplePacket getGachaponMega(String name, String message, IItem item, byte rareness)
-	{
-		return getGachaponMega(name, message, item, rareness, 1);
-	}
+    public static MaplePacket getGachaponMega(String name, String message, IItem item, byte rareness)
+    {
+        return getGachaponMega(name, message, item, rareness, 1);
+    }
     public static MaplePacket getGachaponMega(final String name, final String message, final IItem item, final byte rareness,int ch) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
@@ -769,9 +769,9 @@ public class MaplePacketCreator {
         if (mod != 2) {
             mplew.writePos(dropfrom);
         }else{
-			mplew.writeInt(drop.getOwner());
-		}
-		mplew.writeShort(0);
+            mplew.writeInt(drop.getOwner());
+        }
+        mplew.writeShort(0);
         if (drop.getMeso() == 0) {
             PacketHelper.addExpirationTime(mplew, drop.getItem().getExpiration());
         }
@@ -1693,10 +1693,10 @@ public class MaplePacketCreator {
         mplew.write(chr.getmonth());// 月
         mplew.write(chr.getday());// 日
 
-		int i = 0 ;
+        int i = 0 ;
         for (final MaplePet pet : chr.getPets()) {
             if (pet.getSummoned()) {
-				final IItem inv = chr.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) (-114 - (i*8)));
+                final IItem inv = chr.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) (-114 - (i*8)));
                 final int peteqid = inv != null ? inv.getItemId() : 0;
                 mplew.write(pet.getUniqueId()); //o-o byte ?
                 mplew.writeInt(pet.getPetItemId()); // petid
@@ -1706,7 +1706,7 @@ public class MaplePacketCreator {
                 mplew.write(pet.getFullness()); // pet fullness
                 mplew.writeShort(pet.getFlags());
                 mplew.writeInt(peteqid);
-				++i;
+                ++i;
             }
         }
         mplew.write(0); // End of pet
@@ -1726,13 +1726,13 @@ public class MaplePacketCreator {
         }
 
         final int wishlistSize = chr.getWishlistSize();
-		mplew.write(wishlistSize);
-		if (wishlistSize > 0) {
-			final int[] wishlist = chr.getWishlist();
-			for (int x = 0; x < wishlistSize; x++) {
-				mplew.writeInt(wishlist[x]);
-			}
-		}
+        mplew.write(wishlistSize);
+        if (wishlistSize > 0) {
+            final int[] wishlist = chr.getWishlist();
+            for (int x = 0; x < wishlistSize; x++) {
+                mplew.writeInt(wishlist[x]);
+            }
+        }
 //        mplew.write(0);
         chr.getMonsterBook().addCharInfoPacket(chr.getMonsterBookCover(), mplew);
 
@@ -2095,7 +2095,7 @@ public class MaplePacketCreator {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
-		mplew.write(4);
+        mplew.write(4);
         mplew.write(slot);
         PacketHelper.addCharLook(mplew, c, false);
         mplew.writeMapleAsciiString(c.getName());
@@ -2109,8 +2109,8 @@ public class MaplePacketCreator {
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
         mplew.write(0x0A);
-		mplew.write(slot);
-		mplew.write(status2);
+        mplew.write(slot);
+        mplew.write(status2);
         return mplew.getPacket();
     }
 

@@ -24,10 +24,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
@@ -41,7 +41,13 @@ import tools.FileoutputUtil;
 public class ReactorScriptManager extends AbstractScriptManager {
 
     private static final ReactorScriptManager instance = new ReactorScriptManager();
-    private final Map<Integer, List<ReactorDropEntry>> drops = new HashMap<Integer, List<ReactorDropEntry>>();
+    /**
+     * Any Maple-Handler-N thread that hits a reactor fills this in, and
+     * {@code !reloaddrops} or a drop edit in the panel empties it from a
+     * Panel-Worker-N thread. Concurrent for that reason alone - the lists in it
+     * are built and finished before they ever go into the map.
+     */
+    private final Map<Integer, List<ReactorDropEntry>> drops = new ConcurrentHashMap<Integer, List<ReactorDropEntry>>();
 
     public static final ReactorScriptManager getInstance() {
         return instance;
@@ -84,6 +90,9 @@ public class ReactorScriptManager extends AbstractScriptManager {
             System.err.println("Could not retrieve drops for reactor " + rid + e);
             return ret;
         }
+        // Miss-then-put, not computeIfAbsent: the query above borrows a
+        // connection and that must not happen under the map's bin lock. A race
+        // costs one extra query and stores an equal list.
         drops.put(rid, ret);
         return ret;
     }

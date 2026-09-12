@@ -23,8 +23,9 @@ package scripting;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.script.Compilable;
 import javax.script.CompiledScript;
@@ -43,7 +44,19 @@ import tools.StringUtil;
 public class PortalScriptManager {
 
     private static final PortalScriptManager instance = new PortalScriptManager();
-    private final Map<String, PortalScript> scripts = new HashMap<String, PortalScript>();
+    /**
+     * One entry per portal script name, compiled on demand by whichever
+     * Maple-Handler-N thread first walks into that portal, and dropped by
+     * {@code !reloadportal} or by saving a portal script in the panel from a
+     * Panel-Worker-N thread.
+     *
+     * <p>The value is an {@link Optional} because a name with no file behind it
+     * - or one whose script failed to compile - is cached as a miss, which the
+     * old code said with a null value that a ConcurrentHashMap will not take.
+     * That negative has to keep working: without it every step into such a
+     * portal would read and recompile a script file.
+     */
+    private final Map<String, Optional<PortalScript>> scripts = new ConcurrentHashMap<String, Optional<PortalScript>>();
     private final static ScriptEngineFactory sef = findNashorn();
 
     /**
@@ -65,14 +78,15 @@ public class PortalScriptManager {
     }
 
     private final PortalScript getPortalScript(final String scriptName) {
-        if (scripts.containsKey(scriptName)) {
-            return scripts.get(scriptName);
+        final Optional<PortalScript> cached = scripts.get(scriptName);
+        if (cached != null) {
+            return cached.orElse(null);
         }
 
         String scriptPath = "Libs/scripts/portal/" + scriptName + ".js";
         final File scriptFile = new File(scriptPath);
         if (!scriptFile.exists()) {
-            scripts.put(scriptName, null);
+            scripts.put(scriptName, Optional.<PortalScript>empty());
             return null;
         }
 		StringBuilder builder = new StringBuilder();
@@ -98,7 +112,12 @@ public class PortalScriptManager {
             }
         }*/
         final PortalScript script = ((Invocable) portal).getInterface(PortalScript.class);
-        scripts.put(scriptName, script);
+        // Miss-then-put, not computeIfAbsent: compiling a script under the
+        // map's bin lock would block everyone else who missed in the same bin,
+        // and the script's own top-level code runs in there. Two threads
+        // entering the same portal at once compile it twice and the second one
+        // wins; both callers get a working script.
+        scripts.put(scriptName, Optional.ofNullable(script));
         return script;
     }
 

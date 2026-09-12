@@ -445,7 +445,13 @@ public final class MapleMap {
         }
 
         final MapleMonsterInformationProvider mi = MapleMonsterInformationProvider.getInstance();
-        final List<MonsterDropEntry> dropEntry = mi.retrieveDrop(mob.getId());
+        // A copy, because retrieveDrop hands back the provider's own cached
+        // list and the shuffle below rewrites it in place: two players killing
+        // the same kind of monster at once would shuffle one shared LinkedList
+        // through two ListIterators while a third walked it in the loop below.
+        // MapleMonster.handleSteal and the global table on the next page both
+        // already copy; this was the one site that did not.
+        final List<MonsterDropEntry> dropEntry = new ArrayList<MonsterDropEntry>(mi.retrieveDrop(mob.getId()));
         Collections.shuffle(dropEntry);
 
         for (final MonsterDropEntry de : dropEntry) {

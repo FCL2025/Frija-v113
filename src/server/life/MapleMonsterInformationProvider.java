@@ -25,11 +25,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import client.MapleCharacter;
 import client.inventory.MapleInventoryType;
@@ -38,8 +38,21 @@ import database.DatabaseConnection;
 public class MapleMonsterInformationProvider {
 
     private static final MapleMonsterInformationProvider instance = new MapleMonsterInformationProvider();
-    private final Map<Integer, List<MonsterDropEntry>> drops = new HashMap<Integer, List<MonsterDropEntry>>();
-    private final List<MonsterGlobalDropEntry> globaldrops = new ArrayList<MonsterGlobalDropEntry>();
+    /**
+     * Every mob death on any Maple-Handler-N thread reads this, and
+     * {@code !reloaddrops} or a drop edit in the panel empties it from a
+     * Panel-Worker-N thread, so it has to be concurrent. The per-monster lists
+     * are still filled in outside the map - see {@link #retrieveDrop}.
+     */
+    private final Map<Integer, List<MonsterDropEntry>> drops = new ConcurrentHashMap<Integer, List<MonsterDropEntry>>();
+    /**
+     * The global drop table is not looked up per monster, so it is a whole list
+     * that a reload <em>replaces</em> rather than empties and refills: a reader
+     * on another thread sees either the old table or the new one, never the
+     * empty middle of a reload, and never a list being appended to while it
+     * walks it. The list itself is never mutated once published.
+     */
+    private volatile List<MonsterGlobalDropEntry> globaldrops = new ArrayList<MonsterGlobalDropEntry>();
 
     protected MapleMonsterInformationProvider() {
         retrieveGlobal();
@@ -54,12 +67,14 @@ public class MapleMonsterInformationProvider {
     }
 
     private final void retrieveGlobal() {
+        final List<MonsterGlobalDropEntry> fresh = new ArrayList<MonsterGlobalDropEntry>();
+
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT * FROM drop_data_global WHERE chance > 0");
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                globaldrops.add(
+                fresh.add(
                         new MonsterGlobalDropEntry(
                                 rs.getInt("itemid"),
                                 rs.getInt("chance"),
@@ -72,11 +87,15 @@ public class MapleMonsterInformationProvider {
         } catch (SQLException e) {
             System.err.println("Error retrieving drop" + e);
         }
+        // Published whether or not the query got through, because a half-read
+        // table is what the old code left behind too.
+        globaldrops = fresh;
     }
 
     public final List<MonsterDropEntry> retrieveDrop(final int monsterId) {
-        if (drops.containsKey(monsterId)) {
-            return drops.get(monsterId);
+        final List<MonsterDropEntry> cached = drops.get(monsterId);
+        if (cached != null) {
+            return cached;
         }
         final List<MonsterDropEntry> ret = new LinkedList<MonsterDropEntry>();
 
@@ -105,13 +124,16 @@ public class MapleMonsterInformationProvider {
         } catch (SQLException e) {
             return ret;
         }
+        // Deliberately a miss-then-put rather than computeIfAbsent: the query
+        // above borrows a connection, and computeIfAbsent would hold the map's
+        // bin lock across it. Two threads that miss on the same monster both
+        // read the table and the second one wins, which costs one query.
         drops.put(monsterId, ret);
         return ret;
     }
 
     public final void clearDrops() {
         drops.clear();
-        globaldrops.clear();
         retrieveGlobal();
     }
 }

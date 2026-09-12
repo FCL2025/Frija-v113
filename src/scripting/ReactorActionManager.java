@@ -21,7 +21,6 @@
 package scripting;
 
 import java.awt.Point;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 

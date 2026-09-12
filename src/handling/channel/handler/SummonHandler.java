@@ -23,7 +23,6 @@ package handling.channel.handler;
 import java.awt.Point;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import client.ISkill;
 import client.MapleBuffStat;

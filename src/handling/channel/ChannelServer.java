@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 
 import client.MapleCharacter;
-import constants.ServerConstants;
 import handling.ByteArrayMaplePacket;
 import handling.MaplePacket;
 import handling.MapleServerHandler;
@@ -69,7 +68,7 @@ public class ChannelServer implements Serializable {
     private short port = 8585;
     private static final short DEFAULT_PORT = 8585;
     private int channel, running_MerchantID = 0, flags = 0;
-    private String serverMessage, key, ip, serverName;
+    private String serverMessage, ip, serverName;
     private boolean shutdown = false, finishedShutdown = false, MegaphoneMuteState = false, adminOnly = false;
     private PlayerStorage players;
     private MapleServerHandler serverHandler;
@@ -90,8 +89,7 @@ public class ChannelServer implements Serializable {
     private final Map<MapleEventType, MapleEvent> events = new EnumMap<MapleEventType, MapleEvent>(MapleEventType.class);
     private boolean debugMode = false;
 
-    private ChannelServer(final String key, final int channel) {
-        this.key = key;
+    private ChannelServer(final int channel) {
         this.channel = channel;
         mapFactory = new MapleMapFactory();
         mapFactory.setChannel(channel);
@@ -190,8 +188,8 @@ public class ChannelServer implements Serializable {
         return mapFactory;
     }
 
-    public static final ChannelServer newInstance(final String key, final int channel) {
-        return new ChannelServer(key, channel);
+    public static final ChannelServer newInstance(final int channel) {
+        return new ChannelServer(channel);
     }
 
     public static final ChannelServer getInstance(final int channel) {
@@ -323,16 +321,16 @@ public class ChannelServer implements Serializable {
         serverStartTime = System.currentTimeMillis();
 
         for (int i = 0; i < Integer.parseInt(ServerProperties.getProperty("tms.Count", "0")); i++) {
-            newInstance(ServerConstants.Channel_Key[i], i + 1).run_startup_configurations();
+            newInstance(i + 1).run_startup_configurations();
         }
     }
-    
-    public static final void startChannel(final int channel) 
+
+    public static final void startChannel(final int channel)
     {
         serverStartTime = System.currentTimeMillis();
         for (int i = 0; i < Integer.parseInt(ServerProperties.getProperty("tms.Count", "0")); i++) {
             if(channel == i + 1) {
-                newInstance(ServerConstants.Channel_Key[i], i + 1).run_startup_configurations();
+                newInstance(i + 1).run_startup_configurations();
                 break;
             }
         }

@@ -10,8 +10,6 @@ import java.sql.SQLException;
 public class AutoRegister {
 
     private static final int ACCOUNTS_PER_IP = 1;
-    public static boolean autoRegister = true;
-    public static boolean success = false;
 
     public static boolean getAccountExists(String login) {
         boolean accountExists = false;
@@ -29,27 +27,30 @@ public class AutoRegister {
         return accountExists;
     }
 
-    public static void createAccount(String login, String pwd, String eip) {
+    /**
+     * Registers {@code login}, unless the requesting address already holds
+     * {@link #ACCOUNTS_PER_IP} accounts.
+     *
+     * The answer is returned rather than parked in a public static field, which
+     * is how this used to report itself. Two clients auto-registering at the same
+     * moment run on two Maple-Handler threads, so each could read the other's
+     * result - and a caller that saw a stale true would then treat an account
+     * that was never created as if it had been.
+     *
+     * @return true only when a row was actually inserted.
+     */
+    public static boolean createAccount(String login, String pwd, String eip) {
         String sockAddr = eip;
-        final Connection con;
 
-        try {
-            con = DatabaseConnection.getConnection();
-        } catch (Exception ex) {
-            System.out.println(ex);
-            return;
-        }
-
-        try (con) {
-            ResultSet rs;
-            PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
             ipc.setString(1, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
-            rs = ipc.executeQuery();
-            if (rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP) {
-
-                PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, salt, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?, ?)");/*) {*/
-
+            try (ResultSet rs = ipc.executeQuery()) {
+                if (!(rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP)) {
+                    return false;
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, salt, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
                 // A new account is created with the salted SHA-512 straight away.
                 // This used to store an unsalted SHA-1, so every auto-registered
                 // account sat in the weakest of the three schemes until its owner
@@ -64,17 +65,10 @@ public class AutoRegister {
                 ps.setString(7, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
                 ps.executeUpdate();
             }
-
-            success = true;
+            return true;
         } catch (SQLException ex) {
             System.out.println(ex);
-            return;
+            return false;
         }
-        /*                }
-         }
-         rs.close();
-         } catch (SQLException ex) {
-         System.out.println(ex);
-         }*/
     }
 }

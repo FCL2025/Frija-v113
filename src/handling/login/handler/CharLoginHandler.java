@@ -69,18 +69,18 @@ public class CharLoginHandler {
         int loginok = 0;
         if (Boolean.parseBoolean(ServerProperties.getProperty("tms.AutoRegister"))) {
 
-            if (AutoRegister.autoRegister && !AutoRegister.getAccountExists(login) && (!c.hasBannedIP() || !c.hasBannedMac())) {
+            if (!AutoRegister.getAccountExists(login) && (!c.hasBannedIP() || !c.hasBannedMac())) {
                 if (pwd.equalsIgnoreCase("disconnect") || pwd.equalsIgnoreCase("fixme")) {
                     c.getSession().write(MaplePacketCreator.serverNotice(1, "This password is invalid."));
                     c.getSession().write(LoginPacket.getLoginFailed(1)); //Shows no message, used for unstuck the login button
                     return;
                 }
+                // The result is intentionally dropped: nothing is sent to the client
+                // here either way. It falls through to c.login below, which logs the
+                // player straight in on the account just created, or answers "no such
+                // account" if the insert did not happen - which is also what the
+                // per-IP limit in createAccount is supposed to look like from here.
                 AutoRegister.createAccount(login, pwd, c.getSession().getRemoteAddress().toString());
-                if (AutoRegister.success) {
-//                    c.getSession().write(MaplePacketCreator.serverNotice(1, "帳號創建成功,請重新登入!"));
-//                    c.getSession().write(LoginPacket.getLoginFailed(1)); //Shows no message, used for unstuck the login button
-//                    return;
-                }
             }
         }
 

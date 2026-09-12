@@ -54,6 +54,7 @@ import server.MapleTrade;
 import server.shops.IMaplePlayerShop;
 import tools.FileoutputUtil;
 import tools.MapleAESOFB;
+import tools.packet.ChatPacket;
 import tools.packet.LoginPacket;
 
 import java.util.concurrent.locks.Lock;
@@ -63,7 +64,6 @@ import org.apache.mina.common.IoSession;
 import server.Timer.EtcTimer;
 import server.Timer.PingTimer;
 import server.quest.MapleQuest;
-import tools.MaplePacketCreator;
 
 public class MapleClient {
 
@@ -349,7 +349,7 @@ public class MapleClient {
 
     /**
      * Returns 0 on success, a state to be used for
-     * {@link MaplePacketCreator#getLoginFailed(int)} otherwise.
+     * {@link tools.packet.LoginPacket#getLoginFailed(int)} otherwise.
      *
      * @param success
      * @return The state of the login.
@@ -508,7 +508,7 @@ public class MapleClient {
         }
     }
     public final void unLockDisconnect() {
-        send(MaplePacketCreator.serverNotice(1, "帳號被他人登入。"));
+        send(ChatPacket.serverNotice(1, "帳號被他人登入。"));
         disconnect(serverTransition, getChannel() == -10);
         // Three seconds so the client can show the notice before its socket
         // goes away. This used to be a bare Thread that slept, which breaks the

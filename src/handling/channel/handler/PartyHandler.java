@@ -26,8 +26,9 @@ import handling.world.MapleParty;
 import handling.world.MaplePartyCharacter;
 import handling.world.PartyOperation;
 import handling.world.World;
-import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.ChatPacket;
+import tools.packet.PartyPacket;
 
 public class PartyHandler {
 
@@ -43,12 +44,12 @@ public class PartyHandler {
                         c.getPlayer().receivePartyMemberHP();
                         c.getPlayer().updatePartyMemberHP();
                     } else {
-                        c.send(MaplePacketCreator.partyStatusMessage(17));
+                        c.send(PartyPacket.partyStatusMessage(17));
                     }
                 } else if (action != 0x16) {
                     final MapleCharacter cfrom = c.getChannelServer().getPlayerStorage().getCharacterById(party.getLeader().getId());
                     if (cfrom != null) {
-                        cfrom.getClient().send(MaplePacketCreator.partyStatusMessage(23, c.getPlayer().getName()));
+                        cfrom.getClient().send(PartyPacket.partyStatusMessage(23, c.getPlayer().getName()));
                     }
                 }
             } else {
@@ -70,11 +71,11 @@ public class PartyHandler {
                 if (c.getPlayer().getParty() == null) {
                     party = World.Party.createParty(partyplayer);
                     c.getPlayer().setParty(party);
-                    c.send(MaplePacketCreator.partyCreated(party.getId()));
+                    c.send(PartyPacket.partyCreated(party.getId()));
 
                 } else {
                     if (partyplayer.equals(party.getLeader()) && party.getMembers().size() == 1) { //only one, reupdate
-                        c.send(MaplePacketCreator.partyCreated(party.getId()));
+                        c.send(PartyPacket.partyCreated(party.getId()));
                     } else {
                         c.getPlayer().dropMessage(5, "你無法重複創建隊伍");
                     }
@@ -112,7 +113,7 @@ public class PartyHandler {
                             c.getPlayer().receivePartyMemberHP();
                             c.getPlayer().updatePartyMemberHP();
                         } else {
-                            c.send(MaplePacketCreator.partyStatusMessage(17));
+                            c.send(PartyPacket.partyStatusMessage(17));
                         }
                     } else {
                         c.getPlayer().dropMessage(5, "該隊伍不存在");
@@ -127,17 +128,17 @@ public class PartyHandler {
                 if (invited != null) {
                     if (invited.getParty() == null && party != null) {
                         if (party.getMembers().size() < 6) {
-                            //c.send(MaplePacketCreator.partyStatusMessage(22, invited.getName()));
-                            c.send(MaplePacketCreator.serverNotice(5,"發出隊伍邀請給'" + invited.getName()+"'"));
-                            invited.getClient().send(MaplePacketCreator.partyInvite(c.getPlayer()));
+                            //c.send(PartyPacket.partyStatusMessage(22, invited.getName()));
+                            c.send(ChatPacket.serverNotice(5,"發出隊伍邀請給'" + invited.getName()+"'"));
+                            invited.getClient().send(PartyPacket.partyInvite(c.getPlayer()));
                         } else {
-                            c.send(MaplePacketCreator.partyStatusMessage(16));
+                            c.send(PartyPacket.partyStatusMessage(16));
                         }
                     } else {
-                        c.send(MaplePacketCreator.partyStatusMessage(17));
+                        c.send(PartyPacket.partyStatusMessage(17));
                     }
                 } else {
-                    c.send(MaplePacketCreator.partyStatusMessage(19));
+                    c.send(PartyPacket.partyStatusMessage(19));
                 }
                 break;
             case 5: // expel

@@ -39,7 +39,7 @@ import handling.channel.ChannelServer;
 import handling.world.World;
 import java.util.ArrayList;
 import server.maps.MapleMap;
-import tools.MaplePacketCreator;
+import tools.packet.MapPacket;
 
 public class PlayerNPC extends MapleNPC {
 
@@ -279,9 +279,9 @@ public class PlayerNPC extends MapleNPC {
 
     @Override
     public void sendSpawnData(MapleClient client) {
-        client.send(MaplePacketCreator.spawnNPC(this, true));
-        client.send(MaplePacketCreator.spawnPlayerNPC(this));
-        client.send(MaplePacketCreator.spawnNPCRequestController(this, true));
+        client.send(MapPacket.spawnNPC(this, true));
+        client.send(MapPacket.spawnPlayerNPC(this));
+        client.send(MapPacket.spawnNPCRequestController(this, true));
     }
 
     public MapleNPC getNPCFromWZ() {

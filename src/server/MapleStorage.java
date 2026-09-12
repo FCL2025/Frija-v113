@@ -18,8 +18,8 @@ import client.inventory.MapleInventoryType;
 import database.DatabaseConnection;
 import database.DatabaseException;
 import java.util.EnumMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.InventoryPacket;
 
 public class MapleStorage {
 
@@ -168,15 +168,15 @@ public class MapleStorage {
         for (MapleInventoryType type : MapleInventoryType.values()) {
             typeItems.put(type, new ArrayList<>(items));
         }
-        c.send(MaplePacketCreator.getStorage(npcId, slots, items, meso));
+        c.send(InventoryPacket.getStorage(npcId, slots, items, meso));
     }
 
     public void sendStored(MapleClient c, MapleInventoryType type) {
-        c.send(MaplePacketCreator.storeStorage(slots, type, typeItems.get(type)));
+        c.send(InventoryPacket.storeStorage(slots, type, typeItems.get(type)));
     }
 
     public void sendTakenOut(MapleClient c, MapleInventoryType type) {
-        c.send(MaplePacketCreator.takeOutStorage(slots, type, typeItems.get(type)));
+        c.send(InventoryPacket.takeOutStorage(slots, type, typeItems.get(type)));
     }
 
     public int getMeso() {
@@ -201,7 +201,7 @@ public class MapleStorage {
     }
 
     public void sendMeso(MapleClient c) {
-        c.send(MaplePacketCreator.mesoStorage(slots, meso));
+        c.send(InventoryPacket.mesoStorage(slots, meso));
     }
 
     public boolean isFull() {

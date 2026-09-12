@@ -31,8 +31,8 @@ import java.sql.SQLException;
 
 import database.DatabaseConnection;
 import server.MapleItemInformationProvider;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import tools.packet.CharacterPacket;
 import tools.packet.MonsterBookPacket;
 
 public class MonsterBook {
@@ -165,7 +165,7 @@ public class MonsterBook {
                 }
                 c.send(MonsterBookPacket.addCard(false, cardid, levels));
                 c.send(MonsterBookPacket.showGainCard(cardid));
-                c.send(MaplePacketCreator.showSpecialEffect(13));
+                c.send(CharacterPacket.showSpecialEffect(13));
                 cards.put(cardid, levels + 1);
                 calculateLevel();
             }
@@ -180,7 +180,7 @@ public class MonsterBook {
         cards.put(cardid, 1);
         c.send(MonsterBookPacket.addCard(false, cardid, 1));
         c.send(MonsterBookPacket.showGainCard(cardid));
-        c.send(MaplePacketCreator.showSpecialEffect(13));
+        c.send(CharacterPacket.showSpecialEffect(13));
         calculateLevel();
     }
 }

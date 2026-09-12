@@ -16,9 +16,9 @@ import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
 import server.maps.MapleMap;
 import tools.ArrayMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
 import tools.StringUtil;
+import tools.packet.ChatPacket;
 
 /**
  *
@@ -333,7 +333,7 @@ public class GMCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
 
-                World.Broadcast.broadcastGMMessage(MaplePacketCreator.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                World.Broadcast.broadcastGMMessage(ChatPacket.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
             
             return 1;
         }

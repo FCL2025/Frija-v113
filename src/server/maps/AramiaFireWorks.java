@@ -27,7 +27,8 @@ import handling.world.World;
 import server.Randomizer;
 import server.Timer.EventTimer;
 import server.life.MapleLifeFactory;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public class AramiaFireWorks {
 
@@ -59,7 +60,7 @@ public class AramiaFireWorks {
     }
 
     private final void broadcastServer(final MapleCharacter c, final int itemid) {
-        World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, itemid, "<頻道 " + c.getClient().getChannel() + "> " + "弓箭手村邱比特公園即將開始發射煙火!"/*c.getMap().getMapName() + " : The amount of {" + MapleItemInformationProvider.getInstance().getName(itemid) + "} has reached the limit!"*/).getBytes());
+        World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, itemid, "<頻道 " + c.getClient().getChannel() + "> " + "弓箭手村邱比特公園即將開始發射煙火!"/*c.getMap().getMapName() + " : The amount of {" + MapleItemInformationProvider.getInstance().getName(itemid) + "} has reached the limit!"*/).getBytes());
     }
 
     public final short getKegsPercentage() {
@@ -105,7 +106,7 @@ public class AramiaFireWorks {
                     if (this.sunshines >= (MAX_SUN / 6) * (2 + reactor.getState())) {
                         reactor.setState((byte) (reactor.getState() + 1));
                         reactor.setTimerActive(false);
-                        map.broadcastMessage(MaplePacketCreator.triggerReactor(reactor, reactor.getState()));
+                        map.broadcastMessage(MapPacket.triggerReactor(reactor, reactor.getState()));
                     }
                     break;
                 default:
@@ -166,7 +167,7 @@ public class AramiaFireWorks {
                     if (this.decorations >= (MAX_DEC / 6) * (2 + reactor.getState())) {
                         reactor.setState((byte) (reactor.getState() + 1));
                         reactor.setTimerActive(false);
-                        map.broadcastMessage(MaplePacketCreator.triggerReactor(reactor, reactor.getState()));
+                        map.broadcastMessage(MapPacket.triggerReactor(reactor, reactor.getState()));
                     }
                     break;
                 default:

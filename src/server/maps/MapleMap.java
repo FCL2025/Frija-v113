@@ -76,9 +76,13 @@ import server.life.MonsterGlobalDropEntry;
 import server.life.MapleMonsterInformationProvider;
 import tools.FileoutputUtil;
 import tools.StringUtil;
-import tools.MaplePacketCreator;
-import tools.packet.PetPacket;
+import tools.packet.CharacterPacket;
+import tools.packet.ChatPacket;
+import tools.packet.EventPacket;
+import tools.packet.MapPacket;
 import tools.packet.MobPacket;
+import tools.packet.PartyPacket;
+import tools.packet.PetPacket;
 import scripting.EventManager;
 import server.MapleCarnivalFactory;
 import server.MapleCarnivalFactory.MCSkill;
@@ -553,8 +557,8 @@ public final class MapleMap {
                             case 8810018:
                             case 8810122:
                             case 8820001:
-                                mc.getClient().send(MaplePacketCreator.showOwnBuffEffect(buffid, 11)); // HT nine spirit
-                                broadcastMessage(mc, MaplePacketCreator.showBuffeffect(mc.getId(), buffid, 11), false); // HT nine spirit
+                                mc.getClient().send(CharacterPacket.showOwnBuffEffect(buffid, 11)); // HT nine spirit
+                                broadcastMessage(mc, CharacterPacket.showBuffeffect(mc.getId(), buffid, 11), false); // HT nine spirit
                                 break;
                         }
                     }
@@ -567,7 +571,7 @@ public final class MapleMap {
         SpeedRunType type = SpeedRunType.NULL;
         final MapleSquad sqd = getSquadByMap();
         if (mobid == 8810018 && mapid == 240060200) { // Horntail
-          World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍終於擊破了闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
+          World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍終於擊破了闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(16);
              }*/
@@ -579,7 +583,7 @@ public final class MapleMap {
                 doShrine(true);
             }
         } else if (mobid == 8810122 && mapid == 240060201) { // Horntail
-            World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍最終擊破了混屯闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
+            World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍最終擊破了混屯闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(24);
              }*/
@@ -653,7 +657,7 @@ public final class MapleMap {
             }
             //INSERT HERE: 2095_tokyo
         } else if (mobid == 8820001 && mapid == 270050100) {
-            World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, chr.getName() + " 經過帶領的隊伍經過無數次的挑戰，終於擊破了時間的寵兒－皮卡丘的遠征隊！你們才是時間神殿的真正英雄~").getBytes());
+            World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, chr.getName() + " 經過帶領的隊伍經過無數次的挑戰，終於擊破了時間的寵兒－皮卡丘的遠征隊！你們才是時間神殿的真正英雄~").getBytes());
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(17);
              }*/
@@ -733,7 +737,7 @@ public final class MapleMap {
             if (speedRunStart > 0 && speedRunLeader.length() > 0) {
                 long endTime = System.currentTimeMillis();
                 String time = StringUtil.getReadableMillis(speedRunStart, endTime);
-                broadcastMessage(MaplePacketCreator.serverNotice(5, speedRunLeader + "'遠征隊花了 " + time + " 時間打敗了 " + type + "!"));
+                broadcastMessage(ChatPacket.serverNotice(5, speedRunLeader + "'遠征隊花了 " + time + " 時間打敗了 " + type + "!"));
                 getRankAndAdd(speedRunLeader, time, type, (endTime - speedRunStart), (sqd == null ? null : sqd.getMembers()));
                 endSpeedRun();
             }
@@ -921,7 +925,7 @@ public final class MapleMap {
 
     public final void destroyReactor(final int oid) {
         final MapleReactor reactor = getReactorByOid(oid);
-        broadcastMessage(MaplePacketCreator.destroyReactor(reactor));
+        broadcastMessage(MapPacket.destroyReactor(reactor));
         reactor.setAlive(false);
         removeMapObject(reactor);
         reactor.setTimerActive(false);
@@ -939,7 +943,7 @@ public final class MapleMap {
         try {
             for (MapleMapObject obj : mapobjects.get(MapleMapObjectType.REACTOR).values()) {
                 final MapleReactor reactor = (MapleReactor) obj;
-                broadcastMessage(MaplePacketCreator.destroyReactor(reactor));
+                broadcastMessage(MapPacket.destroyReactor(reactor));
                 reactor.setAlive(false);
                 reactor.setTimerActive(false);
                 toSpawn.add(reactor);
@@ -1198,7 +1202,7 @@ public final class MapleMap {
         npc.setFh(getFootholds().findBelow(pos).getId());
         npc.setCustom(true);
         addMapObject(npc);
-        broadcastMessage(MaplePacketCreator.spawnNPC(npc, true));
+        broadcastMessage(MapPacket.spawnNPC(npc, true));
     }
 
     public final void removeNpc(final int npcid) {
@@ -1208,7 +1212,7 @@ public final class MapleMap {
             while (itr.hasNext()) {
                 MapleNPC npc = (MapleNPC) itr.next();
                 if (npc.isCustom() && npc.getId() == npcid) {
-                    broadcastMessage(MaplePacketCreator.removeNPC(npc.getObjectId()));
+                    broadcastMessage(MapPacket.removeNPC(npc.getObjectId()));
                     itr.remove();
                 }
             }
@@ -1253,8 +1257,8 @@ public final class MapleMap {
         }
         if (squadSchedule != null) {
             cancelSquadSchedule();
-            broadcastMessage(MaplePacketCreator.stopClock());
-            broadcastMessage(MaplePacketCreator.getClock(60000*600));
+            broadcastMessage(MapPacket.stopClock());
+            broadcastMessage(MapPacket.getClock(60000*600));
         }
     }
 
@@ -1279,8 +1283,8 @@ public final class MapleMap {
         }
         if (squadSchedule != null) {
             cancelSquadSchedule();
-            broadcastMessage(MaplePacketCreator.stopClock());
-            broadcastMessage(MaplePacketCreator.getClock(60000*600));
+            broadcastMessage(MapPacket.stopClock());
+            broadcastMessage(MapPacket.getClock(60000*600));
         }
     }
 
@@ -1392,7 +1396,7 @@ public final class MapleMap {
 
             @Override
             public final void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.spawnReactor(reactor));
+                c.send(MapPacket.spawnReactor(reactor));
             }
         }, null);
     }
@@ -1407,12 +1411,12 @@ public final class MapleMap {
         spawnAndAddRangedMapObject(door, new DelayedPacketCreation() {
 
             public final void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.spawnDoor(door.getOwner().getId(), door.getTargetPosition(), false));
+                c.send(MapPacket.spawnDoor(door.getOwner().getId(), door.getTargetPosition(), false));
                 if (door.getOwner().getParty() != null && (door.getOwner() == c.getPlayer() || door.getOwner().getParty().containsMembers(new MaplePartyCharacter(c.getPlayer())))) {
-                    c.send(MaplePacketCreator.partyPortal(door.getTown().getId(), door.getTarget().getId(), door.getSkill(), door.getTargetPosition()));
+                    c.send(PartyPacket.partyPortal(door.getTown().getId(), door.getTarget().getId(), door.getSkill(), door.getTargetPosition()));
                 }
-                c.send(MaplePacketCreator.spawnPortal(door.getTown().getId(), door.getTarget().getId(), door.getSkill(), door.getTargetPosition()));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(MapPacket.spawnPortal(door.getTown().getId(), door.getTarget().getId(), door.getSkill(), door.getTargetPosition()));
+                c.send(CharacterPacket.enableActions());
             }
         }, new SpawnCondition() {
 
@@ -1429,7 +1433,7 @@ public final class MapleMap {
             @Override
             public void sendPackets(MapleClient c) {
               if (summon != null) {
-                    c.send(MaplePacketCreator.spawnSummon(summon, true));
+                    c.send(MapPacket.spawnSummon(summon, true));
                 }
             }
         }, null);
@@ -1440,7 +1444,7 @@ public final class MapleMap {
 
             @Override
             public void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.spawnDragon(summon));
+                c.send(MapPacket.spawnDragon(summon));
             }
         }, null);
     }
@@ -1493,8 +1497,8 @@ public final class MapleMap {
                 break;
         }
         tMan.schedule(() -> {
-            //broadcastMessage(MaplePacketCreator.removeMist(mist.getObjectId()));
-            broadcastMessage(MaplePacketCreator.removeMist(mist.getObjectId(), false));
+            //broadcastMessage(MapPacket.removeMist(mist.getObjectId()));
+            broadcastMessage(MapPacket.removeMist(mist.getObjectId(), false));
             removeMapObject(mist);
             if (poisonSchedule != null) {
                 poisonSchedule.cancel(false);
@@ -1505,7 +1509,7 @@ public final class MapleMap {
     public final void disappearingItemDrop(final MapleMapObject dropper, final MapleCharacter owner, final IItem item, final Point pos) {
         final Point droppos = calcDropPos(pos, pos);
         final MapleMapItem drop = new MapleMapItem(item, droppos, dropper, owner, (byte) 1, false);
-        broadcastMessage(MaplePacketCreator.dropItemFromMapObject(drop, dropper.getPosition(), droppos, (byte) 3), drop.getPosition());
+        broadcastMessage(MapPacket.dropItemFromMapObject(drop, dropper.getPosition(), droppos, (byte) 3), drop.getPosition());
     }
 
     public final void spawnMesoDrop(final int meso, final Point position, final MapleMapObject dropper, final MapleCharacter owner, final boolean playerDrop, final byte droptype) {
@@ -1516,7 +1520,7 @@ public final class MapleMap {
 
             @Override
             public void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.dropItemFromMapObject(mdrop, dropper.getPosition(), droppos, (byte) 1));
+                c.send(MapPacket.dropItemFromMapObject(mdrop, dropper.getPosition(), droppos, (byte) 1));
             }
         }, null);
         if (!everlast) {
@@ -1534,7 +1538,7 @@ public final class MapleMap {
 
             @Override
             public void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.dropItemFromMapObject(mdrop, dropper.getPosition(), position, (byte) 1));
+                c.send(MapPacket.dropItemFromMapObject(mdrop, dropper.getPosition(), position, (byte) 1));
             }
         }, null);
 
@@ -1552,11 +1556,11 @@ public final class MapleMap {
             @Override
             public void sendPackets(MapleClient c) {
                 if (questid <= 0 || c.getPlayer().getQuestStatus(questid) == 1) {
-                    c.send(MaplePacketCreator.dropItemFromMapObject(mdrop, mob.getPosition(), dropPos, (byte) 1));
+                    c.send(MapPacket.dropItemFromMapObject(mdrop, mob.getPosition(), dropPos, (byte) 1));
                 }
             }
         }, null);
-//	broadcastMessage(MaplePacketCreator.dropItemFromMapObject(mdrop, mob.getPosition(), dropPos, (byte) 0));
+//	broadcastMessage(MapPacket.dropItemFromMapObject(mdrop, mob.getPosition(), dropPos, (byte) 0));
 
         mdrop.registerExpire(120000);
         if (droptype == 0 || droptype == 1) {
@@ -1608,10 +1612,10 @@ public final class MapleMap {
 
             @Override
             public void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.dropItemFromMapObject(mdrop, pos, pos, (byte) 1));
+                c.send(MapPacket.dropItemFromMapObject(mdrop, pos, pos, (byte) 1));
             }
         }, null);
-        broadcastMessage(MaplePacketCreator.dropItemFromMapObject(mdrop, pos, pos, (byte) 0));
+        broadcastMessage(MapPacket.dropItemFromMapObject(mdrop, pos, pos, (byte) 0));
         mdrop.registerExpire(120000);
     }
 
@@ -1623,10 +1627,10 @@ public final class MapleMap {
 
             @Override
             public void sendPackets(MapleClient c) {
-                c.send(MaplePacketCreator.dropItemFromMapObject(drop, dropper.getPosition(), droppos, (byte) 1));
+                c.send(MapPacket.dropItemFromMapObject(drop, dropper.getPosition(), droppos, (byte) 1));
             }
         }, null);
-        broadcastMessage(MaplePacketCreator.dropItemFromMapObject(drop, dropper.getPosition(), droppos, (byte) 0));
+        broadcastMessage(MapPacket.dropItemFromMapObject(drop, dropper.getPosition(), droppos, (byte) 0));
 
         if (!everlast) {
             drop.registerExpire(120000);
@@ -1685,7 +1689,7 @@ public final class MapleMap {
             final MapleMapItem item = ((MapleMapItem) o);
             if (item.getOwner() == chr.getId()) {
                 item.setPickedUp(true);
-                broadcastMessage(MaplePacketCreator.removeItemFromMap(item.getObjectId(), 2, chr.getId()), item.getPosition());
+                broadcastMessage(MapPacket.removeItemFromMap(item.getObjectId(), 2, chr.getId()), item.getPosition());
                 if (item.getMeso() > 0) {
                     chr.gainMeso(item.getMeso(), false);
                 } else {
@@ -1723,10 +1727,10 @@ public final class MapleMap {
     }
 
     public final void startExtendedMapEffect(final String msg, final int itemId) {
-        broadcastMessage(MaplePacketCreator.startMapEffect(msg, itemId, true));
+        broadcastMessage(MapPacket.startMapEffect(msg, itemId, true));
         MapTimer.getInstance().schedule(() -> {
-            broadcastMessage(MaplePacketCreator.removeMapEffect());
-            broadcastMessage(MaplePacketCreator.startMapEffect(msg, itemId, false));
+            broadcastMessage(MapPacket.removeMapEffect());
+            broadcastMessage(MapPacket.startMapEffect(msg, itemId, false));
             //dont remove mapeffect.
         }, 60000);
     }
@@ -1754,10 +1758,10 @@ public final class MapleMap {
             chr.setCoconutTeam(getAndSwitchTeam() ? 0 : 1);
         }
         if (!chr.isHidden()) {
-            broadcastMessage(chr, MaplePacketCreator.spawnPlayerMapobject(chr), false);
+            broadcastMessage(chr, CharacterPacket.spawnPlayerMapobject(chr), false);
             if (chr.isGM() && speedRunStart > 0) {
                 endSpeedRun();
-                broadcastMessage(MaplePacketCreator.serverNotice(5, "The speed run has ended."));
+                broadcastMessage(ChatPacket.serverNotice(5, "The speed run has ended."));
             }
         }
         if (!chr.isClone()) {
@@ -1768,7 +1772,7 @@ public final class MapleMap {
             }
             sendObjectPlacement(chr);
 
-            chr.getClient().send(MaplePacketCreator.spawnPlayerMapobject(chr));
+            chr.getClient().send(CharacterPacket.spawnPlayerMapobject(chr));
 
             if (!onUserEnter.equals("")) {
                 MapScriptMethods.startScript_User(chr.getClient(), onUserEnter);
@@ -1779,7 +1783,7 @@ public final class MapleMap {
                 case 109060001:
                 case 109080000:
                 case 109080010:
-                    chr.getClient().send(MaplePacketCreator.showEventInstructions());
+                    chr.getClient().send(EventPacket.showEventInstructions());
                     break;
                 /*                case 109080000: // coconut shit
                  case 109080001:
@@ -1788,11 +1792,11 @@ public final class MapleMap {
                  case 109080010:
                  case 109080011:
                  case 109080012:
-                 chr.getClient().send(MaplePacketCreator.showEquipEffect(chr.getCoconutTeam()));
+                 chr.getClient().send(CharacterPacket.showEquipEffect(chr.getCoconutTeam()));
                  break;*/
                 case 809000101:
                 case 809000201:
-                    chr.getClient().send(MaplePacketCreator.showEquipEffect());
+                    chr.getClient().send(CharacterPacket.showEquipEffect());
                     break;
             }
         }
@@ -1803,7 +1807,7 @@ public final class MapleMap {
         }
         if (chr.getParty() != null && !chr.isClone()) {
             chr.silentPartyUpdate();
-            chr.getClient().send(MaplePacketCreator.updateParty(chr.getClient().getChannel(), chr.getParty(), PartyOperation.SILENT_UPDATE, null));
+            chr.getClient().send(PartyPacket.updateParty(chr.getClient().getChannel(), chr.getParty(), PartyOperation.SILENT_UPDATE, null));
             chr.updatePartyMemberHP();
             chr.receivePartyMemberHP();
         }
@@ -1832,18 +1836,18 @@ public final class MapleMap {
         }
         if (!chr.isClone()) {
             if (chr.getEventInstance() != null && chr.getEventInstance().isTimerStarted() && !chr.isClone()) {
-                chr.getClient().send(MaplePacketCreator.getClock((int) (chr.getEventInstance().getTimeLeft() / 1000)));
+                chr.getClient().send(MapPacket.getClock((int) (chr.getEventInstance().getTimeLeft() / 1000)));
             }
             if (hasClock()) {
                 final Calendar cal = Calendar.getInstance();
-                chr.getClient().send((MaplePacketCreator.getClockTime(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND))));
+                chr.getClient().send((MapPacket.getClockTime(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND))));
             }
             if (chr.getCarnivalParty() != null && chr.getEventInstance() != null) {
                 chr.getEventInstance().onMapLoad(chr);
             }
             MapleEvent.mapLoad(chr, channel);
             if (getSquadBegin() != null && getSquadBegin().getTimeLeft() > 0 && getSquadBegin().getStatus() == 1) {
-                chr.getClient().send(MaplePacketCreator.getClock((int) (getSquadBegin().getTimeLeft() / 1000)));
+                chr.getClient().send(MapPacket.getClock((int) (getSquadBegin().getTimeLeft() / 1000)));
             }
             if (mapid / 1000 != 105100 && mapid / 100 != 8020003 && mapid / 100 != 8020008) { //no boss_balrog/2095/coreblaze/auf. but coreblaze/auf does AFTER
                 final MapleSquad sqd = getSquadByMap(); //for all squads
@@ -1869,7 +1873,7 @@ public final class MapleMap {
                         music = "Bgm04/ArabPirate";
                         break;
                 }
-                chr.getClient().send(MaplePacketCreator.musicChange(music));
+                chr.getClient().send(MapPacket.musicChange(music));
                 //maybe timer too for zak/ht
             }
             for (final WeakReference<MapleCharacter> chrz : chr.getClones()) {
@@ -1880,11 +1884,11 @@ public final class MapleMap {
                 }
             }
             if (mapid == 914000000) {
-                chr.getClient().send(MaplePacketCreator.temporaryStats_Aran());
+                chr.getClient().send(CharacterPacket.temporaryStats_Aran());
             } else if (mapid == 105100300 && chr.getLevel() >= 91) {
-                chr.getClient().send(MaplePacketCreator.temporaryStats_Balrog(chr));
+                chr.getClient().send(CharacterPacket.temporaryStats_Balrog(chr));
             } else if (mapid == 140090000 || mapid == 105100301 || mapid == 105100401 || mapid == 105100100) {
-                chr.getClient().send(MaplePacketCreator.temporaryStats_Reset());
+                chr.getClient().send(CharacterPacket.temporaryStats_Reset());
             }
         }
         if (GameConstants.isEvan(chr.getJob()) && chr.getJob() >= 2200 && chr.getBuffedValue(MapleBuffStat.MONSTER_RIDING) == null) {
@@ -1897,19 +1901,19 @@ public final class MapleMap {
             }
         }
         if ((mapid == 10000 && chr.getJob() == 0) || (mapid == 130030000 && chr.getJob() == 1000) || (mapid == 914000000 && chr.getJob() == 2000) || (mapid == 900010000 && chr.getJob() == 2001)) {
-//            chr.getClient().send(MaplePacketCreator.startMapEffect("Welcome to " + chr.getClient().getChannelServer().getServerName() + "!", 5122000, true));
+//            chr.getClient().send(MapPacket.startMapEffect("Welcome to " + chr.getClient().getChannelServer().getServerName() + "!", 5122000, true));
 //            chr.dropMessage(1, "Welcome to " + chr.getClient().getChannelServer().getServerName() + ", " + chr.getName() + " ! \r\nUse @joyce to collect your Item Of Appreciation once you're level 10! \r\nUse @help for commands. \r\nGood luck and have fun!");
 //            chr.dropMessage(5, "Use @joyce to collect your Item Of Appreciation once you're level 10! Use @help for commands. Good luck and have fun!");
 
         }
         if (permanentWeather > 0) {
-            chr.getClient().send(MaplePacketCreator.startMapEffect("", permanentWeather, false)); //snow, no msg
+            chr.getClient().send(MapPacket.startMapEffect("", permanentWeather, false)); //snow, no msg
         }
         if (getPlatforms().size() > 0) {
-            chr.getClient().send(MaplePacketCreator.getMovingPlatforms(this));
+            chr.getClient().send(MapPacket.getMovingPlatforms(this));
         }
         if (environment.size() > 0) {
-            chr.getClient().send(MaplePacketCreator.getUpdateEnvironment(this));
+            chr.getClient().send(MapPacket.getUpdateEnvironment(this));
         }
         if (isTown()) {
             chr.cancelEffectFromBuffStat(MapleBuffStat.RAINING_MINES);
@@ -1951,16 +1955,16 @@ public final class MapleMap {
                 returnMapa = getReturnMap();
             }
             if (mode == 1) { //zakum
-                broadcastMessage(MaplePacketCreator.showZakumShrine(spawned, 5));
+                broadcastMessage(MapPacket.showZakumShrine(spawned, 5));
             } else if (mode == 2) { //chaoszakum
-                broadcastMessage(MaplePacketCreator.showChaosZakumShrine(spawned, 5));
+                broadcastMessage(MapPacket.showChaosZakumShrine(spawned, 5));
             } else if (mode == 3) { //ht/chaosht
-                broadcastMessage(MaplePacketCreator.showChaosHorntailShrine(spawned, 5));
+                broadcastMessage(MapPacket.showChaosHorntailShrine(spawned, 5));
             } else {
-                broadcastMessage(MaplePacketCreator.showHorntailShrine(spawned, 5));
+                broadcastMessage(MapPacket.showHorntailShrine(spawned, 5));
             }
             if (mode == 1 || spawned) { //both of these together dont go well
-                broadcastMessage(MaplePacketCreator.getClock(300)); //5 min
+                broadcastMessage(MapPacket.getClock(300)); //5 min
             }
             final MapleMap returnMapz = returnMapa;
             if (!spawned) { //no monsters yet; inforce timer to spawn it quickly
@@ -1988,11 +1992,11 @@ public final class MapleMap {
                             //are we still the same squad? are monsters still == 0?
                             MaplePacket packet;
                             if (mode == 1) { //zakum
-                                packet = MaplePacketCreator.showZakumShrine(spawned, 0);
+                                packet = MapPacket.showZakumShrine(spawned, 0);
                             } else if (mode == 2) { //chaoszakum
-                                packet = MaplePacketCreator.showChaosZakumShrine(spawned, 0);
+                                packet = MapPacket.showChaosZakumShrine(spawned, 0);
                             } else {
-                                packet = MaplePacketCreator.showHorntailShrine(spawned, 0); //chaoshorntail message is weird
+                                packet = MapPacket.showHorntailShrine(spawned, 0); //chaoshorntail message is weird
                             }
                             for (MapleCharacter chr : MapleMap.this.getCharactersThreadsafe()) { //warp all in map
                                 chr.getClient().send(packet);
@@ -2011,11 +2015,11 @@ public final class MapleMap {
                         //are we still the same squad? monsters however don't count
                         MaplePacket packet;
                         if (mode == 1) { //zakum
-                            packet = MaplePacketCreator.showZakumShrine(spawned, 0);
+                            packet = MapPacket.showZakumShrine(spawned, 0);
                         } else if (mode == 2) { //chaoszakum
-                            packet = MaplePacketCreator.showChaosZakumShrine(spawned, 0);
+                            packet = MapPacket.showChaosZakumShrine(spawned, 0);
                         } else {
-                            packet = MaplePacketCreator.showHorntailShrine(spawned, 0); //chaoshorntail message is weird
+                            packet = MapPacket.showHorntailShrine(spawned, 0); //chaoshorntail message is weird
                         }
                         for (MapleCharacter chr : MapleMap.this.getCharactersThreadsafe()) { //warp all in map
                             chr.getClient().send(packet);
@@ -2220,7 +2224,7 @@ public final class MapleMap {
         }
         removeMapObject(chr);
         chr.checkFollow();
-        broadcastMessage(MaplePacketCreator.removePlayerFromMap(chr.getId()));
+        broadcastMessage(CharacterPacket.removePlayerFromMap(chr.getId()));
         if (!chr.isClone()) {
             final List<MapleMonster> update = new ArrayList<>();
             final Iterator<MapleMonster> controlled = chr.getControlled().iterator();
@@ -2256,7 +2260,7 @@ public final class MapleMap {
             if (summon.getMovementType() == SummonMovementType.STATIONARY || summon.getMovementType() == SummonMovementType.CIRCLE_STATIONARY || summon.getMovementType() == SummonMovementType.WALK_STATIONARY) {
                 cancelSummons = true;
             } else {
-                broadcastMessage(MaplePacketCreator.removeSummon(summon, true));
+                broadcastMessage(MapPacket.removeSummon(summon, true));
                 summon.setChangedMap(true);
                 removeMapObject(summon);
             }
@@ -2869,7 +2873,7 @@ public final class MapleMap {
         List<MapleNPC> npcs = getAllNPCsThreadsafe();
         for (MapleNPC npc : npcs) {
             if (npc.isCustom()) {
-                broadcastMessage(MaplePacketCreator.spawnNPC(npc, false));
+                broadcastMessage(MapPacket.spawnNPC(npc, false));
                 removeMapObject(npc);
             }
         }
@@ -3082,7 +3086,7 @@ public final class MapleMap {
         }
         if (speedRunStart > 0 && speedRunLeader.equalsIgnoreCase(chr)) {
             if (size > 0) {
-                broadcastMessage(MaplePacketCreator.serverNotice(5, "The leader is not in the map! Your speedrun has failed"));
+                broadcastMessage(ChatPacket.serverNotice(5, "The leader is not in the map! Your speedrun has failed"));
             }
             endSpeedRun();
         }
@@ -3113,7 +3117,7 @@ public final class MapleMap {
     }
 
     public final void changeEnvironment(final String ms, final int type) {
-        broadcastMessage(MaplePacketCreator.environmentChange(ms, type));
+        broadcastMessage(MapPacket.environmentChange(ms, type));
     }
 
     public final void toggleEnvironment(final String ms) {
@@ -3125,7 +3129,7 @@ public final class MapleMap {
     }
 
     public final void moveEnvironment(final String ms, final int type) {
-        broadcastMessage(MaplePacketCreator.environmentMove(ms, type));
+        broadcastMessage(MapPacket.environmentMove(ms, type));
         environment.put(ms, type);
     }
 

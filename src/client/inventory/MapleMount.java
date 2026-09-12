@@ -31,7 +31,7 @@ import java.util.concurrent.ScheduledFuture;
 import server.Timer.BuffTimer;
 import database.DatabaseConnection;
 import server.Randomizer;
-import tools.MaplePacketCreator;
+import tools.packet.BuffPacket;
 
 public class MapleMount {
 
@@ -151,7 +151,7 @@ public class MapleMount {
     public void update() {
         final MapleCharacter chr = owner.get();
         if (chr != null) {
-            chr.getMap().broadcastMessage(MaplePacketCreator.updateMount(chr, false));
+            chr.getMap().broadcastMessage(BuffPacket.updateMount(chr, false));
         }
     }
 }

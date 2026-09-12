@@ -27,7 +27,7 @@ import client.anticheat.CheatingOffense;
 import handling.channel.ChannelServer;
 import scripting.PortalScriptManager;
 import server.MaplePortal;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
 
 public class MapleGenericPortal implements MaplePortal {
 
@@ -119,12 +119,12 @@ public class MapleGenericPortal implements MaplePortal {
                 if (!c.getPlayer().isGM()) {
                     if (to.getLevelLimit() > 0 && to.getLevelLimit() > c.getPlayer().getLevel()) {
                         c.getPlayer().dropMessage(-1, "You are too low of a level to enter this place.");
-                        c.send(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         return;
                     }
                     //if (to.getForceMove() > 0 && to.getForceMove() < c.getPlayer().getLevel()) {
                     //    c.getPlayer().dropMessage(-1, "You are too high of a level to enter this place.");
-                    //    c.send(MaplePacketCreator.enableActions());
+                    //    c.send(CharacterPacket.enableActions());
                     //    return;
                     //}
                 }
@@ -132,7 +132,7 @@ public class MapleGenericPortal implements MaplePortal {
             }
         }
         if (c != null && c.getPlayer() != null && c.getPlayer().getMap() == currentmap) { // Character is still on the same map.
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
         }
     }
 

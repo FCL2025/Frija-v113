@@ -38,8 +38,9 @@ import server.maps.SummonMovementType;
 import java.util.EnumMap;
 import server.MapleCarnivalFactory.MCSkill;
 import server.Timer.BuffTimer;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.BuffPacket;
+import tools.packet.CharacterPacket;
 
 public class MapleStatEffect {
 
@@ -740,8 +741,8 @@ public class MapleStatEffect {
                         if (absorbMp > 0) {
                             mob.setMp(mob.getMp() - absorbMp);
                             applyto.getStat().setMp((short) (applyto.getStat().getMp() + absorbMp));
-                            applyto.getClient().send(MaplePacketCreator.showOwnBuffEffect(sourceid, 1));
-                            applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.showBuffeffect(applyto.getId(), sourceid, 1), false);
+                            applyto.getClient().send(CharacterPacket.showOwnBuffEffect(sourceid, 1));
+                            applyto.getMap().broadcastMessage(applyto, CharacterPacket.showBuffeffect(applyto.getId(), sourceid, 1), false);
                         }
                     }
                     break;
@@ -767,11 +768,11 @@ public class MapleStatEffect {
             //} else if (isSoaring() && !applyfrom.getMap().canSoar()) {
             //	return false;
         } else if (sourceid == 4341006 && applyfrom.getBuffedValue(MapleBuffStat.MIRROR_IMAGE) == null) {
-            applyfrom.getClient().send(MaplePacketCreator.enableActions());
+            applyfrom.getClient().send(CharacterPacket.enableActions());
             return false; //not working
         } else if (sourceid == 33101004 && applyfrom.getMap().isTown()) {
             applyfrom.dropMessage(5, "You may not use this skill in towns.");
-            applyfrom.getClient().send(MaplePacketCreator.enableActions());
+            applyfrom.getClient().send(CharacterPacket.enableActions());
             return false; //not supposed to
         }
         int hpchange = calcHPChange(applyfrom, primary);
@@ -821,11 +822,11 @@ public class MapleStatEffect {
         }
         hpmpupdate.add(new Pair<>(MapleStat.HP, Integer.valueOf(stat.getHp())));
 
-        applyto.getClient().send(MaplePacketCreator.updatePlayerStats(hpmpupdate, true, applyto.getJob()));
+        applyto.getClient().send(CharacterPacket.updatePlayerStats(hpmpupdate, true, applyto.getJob()));
 
         if (expinc != 0) {
             applyto.gainExp(expinc, true, true, false);
-//            applyto.getClient().send(MaplePacketCreator.showSpecialEffect(19));
+//            applyto.getClient().send(CharacterPacket.showSpecialEffect(19));
         } else if (GameConstants.isMonsterCard(sourceid)) {
             applyto.getMonsterBook().addCard(applyto.getClient(), sourceid);
         } else if (isSpiritClaw() && !applyto.isClone()) {
@@ -923,7 +924,7 @@ public class MapleStatEffect {
             for (MapleCoolDownValueHolder i : applyto.getCooldowns()) {
                 if (i.skillId != 5121010) {
                     applyto.removeCooldown(i.skillId);
-                    applyto.getClient().send(MaplePacketCreator.skillCooldown(i.skillId, 0));
+                    applyto.getClient().send(CharacterPacket.skillCooldown(i.skillId, 0));
                 }
             }
         } else {
@@ -982,8 +983,8 @@ public class MapleStatEffect {
                 }
                 for (MapleCharacter chr : awarded) {
                     applyTo(applyfrom, chr, false, null, newDuration);
-                    chr.getClient().send(MaplePacketCreator.showOwnBuffEffect(sourceid, 2));
-                    chr.getMap().broadcastMessage(chr, MaplePacketCreator.showBuffeffect(chr.getId(), sourceid, 2), false);
+                    chr.getClient().send(CharacterPacket.showOwnBuffEffect(sourceid, 2));
+                    chr.getMap().broadcastMessage(chr, CharacterPacket.showBuffeffect(chr.getId(), sourceid, 2), false);
                 }
             }
         } else if (isPartyBuff() && (applyfrom.getParty() != null || isGmBuff())) {
@@ -996,14 +997,14 @@ public class MapleStatEffect {
                 if (affected != applyfrom && (isGmBuff() || applyfrom.getParty().equals(affected.getParty()))) {
                     if ((isResurrection() && !affected.isAlive()) || (!isResurrection() && affected.isAlive())) {
                         applyTo(applyfrom, affected, false, null, newDuration);
-                        affected.getClient().send(MaplePacketCreator.showOwnBuffEffect(sourceid, 2));
-                        affected.getMap().broadcastMessage(affected, MaplePacketCreator.showBuffeffect(affected.getId(), sourceid, 2), false);
+                        affected.getClient().send(CharacterPacket.showOwnBuffEffect(sourceid, 2));
+                        affected.getMap().broadcastMessage(affected, CharacterPacket.showBuffeffect(affected.getId(), sourceid, 2), false);
                     }
                     if (isTimeLeap()) {
                         for (MapleCoolDownValueHolder i : affected.getCooldowns()) {
                             if (i.skillId != 5121010) {
                                 affected.removeCooldown(i.skillId);
-                                affected.getClient().send(MaplePacketCreator.skillCooldown(i.skillId, 0));
+                                affected.getClient().send(CharacterPacket.skillCooldown(i.skillId, 0));
                             }
                         }
                     }
@@ -1116,7 +1117,7 @@ public class MapleStatEffect {
 
     public final void applyComboBuff(final MapleCharacter applyto, short combo) {
         final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.ARAN_COMBO, (int) combo));
-        applyto.getClient().send(MaplePacketCreator.giveBuff(sourceid, 99999, stat, this)); // Hackish timing, todo find out
+        applyto.getClient().send(BuffPacket.giveBuff(sourceid, 99999, stat, this)); // Hackish timing, todo find out
 
         final long starttime = System.currentTimeMillis();
         applyto.registerEffect(this, starttime, null);
@@ -1127,11 +1128,11 @@ public class MapleStatEffect {
 
         final long starttime = System.currentTimeMillis();
         if (infinity) {
-            applyto.getClient().send(MaplePacketCreator.giveEnergyChargeTest(0, duration / 1000));
+            applyto.getClient().send(BuffPacket.giveEnergyChargeTest(0, duration / 1000));
             applyto.registerEffect(this, starttime, null);
         } else {
             applyto.cancelEffect(this, true, -1);
-            applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveEnergyChargeTest(applyto.getId(), 10000, duration / 1000), false);
+            applyto.getMap().broadcastMessage(applyto, BuffPacket.giveEnergyChargeTest(applyto.getId(), 10000, duration / 1000), false);
             final CancelEffectAction cancelAction = new CancelEffectAction(applyto, this, starttime);
             final ScheduledFuture<?> schedule = BuffTimer.getInstance().schedule(cancelAction, ((starttime + duration) - System.currentTimeMillis()));
             this.statups = Collections.singletonList(new Pair<>(MapleBuffStat.ENERGY_CHARGE, 10000));
@@ -1144,7 +1145,7 @@ public class MapleStatEffect {
         int localDuration = newDuration;
         if (primary) {
             localDuration = alchemistModifyVal(applyfrom, localDuration, false);
-            applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.showBuffeffect(applyto.getId(), sourceid, 1), false);
+            applyto.getMap().broadcastMessage(applyto, CharacterPacket.showBuffeffect(applyto.getId(), sourceid, 1), false);
         }
         List<Pair<MapleBuffStat, Integer>> localstatups = statups;
         boolean normal = true;
@@ -1154,8 +1155,8 @@ public class MapleStatEffect {
             case 5001005: // Dash
             case 4321000: //tornado spin
             case 15001003: {
-                applyto.getClient().send(MaplePacketCreator.givePirate(statups, localDuration / 1000, sourceid));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignPirate(statups, localDuration / 1000, applyto.getId(), sourceid), false);
+                applyto.getClient().send(BuffPacket.givePirate(statups, localDuration / 1000, sourceid));
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignPirate(statups, localDuration / 1000, applyto.getId(), sourceid), false);
                 normal = false;
                 break;
             }
@@ -1163,8 +1164,8 @@ public class MapleStatEffect {
             case 22151002: //killer wings
             case 5220011: {// Bullseye
                 if (applyto.getLinkMid() > 0) {
-                    applyto.getClient().send(MaplePacketCreator.cancelHoming());
-                    applyto.getClient().send(MaplePacketCreator.giveHoming(sourceid, applyto.getLinkMid()));
+                    applyto.getClient().send(BuffPacket.cancelHoming());
+                    applyto.getClient().send(BuffPacket.giveHoming(sourceid, applyto.getLinkMid()));
                 } else {
                     return;
                 }
@@ -1176,18 +1177,18 @@ public class MapleStatEffect {
             case 4001003:
             case 14001003: { // Dark Sight
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.DARKSIGHT, 0));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
             //case 22131001: {//magic shield
             //final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.MAGIC_SHIELD, x));
-            //applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+            //applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
             //break;
             //}
             case 32001003: //dark aura
             case 32120000: {
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.DARK_AURA, 1));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 applyto.cancelEffectFromBuffStat(MapleBuffStat.BLUE_AURA);
                 applyto.cancelEffectFromBuffStat(MapleBuffStat.YELLOW_AURA);
                 break;
@@ -1195,7 +1196,7 @@ public class MapleStatEffect {
             case 32101002: //blue aura
             case 32110000: {
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.BLUE_AURA, 1));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 applyto.cancelEffectFromBuffStat(MapleBuffStat.YELLOW_AURA);
                 applyto.cancelEffectFromBuffStat(MapleBuffStat.DARK_AURA);
                 break;
@@ -1203,7 +1204,7 @@ public class MapleStatEffect {
             case 32101003: //yellow aura
             case 32120001: {
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.YELLOW_AURA, 1));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 applyto.cancelEffectFromBuffStat(MapleBuffStat.BLUE_AURA);
                 applyto.cancelEffectFromBuffStat(MapleBuffStat.DARK_AURA);
                 break;
@@ -1213,7 +1214,7 @@ public class MapleStatEffect {
              if (applyto.getBuffedValue(MapleBuffStat.WK_CHARGE) != null && applyto.getBuffSource(MapleBuffStat.WK_CHARGE) != sourceid) {
              localstatups = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.LIGHTNING_CHARGE, 1));
              }
-             applyto.getClient().send(MaplePacketCreator.giveBuff(sourceid, localDuration, localstatups, this));
+             applyto.getClient().send(BuffPacket.giveBuff(sourceid, localDuration, localstatups, this));
              normal = false;
              break;
              }*/
@@ -1226,49 +1227,49 @@ public class MapleStatEffect {
             //  case 35111004: siege
             case 35121005: { //missile
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.MECH_CHANGE, 1));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
             case 1111002:
             case 11111001: { // Combo
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.COMBO, 1));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
             case 3101004:
             case 3201004:
             case 13101003: { // Soul Arrow
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.SOULARROW, 0));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
             case 4111002:
             case 14111000: { // Shadow Partne
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.SHADOWPARTNER, 0));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
             case 15111006: { // Spark
                 localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.SPARK, x));
-                applyto.getClient().send(MaplePacketCreator.giveBuff(sourceid, localDuration, localstatups, this));
+                applyto.getClient().send(BuffPacket.giveBuff(sourceid, localDuration, localstatups, this));
                 normal = false;
                 break;
             }
             case 4341002: { // Final Cut
                 localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.FINAL_CUT, y));
-                applyto.getClient().send(MaplePacketCreator.giveBuff(sourceid, localDuration, localstatups, this));
+                applyto.getClient().send(BuffPacket.giveBuff(sourceid, localDuration, localstatups, this));
                 normal = false;
                 break;
             }
             case 4331003: { // Owl Spirit
                 localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.OWL_SPIRIT, y));
-                applyto.getClient().send(MaplePacketCreator.giveBuff(sourceid, localDuration, localstatups, this));
+                applyto.getClient().send(BuffPacket.giveBuff(sourceid, localDuration, localstatups, this));
                 normal = false;
                 break;
             }
             case 4331002: { // Mirror Image
                 final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.MIRROR_IMAGE, 0));
-                applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
             case 1121010: // Enrage
@@ -1277,33 +1278,33 @@ public class MapleStatEffect {
             default:
                 if (isMorph() || isPirateMorph()) {
                     final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.MORPH, Integer.valueOf(getMorph(applyto))));
-                    applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                    applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 } else if (isMonsterRiding()) {
                     final int mountid = parseMountInfo(applyto, sourceid);
                     final int mountid2 = parseMountInfo_Pure(applyto, sourceid);
                     if (mountid != 0 && mountid2 != 0) {
                         final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.MONSTER_RIDING, 0));
-                        applyto.getClient().send(MaplePacketCreator.cancelBuff(null));
-                        applyto.getClient().send(MaplePacketCreator.giveMount(mountid, sourceid, stat));
-                        applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.showMonsterRiding(applyto.getId(), stat, mountid, sourceid), false);
+                        applyto.getClient().send(BuffPacket.cancelBuff(null));
+                        applyto.getClient().send(BuffPacket.giveMount(mountid, sourceid, stat));
+                        applyto.getMap().broadcastMessage(applyto, BuffPacket.showMonsterRiding(applyto.getId(), stat, mountid, sourceid), false);
                     } else {
                         return;
                     }
                     normal = false;
                 } else if (isSoaring()) {
                     localstatups = Collections.singletonList(new Pair<>(MapleBuffStat.SOARING, 1));
-                    applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), localstatups, this), false);
-                    applyto.getClient().send(MaplePacketCreator.giveBuff(sourceid, localDuration, localstatups, this));
+                    applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), localstatups, this), false);
+                    applyto.getClient().send(BuffPacket.giveBuff(sourceid, localDuration, localstatups, this));
                     normal = false;
                     //} else if (berserk > 0) {
                     //    final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.PYRAMID_PQ, berserk));
-                    //    applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                    //    applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 } else if (isBerserkFury() || berserk2 > 0) {
                     final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.BERSERK_FURY, 1));
-                    applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                    applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 } else if (isDivineBody()) {
                     final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<>(MapleBuffStat.DIVINE_BODY, 1));
-                    applyto.getMap().broadcastMessage(applyto, MaplePacketCreator.giveForeignBuff(applyto.getId(), stat, this), false);
+                    applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 }
                 break;
         }
@@ -1312,7 +1313,7 @@ public class MapleStatEffect {
         }
         // Broadcast effect to self
         if (normal && statups.size() > 0) {
-            applyto.getClient().send(MaplePacketCreator.giveBuff((skill ? sourceid : -sourceid), localDuration, statups, this));
+            applyto.getClient().send(BuffPacket.giveBuff((skill ? sourceid : -sourceid), localDuration, statups, this));
         }
         final long starttime = System.currentTimeMillis();
         final CancelEffectAction cancelAction = new CancelEffectAction(applyto, this, starttime);

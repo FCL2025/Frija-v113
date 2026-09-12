@@ -43,8 +43,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import tools.packet.ChatPacket;
+import tools.packet.FamilyPacket;
+import tools.packet.GuildPacket;
 import tools.packet.UIPacket;
 
 public class MapleGuild {
@@ -260,7 +262,7 @@ public class MapleGuild {
                     }
                 }
 
-                broadcast(MaplePacketCreator.guildDisband(id));
+                broadcast(GuildPacket.guildDisband(id));
             }
         } catch (SQLException se) {
             System.err.println("Error saving guild to SQL");
@@ -407,9 +409,9 @@ public class MapleGuild {
             }
         }
         if (bBroadcast) {
-            broadcast(MaplePacketCreator.guildMemberOnline(id, cid, online), cid);
+            broadcast(GuildPacket.guildMemberOnline(id, cid, online), cid);
             if (allianceid > 0) {
-                World.Alliance.sendGuild(MaplePacketCreator.allianceMemberOnline(allianceid, id, cid, online), id, allianceid);
+                World.Alliance.sendGuild(GuildPacket.allianceMemberOnline(allianceid, id, cid, online), id, allianceid);
             }
         }
         bDirty = true; // member formation has changed, update notifications
@@ -417,11 +419,11 @@ public class MapleGuild {
     }
 
     public final void guildChat(final String name, final int cid, final String msg) {
-        broadcast(MaplePacketCreator.multiChat(name, msg, 2), cid);
+        broadcast(ChatPacket.multiChat(name, msg, 2), cid);
     }
 
     public final void allianceChat(final String name, final int cid, final String msg) {
-        broadcast(MaplePacketCreator.multiChat(name, msg, 3), cid);
+        broadcast(ChatPacket.multiChat(name, msg, 3), cid);
     }
 
     public final String getRankTitle(final int rank) {
@@ -506,7 +508,7 @@ public class MapleGuild {
             wL.unlock();
         }
         gainGP(50);
-        broadcast(MaplePacketCreator.newGuildMember(mgc));
+        broadcast(GuildPacket.newGuildMember(mgc));
         if (allianceid > 0) {
             World.Alliance.sendGuild(allianceid);
         }
@@ -514,7 +516,7 @@ public class MapleGuild {
     }
 
     public final void leaveGuild(final MapleGuildCharacter mgc) {
-        broadcast(MaplePacketCreator.memberLeft(mgc, false));
+        broadcast(GuildPacket.memberLeft(mgc, false));
         gainGP(-50);
         wL.lock();
         try {
@@ -539,7 +541,7 @@ public class MapleGuild {
             for (MapleGuildCharacter mgc : members) {
 
                 if (mgc.getId() == cid && initiator.getGuildRank() < mgc.getGuildRank()) {
-                    broadcast(MaplePacketCreator.memberLeft(mgc, true));
+                    broadcast(GuildPacket.memberLeft(mgc, true));
 
                     bDirty = true;
 
@@ -611,7 +613,7 @@ public class MapleGuild {
                     setOfflineGuildStatus((short) this.id, (byte) newRank, mgc.getAllianceRank(), cid);
                 }
                 mgc.setGuildRank((byte) newRank);
-                broadcast(MaplePacketCreator.changeRank(mgc));
+                broadcast(GuildPacket.changeRank(mgc));
                 return;
             }
         }
@@ -621,7 +623,7 @@ public class MapleGuild {
 
     public final void setGuildNotice(final String notice) {
         this.notice = notice;
-        broadcast(MaplePacketCreator.guildNotice(id, notice));
+        broadcast(GuildPacket.guildNotice(id, notice));
     }
 
     public final void memberLevelJobUpdate(final MapleGuildCharacter mgc) {
@@ -635,14 +637,14 @@ public class MapleGuild {
                     gainGP((mgc.getLevel() - old_level) * mgc.getLevel() / 10, false); //level 199->200 = 20 gp
                 }
                 if (old_level != mgc.getLevel()) {
-                    this.broadcast(MaplePacketCreator.sendLevelup(false, mgc.getLevel(), mgc.getName()), mgc.getId());
+                    this.broadcast(FamilyPacket.sendLevelup(false, mgc.getLevel(), mgc.getName()), mgc.getId());
                 }
                 if (old_job != mgc.getJobId()) {
-                    this.broadcast(MaplePacketCreator.sendJobup(false, mgc.getJobId(), mgc.getName()), mgc.getId());
+                    this.broadcast(FamilyPacket.sendJobup(false, mgc.getJobId(), mgc.getName()), mgc.getId());
                 }
-                broadcast(MaplePacketCreator.guildMemberLevelJobUpdate(mgc));
+                broadcast(GuildPacket.guildMemberLevelJobUpdate(mgc));
                 if (allianceid > 0) {
-                    World.Alliance.sendGuild(MaplePacketCreator.updateAlliance(mgc, allianceid), id, allianceid);
+                    World.Alliance.sendGuild(GuildPacket.updateAlliance(mgc, allianceid), id, allianceid);
                 }
                 break;
             }
@@ -653,7 +655,7 @@ public class MapleGuild {
         for (int i = 0; i < 5; i++) {
             rankTitles[i] = ranks[i];
         }
-        broadcast(MaplePacketCreator.rankTitleChange(id, ranks));
+        broadcast(GuildPacket.rankTitleChange(id, ranks));
     }
 
     public final void disbandGuild() {
@@ -697,7 +699,7 @@ public class MapleGuild {
             return false;
         }
         capacity += 5;
-        broadcast(MaplePacketCreator.guildCapacityChange(this.id, this.capacity));
+        broadcast(GuildPacket.guildCapacityChange(this.id, this.capacity));
 
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("UPDATE guilds SET capacity = ? WHERE guildid = ?")) {
@@ -723,7 +725,7 @@ public class MapleGuild {
             amount = -gp;
         } //0 lowest
         gp += amount;
-        broadcast(MaplePacketCreator.updateGP(id, gp));
+        broadcast(GuildPacket.updateGP(id, gp));
         if (broadcast) {
             broadcast(UIPacket.getGPMsg(amount));
         }
@@ -758,7 +760,7 @@ public class MapleGuild {
         if (mc.getGuildId() > 0) {
             return MapleGuildResponse.ALREADY_IN_GUILD;
         }
-        mc.getClient().send(MaplePacketCreator.guildInvite(c.getPlayer().getGuildId(), c.getPlayer().getName(), c.getPlayer().getLevel(), c.getPlayer().getJob()));
+        mc.getClient().send(GuildPacket.guildInvite(c.getPlayer().getGuildId(), c.getPlayer().getName(), c.getPlayer().getLevel(), c.getPlayer().getJob()));
         return null;
     }
 

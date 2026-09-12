@@ -41,7 +41,7 @@ import server.life.MapleMonster;
 import server.movement.LifeMovementFragment;
 import server.maps.FieldLimitType;
 import server.maps.MapleMapItem;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
 import tools.packet.PetPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 
@@ -64,13 +64,13 @@ public class PetHandler {
         final IItem toUse = chr.getInventory(MapleInventoryType.USE).getItem(slot);
 
         if (toUse == null || toUse.getQuantity() < 1) {
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
         final long time = System.currentTimeMillis();
         if (chr.getNextConsume() > time) {
             chr.dropMessage(5, "You may not use this item yet.");
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
         if (!FieldLimitType.PotionUse.check(chr.getMap().getFieldLimit()) || chr.getMapId() == 610030600) { //cwk quick hack
@@ -81,7 +81,7 @@ public class PetHandler {
                 }
             }
         } else {
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
         }
     }
 
@@ -140,7 +140,7 @@ public class PetHandler {
             }
         }
         if (pet == null) {
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
 
@@ -190,7 +190,7 @@ public class PetHandler {
             chr.getMap().broadcastMessage(chr, PetPacket.commandResponse(chr.getId(), (byte) 1, chr.getPetIndex(pet), false, true), true);
         }
         MapleInventoryManipulator.removeById(c, MapleInventoryType.USE, itemId, 1, true, false);
-        c.send(MaplePacketCreator.enableActions());
+        c.send(CharacterPacket.enableActions());
     }
 
     public static final void MovePet(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {

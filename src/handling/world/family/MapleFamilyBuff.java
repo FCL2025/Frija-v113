@@ -30,8 +30,8 @@ import server.MapleItemInformationProvider;
 import server.MapleStatEffect;
 import server.MapleStatEffect.CancelEffectAction;
 import server.Timer.BuffTimer;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.BuffPacket;
 
 public class MapleFamilyBuff {
 
@@ -131,7 +131,7 @@ public class MapleFamilyBuff {
         }
 
         public void applyTo(MapleCharacter chr) {
-            chr.getClient().send(MaplePacketCreator.giveBuff(-getEffectId(), duration * 60000, effects, null));
+            chr.getClient().send(BuffPacket.giveBuff(-getEffectId(), duration * 60000, effects, null));
             final MapleStatEffect eff = MapleItemInformationProvider.getInstance().getItemEffect(getEffectId());
             chr.cancelEffect(eff, true, -1, effects);
             final long starttime = System.currentTimeMillis();

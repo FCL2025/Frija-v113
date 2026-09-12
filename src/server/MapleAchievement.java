@@ -67,9 +67,9 @@ public class MapleAchievement {
      chr.modifyAchievementCSPoints(1, reward);
      chr.setAchievementFinished(MapleAchievements.getInstance().getByMapleAchievement(this));
      if (notice && !chr.isGM()) {
-     World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, "[Achievement] Congratulations to " + chr.getName() + " on " + name + " and rewarded with " + reward + " A-cash!").getBytes());
+     World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, "[Achievement] Congratulations to " + chr.getName() + " on " + name + " and rewarded with " + reward + " A-cash!").getBytes());
      } else {
-     chr.getClient().send(MaplePacketCreator.serverNotice(5, "[Achievement] You've gained " + reward + " A-cash as you " + name + "."));
+     chr.getClient().send(ChatPacket.serverNotice(5, "[Achievement] You've gained " + reward + " A-cash as you " + name + "."));
      }
      }*/
 }

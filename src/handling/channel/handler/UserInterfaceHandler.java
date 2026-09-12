@@ -25,8 +25,9 @@ import client.MapleCharacterUtil;
 import constants.ServerConstants;
 import scripting.NPCScriptManager;
 import scripting.EventManager;
-import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.MapPacket;
+import tools.packet.UIPacket;
 
 public class UserInterfaceHandler {
 
@@ -45,7 +46,7 @@ public class UserInterfaceHandler {
 
             if (selection >= 0 && selection <= ServerConstants.Poll_Answers.length) {
                 if (MapleCharacterUtil.SetPoll(c.getAccID(), selection)) {
-                    c.send(MaplePacketCreator.getPollReply("Thank you."));
+                    c.send(UIPacket.getPollReply("Thank you."));
                     //idk what goes here lol
                 }
             }
@@ -93,7 +94,7 @@ public class UserInterfaceHandler {
                 em = c.getChannelServer().getEventSM().getEventManager("Boats");
                 if (em != null && em.getProperty("haveBalrog").equals("true")) {
                     effect = 1034;
-                    c.send(MaplePacketCreator.boatEffect(effect));
+                    c.send(MapPacket.boatEffect(effect));
                     return;
                 } else {
                     return; // shyt, fixme!
@@ -103,6 +104,6 @@ public class UserInterfaceHandler {
                 System.out.println("Unhandled ship object, MapID : " + mapid);
                 break;
         }
-        c.send(MaplePacketCreator.boatPacket(effect));
+        c.send(MapPacket.boatPacket(effect));
     }
 }

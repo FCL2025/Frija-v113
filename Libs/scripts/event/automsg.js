@@ -1,4 +1,5 @@
 importPackage(Packages.tools);
+importPackage(Packages.tools.packet);
 
 var setupTask;
 
@@ -24,5 +25,5 @@ function cancelSchedule() {
 function start() {
     scheduleNew();
     var Message = new Array("如果有任何卡住、無法動彈，請使用@EA","道館、BOSSPQ皆能獲得點數");
-    em.getChannelServer().broadcastPacket(MaplePacketCreator.yellowChat("[楓之谷幫助]" + Message[Math.floor(Math.random() * Message.length)]));
+    em.getChannelServer().broadcastPacket(ChatPacket.yellowChat("[楓之谷幫助]" + Message[Math.floor(Math.random() * Message.length)]));
 }

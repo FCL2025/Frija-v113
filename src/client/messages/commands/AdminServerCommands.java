@@ -24,9 +24,9 @@ import server.events.MapleEvent;
 import server.events.MapleEventType;
 import server.life.MapleMonsterInformationProvider;
 import server.quest.MapleQuest;
-import tools.MaplePacketCreator;
 import tools.StringUtil;
 import java.util.concurrent.ScheduledFuture;
+import tools.packet.ChatPacket;
 
 /**
  * ADMIN 指令：伺服器層級的公告、重載、關機、頻道倍率與活動。由 AdminCommand 拆出。
@@ -87,7 +87,7 @@ public class AdminServerCommands {
                         ts.cancel(false);
         return;
                     }
-                    World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
+                    World.Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
                     System.out.println("伺服器即將在 " + minutesLeft + "分鐘後關閉.");
                     minutesLeft--;
                 }, 60000);
@@ -132,7 +132,7 @@ public class AdminServerCommands {
                 sb.append(c.getPlayer().getName());
                 sb.append("] ");
                 sb.append(StringUtil.joinStringFrom(splitted, 1));
-                World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, sb.toString()).getBytes());
+                World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, sb.toString()).getBytes());
             } else {
                 c.getPlayer().dropMessage(6, "指令規則: !say <message>");
                 return 0;
@@ -203,7 +203,7 @@ public class AdminServerCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(splitted[1]);
-            World.Broadcast.broadcastSmega(MaplePacketCreator.serverNotice(3, victim == null ? c.getChannel() : victim.getClient().getChannel(), victim == null ? splitted[1] : victim.getName() + " : " + StringUtil.joinStringFrom(splitted, 2), true).getBytes());
+            World.Broadcast.broadcastSmega(ChatPacket.serverNotice(3, victim == null ? c.getChannel() : victim.getClient().getChannel(), victim == null ? splitted[1] : victim.getName() + " : " + StringUtil.joinStringFrom(splitted, 2), true).getBytes());
             return 1;
         }
     }
@@ -217,7 +217,7 @@ public class AdminServerCommands {
                 c.getPlayer().dropMessage(5, "找不到 '" + splitted[1]);
                 return 0;
             } else {
-                victim.getMap().broadcastMessage(MaplePacketCreator.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 2), victim.isGM(), 0));
+                victim.getMap().broadcastMessage(ChatPacket.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 2), victim.isGM(), 0));
             }
             return 1;
         }
@@ -229,7 +229,7 @@ public class AdminServerCommands {
         public int execute(MapleClient c, String[] splitted) {
             for (MapleCharacter victim : c.getPlayer().getMap().getCharactersThreadsafe()) {
                 if (victim.getId() != c.getPlayer().getId()) {
-                    victim.getMap().broadcastMessage(MaplePacketCreator.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 1), victim.isGM(), 0));
+                    victim.getMap().broadcastMessage(ChatPacket.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 1), victim.isGM(), 0));
                 }
             }
             return 1;
@@ -242,7 +242,7 @@ public class AdminServerCommands {
         public int execute(MapleClient c, String[] splitted) {
             for (MapleCharacter victim : c.getChannelServer().getPlayerStorage().getAllCharacters()) {
                 if (victim.getId() != c.getPlayer().getId()) {
-                    victim.getMap().broadcastMessage(MaplePacketCreator.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 1), victim.isGM(), 0));
+                    victim.getMap().broadcastMessage(ChatPacket.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 1), victim.isGM(), 0));
                 }
             }
             return 1;
@@ -256,7 +256,7 @@ public class AdminServerCommands {
             for (ChannelServer cserv : ChannelServer.getAllInstances()) {
                 for (MapleCharacter victim : cserv.getPlayerStorage().getAllCharacters()) {
                     if (victim.getId() != c.getPlayer().getId()) {
-                        victim.getMap().broadcastMessage(MaplePacketCreator.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 1), victim.isGM(), 0));
+                        victim.getMap().broadcastMessage(ChatPacket.getChatText(victim.getId(), StringUtil.joinStringFrom(splitted, 1), victim.isGM(), 0));
                     }
                 }
             }
@@ -545,7 +545,7 @@ public class AdminServerCommands {
             joinmod += tfrom;
             sb.append(StringUtil.joinStringFrom(splitted, joinmod));
 
-            MaplePacket packet = MaplePacketCreator.serverNotice(type, sb.toString());
+            MaplePacket packet = ChatPacket.serverNotice(type, sb.toString());
             if (range == 0) {
                 c.getPlayer().getMap().broadcastMessage(packet);
             } else if (range == 1) {
@@ -572,7 +572,7 @@ public class AdminServerCommands {
             if (range == -1) {
                 range = 2;
             }
-            MaplePacket packet = MaplePacketCreator.yellowChat((splitted[0].equals("!y") ? ("[" + c.getPlayer().getName() + "] ") : "") + StringUtil.joinStringFrom(splitted, 2));
+            MaplePacket packet = ChatPacket.yellowChat((splitted[0].equals("!y") ? ("[" + c.getPlayer().getName() + "] ") : "") + StringUtil.joinStringFrom(splitted, 2));
             if (range == 0) {
                 c.getPlayer().getMap().broadcastMessage(packet);
             } else if (range == 1) {

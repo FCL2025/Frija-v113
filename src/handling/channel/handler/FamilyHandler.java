@@ -31,8 +31,8 @@ import handling.world.family.MapleFamilyBuff.MapleFamilyBuffEntry;
 import handling.world.family.MapleFamilyCharacter;
 import java.util.List;
 import server.maps.FieldLimitType;
-import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.CharacterPacket;
 import tools.packet.FamilyPacket;
 
 public class FamilyHandler {
@@ -163,7 +163,7 @@ public class FamilyHandler {
         } else if (c.getPlayer().isGM() || !addChr.isGM()) {
             addChr.getClient().send(FamilyPacket.sendFamilyInvite(c.getPlayer().getId(), c.getPlayer().getLevel(), c.getPlayer().getJob(), c.getPlayer().getName()));
         }
-        c.send(MaplePacketCreator.enableActions());
+        c.send(CharacterPacket.enableActions());
     }
 
     public static final void FamilyPrecept(final SeekableLittleEndianAccessor slea, MapleClient c) {
@@ -227,7 +227,7 @@ public class FamilyHandler {
             fam.resetPedigree();
         }
         c.getPlayer().dropMessage(1, "踢出了 (" + other.getName() + ").");
-        c.send(MaplePacketCreator.enableActions());
+        c.send(CharacterPacket.enableActions());
     }
 
     public static final void DeleteSenior(final SeekableLittleEndianAccessor slea, MapleClient c) {
@@ -255,7 +255,7 @@ public class FamilyHandler {
             fam.resetPedigree();
         }
         c.getPlayer().dropMessage(1, "退出了 (" + mgc.getName() + ") 的家族.");
-        c.send(MaplePacketCreator.enableActions());
+        c.send(CharacterPacket.enableActions());
     }
 
     public static final void AcceptFamily(SeekableLittleEndianAccessor slea, MapleClient c) {

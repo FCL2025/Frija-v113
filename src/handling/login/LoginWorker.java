@@ -26,8 +26,8 @@ import java.util.Map.Entry;
 import client.MapleClient;
 import handling.channel.ChannelServer;
 import server.Timer.PingTimer;
+import tools.packet.ChatPacket;
 import tools.packet.LoginPacket;
-import tools.MaplePacketCreator;
 
 public class LoginWorker {
 
@@ -35,7 +35,7 @@ public class LoginWorker {
 
     public static void registerClient(final MapleClient c) {
         if (LoginServer.isAdminOnly() && !c.isGm()) {
-            c.send(MaplePacketCreator.serverNotice(1, "The server is currently set to Admin login only.\r\nWe are currently testing some issues.\r\nPlease try again later."));
+            c.send(ChatPacket.serverNotice(1, "The server is currently set to Admin login only.\r\nWe are currently testing some issues.\r\nPlease try again later."));
             c.send(LoginPacket.getLoginFailed(7));
             return;
         }

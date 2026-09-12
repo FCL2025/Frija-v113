@@ -32,10 +32,11 @@ import server.Timer.MobTimer;
 import server.Timer.WorldTimer;
 import tools.CPUSampler;
 import tools.Encodings;
-import tools.MaplePacketCreator;
 import tools.Pair;
 import tools.StringUtil;
 import tools.packet.PlayerShopPacket;
+import tools.packet.ServerPacket;
+import tools.packet.UIPacket;
 
 /**
  * ADMIN 指令：除錯、封包、效能取樣、測試與伺服器層級的資訊查詢。由 AdminCommand 拆出。
@@ -326,7 +327,7 @@ public class AdminDebugCommands {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            c.send(MaplePacketCreator.getPollQuestion());
+            c.send(UIPacket.getPollQuestion());
             return 1;
         }
     }
@@ -346,7 +347,7 @@ public class AdminDebugCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             if (splitted.length > 1) {
-                c.send(MaplePacketCreator.getPacketFromHexString(StringUtil.joinStringFrom(splitted, 1)));
+                c.send(ServerPacket.getPacketFromHexString(StringUtil.joinStringFrom(splitted, 1)));
             } else {
                 c.getPlayer().dropMessage(6, "Please enter packet data!");
             }
@@ -359,7 +360,7 @@ public class AdminDebugCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             if (splitted.length > 1) {
-                c.getChannelServer().getServerHandler().messageReceived(c.getSession(), (Object) MaplePacketCreator.getPacketFromHexString(StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                c.getChannelServer().getServerHandler().messageReceived(c.getSession(), (Object) ServerPacket.getPacketFromHexString(StringUtil.joinStringFrom(splitted, 1)).getBytes());
             } else {
                 c.getPlayer().dropMessage(6, "Please enter packet data!");
             }

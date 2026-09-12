@@ -45,7 +45,8 @@ import server.life.MapleMonster;
 import server.maps.MapleMap;
 import server.maps.MapleMapFactory;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 import tools.packet.UIPacket;
 
 public class EventInstanceManager {
@@ -149,7 +150,7 @@ public class EventInstanceManager {
             final int timesend = (int) time / 1000;
 
             for (MapleCharacter chr : getPlayers()) {
-                chr.getClient().send(MaplePacketCreator.getClock(timesend));
+                chr.getClient().send(MapPacket.getClock(timesend));
             }
             timeOut(time, this);
 
@@ -516,7 +517,7 @@ public class EventInstanceManager {
             return;
         }
         for (MapleCharacter chr : getPlayers()) {
-            chr.getClient().send(MaplePacketCreator.serverNotice(type, msg));
+            chr.getClient().send(ChatPacket.serverNotice(type, msg));
         }
     }
 
@@ -767,7 +768,7 @@ public class EventInstanceManager {
             }
         }
         squad.setStatus((byte) 2);
-        squad.getBeginMap().broadcastMessage(MaplePacketCreator.stopClock());
+        squad.getBeginMap().broadcastMessage(MapPacket.stopClock());
     }
 
     public boolean isDisconnected(final MapleCharacter chr) {

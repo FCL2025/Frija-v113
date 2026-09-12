@@ -34,8 +34,9 @@ import server.life.MobSkill;
 import server.life.MobSkillFactory;
 import server.maps.MapleNodes.MapleNodeInfo;
 import server.movement.LifeMovementFragment;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 import tools.packet.MobPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 
@@ -179,7 +180,7 @@ public class MobHandler {
                     break;
                 }
             }
-            map.broadcastMessage(MaplePacketCreator.serverNotice(6, "Your party has failed to protect the monster."));
+            map.broadcastMessage(ChatPacket.serverNotice(6, "Your party has failed to protect the monster."));
             final MapleMap mapp = chr.getClient().getChannelServer().getMapFactory().getMap(921120001);
             for (MapleCharacter chrz : map.getCharactersThreadsafe()) {
                 chrz.changeMap(mapp, mapp.getPortal(0));
@@ -243,7 +244,7 @@ public class MobHandler {
     public static final void DisplayNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         if (mob_from != null) {
-            chr.getClient().send(MaplePacketCreator.getNodeProperties(mob_from, chr.getMap()));
+            chr.getClient().send(MapPacket.getNodeProperties(mob_from, chr.getMap()));
         }
     }
 
@@ -284,7 +285,7 @@ public class MobHandler {
 
                 }
                 if (newMap > 0) {
-                    chr.getMap().broadcastMessage(MaplePacketCreator.serverNotice(5, "Proceed to the next stage."));
+                    chr.getMap().broadcastMessage(ChatPacket.serverNotice(5, "Proceed to the next stage."));
                     chr.getMap().removeMonster(mob_from);
                 }
             }

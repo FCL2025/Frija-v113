@@ -22,9 +22,9 @@ import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
 import server.MapleShopFactory;
 import tools.ArrayMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
 import tools.StringUtil;
+import tools.packet.InventoryPacket;
 
 /**
  * ADMIN 指令：道具、裝備、背包／倉庫、商店與掉寶物。由 AdminCommand 拆出。
@@ -441,7 +441,7 @@ public class AdminItemCommands {
             MapleInventoryType type = GameConstants.getInventoryType(itemid);
             for (IItem item : chr.getInventory(type).listById(itemid)) {
                 item.setFlag((byte) (item.getFlag() | ItemFlag.LOCK.getValue()));
-                chr.getClient().send(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
+                chr.getClient().send(InventoryPacket.updateSpecialItemUse(item, type.getType()));
             }
             if (type == MapleInventoryType.EQUIP) {
                 type = MapleInventoryType.EQUIPPED;

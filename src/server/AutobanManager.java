@@ -11,7 +11,7 @@ import java.util.TreeSet;
 import client.MapleClient;
 import handling.world.World;
 import java.util.concurrent.locks.ReentrantLock;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
 
 public class AutobanManager implements Runnable {
 
@@ -110,7 +110,7 @@ public class AutobanManager implements Runnable {
                     sb.append(s);
                     sb.append(", ");
                 }
-                World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(0, "'" + c.getPlayer().getName() + "'使用外掛程式遭到系統封鎖").getBytes());
+                World.Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "'" + c.getPlayer().getName() + "'使用外掛程式遭到系統封鎖").getBytes());
                 c.getPlayer().ban(sb.toString(), false, true, false);
                 c.disconnect(true, false);
             } else {

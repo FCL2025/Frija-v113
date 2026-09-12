@@ -28,8 +28,10 @@ import java.util.concurrent.ScheduledFuture;
 import server.Timer.EventTimer;
 import server.events.MapleOxQuizFactory.MapleOxQuizEntry;
 import server.maps.MapleMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.ChatPacket;
+import tools.packet.EventPacket;
+import tools.packet.MapPacket;
 
 public class MapleOxQuiz extends MapleEvent {
 
@@ -95,7 +97,7 @@ public class MapleOxQuiz extends MapleEvent {
                 }
             }
             if (toSend.getCharactersSize() - number <= 1 || timesAsked == 10) {
-                toSend.broadcastMessage(MaplePacketCreator.serverNotice(6, "The event has ended"));
+                toSend.broadcastMessage(ChatPacket.serverNotice(6, "The event has ended"));
                 unreset();
                 for (MapleCharacter chr : toSend.getCharactersThreadsafe()) {
                     if (chr != null && !chr.isGM() && chr.isAlive()) {
@@ -109,13 +111,13 @@ public class MapleOxQuiz extends MapleEvent {
                 return;
             }
             final Entry<Pair<Integer, Integer>, MapleOxQuizEntry> question = MapleOxQuizFactory.getInstance().grabRandomQuestion();
-            toSend.broadcastMessage(MaplePacketCreator.showOXQuiz(question.getKey().left, question.getKey().right, true));
-            toSend.broadcastMessage(MaplePacketCreator.getClock(12)); //quickly change to 12
+            toSend.broadcastMessage(EventPacket.showOXQuiz(question.getKey().left, question.getKey().right, true));
+            toSend.broadcastMessage(MapPacket.getClock(12)); //quickly change to 12
             if (oxSchedule != null) {
                 oxSchedule.cancel(false);
             }
             oxSchedule = EventTimer.getInstance().schedule(() -> {
-                toSend.broadcastMessage(MaplePacketCreator.showOXQuiz(question.getKey().left, question.getKey().right, false));
+                toSend.broadcastMessage(EventPacket.showOXQuiz(question.getKey().left, question.getKey().right, false));
                 timesAsked++;
                 for (MapleCharacter chr : toSend.getCharactersThreadsafe()) {
                     if (chr != null && !chr.isGM() && chr.isAlive()) { // make sure they aren't null... maybe something can happen in 12 seconds.

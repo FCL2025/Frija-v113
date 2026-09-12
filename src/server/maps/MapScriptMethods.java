@@ -34,7 +34,11 @@ import server.life.MapleMonster;
 import server.quest.MapleQuest;
 import server.quest.MapleQuest.MedalQuest;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
+import tools.packet.ChatPacket;
+import tools.packet.EventPacket;
+import tools.packet.MapPacket;
+import tools.packet.QuestPacket;
 import tools.packet.UIPacket;
 
 public class MapScriptMethods {
@@ -347,7 +351,7 @@ public class MapScriptMethods {
                 break;
             }
             case boss_Ravana: { //event handles this so nothing for now until i find out something to do with it
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.serverNotice(5, "Ravana has appeared!"));
+                c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(5, "Ravana has appeared!"));
                 break;
             }
             case killing_BonusSetting: { //spawns monsters according to mapid
@@ -358,8 +362,8 @@ public class MapScriptMethods {
                 //926010070-926010089 - 50 Yetis (specialized? immortality)
                 //TODO also find positions to spawn these at
                 c.getPlayer().getMap().resetFully();
-                c.send(MaplePacketCreator.showEffect("killing/bonus/bonus"));
-                c.send(MaplePacketCreator.showEffect("killing/bonus/stage"));
+                c.send(MapPacket.showEffect("killing/bonus/bonus"));
+                c.send(MapPacket.showEffect("killing/bonus/stage"));
                 Point pos1 = null, pos2 = null, pos3 = null;
                 int spawnPer = 0;
                 int mobId = 0;
@@ -419,7 +423,7 @@ public class MapScriptMethods {
                     }
                     c.getPlayer().getMap().spawnMonsterWithEffectBelow(shammos, new Point(c.getPlayer().getMap().getPortal(0).getPosition()), 12);
                     shammos.switchController(c.getPlayer(), false);
-                    c.send(MaplePacketCreator.getNodeProperties(shammos, c.getPlayer().getMap()));
+                    c.send(MapPacket.getNodeProperties(shammos, c.getPlayer().getMap()));
 
                 }
                 break;
@@ -482,7 +486,7 @@ public class MapScriptMethods {
                 break;
             }
             case shammos_Enter: { //nothing to go on inside the map
-                c.send(MaplePacketCreator.sendPyramidEnergy("shammos_LastStage", String.valueOf((c.getPlayer().getMapId() % 1000) / 100)));
+                c.send(EventPacket.sendPyramidEnergy("shammos_LastStage", String.valueOf((c.getPlayer().getMapId() % 1000) / 100)));
                 if (c.getPlayer().getEventInstance() != null && c.getPlayer().getMapId() == 921120500) {
                     NPCScriptManager.getInstance().dispose(c); //only boss map.
                     NPCScriptManager.getInstance().start(c, 2022006);
@@ -498,13 +502,13 @@ public class MapScriptMethods {
                 break;
             }
             case PRaid_W_Enter: {
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_expPenalty", "0"));
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_ElapssedTimeAtField", "0"));
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_Point", "-1"));
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_Bonus", "-1"));
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_Total", "-1"));
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_Team", ""));
-                c.send(MaplePacketCreator.sendPyramidEnergy("PRaid_IsRevive", "0"));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_expPenalty", "0"));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_ElapssedTimeAtField", "0"));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_Point", "-1"));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_Bonus", "-1"));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_Total", "-1"));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_Team", ""));
+                c.send(EventPacket.sendPyramidEnergy("PRaid_IsRevive", "0"));
                 c.getPlayer().writePoint("PRaid_Point", "-1");
                 c.getPlayer().writeStatus("Red_Stage", "1");
                 c.getPlayer().writeStatus("Blue_Stage", "1");
@@ -541,7 +545,7 @@ public class MapScriptMethods {
             break;
             }
             case evanAlone: { //no idea
-                c.send(MaplePacketCreator.enableActions());
+                c.send(CharacterPacket.enableActions());
                 break;
             }
             case startEreb:
@@ -550,7 +554,7 @@ public class MapScriptMethods {
             case evanleaveD: {
                 c.send(UIPacket.IntroDisableUI(false));
                 c.send(UIPacket.IntroLock(false));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(CharacterPacket.enableActions());
                 break;
             }
             case dojang_Msg: {
@@ -600,7 +604,7 @@ public class MapScriptMethods {
                     case 900090004:
                         c.send(UIPacket.IntroDisableUI(false));
                         c.send(UIPacket.IntroLock(false));
-                        c.send(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         final MapleMap mapto = c.getChannelServer().getMapFactory().getMap(900010000);
                         c.getPlayer().changeMap(mapto, mapto.getPortal(0));
                         return;
@@ -610,7 +614,7 @@ public class MapScriptMethods {
             case TD_MC_title: {
                 c.send(UIPacket.IntroDisableUI(false));
                 c.send(UIPacket.IntroLock(false));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(CharacterPacket.enableActions());
                 c.send(UIPacket.MapEff("temaD/enter/mushCatle"));
                 break;
             }
@@ -618,7 +622,7 @@ public class MapScriptMethods {
                 if (c.getPlayer().getMapId() == 104000000) {
                     c.send(UIPacket.IntroDisableUI(false));
                     c.send(UIPacket.IntroLock(false));
-                    c.send(MaplePacketCreator.enableActions());
+                    c.send(CharacterPacket.enableActions());
                     c.send(UIPacket.MapNameDisplay(c.getPlayer().getMapId()));
                 }
                 MedalQuest m = null;
@@ -670,7 +674,7 @@ public class MapScriptMethods {
                         MapleQuest.getInstance(m.questid - 1995).forceStart(c.getPlayer(), 0, String.valueOf(number));
                         c.getPlayer().dropMessage(-1, "訪問 " + number + "/" + m.maps.length + " 個地區.");
                         c.getPlayer().dropMessage(-1, "稱號 " + String.valueOf(m) + " 已完成了");
-                        c.send(MaplePacketCreator.showQuestMsg("稱號 " + String.valueOf(m) + " 已完成訪問 " + number + "/" + m.maps.length + " 個地區"));
+                        c.send(QuestPacket.showQuestMsg("稱號 " + String.valueOf(m) + " 已完成訪問 " + number + "/" + m.maps.length + " 個地區"));
                     }
                 }
                 break;
@@ -679,7 +683,7 @@ public class MapScriptMethods {
             case go1020000:
                 c.send(UIPacket.IntroDisableUI(false));
                 c.send(UIPacket.IntroLock(false));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(CharacterPacket.enableActions());
             // falls through —— 解鎖之後照樣要送下面那組 MapNameDisplay
             case go20000:
             case go30000:
@@ -760,7 +764,7 @@ public class MapScriptMethods {
                 c.send(UIPacket.ShowWZEffect("Effect/Direction1.img/aranTutorial/ClickLirin"));
                 c.send(UIPacket.IntroDisableUI(false));
                 c.send(UIPacket.IntroLock(false));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(CharacterPacket.enableActions());
                 break;
             }
             case rienArrow: {
@@ -793,9 +797,9 @@ public class MapScriptMethods {
             }
             case Massacre_result: { //clear, give exp, etc.
                 //if (c.getPlayer().getPyramidSubway() == null) {
-                c.send(MaplePacketCreator.showEffect("killing/fail"));
+                c.send(MapPacket.showEffect("killing/fail"));
                 //} else {
-                //	c.send(MaplePacketCreator.showEffect("killing/clear"));
+                //	c.send(MapPacket.showEffect("killing/clear"));
                 //}
                 //left blank because pyramidsubway handles this.
                 break;
@@ -853,14 +857,14 @@ public class MapScriptMethods {
     }
 
     private static void sendDojoClock(MapleClient c, int time) {
-        c.send(MaplePacketCreator.getClock(time));
+        c.send(MapPacket.getClock(time));
     }
 
     private static void sendDojoStart(MapleClient c, int stage) {
-        c.send(MaplePacketCreator.environmentChange("Dojang/start", 4));
-        c.send(MaplePacketCreator.environmentChange("dojang/start/stage", 3));
-        c.send(MaplePacketCreator.environmentChange("dojang/start/number/" + stage, 3));
-        c.send(MaplePacketCreator.trembleEffect(0, 1));
+        c.send(MapPacket.environmentChange("Dojang/start", 4));
+        c.send(MapPacket.environmentChange("dojang/start/stage", 3));
+        c.send(MapPacket.environmentChange("dojang/start/number/" + stage, 3));
+        c.send(MapPacket.trembleEffect(0, 1));
     }
 
     private static void handlePinkBeanStart(MapleClient c) {

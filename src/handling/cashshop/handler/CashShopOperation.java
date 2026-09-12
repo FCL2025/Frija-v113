@@ -21,8 +21,8 @@ import server.CashItemFactory;
 import server.CashItemInfo;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
-import tools.MaplePacketCreator;
 import tools.packet.MTSCSPacket;
+import tools.packet.ServerPacket;
 import tools.Pair;
 import tools.data.input.SeekableLittleEndianAccessor;
 
@@ -36,7 +36,7 @@ public class CashShopOperation {
         try {
 
             World.ChannelChange_Data(new CharacterTransfer(chr), chr.getId(), c.getChannel());
-            c.send(MaplePacketCreator.getChannelChange(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1])));
+            c.send(ServerPacket.getChannelChange(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1])));
         } finally {
             chr.saveToDB(false, true);
             c.setPlayer(null);

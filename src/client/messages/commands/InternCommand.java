@@ -7,8 +7,8 @@ import constants.ServerConstants;
 import handling.channel.ChannelServer;
 import handling.world.World;
 import server.maps.MapleMap;
-import tools.MaplePacketCreator;
 import tools.StringUtil;
+import tools.packet.ChatPacket;
 
 public class InternCommand {
         public static ServerConstants.PlayerGMRank getPlayerLevelRequired() {
@@ -239,7 +239,7 @@ public class InternCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
 
-                World.Broadcast.broadcastGMMessage(MaplePacketCreator.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                World.Broadcast.broadcastGMMessage(ChatPacket.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
             
             return 1;
         }

@@ -47,10 +47,11 @@ import server.maps.MapleMap;
 import server.maps.MapleMapItem;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
-import tools.MaplePacketCreator;
 import tools.AttackPair;
 import tools.Pair;
 import tools.data.input.LittleEndianAccessor;
+import tools.packet.CharacterPacket;
+import tools.packet.MapPacket;
 
 public class DamageParse {
 
@@ -66,7 +67,7 @@ public class DamageParse {
         }
         if (attack.skill != 0) {
             if (effect == null) {
-                player.getClient().send(MaplePacketCreator.enableActions());
+                player.getClient().send(CharacterPacket.enableActions());
                 return;
             }
             if (GameConstants.isMulungSkill(attack.skill)) {
@@ -122,7 +123,7 @@ public class DamageParse {
                                 return;
                             }
                             map.removeMapObject(mapitem);
-                            map.broadcastMessage(MaplePacketCreator.explodeDrop(mapitem.getObjectId()));
+                            map.broadcastMessage(MapPacket.explodeDrop(mapitem.getObjectId()));
                             mapitem.setPickedUp(true);
                         } else {
                             player.getCheatTracker().registerOffense(CheatingOffense.ETC_EXPLOSION);

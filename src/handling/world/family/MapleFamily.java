@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import tools.MaplePacketCreator;
 import tools.packet.FamilyPacket;
 
 public class MapleFamily {
@@ -483,10 +482,10 @@ public class MapleFamily {
             member.setJobId(mgc.getJob());
             member.setLevel(mgc.getLevel());
             if (old_level != mgc.getLevel()) {
-                this.broadcast(MaplePacketCreator.sendLevelup(true, mgc.getLevel(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
+                this.broadcast(FamilyPacket.sendLevelup(true, mgc.getLevel(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
             }
             if (old_job != mgc.getJob()) {
-                this.broadcast(MaplePacketCreator.sendJobup(true, mgc.getJob(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
+                this.broadcast(FamilyPacket.sendJobup(true, mgc.getJob(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
             }
         }
     }

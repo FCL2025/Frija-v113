@@ -38,7 +38,9 @@ import provider.MapleDataTool;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
 import server.Randomizer;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
+import tools.packet.InventoryPacket;
+import tools.packet.QuestPacket;
 
 public class MapleQuestAction {
 
@@ -153,7 +155,7 @@ public class MapleQuestAction {
                             // it's better to catch this here so we'll atleast try to remove the other items
                             System.err.println("[h4x] Completing a quest without meeting the requirements" + ie);
                         }
-                        c.getClient().send(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     } else { // add items
                         final int period = MapleDataTool.getInt(iEntry.getChildByPath("period"), 0) / 1440; //im guessing.
                         final String name = MapleItemInformationProvider.getInstance().getName(id);
@@ -163,7 +165,7 @@ public class MapleQuestAction {
                             c.dropMessage(5, msg);
                         }
                         MapleInventoryManipulator.addById(c.getClient(), id, count, "", null, period);
-                        c.getClient().send(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     }
                 }
                 break;
@@ -172,7 +174,7 @@ public class MapleQuestAction {
                 if (status.getForfeited() > 0) {
                     break;
                 }
-                c.getClient().send(MaplePacketCreator.updateQuestFinish(quest.getId(), status.getNpc(), MapleDataTool.getInt(data)));
+                c.getClient().send(QuestPacket.updateQuestFinish(quest.getId(), status.getNpc(), MapleDataTool.getInt(data)));
                 break;
             case money:
                 status = c.getQuest(quest);
@@ -214,7 +216,7 @@ public class MapleQuestAction {
                 final int fameGain = MapleDataTool.getInt(data, 0);
                 c.addFame(fameGain);
                 c.updateSingleStat(MapleStat.FAME, c.getFame());
-                c.getClient().send(MaplePacketCreator.getShowFameGain(fameGain));
+                c.getClient().send(CharacterPacket.getShowFameGain(fameGain));
                 break;
             case buffItemID:
                 status = c.getQuest(quest);
@@ -401,7 +403,7 @@ public class MapleQuestAction {
                     final short count = (short) MapleDataTool.getInt(iEntry.getChildByPath("count"), 1);
                     if (count < 0) { // remove items
                         MapleInventoryManipulator.removeById(c.getClient(), GameConstants.getInventoryType(id), id, (count * -1), true, false);
-                        c.getClient().send(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     } else { // add items
                         final int period = MapleDataTool.getInt(iEntry.getChildByPath("period"), 0) / 1440;
                         final String name = MapleItemInformationProvider.getInstance().getName(id);
@@ -411,13 +413,13 @@ public class MapleQuestAction {
                             c.dropMessage(5, msg);
                         }
                         MapleInventoryManipulator.addById(c.getClient(), id, count, "", null, period);
-                        c.getClient().send(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     }
                 }
                 break;
             }
             case nextQuest: {
-                c.getClient().send(MaplePacketCreator.updateQuestFinish(quest.getId(), c.getQuest(quest).getNpc(), MapleDataTool.getInt(data)));
+                c.getClient().send(QuestPacket.updateQuestFinish(quest.getId(), c.getQuest(quest).getNpc(), MapleDataTool.getInt(data)));
                 break;
             }
             case money: {
@@ -454,7 +456,7 @@ public class MapleQuestAction {
                 final int fameGain = MapleDataTool.getInt(data, 0);
                 c.addFame(fameGain);
                 c.updateSingleStat(MapleStat.FAME, c.getFame());
-                c.getClient().send(MaplePacketCreator.getShowFameGain(fameGain));
+                c.getClient().send(CharacterPacket.getShowFameGain(fameGain));
                 break;
             }
             case buffItemID: {

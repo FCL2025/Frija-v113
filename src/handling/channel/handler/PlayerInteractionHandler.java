@@ -39,7 +39,8 @@ import server.shops.MaplePlayerShopItem;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import server.shops.MapleMiniGame;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
+import tools.packet.ChatPacket;
 import tools.packet.PlayerShopPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 import scripting.NPCScriptManager;
@@ -101,17 +102,17 @@ public class PlayerInteractionHandler {
                     MapleTrade.startTrade(chr);
                 } else if (createType == 1 || createType == 2 || createType == 4 || createType == 5) { // shop
                     if (createType == 4 && !chr.isAdmin()) { //not hired merch... blocked playershop
-                        c.send(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         return;
                     }
                     if (chr.getMap().getMapObjectsInRange(chr.getPosition(), 20000, Arrays.asList(MapleMapObjectType.SHOP, MapleMapObjectType.HIRED_MERCHANT)).size() != 0) {
                         chr.dropMessage(1, "You may not establish a store here.");
-                        c.send(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         return;
                     } else if (createType == 1 || createType == 2) {
                         if (FieldLimitType.Minigames.check(chr.getMap().getFieldLimit())) {
                             chr.dropMessage(1, "You may not use minigames here.");
-                            c.send(MaplePacketCreator.enableActions());
+                            c.send(CharacterPacket.enableActions());
                             return;
                         }
                     }
@@ -146,7 +147,7 @@ public class PlayerInteractionHandler {
                             c.send(PlayerShopPacket.getPlayerStore(chr, true));
                         } else {
                             /*                            chr.dropMessage(1, "請暫時用營業執照開店");
-                             c.send(MaplePacketCreator.enableActions());*/
+                             c.send(CharacterPacket.enableActions());*/
                             final HiredMerchant merch = new HiredMerchant(chr, shop.getItemId(), desc);
                             chr.setPlayerShop(merch);
                             chr.getMap().addMapObject(merch);
@@ -256,7 +257,7 @@ public class PlayerInteractionHandler {
                     }
                     chr.setPlayerShop(null);
                     NPCScriptManager.getInstance().dispose(c);
-                    c.send(MaplePacketCreator.enableActions());
+                    c.send(CharacterPacket.enableActions());
                 }
                 break;
             }
@@ -268,7 +269,7 @@ public class PlayerInteractionHandler {
                     if (chr.getMap().allowPersonalShop()) {
                         if (c.getChannelServer().isShutdown()) {
                             chr.dropMessage(1, "伺服器即將關閉所以不能整理商店.");
-                            c.send(MaplePacketCreator.enableActions());
+                            c.send(CharacterPacket.enableActions());
                             shop.closeShop(shop.getShopType() == 1, false);
                             return;
                         }
@@ -359,12 +360,12 @@ public class PlayerInteractionHandler {
                     if (ivItem.getQuantity() >= bundles_perbundle || ( !GameConstants.isRechargable(ivItem.getItemId()) && bundles_perbundle == 1  ) ) {
                         final byte flag = ivItem.getFlag();
                         if (ItemFlag.UNTRADEABLE.check(flag) || ItemFlag.LOCK.check(flag)) {
-                            c.send(MaplePacketCreator.enableActions());
+                            c.send(CharacterPacket.enableActions());
                             return;
                         }
                         if (ii.isDropRestricted(ivItem.getItemId()) || ii.isAccountShared(ivItem.getItemId())) {
                             if (!(ItemFlag.KARMA_EQ.check(flag) || ItemFlag.KARMA_USE.check(flag))) {
-                                c.send(MaplePacketCreator.enableActions());
+                                c.send(CharacterPacket.enableActions());
                                 return;
                             }
                         }
@@ -530,8 +531,8 @@ public class PlayerInteractionHandler {
             case CLOSE_MERCHANT: {
                 /* final IMaplePlayerShop merchant = chr.getPlayerShop();
                  if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr) && merchant.isAvailable()) {
-                 c.send(MaplePacketCreator.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
-                 c.send(MaplePacketCreator.enableActions());
+                 c.send(ChatPacket.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
+                 c.send(CharacterPacket.enableActions());
                  merchant.removeAllVisitors(-1, -1);
                  chr.setPlayerShop(null);
                  merchant.closeShop(true, true);
@@ -539,7 +540,7 @@ public class PlayerInteractionHandler {
                  break;*/
                 final IMaplePlayerShop merchant = chr.getPlayerShop();
                 if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
-                    //c.send(MaplePacketCreator.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
+                    //c.send(ChatPacket.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
                     boolean save = false;
 
                     if (chr.getMeso() + merchant.getMeso() < 0) {
@@ -566,7 +567,7 @@ public class PlayerInteractionHandler {
                         }
                     }
                     if(save){
-                        c.send(MaplePacketCreator.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
+                        c.send(ChatPacket.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
                     }
                     merchant.removeAllVisitors(10, 1);
                     c.send(PlayerShopPacket.shopErrorMessage(0x15, 0));
@@ -580,7 +581,7 @@ public class PlayerInteractionHandler {
                 System.out.println(merchant.getShopType());
                 if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
                     if (chr.getMeso() + merchant.getMeso() < 0) {
-                        c.send(MaplePacketCreator.serverNotice(1, "您身上的楓幣太多了"));
+                        c.send(ChatPacket.serverNotice(1, "您身上的楓幣太多了"));
                     } else {
                         if (merchant.getMeso() > 0) {
                             chr.gainMeso(merchant.getMeso(), false);

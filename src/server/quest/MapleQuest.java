@@ -17,8 +17,8 @@ import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
 import provider.MapleDataTool;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.CharacterPacket;
 
 public class MapleQuest {
 
@@ -280,8 +280,8 @@ public class MapleQuest {
             // we save forfeits only for logging purposes, they shouldn't matter anymore
             // completion time is set by the constructor
 
-            c.getClient().send(MaplePacketCreator.showSpecialEffect(9)); // Quest completion
-            c.getMap().broadcastMessage(c, MaplePacketCreator.showSpecialEffect(c.getId(), 9), false);
+            c.getClient().send(CharacterPacket.showSpecialEffect(9)); // Quest completion
+            c.getMap().broadcastMessage(c, CharacterPacket.showSpecialEffect(c.getId(), 9), false);
         }
     }
 

@@ -63,8 +63,8 @@ function action(mode, type, selection) {
 					cm.sendNext("Great, you brought me the key. The door will now be unlocked.");
 					eim.setProperty("2stageclear", "true");
 					eim.setProperty("theLvl", curStage + 1);
-					var packetef = MaplePacketCreator.showEffect("quest/party/clear");
-					var packetsnd = MaplePacketCreator.playSound("Party1/Clear");
+					var packetef = MapPacket.showEffect("quest/party/clear");
+					var packetsnd = MapPacket.playSound("Party1/Clear");
 					var map = eim.getMapInstance(240050101);
 					map.broadcastMessage(packetef);
 					map.broadcastMessage(packetsnd); 
@@ -81,8 +81,8 @@ function action(mode, type, selection) {
 						cm.sendNext("Great, you brought me the key. The door will now be unlocked.");
 						eim.setProperty("3stageclear", "true");
 						eim.setProperty("theLvl", curStage + 1);
-						var packetef = MaplePacketCreator.showEffect("quest/party/clear");
-						var packetsnd = MaplePacketCreator.playSound("Party1/Clear");
+						var packetef = MapPacket.showEffect("quest/party/clear");
+						var packetsnd = MapPacket.playSound("Party1/Clear");
 						var map = eim.getMapInstance(240050102);
 						map.broadcastMessage(packetef);
 						map.broadcastMessage(packetsnd); 
@@ -99,8 +99,8 @@ function action(mode, type, selection) {
 					cm.sendNext("Great, you brought me the key. The door will now be unlocked.");
 					eim.setProperty("4stageclear", "true");
 					eim.setProperty("theLvl", curStage + 1);
-					var packetef = MaplePacketCreator.showEffect("quest/party/clear");
-					var packetsnd = MaplePacketCreator.playSound("Party1/Clear");
+					var packetef = MapPacket.showEffect("quest/party/clear");
+					var packetsnd = MapPacket.playSound("Party1/Clear");
 					var map = eim.getMapInstance(240050103);
 					map.broadcastMessage(packetef);
 					map.broadcastMessage(packetsnd); 
@@ -117,8 +117,8 @@ function action(mode, type, selection) {
 					cm.sendNext("Great, you brought me the key. The door will now be unlocked.");
 					eim.setProperty("5stageclear", "true");
 					eim.setProperty("theLvl", curStage + 1);
-					var packetef = MaplePacketCreator.showEffect("quest/party/clear");
-					var packetsnd = MaplePacketCreator.playSound("Party1/Clear");
+					var packetef = MapPacket.showEffect("quest/party/clear");
+					var packetsnd = MapPacket.playSound("Party1/Clear");
 					var map = eim.getMapInstance(240050104);
 					map.broadcastMessage(packetef);
 					map.broadcastMessage(packetsnd); 

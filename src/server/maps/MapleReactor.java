@@ -24,8 +24,8 @@ import java.awt.Rectangle;
 import client.MapleClient;
 import scripting.ReactorScriptManager;
 import server.Timer.MapTimer;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.MapPacket;
 
 public class MapleReactor extends AbstractMapleMapObject {
 
@@ -106,12 +106,12 @@ public class MapleReactor extends AbstractMapleMapObject {
 
     @Override
     public void sendDestroyData(MapleClient client) {
-        client.send(MaplePacketCreator.destroyReactor(this));
+        client.send(MapPacket.destroyReactor(this));
     }
 
     @Override
     public void sendSpawnData(MapleClient client) {
-        client.send(MaplePacketCreator.spawnReactor(this));
+        client.send(MapPacket.spawnReactor(this));
     }
 
     public void forceStartReactor(MapleClient c) {
@@ -121,7 +121,7 @@ public class MapleReactor extends AbstractMapleMapObject {
     public void forceHitReactor(final byte newState) {
         setState(newState);
         setTimerActive(false);
-        map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
+        map.broadcastMessage(MapPacket.triggerReactor(this, (short) 0));
     }
 
     //hitReactor command for item-triggered reactors
@@ -130,7 +130,7 @@ public class MapleReactor extends AbstractMapleMapObject {
     }
 
     public void forceTrigger() {
-        map.broadcastMessage(MaplePacketCreator.triggerReactor(this, (short) 0));
+        map.broadcastMessage(MapPacket.triggerReactor(this, (short) 0));
     }
 
     public void delayedDestroyReactor(long delay) {
@@ -150,12 +150,12 @@ public class MapleReactor extends AbstractMapleMapObject {
                     if ((stats.getType(state) < 100 || stats.getType(state) == 999) && delay > 0) { //reactor broken
                         map.destroyReactor(getObjectId());
                     } else { //item-triggered on final step
-                        map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance));
+                        map.broadcastMessage(MapPacket.triggerReactor(this, stance));
                     }
                     ReactorScriptManager.getInstance().act(c, this);
                 } else { //reactor not broken yet
                     boolean done = false;
-                    map.broadcastMessage(MaplePacketCreator.triggerReactor(this, stance)); //magatia is weird cause full beaker can be activated by gm hat o.o
+                    map.broadcastMessage(MapPacket.triggerReactor(this, stance)); //magatia is weird cause full beaker can be activated by gm hat o.o
                     if (state == stats.getNextState(state) || rid == 2618000 || rid == 2309000) { //current state = next state, looping reactor
                         ReactorScriptManager.getInstance().act(c, this);
                         done = true;

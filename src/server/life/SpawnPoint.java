@@ -27,7 +27,7 @@ import server.MapleCarnivalFactory;
 import server.MapleCarnivalFactory.MCSkill;
 import server.maps.MapleMap;
 import server.maps.MapleReactor;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
 
 public class SpawnPoint extends Spawns {
 
@@ -118,7 +118,7 @@ public class SpawnPoint extends Spawns {
             }
         }
         if (msg != null) {
-            map.broadcastMessage(MaplePacketCreator.serverNotice(6, msg));
+            map.broadcastMessage(ChatPacket.serverNotice(6, msg));
         }
         return mob;
     }

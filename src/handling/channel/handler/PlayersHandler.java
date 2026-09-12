@@ -37,8 +37,10 @@ import server.maps.MapleDoor;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import server.maps.MapleReactor;
-import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.CharacterPacket;
+import tools.packet.ChatPacket;
+import tools.packet.EventPacket;
 
 public class PlayersHandler {
 
@@ -99,14 +101,14 @@ public class PlayersHandler {
                 if (!chr.isGM()) {
                     chr.hasGivenFame(target);
                 }
-                c.send(MaplePacketCreator.giveFameResponse(mode, target.getName(), target.getFame()));
-                target.getClient().send(MaplePacketCreator.receiveFame(mode, chr.getName()));
+                c.send(CharacterPacket.giveFameResponse(mode, target.getName(), target.getFame()));
+                target.getClient().send(CharacterPacket.receiveFame(mode, chr.getName()));
                 break;
             case NOT_TODAY:
-                c.send(MaplePacketCreator.giveFameErrorResponse(3));
+                c.send(CharacterPacket.giveFameErrorResponse(3));
                 break;
             case NOT_THIS_MONTH:
-                c.send(MaplePacketCreator.giveFameErrorResponse(4));
+                c.send(CharacterPacket.giveFameErrorResponse(4));
                 break;
         }
     }
@@ -137,7 +139,7 @@ public class PlayersHandler {
         final IItem toUse = c.getPlayer().getInventory(MapleInventoryType.USE).getItem(slot);
 
         if (toUse == null || toUse.getQuantity() < 1 || toUse.getItemId() != itemId) {
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
         switch (itemId) {
@@ -205,32 +207,32 @@ public class PlayersHandler {
             if (Math.random() < 0.01 && map.getStopped() > 0) {
                 nut.setStopped(true);
                 map.stopCoconut();
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.hitCoconut(false, id, 1));
+                c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 1));
                 return;
             }
             nut.resetHits(); // For next event (without restarts)
             //System.out.println("Coconut4");
             if (Math.random() < 0.05 && map.getBombings() > 0) {
                 //System.out.println("Coconut5-1");
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.hitCoconut(false, id, 2));
+                c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 2));
                 map.bombCoconut();
             } else if (map.getFalling() > 0) {
                 //System.out.println("Coconut5-2");
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.hitCoconut(false, id, 3));
+                c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 3));
                 map.fallCoconut();
                 if (c.getPlayer().getTeam() == 0) {
                     map.addMapleScore();
-                    //c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.serverNotice(5, c.getPlayer().getName() + " of Team Maple knocks down a " + co + "."));
+                    //c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(5, c.getPlayer().getName() + " of Team Maple knocks down a " + co + "."));
                 } else {
                     map.addStoryScore();
-                    //c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.serverNotice(5, c.getPlayer().getName() + " of Team Story knocks down a " + co + "."));
+                    //c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(5, c.getPlayer().getName() + " of Team Story knocks down a " + co + "."));
                 }
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.coconutScore(map.getCoconutScore()));
+                c.getPlayer().getMap().broadcastMessage(EventPacket.coconutScore(map.getCoconutScore()));
             }
         } else {
             //System.out.println("Coconut3-2");
             nut.hit();
-            c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.hitCoconut(false, id, 1));
+            c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 1));
         }
     }
 
@@ -260,9 +262,9 @@ public class PlayersHandler {
             tt.setFollowInitiator(false);
             c.getPlayer().setFollowOn(false);
             c.getPlayer().setFollowInitiator(false);
-            tt.getClient().send(MaplePacketCreator.followRequest(c.getPlayer().getId()));
+            tt.getClient().send(CharacterPacket.followRequest(c.getPlayer().getId()));
         } else {
-            c.send(MaplePacketCreator.serverNotice(1, "You are too far away."));
+            c.send(ChatPacket.serverNotice(1, "You are too far away."));
         }
     }
 
@@ -277,18 +279,18 @@ public class PlayersHandler {
                     tt.setFollowInitiator(true);
                     c.getPlayer().setFollowOn(true);
                     c.getPlayer().setFollowInitiator(false);
-                    c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.followEffect(tt.getId(), c.getPlayer().getId(), null));
+                    c.getPlayer().getMap().broadcastMessage(CharacterPacket.followEffect(tt.getId(), c.getPlayer().getId(), null));
                 } else {
                     c.getPlayer().setFollowId(0);
                     tt.setFollowId(0);
-                    tt.getClient().send(MaplePacketCreator.getFollowMsg(5));
+                    tt.getClient().send(CharacterPacket.getFollowMsg(5));
                 }
             } else {
                 if (tt != null) {
                     tt.setFollowId(0);
                     c.getPlayer().setFollowId(0);
                 }
-                c.send(MaplePacketCreator.serverNotice(1, "You are too far away."));
+                c.send(ChatPacket.serverNotice(1, "You are too far away."));
             }
         } else {
             c.getPlayer().setFollowId(0);
@@ -319,12 +321,12 @@ public class PlayersHandler {
                 errcode = 0x15;
             }
             if (errcode > 0) {
-                c.send(MaplePacketCreator.sendEngagement((byte) errcode, 0, null, null));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(EventPacket.sendEngagement((byte) errcode, 0, null, null));
+                c.send(CharacterPacket.enableActions());
                 return;
             }
             c.getPlayer().setMarriageItemId(itemid);
-            chr.getClient().send(MaplePacketCreator.sendEngagementRequest(c.getPlayer().getName(), c.getPlayer().getId()));
+            chr.getClient().send(EventPacket.sendEngagementRequest(c.getPlayer().getName(), c.getPlayer().getId()));
             //1112300 + (itemid - 2240004)
         } else if (mode == 1) {
             c.getPlayer().setMarriageItemId(0);
@@ -334,27 +336,27 @@ public class PlayersHandler {
             final int id = slea.readInt();
             final MapleCharacter chr = c.getChannelServer().getPlayerStorage().getCharacterByName(name);
             if (c.getPlayer().getMarriageId() > 0 || chr == null || chr.getId() != id || chr.getMarriageItemId() <= 0 || !chr.haveItem(chr.getMarriageItemId(), 1) || chr.getMarriageId() > 0) {
-                c.send(MaplePacketCreator.sendEngagement((byte) 0x1D, 0, null, null));
-                c.send(MaplePacketCreator.enableActions());
+                c.send(EventPacket.sendEngagement((byte) 0x1D, 0, null, null));
+                c.send(CharacterPacket.enableActions());
                 return;
             }
             if (accepted) {
                 final int newItemId = 1112300 + (chr.getMarriageItemId() - 2240004);
                 if (!MapleInventoryManipulator.checkSpace(c, newItemId, 1, "") || !MapleInventoryManipulator.checkSpace(chr.getClient(), newItemId, 1, "")) {
-                    c.send(MaplePacketCreator.sendEngagement((byte) 0x15, 0, null, null));
-                    c.send(MaplePacketCreator.enableActions());
+                    c.send(EventPacket.sendEngagement((byte) 0x15, 0, null, null));
+                    c.send(CharacterPacket.enableActions());
                     return;
                 }
                 MapleInventoryManipulator.addById(c, newItemId, (short) 1);
                 MapleInventoryManipulator.removeById(chr.getClient(), MapleInventoryType.USE, chr.getMarriageItemId(), 1, false, false);
                 MapleInventoryManipulator.addById(chr.getClient(), newItemId, (short) 1);
-                chr.getClient().send(MaplePacketCreator.sendEngagement((byte) 0x10, newItemId, chr, c.getPlayer()));
+                chr.getClient().send(EventPacket.sendEngagement((byte) 0x10, newItemId, chr, c.getPlayer()));
                 chr.setMarriageId(c.getPlayer().getId());
                 c.getPlayer().setMarriageId(chr.getId());
             } else {
-                chr.getClient().send(MaplePacketCreator.sendEngagement((byte) 0x1E, 0, null, null));
+                chr.getClient().send(EventPacket.sendEngagement((byte) 0x1E, 0, null, null));
             }
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             chr.setMarriageItemId(0);
         } else if (mode == 3) { //drop, only works for ETC
             final int itemId = slea.readInt();
@@ -367,7 +369,7 @@ public class PlayersHandler {
     }
     
     public static void Solomon(final SeekableLittleEndianAccessor slea, final MapleClient c) {
-        c.send(MaplePacketCreator.enableActions());
+        c.send(CharacterPacket.enableActions());
         c.getPlayer().updateTick(slea.readInt());
         IItem item = c.getPlayer().getInventory(MapleInventoryType.USE).getItem(slea.readShort());
         if (item == null || item.getItemId() != slea.readInt() || item.getQuantity() <= 0 || c.getPlayer().getGachExp() > 0 || c.getPlayer().getLevel() > 50 || MapleItemInformationProvider.getInstance().getItemEffect(item.getItemId()).getEXP() <= 0) {
@@ -379,7 +381,7 @@ public class PlayersHandler {
     }
 
     public static void GachExp(final SeekableLittleEndianAccessor slea, final MapleClient c) {
-        c.send(MaplePacketCreator.enableActions());
+        c.send(CharacterPacket.enableActions());
         c.getPlayer().updateTick(slea.readInt());
         if (c.getPlayer().getGachExp() <= 0) {
             return;

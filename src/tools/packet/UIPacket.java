@@ -22,7 +22,6 @@ package tools.packet;
 
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
 import constants.ServerConstants;
 
@@ -81,15 +80,15 @@ public class UIPacket {
     }
 
     public static final MaplePacket MapEff(final String path) {
-        return MaplePacketCreator.environmentChange(path, 3);
+        return MapPacket.environmentChange(path, 3);
     }
 
     public static final MaplePacket MapNameDisplay(final int mapid) {
-        return MaplePacketCreator.environmentChange("maplemap/enter/" + mapid, 3);
+        return MapPacket.environmentChange("maplemap/enter/" + mapid, 3);
     }
 
     public static final MaplePacket Aran_Start() {
-        return MaplePacketCreator.environmentChange("Aran/balloon", 4);
+        return MapPacket.environmentChange("Aran/balloon", 4);
     }
 
     public static final MaplePacket AranTutInstructionalBalloon(final String data) {

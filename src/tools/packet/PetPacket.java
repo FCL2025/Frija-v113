@@ -29,7 +29,6 @@ import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
 import server.movement.LifeMovementFragment;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
 
 public class PetPacket {
@@ -178,7 +177,7 @@ public class PetPacket {
     }
 
     public static final MaplePacket emptyStatUpdate() {
-        return MaplePacketCreator.enableActions();
+        return CharacterPacket.enableActions();
     }
 
     public static final MaplePacket petStatUpdate_Empty() {

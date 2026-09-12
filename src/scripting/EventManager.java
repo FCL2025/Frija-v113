@@ -52,8 +52,9 @@ import server.maps.MapleMap;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapFactory;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
 import database.DatabaseConnection;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public class EventManager {
 
@@ -342,20 +343,20 @@ public class EventManager {
     }
 
     public void broadcastShip(final int mapid, final int effect) {
-        getMapFactory().getMap(mapid).broadcastMessage(MaplePacketCreator.boatEffect(effect));
+        getMapFactory().getMap(mapid).broadcastMessage(MapPacket.boatEffect(effect));
     }
 
     public void broadcastChangeMusic(final int mapid) {
-        getMapFactory().getMap(mapid).broadcastMessage(MaplePacketCreator.musicChange("Bgm04/ArabPirate"));
+        getMapFactory().getMap(mapid).broadcastMessage(MapPacket.musicChange("Bgm04/ArabPirate"));
     }
 
     public void broadcastYellowMsg(final String msg) {
-        getChannelServer().broadcastPacket(MaplePacketCreator.yellowChat(msg));
+        getChannelServer().broadcastPacket(ChatPacket.yellowChat(msg));
     }
 
     public void broadcastServerMsg(final int type, final String msg, final boolean weather) {
         if (!weather) {
-            getChannelServer().broadcastPacket(MaplePacketCreator.serverNotice(type, msg));
+            getChannelServer().broadcastPacket(ChatPacket.serverNotice(type, msg));
         } else {
             for (MapleMap load : getMapFactory().getAllMaps()) {
                 if (load.getCharactersSize() > 0) {

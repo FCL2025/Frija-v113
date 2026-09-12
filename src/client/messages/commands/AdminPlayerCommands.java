@@ -15,9 +15,9 @@ import java.util.Calendar;
 import java.util.List;
 import server.life.MobSkillFactory;
 import server.quest.MapleQuest;
-import tools.MaplePacketCreator;
 import tools.Pair;
 import tools.StringUtil;
+import tools.packet.CharacterPacket;
 
 /**
  * ADMIN 指令：玩家狀態、能力值、職業、任務、封鎖與踢人。由 AdminCommand 拆出。
@@ -361,7 +361,7 @@ public class AdminPlayerCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             c.getPlayer().setRemainingSp(CommandProcessorUtil.getOptionalIntArg(splitted, 1, 1));
-            c.send(MaplePacketCreator.updateSp(c.getPlayer(), false));
+            c.send(CharacterPacket.updateSp(c.getPlayer(), false));
             return 1;
         }
     }
@@ -372,7 +372,7 @@ public class AdminPlayerCommands {
         public int execute(MapleClient c, String[] splitted) {
             c.getPlayer().setRemainingAp((short) CommandProcessorUtil.getOptionalIntArg(splitted, 1, 1));
             final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>();
-            c.send(MaplePacketCreator.updatePlayerStats(statupdate, c.getPlayer().getJob()));
+            c.send(CharacterPacket.updatePlayerStats(statupdate, c.getPlayer().getJob()));
             return 1;
         }
 
@@ -596,14 +596,14 @@ public class AdminPlayerCommands {
                     return 0;
                 }
                 victim.setChair(0);
-                victim.getClient().send(MaplePacketCreator.cancelChair(-1));
-                victim.getMap().broadcastMessage(victim, MaplePacketCreator.showChair(c.getPlayer().getId(), 0), false);
+                victim.getClient().send(CharacterPacket.cancelChair(-1));
+                victim.getMap().broadcastMessage(victim, CharacterPacket.showChair(c.getPlayer().getId(), 0), false);
                 victim.giveDebuff(dis, MobSkillFactory.getMobSkill(type, CommandProcessorUtil.getOptionalIntArg(splitted, 3, 1)));
             } else {
                 for (MapleCharacter victim : c.getPlayer().getMap().getCharactersThreadsafe()) {
                     victim.setChair(0);
-                    victim.getClient().send(MaplePacketCreator.cancelChair(-1));
-                    victim.getMap().broadcastMessage(victim, MaplePacketCreator.showChair(c.getPlayer().getId(), 0), false);
+                    victim.getClient().send(CharacterPacket.cancelChair(-1));
+                    victim.getMap().broadcastMessage(victim, CharacterPacket.showChair(c.getPlayer().getId(), 0), false);
                     victim.giveDebuff(dis, MobSkillFactory.getMobSkill(type, CommandProcessorUtil.getOptionalIntArg(splitted, 2, 1)));
                 }
             }
@@ -791,7 +791,7 @@ public class AdminPlayerCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             MapleCharacter player = c.getPlayer();
-            c.send(MaplePacketCreator.getCharInfo(player));
+            c.send(CharacterPacket.getCharInfo(player));
             player.getMap().removePlayer(player);
             player.getMap().addPlayer(player);
             return 1;

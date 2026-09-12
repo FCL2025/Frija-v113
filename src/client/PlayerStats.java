@@ -41,8 +41,9 @@ import server.MapleStatEffect;
 import server.StructPotentialItem;
 import server.StructSetItem;
 import server.StructSetItem.SetItem;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import tools.packet.CharacterPacket;
+import tools.packet.InventoryPacket;
 
 public class PlayerStats {
 
@@ -857,8 +858,8 @@ public class PlayerStats {
         }
         if (changed) {
             chr.equipChanged();
-            chr.getClient().send(MaplePacketCreator.showItemLevelupEffect());
-            chr.getMap().broadcastMessage(chr, MaplePacketCreator.showForeignItemLevelupEffect(chr.getId()), false);
+            chr.getClient().send(CharacterPacket.showItemLevelupEffect());
+            chr.getMap().broadcastMessage(chr, CharacterPacket.showForeignItemLevelupEffect(chr.getId()), false);
         }
         return changed;
     }
@@ -874,14 +875,14 @@ public class PlayerStats {
         for (Equip eqq : all) {
             if (eqq.getDurability() == 0) { //> 0 went to negative
                 if (chr.getInventory(MapleInventoryType.EQUIP).isFull()) {
-                    chr.getClient().send(MaplePacketCreator.getInventoryFull());
-                    chr.getClient().send(MaplePacketCreator.getShowInventoryFull());
+                    chr.getClient().send(InventoryPacket.getInventoryFull());
+                    chr.getClient().send(InventoryPacket.getShowInventoryFull());
                     return false;
                 }
                 durabilityHandling.remove(eqq);
                 final short pos = chr.getInventory(MapleInventoryType.EQUIP).getNextFreeSlot();
                 MapleInventoryManipulator.unequip(chr.getClient(), eqq.getPosition(), pos);
-                chr.getClient().send(MaplePacketCreator.updateSpecialItemUse(eqq, (byte) 1, pos));
+                chr.getClient().send(InventoryPacket.updateSpecialItemUse(eqq, (byte) 1, pos));
             } else {
                 chr.forceReAddItem(eqq.copy(), MapleInventoryType.EQUIPPED);
             }

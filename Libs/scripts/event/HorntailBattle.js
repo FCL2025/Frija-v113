@@ -34,6 +34,7 @@ importPackage(Packages.client);
 importPackage(Packages.server.maps);
 importPackage(Packages.server.life);
 importPackage(Packages.tools);
+importPackage(Packages.tools.packet);
 
 var exitMap;
 var instanceId;
@@ -217,7 +218,7 @@ function headOne(eim, player) {
 		if (eim.getPlayerCount() > 0) {
 			var pIter = eim.getPlayers().iterator();
 			while (pIter.hasNext()) {
-				pIter.next().getClient().send(MaplePacketCreator.serverNotice(6,"The Enormous Creature is Approaching from the Deep Cave..."));
+				pIter.next().getClient().send(ChatPacket.serverNotice(6,"The Enormous Creature is Approaching from the Deep Cave..."));
 			}
 		}
 		var theMap = eim.getMapFactory().getMap(240060000);
@@ -234,7 +235,7 @@ function headTwo(eim, player) {
 		if (eim.getPlayerCount() > 0) {
 			var pIter = eim.getPlayers().iterator();
 			while (pIter.hasNext()) {
-				pIter.next().getClient().send(MaplePacketCreator.serverNotice(6,"Watch out for Horntail... Be prepared for a long fight."));
+				pIter.next().getClient().send(ChatPacket.serverNotice(6,"Watch out for Horntail... Be prepared for a long fight."));
 			}
 		}
 		var theMap = eim.getMapFactory().getMap(240060100);

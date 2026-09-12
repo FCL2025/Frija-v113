@@ -26,19 +26,20 @@ import client.MapleClient;
 import handling.MaplePacket;
 import handling.world.World;
 import handling.world.guild.MapleGuild;
-import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.CharacterPacket;
+import tools.packet.GuildPacket;
 
 public class AllianceHandler {
 
     public static final void HandleAlliance(final SeekableLittleEndianAccessor slea, final MapleClient c, boolean denied) {
         if (c.getPlayer().getGuildId() <= 0) {
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
         final MapleGuild gs = World.Guild.getGuild(c.getPlayer().getGuildId());
         if (gs == null) {
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
         byte op = slea.readByte();
@@ -80,7 +81,7 @@ public class AllianceHandler {
                 if (newGuild > 0 && c.getPlayer().getAllianceRank() == 1 && leaderid == c.getPlayer().getId()) {
                     chr = c.getChannelServer().getPlayerStorage().getCharacterById(newGuild);
                     if (chr != null && chr.getGuildId() > 0 && World.Alliance.canInvite(gs.getAllianceId())) {
-                        chr.getClient().send(MaplePacketCreator.sendAllianceInvite(World.Alliance.getAlliance(gs.getAllianceId()).getName(), c.getPlayer()));
+                        chr.getClient().send(GuildPacket.sendAllianceInvite(World.Alliance.getAlliance(gs.getAllianceId()).getName(), c.getPlayer()));
                         World.Guild.setInvitedId(chr.getGuildId(), gs.getAllianceId());
                     }
                 }

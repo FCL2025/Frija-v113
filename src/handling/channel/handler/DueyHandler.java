@@ -41,8 +41,9 @@ import tools.data.input.SeekableLittleEndianAccessor;
 import server.MapleDueyActions;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.CharacterPacket;
+import tools.packet.NPCPacket;
 
 public class DueyHandler {
 
@@ -65,7 +66,7 @@ public class DueyHandler {
                 final int conv = c.getPlayer().getConversation();
 
                 if (conv == 2) { // Duey
-                    c.send(MaplePacketCreator.sendDuey((byte) 10, loadItems(c.getPlayer())));
+                    c.send(NPCPacket.sendDuey((byte) 10, loadItems(c.getPlayer())));
                 }
                 break;
             }
@@ -103,12 +104,12 @@ public class DueyHandler {
                                 final MapleInventoryType inv = MapleInventoryType.getByType(inventId);
                                 final IItem item = c.getPlayer().getInventory(inv).getItem((byte) itemPos);
                                 if (item == null) {
-                                    c.send(MaplePacketCreator.sendDuey((byte) 17, null)); // Unsuccessfull
+                                    c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                                     return;
                                 }
                                 final byte flag = item.getFlag();
                                 if (ItemFlag.UNTRADEABLE.check(flag) || ItemFlag.LOCK.check(flag)) {
-                                    c.send(MaplePacketCreator.enableActions());
+                                    c.send(CharacterPacket.enableActions());
                                     return;
                                 }
                                 if (c.getPlayer().getItemQuantity(item.getItemId(), false) >= amount) {
@@ -121,36 +122,36 @@ public class DueyHandler {
                                                 MapleInventoryManipulator.removeFromSlot(c, inv, (byte) itemPos, amount, true, false);
                                             }
                                             c.getPlayer().gainMeso(-finalcost, false);
-                                            c.send(MaplePacketCreator.sendDuey((byte) 19, null)); // Successfull
+                                            c.send(NPCPacket.sendDuey((byte) 19, null)); // Successfull
                                         } else {
-                                            c.send(MaplePacketCreator.sendDuey((byte) 17, null)); // Unsuccessful
+                                            c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessful
                                         }
                                     } else {
-                                        c.send(MaplePacketCreator.sendDuey((byte) 17, null)); // Unsuccessfull
+                                        c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                                     }
                                 } else {
-                                    c.send(MaplePacketCreator.sendDuey((byte) 17, null)); // Unsuccessfull
+                                    c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                                 }
                             } else {
                                 if (addMesoToDB(mesos, c.getPlayer().getName(), accid, recipientOn)) {
                                     c.getPlayer().gainMeso(-finalcost, false);
 
-                                    c.send(MaplePacketCreator.sendDuey((byte) 19, null)); // Successfull
+                                    c.send(NPCPacket.sendDuey((byte) 19, null)); // Successfull
                                 } else {
-                                    c.send(MaplePacketCreator.sendDuey((byte) 17, null)); // Unsuccessfull
+                                    c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                                 }
                             }
         //                            if (recipientOn && rClient != null) {
                             //                              rClient.send(MaplePacketCreator.sendDueyMSG(Actions.PACKAGE_MSG.getCode()));
                             //                        }
                         } else {
-                            c.send(MaplePacketCreator.sendDuey((byte) 15, null)); // Same acc error
+                            c.send(NPCPacket.sendDuey((byte) 15, null)); // Same acc error
                         }
                     } else {
-                        c.send(MaplePacketCreator.sendDuey((byte) 14, null)); // Name does not exist
+                        c.send(NPCPacket.sendDuey((byte) 14, null)); // Name does not exist
                     }
                 } else {
-                    c.send(MaplePacketCreator.sendDuey((byte) 12, null)); // Not enough mesos
+                    c.send(NPCPacket.sendDuey((byte) 12, null)); // Not enough mesos
                 }
                 break;
             }
@@ -164,10 +165,10 @@ public class DueyHandler {
                     return;
                 }
                 if (dp.getItem() != null && !MapleInventoryManipulator.checkSpace(c, dp.getItem().getItemId(), dp.getItem().getQuantity(), dp.getItem().getOwner())) {
-                    c.send(MaplePacketCreator.sendDuey((byte) 16, null)); // Not enough Space
+                    c.send(NPCPacket.sendDuey((byte) 16, null)); // Not enough Space
                     return;
                 } else if (dp.getMesos() < 0 || (dp.getMesos() + c.getPlayer().getMeso()) < 0) {
-                    c.send(MaplePacketCreator.sendDuey((byte) 17, null)); // Unsuccessfull
+                    c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                     return;
                 }
                 removeItemFromDB(packageid, c.getPlayer().getId()); // Remove first
@@ -177,7 +178,7 @@ public class DueyHandler {
                 if (dp.getMesos() != 0) {
                     c.getPlayer().gainMeso(dp.getMesos(), false);
                 }
-                c.send(MaplePacketCreator.removeItemFromDuey(false, packageid));
+                c.send(NPCPacket.removeItemFromDuey(false, packageid));
                 break;
             }
             case 6: { // Remove package
@@ -186,7 +187,7 @@ public class DueyHandler {
                 }
                 final int packageid = slea.readInt();
                 removeItemFromDB(packageid, c.getPlayer().getId());
-                c.send(MaplePacketCreator.removeItemFromDuey(true, packageid));
+                c.send(NPCPacket.removeItemFromDuey(true, packageid));
                 break;
             }
             case 8: { // Close Duey

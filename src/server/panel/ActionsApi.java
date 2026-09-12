@@ -14,7 +14,7 @@ import server.MapleShopFactory;
 import server.ShutdownServer;
 import server.life.MapleMonsterInformationProvider;
 import server.quest.MapleQuest;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
 
 /**
  * The routes that reach into the running game: broadcasts, the reloads, and
@@ -67,7 +67,7 @@ final class ActionsApi {
         if (type == null) {
             throw new Router.HttpError(400, "type 必須是 " + String.join(" / ", NOTICE_TYPES.keySet()));
         }
-        World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(type, message).getBytes());
+        World.Broadcast.broadcastMessage(ChatPacket.serverNotice(type, message).getBytes());
         return Json.obj("ok", true, "type", typeName, "recipients", World.getConnected().getOrDefault(0, 0));
     }
 

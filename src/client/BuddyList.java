@@ -31,7 +31,7 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import database.DatabaseConnection;
-import tools.MaplePacketCreator;
+import tools.packet.BuddyPacket;
 
 public class BuddyList {
 
@@ -157,7 +157,7 @@ public class BuddyList {
     public void addBuddyRequest(MapleClient c, int cidFrom, String nameFrom, int channelFrom, int levelFrom, int jobFrom) {
         put(new BuddylistEntry(nameFrom, cidFrom, "其他", channelFrom, false, levelFrom, jobFrom));
         if (pendingRequests.isEmpty()) {
-            c.send(MaplePacketCreator.requestBuddylistAdd(cidFrom, nameFrom, levelFrom, jobFrom));
+            c.send(BuddyPacket.requestBuddylistAdd(cidFrom, nameFrom, levelFrom, jobFrom));
         } else {
             pendingRequests.push(new CharacterNameAndId(cidFrom, nameFrom, levelFrom, jobFrom, "其他"));
         }

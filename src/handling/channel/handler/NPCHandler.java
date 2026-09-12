@@ -43,10 +43,12 @@ import scripting.NPCScriptManager;
 import scripting.NPCConversationManager;
 import server.MapleItemInformationProvider;
 import tools.ArrayMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import tools.packet.CharacterPacket;
+import tools.packet.EventPacket;
+import tools.packet.InventoryPacket;
 
 public class NPCHandler {
 
@@ -166,7 +168,7 @@ public class NPCHandler {
                     q.complete(chr, npc);
                 }
                 // c.send(MaplePacketCreator.completeQuest(c.getPlayer(), quest));
-                //c.send(MaplePacketCreator.updateQuestInfo(c.getPlayer(), quest, npc, (byte)14));
+                //c.send(QuestPacket.updateQuestInfo(c.getPlayer(), quest, npc, (byte)14));
                 // 6 = start quest
                 // 7 = unknown error
                 // 8 = equip is full
@@ -191,8 +193,8 @@ public class NPCHandler {
             case 5: { // Scripted End Quest
                 final int npc = slea.readInt();
                 NPCScriptManager.getInstance().endQuest(c, npc, quest, false);
-                c.send(MaplePacketCreator.showSpecialEffect(9)); // Quest completion
-                chr.getMap().broadcastMessage(chr, MaplePacketCreator.showSpecialEffect(chr.getId(), 9), false);
+                c.send(CharacterPacket.showSpecialEffect(9)); // Quest completion
+                chr.getMap().broadcastMessage(chr, CharacterPacket.showSpecialEffect(chr.getId(), 9), false);
                 break;
             }
         }
@@ -235,7 +237,7 @@ public class NPCHandler {
                     return;
                 }
                 if (storage.isFull()) {
-                    c.send(MaplePacketCreator.getStorageFull());
+                    c.send(InventoryPacket.getStorageFull());
                     return;
                 }
 
@@ -246,12 +248,12 @@ public class NPCHandler {
                     IItem item = chr.getInventory(type).getItem(slot).copy();
 
                     if (GameConstants.isPet(item.getItemId())) {
-                        c.send(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         return;
                     }
                     final byte flag = item.getFlag();
                     if (ii.isPickupRestricted(item.getItemId()) && storage.findById(item.getItemId()) != null) {
-                        c.send(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         return;
                     }
                     if (item.getItemId() == itemId && (item.getQuantity() >= quantity || GameConstants.isThrowingStar(itemId) || GameConstants.isBullet(itemId))) {
@@ -261,7 +263,7 @@ public class NPCHandler {
                             } else if (ItemFlag.KARMA_USE.check(flag)) {
                                 item.setFlag((byte) (flag - ItemFlag.KARMA_USE.getValue()));
                             } else {
-                                c.send(MaplePacketCreator.enableActions());
+                                c.send(CharacterPacket.enableActions());
                                 return;
                             }
                         }
@@ -486,29 +488,29 @@ public class NPCHandler {
                 if (c.getPlayer().getMeso() >= 1000) {
                     c.getPlayer().setRPS(new RockPaperScissors(c, mode));
                 } else {
-                    c.send(MaplePacketCreator.getRPSMode((byte) 0x08, -1, -1, -1));
+                    c.send(EventPacket.getRPSMode((byte) 0x08, -1, -1, -1));
                 }
                 break;
             case 1: //answer
                 if (c.getPlayer().getRPS() == null || !c.getPlayer().getRPS().answer(c, slea.readByte())) {
-                    c.send(MaplePacketCreator.getRPSMode((byte) 0x0D, -1, -1, -1));
+                    c.send(EventPacket.getRPSMode((byte) 0x0D, -1, -1, -1));
                 }
                 break;
             case 2: //time over
                 if (c.getPlayer().getRPS() == null || !c.getPlayer().getRPS().timeOut(c)) {
-                    c.send(MaplePacketCreator.getRPSMode((byte) 0x0D, -1, -1, -1));
+                    c.send(EventPacket.getRPSMode((byte) 0x0D, -1, -1, -1));
                 }
                 break;
             case 3: //continue
                 if (c.getPlayer().getRPS() == null || !c.getPlayer().getRPS().nextRound(c)) {
-                    c.send(MaplePacketCreator.getRPSMode((byte) 0x0D, -1, -1, -1));
+                    c.send(EventPacket.getRPSMode((byte) 0x0D, -1, -1, -1));
                 }
                 break;
             case 4: //leave
                 if (c.getPlayer().getRPS() != null) {
                     c.getPlayer().getRPS().dispose(c);
                 } else {
-                    c.send(MaplePacketCreator.getRPSMode((byte) 0x0D, -1, -1, -1));
+                    c.send(EventPacket.getRPSMode((byte) 0x0D, -1, -1, -1));
                 }
                 break;
         }

@@ -60,7 +60,8 @@ import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import tools.ConcurrentEnumMap;
 import tools.Pair;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 import tools.packet.MobPacket;
 
 public class MapleMonster extends AbstractLoadedMapleLife {
@@ -620,8 +621,8 @@ public class MapleMonster extends AbstractLoadedMapleLife {
                     map.spawnRevives(mob, this.getObjectId());
 
                     if (mob.getId() == 9300216) {
-                        map.broadcastMessage(MaplePacketCreator.environmentChange("Dojang/clear", 4));
-                        map.broadcastMessage(MaplePacketCreator.environmentChange("dojang/end/clear", 3));
+                        map.broadcastMessage(MapPacket.environmentChange("Dojang/clear", 4));
+                        map.broadcastMessage(MapPacket.environmentChange("dojang/end/clear", 3));
                     }
                 }
                 break;
@@ -674,7 +675,7 @@ public class MapleMonster extends AbstractLoadedMapleLife {
 
     public final void resetShammos(MapleClient c) {
         map.killAllMonsters(true);
-        map.broadcastMessage(MaplePacketCreator.serverNotice(5, "A player has moved too far from Shammos. Shammos is going back to the start."));
+        map.broadcastMessage(ChatPacket.serverNotice(5, "A player has moved too far from Shammos. Shammos is going back to the start."));
         for (MapleCharacter chr : map.getCharactersThreadsafe()) {
             chr.changeMap(chr.getMap(), chr.getMap().getPortal(0));
         }
@@ -711,7 +712,7 @@ public class MapleMonster extends AbstractLoadedMapleLife {
             client.send(reflectpack);
         }
         if (lastNode >= 0) {
-            client.send(MaplePacketCreator.getNodeProperties(this, map));
+            client.send(MapPacket.getNodeProperties(this, map));
             if (getId() == 9300275 && map.getId() >= 921120100 && map.getId() < 921120500) { //shammos
                 if (lastNodeController != -1) { //new controller, please re update. sendSpawn only comes when you get too far then come back anyway
                     resetShammos(client);

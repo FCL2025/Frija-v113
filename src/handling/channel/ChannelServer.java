@@ -44,7 +44,6 @@ import server.MapleSquad;
 import server.MapleSquad.MapleSquadType;
 import server.maps.MapleMapFactory;
 import server.shops.HiredMerchant;
-import tools.MaplePacketCreator;
 import server.life.PlayerNPC;
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -59,6 +58,7 @@ import server.events.MapleOxQuiz;
 import server.events.MapleSnowball;
 import tools.CollectionUtil;
 import tools.ConcurrentEnumMap;
+import tools.packet.ChatPacket;
 
 public class ChannelServer {
 
@@ -147,7 +147,7 @@ public class ChannelServer {
         if (finishedShutdown) {
             return;
         }
-        broadcastPacket(MaplePacketCreator.serverNotice(0, "這個頻道正在關閉中."));
+        broadcastPacket(ChatPacket.serverNotice(0, "這個頻道正在關閉中."));
         // dc all clients by hand so we get sessionClosed...
         shutdown = true;
 
@@ -197,7 +197,7 @@ public class ChannelServer {
 
     public final void addPlayer(final MapleCharacter chr) {
         getPlayerStorage().registerPlayer(chr);
-        chr.getClient().send(MaplePacketCreator.serverMessage(serverMessage));
+        chr.getClient().send(ChatPacket.serverMessage(serverMessage));
     }
 
     public final PlayerStorage getPlayerStorage() {
@@ -223,7 +223,7 @@ public class ChannelServer {
 
     public final void setServerMessage(final String newMessage) {
         serverMessage = newMessage;
-        broadcastPacket(MaplePacketCreator.serverMessage(serverMessage));
+        broadcastPacket(ChatPacket.serverMessage(serverMessage));
     }
 
     public final void broadcastPacket(final MaplePacket data) {

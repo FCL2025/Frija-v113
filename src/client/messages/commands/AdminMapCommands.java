@@ -29,8 +29,8 @@ import server.maps.MapleMapObjectType;
 import server.maps.MapleReactor;
 import server.maps.MapleReactorFactory;
 import server.maps.MapleReactorStats;
-import tools.MaplePacketCreator;
 import tools.MockIOSession;
+import tools.packet.MapPacket;
 import tools.packet.MobPacket;
 
 /**
@@ -70,7 +70,7 @@ public class AdminMapCommands {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.musicChange(splitted[1]));
+            c.getPlayer().getMap().broadcastMessage(MapPacket.musicChange(splitted[1]));
             return 1;
         }
     }
@@ -97,7 +97,7 @@ public class AdminMapCommands {
         public int execute(MapleClient c, String[] splitted) {
             if (c.getPlayer().getMap().getPermanentWeather() > 0) {
                 c.getPlayer().getMap().setPermanentWeather(0);
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.removeMapEffect());
+                c.getPlayer().getMap().broadcastMessage(MapPacket.removeMapEffect());
                 c.getPlayer().dropMessage(5, "Map weather has been disabled.");
             } else {
                 final int weather = CommandProcessorUtil.getOptionalIntArg(splitted, 1, 5120000);
@@ -105,7 +105,7 @@ public class AdminMapCommands {
                     c.getPlayer().dropMessage(5, "Invalid ID.");
                 } else {
                     c.getPlayer().getMap().setPermanentWeather(weather);
-                    c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.startMapEffect("", weather, false));
+                    c.getPlayer().getMap().broadcastMessage(MapPacket.startMapEffect("", weather, false));
                     c.getPlayer().dropMessage(5, "Map weather has been enabled.");
                 }
             }
@@ -500,7 +500,7 @@ public class AdminMapCommands {
                 npc.setFh(c.getPlayer().getMap().getFootholds().findBelow(c.getPlayer().getPosition()).getId());
                 npc.setCustom(true);
                 c.getPlayer().getMap().addMapObject(npc);
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.spawnNPC(npc, true));
+                c.getPlayer().getMap().broadcastMessage(MapPacket.spawnNPC(npc, true));
             } else {
                 c.getPlayer().dropMessage(6, "You have entered an invalid Npc-Id");
                 return 0;
@@ -542,7 +542,7 @@ public class AdminMapCommands {
                 }
                 
                 c.getPlayer().getMap().addMapObject(npc);
-                c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.spawnNPC(npc, true));
+                c.getPlayer().getMap().broadcastMessage(MapPacket.spawnNPC(npc, true));
             } else {
                 c.getPlayer().dropMessage(6, "You have entered an invalid Npc-Id");
                 return 0;
@@ -726,7 +726,7 @@ public class AdminMapCommands {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.getClock(CommandProcessorUtil.getOptionalIntArg(splitted, 1, 60)));
+            c.getPlayer().getMap().broadcastMessage(MapPacket.getClock(CommandProcessorUtil.getOptionalIntArg(splitted, 1, 60)));
             return 1;
         }
     }

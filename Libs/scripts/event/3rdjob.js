@@ -1,5 +1,6 @@
 
 importPackage(Packages.tools);
+importPackage(Packages.tools.packet);
 importPackage(Packages.client.inventory);
 
 function init() {
@@ -91,7 +92,7 @@ function allMonstersDead(eim) {
     map.spawnItemDrop(winner, winner, price, winner.getPosition(), true, false);
 //    eim.schedule("warpOut", 120000);
     var mob = em.getMonster(monsterId);
-    em.getChannelServer().broadcastPacket(MaplePacketCreator.serverNotice(6, "[事件] " + winner.getName() + " 打敗了 " + mob.getStats().getName() + "!"));
+    em.getChannelServer().broadcastPacket(ChatPacket.serverNotice(6, "[事件] " + winner.getName() + " 打敗了 " + mob.getStats().getName() + "!"));
 }
 
 function cancelSchedule() {

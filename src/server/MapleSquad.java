@@ -16,8 +16,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import server.Timer.EtcTimer;
 import server.maps.MapleMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public class MapleSquad {
 
@@ -81,8 +82,8 @@ public class MapleSquad {
                 if (lead != null && lead.getMapId() == beginMapId && lead.getClient().getChannel() == ch) {
                     final MapleSquad squad = new MapleSquad(ch, type.name(), lead, expiration, toSay);
                     if (ChannelServer.getInstance(ch).addMapleSquad(squad, type.name())) {
-                        getBeginMap().broadcastMessage(MaplePacketCreator.getClock(expiration / 1000));
-                        getBeginMap().broadcastMessage(MaplePacketCreator.serverNotice(6, nextPlayerId + toSay));
+                        getBeginMap().broadcastMessage(MapPacket.getClock(expiration / 1000));
+                        getBeginMap().broadcastMessage(ChatPacket.serverNotice(6, nextPlayerId + toSay));
                         type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Success"));
                     } else {
                         squad.clear();
@@ -93,11 +94,11 @@ public class MapleSquad {
                     if (lead != null) {
                         lead.dropMessage(6, "Your squad has been skipped due to you not being in the right channel and map.");
                     }
-                    getBeginMap().broadcastMessage(MaplePacketCreator.serverNotice(6, nextPlayerId + "'s squad has been skipped due to the player not being in the right channel and map."));
+                    getBeginMap().broadcastMessage(ChatPacket.serverNotice(6, nextPlayerId + "'s squad has been skipped due to the player not being in the right channel and map."));
                     type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Not in map"));
                 }
             } else {
-                getBeginMap().broadcastMessage(MaplePacketCreator.serverNotice(6, nextPlayerId + "'s squad has been skipped due to the player not being online."));
+                getBeginMap().broadcastMessage(ChatPacket.serverNotice(6, nextPlayerId + "'s squad has been skipped due to the player not being online."));
                 type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Not online"));
             }
         }
@@ -109,7 +110,7 @@ public class MapleSquad {
 
     public void clear() {
         if (removal != null) {
-            getBeginMap().broadcastMessage(MaplePacketCreator.stopClock());
+            getBeginMap().broadcastMessage(MapPacket.stopClock());
             removal.cancel(false);
             removal = null;
         }

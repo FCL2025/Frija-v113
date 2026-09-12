@@ -4,7 +4,6 @@ import constants.GameConstants;
 import constants.ServerConstants.PlayerGMRank;
 import client.MapleClient;
 import scripting.NPCScriptManager;
-import tools.MaplePacketCreator;
 import server.life.MapleMonster;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
@@ -12,6 +11,8 @@ import java.util.Arrays;
 import tools.StringUtil;
 import handling.world.World;
 import tools.FileoutputUtil;
+import tools.packet.CharacterPacket;
+import tools.packet.ChatPacket;
 
 
 /**
@@ -71,7 +72,7 @@ public class PlayerCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             NPCScriptManager.getInstance().dispose(c);
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             c.getPlayer().dropMessage(1, "解卡完畢.");
             c.getPlayer().dropMessage(6, "當前時間是" + FileoutputUtil.CurrentReadable_Time() + " GMT+8 | 經驗值倍率 " + (Math.round(c.getPlayer().getEXPMod()) * 100) * Math.round(c.getPlayer().getStat().expBuff / 100.0) + "%, 掉寶倍率 " + (Math.round(c.getPlayer().getDropMod()) * 100) * Math.round(c.getPlayer().getStat().dropBuff / 100.0) + "%, 楓幣倍率 " + Math.round(c.getPlayer().getStat().mesoBuff / 100.0) * 100 + "%");
             c.getPlayer().dropMessage(6, "當前延遲 " + c.getPlayer().getClient().getLatency() + " 毫秒");
@@ -113,7 +114,7 @@ public class PlayerCommand {
                 return 1;
             }
             if (!c.getPlayer().getCheatTracker().GMSpam(100000, 1)) { // 5 minutes.
-                World.Broadcast.broadcastGMMessage(MaplePacketCreator.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                World.Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
                 c.getPlayer().dropMessage(6, "訊息已經寄送給GM了!");
             } else {
                 c.getPlayer().dropMessage(6, "為了防止對GM刷屏所以每1分鐘只能發一次.");

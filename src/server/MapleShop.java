@@ -19,7 +19,9 @@ import client.MapleClient;
 import client.inventory.MapleInventoryType;
 import client.inventory.MaplePet;
 import database.DatabaseConnection;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
+import tools.packet.InventoryPacket;
+import tools.packet.NPCPacket;
 
 public class MapleShop {
 
@@ -78,7 +80,7 @@ public class MapleShop {
 
     public void sendShop(MapleClient c) {
         c.getPlayer().setShop(this);
-        c.send(MaplePacketCreator.getNPCShop(c, getNpcId(), items));
+        c.send(NPCPacket.getNPCShop(c, getNpcId(), items));
     }
 
     public void buy(MapleClient c, int itemId, short quantity) {
@@ -88,7 +90,7 @@ public class MapleShop {
         }
         if (!GameConstants.isMountItemAvailable(itemId, c.getPlayer().getJob())) {
             c.getPlayer().dropMessage(1, "You may not buy this item.");
-            c.send(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
         MapleShopItem item = findById(itemId);
@@ -111,7 +113,7 @@ public class MapleShop {
                 } else {
                     c.getPlayer().dropMessage(1, "Your Inventory is full");
                 }
-                c.send(MaplePacketCreator.confirmShopTransaction((byte) 0));
+                c.send(NPCPacket.confirmShopTransaction((byte) 0));
             }
         } else if (item != null && item.getReqItem() > 0 && quantity == 1 && c.getPlayer().haveItem(item.getReqItem(), item.getReqItemQ(), false, true)) {
             if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
@@ -129,7 +131,7 @@ public class MapleShop {
             } else {
                 c.getPlayer().dropMessage(1, "Your Inventory is full");
             }
-            c.send(MaplePacketCreator.confirmShopTransaction((byte) 0));
+            c.send(NPCPacket.confirmShopTransaction((byte) 0));
         }
     }
 
@@ -169,7 +171,7 @@ public class MapleShop {
             if (price != -1.0 && recvMesos > 0) {
                 c.getPlayer().gainMeso(recvMesos, false);
             }
-            c.send(MaplePacketCreator.confirmShopTransaction((byte) 0x8));
+            c.send(NPCPacket.confirmShopTransaction((byte) 0x8));
         }
     }
 
@@ -190,9 +192,9 @@ public class MapleShop {
             final int price = (int) Math.round(ii.getPrice(item.getItemId()) * (slotMax - item.getQuantity()));
             if (c.getPlayer().getMeso() >= price) {
                 item.setQuantity(slotMax);
-                c.send(MaplePacketCreator.updateInventorySlot(MapleInventoryType.USE, (Item) item, false));
+                c.send(InventoryPacket.updateInventorySlot(MapleInventoryType.USE, (Item) item, false));
                 c.getPlayer().gainMeso(-price, false, true, false);
-                c.send(MaplePacketCreator.confirmShopTransaction((byte) 0x8));
+                c.send(NPCPacket.confirmShopTransaction((byte) 0x8));
             }
         }
     }

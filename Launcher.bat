@@ -11,6 +11,8 @@ rem      Launcher.bat            build if needed, then start the server
 rem      Launcher.bat run        start the server, never build
 rem      Launcher.bat build      force a full rebuild and stop (no server)
 rem      Launcher.bat cashshop   run tools.wztosql.CashShopDumper instead
+rem      Launcher.bat lint       compile only with -Xlint:all, print the
+rem                              warning count by category, and stop
 rem
 rem  The management panel's frontend lives in panel\ (a Vite project) and is
 rem  served out of the jar. It is two separate steps, on purpose:
@@ -39,7 +41,8 @@ if /i "%MODE%"=="auto"     goto check
 if /i "%MODE%"=="cashshop" goto check
 if /i "%MODE%"=="build"    goto check
 if /i "%MODE%"=="run"      goto run
-echo Usage: Launcher.bat [run^|build^|cashshop]
+if /i "%MODE%"=="lint"     goto lint
+echo Usage: Launcher.bat [run^|build^|cashshop^|lint]
 endlocal
 exit /b 1
 
@@ -100,8 +103,13 @@ echo [4/5] Compiling...
 if exist build\classes rmdir /s /q build\classes
 mkdir build\classes
 dir /s /b src\*.java > build\sources.txt
-"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -nowarn -cp "JarLib/*" -d build\classes "@build\sources.txt"
-if errorlevel 1 goto fail
+"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -Xlint:all -Xmaxwarns 10000 -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
+if errorlevel 1 (
+    type build\javac.log
+    goto fail
+)
+for /f "usebackq" %%n in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "(Select-String -Path 'build\javac.log' -Pattern 'warning:').Count"`) do set "WARN_COUNT=%%n"
+echo [build] !WARN_COUNT! warnings ^(see build\javac.log^)
 rem The frontend rides along as classpath resources next to server.panel.
 if exist panel\dist\index.html (
     xcopy /s /e /y /q /i panel\dist build\classes\server\panel\web >nul
@@ -173,6 +181,45 @@ if not "!WEB_RC!"=="0" (
     echo ERROR: the frontend build failed ^(npm exit code !WEB_RC!^).
     exit /b 1
 )
+exit /b 0
+
+rem --- Compile-only mode: -Xlint:all, then tally the warnings by category
+rem     (the batch equivalent of Appendix A's
+rem     "grep -oE ... | sort | uniq -c | sort -rn", done in one PowerShell
+rem     call since batch has neither grep nor sort). No panel, no jar, no
+rem     server - the panel frontend and dist\lib have nothing to do with
+rem     whether src\ compiles cleanly.
+:lint
+title Lint TMS113
+
+echo [1/2] Locating the JDK...
+rem PATH may hold only the Oracle javapath shim, which has java.exe and
+rem javac.exe but no jar.exe - so ask the JVM where it actually lives.
+if not exist "%JAVA_HOME%\bin\javac.exe" (
+    for /f "tokens=1,* delims==" %%a in ('java -XshowSettings:properties -version 2^>^&1 ^| findstr /c:"java.home"') do set "JAVA_HOME=%%b"
+    for /f "tokens=* delims= " %%a in ("!JAVA_HOME!") do set "JAVA_HOME=%%a"
+)
+if not exist "%JAVA_HOME%\bin\javac.exe" (
+    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 26 installation.
+    goto fail
+)
+echo       JAVA_HOME=%JAVA_HOME%
+
+echo [2/2] Compiling with -Xlint:all...
+if exist build\classes rmdir /s /q build\classes
+mkdir build\classes
+dir /s /b src\*.java > build\sources.txt
+"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -Xlint:all -Xmaxwarns 10000 -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
+if errorlevel 1 (
+    type build\javac.log
+    goto fail
+)
+
+for /f "usebackq" %%n in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "(Select-String -Path 'build\javac.log' -Pattern 'warning:').Count"`) do set "WARN_COUNT=%%n"
+echo [lint] !WARN_COUNT! warnings
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Select-String -Path 'build\javac.log' -Pattern 'warning:\s*\[([a-zA-Z0-9-]+)\]' | ForEach-Object { $_.Matches[0].Groups[1].Value } | Group-Object | Sort-Object Count -Descending | ForEach-Object { '{0,10}  [{1}]' -f $_.Count, $_.Name }"
+
+endlocal
 exit /b 0
 
 :fail

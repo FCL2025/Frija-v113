@@ -129,14 +129,10 @@ public class MapleSquad {
     }
 
     public void scheduleRemoval() {
-        removal = EtcTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public void run() {
-                if (status != 0 && leader != null && (getLeader() == null || status == 1)) { //leader itself = null means we're already cleared
-                    clear();
-                    copy();
-                }
+        removal = EtcTimer.getInstance().schedule(() -> {
+            if (status != 0 && leader != null && (getLeader() == null || status == 1)) { //leader itself = null means we're already cleared
+                clear();
+                copy();
             }
         }, expiration);
     }

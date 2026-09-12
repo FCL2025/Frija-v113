@@ -64,16 +64,12 @@ public class MapleOla extends MapleEvent {
         broadcast(MaplePacketCreator.getClock((int) (time / 1000)));
         this.timeStarted = System.currentTimeMillis();
 
-        olaSchedule = EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public void run() {
-                for (int i = 0; i < mapid.length; i++) {
-                    for (MapleCharacter chr : getMap(i).getCharactersThreadsafe()) {
-                        warpBack(chr);
-                    }
-                    unreset();
+        olaSchedule = EventTimer.getInstance().schedule(() -> {
+            for (int i = 0; i < mapid.length; i++) {
+                for (MapleCharacter chr : getMap(i).getCharactersThreadsafe()) {
+                    warpBack(chr);
                 }
+                unreset();
             }
         }, this.time);
 

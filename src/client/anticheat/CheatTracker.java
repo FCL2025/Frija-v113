@@ -358,14 +358,10 @@ public class CheatTracker {
         } finally {
             rL.unlock();
         }
-        Collections.sort(offenseList, new Comparator<CheatingOffenseEntry>() {
-
-            @Override
-            public final int compare(final CheatingOffenseEntry o1, final CheatingOffenseEntry o2) {
-                final int thisVal = o1.getPoints();
-                final int anotherVal = o2.getPoints();
-                return (thisVal < anotherVal ? 1 : (thisVal == anotherVal ? 0 : -1));
-            }
+        Collections.sort(offenseList, (o1, o2) -> {
+            final int thisVal = o1.getPoints();
+            final int anotherVal = o2.getPoints();
+            return (thisVal < anotherVal ? 1 : (thisVal == anotherVal ? 0 : -1));
         });
         final int to = Math.min(offenseList.size(), 4);
         for (int x = 0; x < to; x++) {

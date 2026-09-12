@@ -82,17 +82,13 @@ public class MapleDoor extends AbstractMapleMapObject {
                 freePortals.add(port);
             }
         }
-        Collections.sort(freePortals, new Comparator<MaplePortal>() {
-
-            @Override
-            public final int compare(final MaplePortal o1, final MaplePortal o2) {
-                if (o1.getId() < o2.getId()) {
-                    return -1;
-                } else if (o1.getId() == o2.getId()) {
-                    return 0;
-                } else {
-                    return 1;
-                }
+        Collections.sort(freePortals, (o1, o2) -> {
+            if (o1.getId() < o2.getId()) {
+                return -1;
+            } else if (o1.getId() == o2.getId()) {
+                return 0;
+            } else {
+                return 1;
             }
         });
         for (final MapleMapObject obj : town.getAllDoorsThreadsafe()) {

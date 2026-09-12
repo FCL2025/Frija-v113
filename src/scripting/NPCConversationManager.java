@@ -1312,45 +1312,39 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     public final void doWeddingEffect(final Object ch) {
         final MapleCharacter chr = (MapleCharacter) ch;
         getMap().broadcastMessage(MaplePacketCreator.yellowChat(getPlayer().getName() + "，你願意娶 " + chr.getName() + " 作為你的妻子嗎，與她在神聖的婚約中共同生活？無論是疾病或健康、貧窮或富裕、美貌或失色、順利或失意，你都願意愛她、安慰她、尊敬她、保護她？並願意在你們一生之中對她永遠忠心不變？ "));
-        CloneTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (chr == null || getPlayer() == null) {
-                    warpMap(680000500, 0);
-                } else {
-                    getMap().broadcastMessage(MaplePacketCreator.yellowChat(chr.getName() + "，你願意嫁 " + getPlayer().getName() + " 作為你的丈夫嗎，與他在神聖的婚約中共同生活？無論是疾病或健康、貧窮或富裕、美貌或失色、順利或失意，你都願意愛他、安慰他、尊敬他、保護他？並願意在你們一生之中對他永遠忠心不變？ "));
-                }
+        CloneTimer.getInstance().schedule(() -> {
+            if (chr == null || getPlayer() == null) {
+                warpMap(680000500, 0);
+            } else {
+                getMap().broadcastMessage(MaplePacketCreator.yellowChat(chr.getName() + "，你願意嫁 " + getPlayer().getName() + " 作為你的丈夫嗎，與他在神聖的婚約中共同生活？無論是疾病或健康、貧窮或富裕、美貌或失色、順利或失意，你都願意愛他、安慰他、尊敬他、保護他？並願意在你們一生之中對他永遠忠心不變？ "));
             }
         }, 10000);
-        CloneTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (chr == null || getPlayer() == null) {
-                    if (getPlayer() != null) {
-                        setQuestRecord(getPlayer(), 160001, "3");
-                        setQuestRecord(getPlayer(), 160002, "0");
-                    } else if (chr != null) {
-                        setQuestRecord(chr, 160001, "3");
-                        setQuestRecord(chr, 160002, "0");
-                    }
-                    warpMap(680000500, 0);
-                } else {
-                    setQuestRecord(getPlayer(), 160001, "2");
-                    setQuestRecord(chr, 160001, "2");
-                    sendNPCText(getPlayer().getName() + " 和 " + chr.getName() + ", 祝福你們在未來的路上永恆不變、幸福美滿!", 9201002);
-                    getMap().startExtendedMapEffect("親吻你的新娘， " + getPlayer().getName() + " !", 5120006);
-                    if (chr.getGuildId() > 0) {
-                        World.Guild.guildPacket(chr.getGuildId(), MaplePacketCreator.sendMarriage(false, chr.getName()));
-                    }
-                    if (chr.getFamilyId() > 0) {
-                        World.Family.familyPacket(chr.getFamilyId(), MaplePacketCreator.sendMarriage(true, chr.getName()), chr.getId());
-                    }
-                    if (getPlayer().getGuildId() > 0) {
-                        World.Guild.guildPacket(getPlayer().getGuildId(), MaplePacketCreator.sendMarriage(false, getPlayer().getName()));
-                    }
-                    if (getPlayer().getFamilyId() > 0) {
-                        World.Family.familyPacket(getPlayer().getFamilyId(), MaplePacketCreator.sendMarriage(true, chr.getName()), getPlayer().getId());
-                    }
+        CloneTimer.getInstance().schedule(() -> {
+            if (chr == null || getPlayer() == null) {
+                if (getPlayer() != null) {
+                    setQuestRecord(getPlayer(), 160001, "3");
+                    setQuestRecord(getPlayer(), 160002, "0");
+                } else if (chr != null) {
+                    setQuestRecord(chr, 160001, "3");
+                    setQuestRecord(chr, 160002, "0");
+                }
+                warpMap(680000500, 0);
+            } else {
+                setQuestRecord(getPlayer(), 160001, "2");
+                setQuestRecord(chr, 160001, "2");
+                sendNPCText(getPlayer().getName() + " 和 " + chr.getName() + ", 祝福你們在未來的路上永恆不變、幸福美滿!", 9201002);
+                getMap().startExtendedMapEffect("親吻你的新娘， " + getPlayer().getName() + " !", 5120006);
+                if (chr.getGuildId() > 0) {
+                    World.Guild.guildPacket(chr.getGuildId(), MaplePacketCreator.sendMarriage(false, chr.getName()));
+                }
+                if (chr.getFamilyId() > 0) {
+                    World.Family.familyPacket(chr.getFamilyId(), MaplePacketCreator.sendMarriage(true, chr.getName()), chr.getId());
+                }
+                if (getPlayer().getGuildId() > 0) {
+                    World.Guild.guildPacket(getPlayer().getGuildId(), MaplePacketCreator.sendMarriage(false, getPlayer().getName()));
+                }
+                if (getPlayer().getFamilyId() > 0) {
+                    World.Family.familyPacket(getPlayer().getFamilyId(), MaplePacketCreator.sendMarriage(true, chr.getName()), getPlayer().getId());
                 }
             }
         }, 20000); //10 sec 10 sec

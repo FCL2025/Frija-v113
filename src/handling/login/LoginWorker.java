@@ -66,11 +66,8 @@ public class LoginWorker {
                 c.getSession().write(LoginPacket.getServerList(0, LoginServer.getServerName(), LoginServer.getLoad()));
                 c.getSession().write(LoginPacket.getEndOfServerList());
             }
-            c.setIdleTask(PingTimer.getInstance().schedule(new Runnable() {
-
-                public void run() {
+            c.setIdleTask(PingTimer.getInstance().schedule(() -> {
 //                    c.getSession().close();
-                }
             }, 10 * 60 * 10000));
         } else {
             c.getSession().write(LoginPacket.getLoginFailed(7));

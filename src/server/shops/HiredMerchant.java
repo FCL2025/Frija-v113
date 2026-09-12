@@ -47,12 +47,8 @@ public class HiredMerchant extends AbstractPlayerStore {
         super(owner, itemId, desc, "", 3);
         start = System.currentTimeMillis();
         blacklist = new LinkedList<String>();
-        this.schedule = EtcTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public void run() {
-                closeShop(true, true);
-            }
+        this.schedule = EtcTimer.getInstance().schedule(() -> {
+            closeShop(true, true);
         }, 1000 * 60 * 60 * 24);
     }
 

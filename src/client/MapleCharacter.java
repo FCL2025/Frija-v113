@@ -1502,17 +1502,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         if (dragonBloodSchedule != null) {
             dragonBloodSchedule.cancel(false);
         }
-        dragonBloodSchedule = BuffTimer.getInstance().register(new Runnable() {
-
-            @Override
-            public void run() {
-                if (stats.getHp() - bloodEffect.getX() > 1) {
-                    cancelBuffStats(MapleBuffStat.DRAGONBLOOD);
-                } else {
-                    addHP(-bloodEffect.getX());
-                    client.getSession().write(MaplePacketCreator.showOwnBuffEffect(bloodEffect.getSourceId(), 5));
-                    map.broadcastMessage(MapleCharacter.this, MaplePacketCreator.showBuffeffect(getId(), bloodEffect.getSourceId(), 5), false);
-                }
+        dragonBloodSchedule = BuffTimer.getInstance().register(() -> {
+            if (stats.getHp() - bloodEffect.getX() > 1) {
+                cancelBuffStats(MapleBuffStat.DRAGONBLOOD);
+            } else {
+                addHP(-bloodEffect.getX());
+                client.getSession().write(MaplePacketCreator.showOwnBuffEffect(bloodEffect.getSourceId(), 5));
+                map.broadcastMessage(MapleCharacter.this, MaplePacketCreator.showBuffeffect(getId(), bloodEffect.getSourceId(), 5), false);
             }
         }, 4000, 4000);
     }
@@ -1521,12 +1517,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         client.getSession().write(MaplePacketCreator.getClock(time));
 
         time *= 1000;
-        mapTimeLimitTask = MapTimer.getInstance().register(new Runnable() {
-
-            @Override
-            public void run() {
-                changeMap(to, to.getPortal(0));
-            }
+        mapTimeLimitTask = MapTimer.getInstance().register(() -> {
+            changeMap(to, to.getPortal(0));
         }, time, time);
     }
 
@@ -1534,37 +1526,33 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         final int time = GameConstants.getFishingTime(VIP, isGM());
         cancelFishingTask();
 
-        fishing = EtcTimer.getInstance().register(new Runnable() { //no real reason for clone.
-
-            @Override
-            public void run() {
-                final boolean expMulti = haveItem(2300001, 1, false, true);
-                if (!expMulti && !haveItem(2300000, 1, false, true)) {
-                    cancelFishingTask();
-                    return;
-                }
-                MapleInventoryManipulator.removeById(client, MapleInventoryType.USE, expMulti ? 2300001 : 2300000, 1, false, false);
-
-                final int randval = RandomRewards.getInstance().getFishingReward();
-
-                switch (randval) {
-                    case 0: // Meso
-                        final int money = Randomizer.rand(expMulti ? 15 : 10, expMulti ? 7500 : 5000);
-                        gainMeso(money, true);
-                        //client.getSession().write(UIPacket.fishingUpdate((byte) 1, money));
-                        break;
-                    case 1: // EXP
-                        final int experi = Randomizer.nextInt(Math.abs(GameConstants.getExpNeededForLevel(level) / 400) + 1);
-                        gainExp(expMulti ? (experi * 3 / 2) : experi, true, false, true);
-                        //client.getSession().write(UIPacket.fishingUpdate((byte) 2, experi));
-                        break;
-                    default:
-                        MapleInventoryManipulator.addById(client, randval, (short) 1);
-                        //client.getSession().write(UIPacket.fishingUpdate((byte) 0, randval));
-                        break;
-                }
-                map.broadcastMessage(UIPacket.fishingCaught(id));
+        fishing = EtcTimer.getInstance().register(() -> {
+            final boolean expMulti = haveItem(2300001, 1, false, true);
+            if (!expMulti && !haveItem(2300000, 1, false, true)) {
+                cancelFishingTask();
+                return;
             }
+            MapleInventoryManipulator.removeById(client, MapleInventoryType.USE, expMulti ? 2300001 : 2300000, 1, false, false);
+
+            final int randval = RandomRewards.getInstance().getFishingReward();
+
+            switch (randval) {
+                case 0: // Meso
+                    final int money = Randomizer.rand(expMulti ? 15 : 10, expMulti ? 7500 : 5000);
+                    gainMeso(money, true);
+                    //client.getSession().write(UIPacket.fishingUpdate((byte) 1, money));
+                    break;
+                case 1: // EXP
+                    final int experi = Randomizer.nextInt(Math.abs(GameConstants.getExpNeededForLevel(level) / 400) + 1);
+                    gainExp(expMulti ? (experi * 3 / 2) : experi, true, false, true);
+                    //client.getSession().write(UIPacket.fishingUpdate((byte) 2, experi));
+                    break;
+                default:
+                    MapleInventoryManipulator.addById(client, randval, (short) 1);
+                    //client.getSession().write(UIPacket.fishingUpdate((byte) 0, randval));
+                    break;
+            }
+            map.broadcastMessage(UIPacket.fishingCaught(id));
         }, time, time);
     }
 
@@ -4298,12 +4286,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             client.getSession().write(MaplePacketCreator.showOwnBuffEffect(1320006, 1, (byte) (stats.Berserk ? 1 : 0)));
             map.broadcastMessage(this, MaplePacketCreator.showBuffeffect(getId(), 1320006, 1, (byte) (stats.Berserk ? 1 : 0)), false);
 
-            BerserkSchedule = BuffTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    checkBerserk();
-                }
+            BerserkSchedule = BuffTimer.getInstance().schedule(() -> {
+                checkBerserk();
             }, 10000);
         }
     }
@@ -4322,18 +4306,14 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         if (bHealingLvl > 0) {
             final MapleStatEffect healEffect = bHealing.getEffect(bHealingLvl);
             int healInterval = healEffect.getX() * 15000;
-            beholderHealingSchedule = BuffTimer.getInstance().register(new Runnable() {
-
-                @Override
-                public void run() {
-                    int remhppercentage = (int) Math.ceil((getStat().getHp() * 100.0) / getStat().getMaxHp());
-                    if (berserkLvl == 0 || remhppercentage >= berserkLvl + 10) {
-                        addHP(healEffect.getHp());
-                    }
-                    client.getSession().write(MaplePacketCreator.showOwnBuffEffect(1321007, 2));
-                    map.broadcastMessage(MaplePacketCreator.summonSkill(getId(), 1321007, 5));
-                    map.broadcastMessage(MapleCharacter.this, MaplePacketCreator.showBuffeffect(getId(), 1321007, 2), false);
+            beholderHealingSchedule = BuffTimer.getInstance().register(() -> {
+                int remhppercentage = (int) Math.ceil((getStat().getHp() * 100.0) / getStat().getMaxHp());
+                if (berserkLvl == 0 || remhppercentage >= berserkLvl + 10) {
+                    addHP(healEffect.getHp());
                 }
+                client.getSession().write(MaplePacketCreator.showOwnBuffEffect(1321007, 2));
+                map.broadcastMessage(MaplePacketCreator.summonSkill(getId(), 1321007, 5));
+                map.broadcastMessage(MapleCharacter.this, MaplePacketCreator.showBuffeffect(getId(), 1321007, 2), false);
             }, healInterval, healInterval);
         }
         ISkill bBuff = SkillFactory.getSkill(1320009);
@@ -4341,15 +4321,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         if (bBuffLvl > 0) {
             final MapleStatEffect buffEffect = bBuff.getEffect(bBuffLvl);
             int buffInterval = buffEffect.getX() * 10000;
-            beholderBuffSchedule = BuffTimer.getInstance().register(new Runnable() {
-
-                @Override
-                public void run() {
-                    buffEffect.applyTo(MapleCharacter.this);
-                    client.getSession().write(MaplePacketCreator.showOwnBuffEffect(1321007, 2));
-                    map.broadcastMessage(MaplePacketCreator.summonSkill(getId(), 1321007, Randomizer.nextInt(3) + 6));
-                    map.broadcastMessage(MapleCharacter.this, MaplePacketCreator.showBuffeffect(getId(), 1321007, 2), false);
-                }
+            beholderBuffSchedule = BuffTimer.getInstance().register(() -> {
+                buffEffect.applyTo(MapleCharacter.this);
+                client.getSession().write(MaplePacketCreator.showOwnBuffEffect(1321007, 2));
+                map.broadcastMessage(MaplePacketCreator.summonSkill(getId(), 1321007, Randomizer.nextInt(3) + 6));
+                map.broadcastMessage(MapleCharacter.this, MaplePacketCreator.showBuffeffect(getId(), 1321007, 2), false);
             }, buffInterval, buffInterval);
         }
     }
@@ -4759,16 +4735,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             if (equipped) {
                 dropMessage(5, "The Fairy Pendant's experience points will increase to " + (fairyExp + 10) + "% after one hour.");
             }
-            fairySchedule = EtcTimer.getInstance().schedule(new Runnable() {
-
-                public void run() {
-                    if (fairyExp < 30 && stats.equippedFairy) {
-                        fairyExp += 10;
-                        dropMessage(5, "The Fairy Pendant's EXP was boosted to " + fairyExp + "%.");
-                        startFairySchedule(false, true);
-                    } else {
-                        cancelFairySchedule(!stats.equippedFairy);
-                    }
+            fairySchedule = EtcTimer.getInstance().schedule(() -> {
+                if (fairyExp < 30 && stats.equippedFairy) {
+                    fairyExp += 10;
+                    dropMessage(5, "The Fairy Pendant's EXP was boosted to " + fairyExp + "%.");
+                    startFairySchedule(false, true);
+                } else {
+                    cancelFairySchedule(!stats.equippedFairy);
                 }
             }, 60 * 60 * 1000);
         } else {

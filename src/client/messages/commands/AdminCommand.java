@@ -142,20 +142,16 @@ public class AdminCommand {
              c.getPlayer().dropMessage(6, "伺服器即將在" + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.");
             if (ts == null && (t == null || !t.isAlive())) {
                 t = new Thread(ShutdownServer.getInstance());
-                ts = EventTimer.getInstance().register(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        if (minutesLeft == 0) {
-            ShutdownServer.getInstance();
-                            t.start();
-                            ts.cancel(false);
-            return;
-                        }
-                        World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
-                        System.out.println("伺服器即將在 " + minutesLeft + "分鐘後關閉.");
-                        minutesLeft--;
+                ts = EventTimer.getInstance().register(() -> {
+                    if (minutesLeft == 0) {
+        ShutdownServer.getInstance();
+                        t.start();
+                        ts.cancel(false);
+        return;
                     }
+                    World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
+                    System.out.println("伺服器即將在 " + minutesLeft + "分鐘後關閉.");
+                    minutesLeft--;
                 }, 60000);
             } else {
                 c.getPlayer().dropMessage(6, "好吧真拿你沒辦法..伺服器關閉時間修改...請等待關閉完畢..請勿強制關閉服務器..否則後果自負!");
@@ -3232,10 +3228,8 @@ public class AdminCommand {
             final int sec = Integer.parseInt(splitted[1]);
             c.getPlayer().dropMessage(5, "Message will pop up in " + sec + " seconds.");
             final long oldMillis = System.currentTimeMillis();
-            toTest.schedule(new Runnable() {
-                public void run() {
-                    c.getPlayer().dropMessage(5, "Message has popped up in " + ((System.currentTimeMillis() - oldMillis) / 1000) + " seconds, expected was " + sec + " seconds");
-                }
+            toTest.schedule(() -> {
+                c.getPlayer().dropMessage(5, "Message has popped up in " + ((System.currentTimeMillis() - oldMillis) / 1000) + " seconds, expected was " + sec + " seconds");
             }, sec * 1000);
             return 1;
         }

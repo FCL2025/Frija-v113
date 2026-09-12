@@ -70,22 +70,19 @@ public class SummonHandler {
                     final MapleMap map = chr.getMap();
                     final MapleCharacter clone = clones[i].get();
                     final List<LifeMovementFragment> res3 = new ArrayList<LifeMovementFragment>(res);
-                    CloneTimer.getInstance().schedule(new Runnable() {
+                    CloneTimer.getInstance().schedule(() -> {
+                        try {
+                            if (clone.getMap() == map && clone.getDragon() != null) {
+                                final Point startPos = clone.getDragon().getPosition();
+                                MovementParse.updatePosition(res3, clone.getDragon(), 0);
 
-                        public void run() {
-                            try {
-                                if (clone.getMap() == map && clone.getDragon() != null) {
-                                    final Point startPos = clone.getDragon().getPosition();
-                                    MovementParse.updatePosition(res3, clone.getDragon(), 0);
-
-                                    if (!clone.isHidden()) {
-                                        map.broadcastMessage(clone, MaplePacketCreator.moveDragon(clone.getDragon(), startPos, res3), clone.getPosition());
-                                    }
-
+                                if (!clone.isHidden()) {
+                                    map.broadcastMessage(clone, MaplePacketCreator.moveDragon(clone.getDragon(), startPos, res3), clone.getPosition());
                                 }
-                            } catch (Exception e) {
-                                FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
+
                             }
+                        } catch (Exception e) {
+                            FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
                         }
                     }, 500 * i + 500);
                 }

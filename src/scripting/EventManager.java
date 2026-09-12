@@ -81,44 +81,35 @@ public class EventManager {
     }
 
     public ScheduledFuture<?> schedule(final String methodName, long delay) {
-        return EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                try {
-                    iv.invokeFunction(methodName, (Object) null);
-                } catch (Exception ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                }
+        return EventTimer.getInstance().schedule(() -> {
+            try {
+                iv.invokeFunction(methodName, (Object) null);
+            } catch (Exception ex) {
+                System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
             }
         }, delay);
     }
 
     public ScheduledFuture<?> schedule(final String methodName, long delay, final EventInstanceManager eim) {
-        return EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                try {
-                    iv.invokeFunction(methodName, eim);
-                } catch (Exception ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                }
+        return EventTimer.getInstance().schedule(() -> {
+            try {
+                iv.invokeFunction(methodName, eim);
+            } catch (Exception ex) {
+                System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
             }
         }, delay);
     }
 
     public ScheduledFuture<?> scheduleAtTimestamp(final String methodName, long timestamp) {
-        return EventTimer.getInstance().scheduleAtTimestamp(new Runnable() {
-
-            public void run() {
-                try {
-                    iv.invokeFunction(methodName, (Object) null);
-                } catch (ScriptException ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                } catch (NoSuchMethodException ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                }
+        return EventTimer.getInstance().scheduleAtTimestamp(() -> {
+            try {
+                iv.invokeFunction(methodName, (Object) null);
+            } catch (ScriptException ex) {
+                System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
+            } catch (NoSuchMethodException ex) {
+                System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
             }
         }, timestamp);
     }
@@ -402,12 +393,9 @@ public class EventManager {
             broadcastYellowMsg(msg);
             return false;
         }
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (cs.getEvent() >= 0) {
-                    MapleEvent.setEvent(cs, true);
-                }
+        EventTimer.getInstance().schedule(() -> {
+            if (cs.getEvent() >= 0) {
+                MapleEvent.setEvent(cs, true);
             }
         }, 600000);
         return true;

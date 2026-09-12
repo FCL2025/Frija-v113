@@ -385,12 +385,8 @@ public class Event_DojoAgent {
         if (mobid != 0) {
             final int rand = Randomizer.nextInt(3);
 
-            MapTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    map.spawnMonsterWithEffect(MapleLifeFactory.getMonster(mobid), 15, rand == 0 ? point1 : rand == 1 ? point2 : point3);
-                }
+            MapTimer.getInstance().schedule(() -> {
+                map.spawnMonsterWithEffect(MapleLifeFactory.getMonster(mobid), 15, rand == 0 ? point1 : rand == 1 ? point2 : point3);
             }, 3000);
         }
     }

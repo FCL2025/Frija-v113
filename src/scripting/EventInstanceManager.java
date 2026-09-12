@@ -114,18 +114,15 @@ public class EventInstanceManager {
         if (disposed || eim == null) {
             return;
         }
-        eventTimer = EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (disposed || eim == null || em == null) {
-                    return;
-                }
-                try {
-                    em.getIv().invokeFunction("scheduledTimeout", eim);
-                } catch (Exception ex) {
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
-                    System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
-                }
+        eventTimer = EventTimer.getInstance().schedule(() -> {
+            if (disposed || eim == null || em == null) {
+                return;
+            }
+            try {
+                em.getIv().invokeFunction("scheduledTimeout", eim);
+            } catch (Exception ex) {
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
+                System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
             }
         }, delay);
     }
@@ -606,21 +603,18 @@ public class EventInstanceManager {
         if (disposed) {
             return;
         }
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (disposed || EventInstanceManager.this == null || em == null) {
-                    return;
-                }
-                try {
-                    em.getIv().invokeFunction(methodName, EventInstanceManager.this);
-                } catch (NullPointerException npe) {
-                    System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + npe);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + npe);
-                } catch (Exception ex) {
-                    System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + ex);
-                }
+        EventTimer.getInstance().schedule(() -> {
+            if (disposed || EventInstanceManager.this == null || em == null) {
+                return;
+            }
+            try {
+                em.getIv().invokeFunction(methodName, EventInstanceManager.this);
+            } catch (NullPointerException npe) {
+                System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + npe);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + npe);
+            } catch (Exception ex) {
+                System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : " + methodName + ":\n" + ex);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + ex);
             }
         }, delay);
     }

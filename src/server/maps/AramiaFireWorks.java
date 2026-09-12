@@ -69,24 +69,16 @@ public class AramiaFireWorks {
 
     private final void broadcastEvent(final MapleCharacter c) {
         // Henesys Park
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                startEvent(c.getClient().getChannelServer().getMapFactory().getMap(209080000));
-            }
+        EventTimer.getInstance().schedule(() -> {
+            startEvent(c.getClient().getChannelServer().getMapFactory().getMap(209080000));
         }, 10000);
     }
 
     private final void startEvent(final MapleMap map) {
         map.startMapEffect("雪人大大出現啦", 5120000);
 
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                spawnMonster(map);
-            }
+        EventTimer.getInstance().schedule(() -> {
+            spawnMonster(map);
         }, 5000);
     }
 
@@ -137,24 +129,16 @@ public class AramiaFireWorks {
     private final void broadcastSun(final MapleCharacter c) {
         broadcastServer(c, SUN_ID);
         // Henesys Park
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                startSun(c.getClient().getChannelServer().getMapFactory().getMap(970010000));
-            }
+        EventTimer.getInstance().schedule(() -> {
+            startSun(c.getClient().getChannelServer().getMapFactory().getMap(970010000));
         }, 10000);
     }
 
     private final void startSun(final MapleMap map) {
         map.startMapEffect("The tree is bursting with sunshine!", 5121010);
         for (int i = 0; i < 3; i++) {
-            EventTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public final void run() {
-                    spawnItem(map);
-                }
+            EventTimer.getInstance().schedule(() -> {
+                spawnItem(map);
             }, 5000 + (i * 10000));
         }
     }
@@ -205,24 +189,16 @@ public class AramiaFireWorks {
 
     private final void broadcastDec(final MapleCharacter c) {
         broadcastServer(c, DEC_ID);
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                startDec(c.getClient().getChannelServer().getMapFactory().getMap(555000000));
-            }
+        EventTimer.getInstance().schedule(() -> {
+            startDec(c.getClient().getChannelServer().getMapFactory().getMap(555000000));
         }, 10000); //no msg
     }
 
     private final void startDec(final MapleMap map) {
         map.startMapEffect("The tree is bursting with snow!", 5120000);
         for (int i = 0; i < 3; i++) {
-            EventTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public final void run() {
-                    spawnDec(map);
-                }
+            EventTimer.getInstance().schedule(() -> {
+                spawnDec(map);
             }, 5000 + (i * 10000));
         }
     }

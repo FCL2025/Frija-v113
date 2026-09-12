@@ -237,13 +237,9 @@ public class MapleSnowball extends MapleEvent {
                             oBall.setHittable(false);
                             final MapleMap map = chr.getMap();
                             oBall.broadcast(map, 4);
-                            oBall.snowmanSchedule = EventTimer.getInstance().schedule(new Runnable() {
-
-                                @Override
-                                public void run() {
-                                    oBall.setHittable(true);
-                                    oBall.broadcast(map, 5);
-                                }
+                            oBall.snowmanSchedule = EventTimer.getInstance().schedule(() -> {
+                                oBall.setHittable(true);
+                                oBall.broadcast(map, 5);
                             }, 10000);
                             for (MapleCharacter chrz : chr.getMap().getCharactersThreadsafe()) {
                                 if ((ball.getTeam() == 0 && chr.getPosition().y < -80) || (ball.getTeam() == 1 && chr.getPosition().y > -80)) {

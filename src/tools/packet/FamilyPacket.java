@@ -263,4 +263,38 @@ public class FamilyPacket {
         mplew.writeMapleAsciiString(mapname);
         return mplew.getPacket();
     }
+
+    // ----- E5：以下由 tools.MaplePacketCreator 搬入 -----
+
+    public static MaplePacket sendLevelup(boolean family, int level, String name) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.LEVEL_UPDATE.getValue());
+        mplew.write(family ? 1 : 2);
+        mplew.writeInt(level);
+        mplew.writeMapleAsciiString(name);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket sendMarriage(boolean family, String name) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.MARRIAGE_UPDATE.getValue());
+        mplew.write(family ? 1 : 0);
+        mplew.writeMapleAsciiString(name);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket sendJobup(boolean family, int jobid, String name) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.JOB_UPDATE.getValue());
+        mplew.write(family ? 1 : 0);
+        mplew.writeInt(jobid); //or is this a short
+        mplew.writeMapleAsciiString(name);
+
+        return mplew.getPacket();
+    }
 }

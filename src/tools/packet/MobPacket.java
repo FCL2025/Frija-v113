@@ -476,4 +476,27 @@ public class MobPacket {
         mplew.writeInt(oid);
         return mplew.getPacket();
     }
+
+    // ----- E5：以下由 tools.MaplePacketCreator 搬入 -----
+
+    public static MaplePacket showMagnet(int mobid, byte success) { // Monster Magnet
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.SHOW_MAGNET.getValue());
+        mplew.writeInt(mobid);
+        mplew.write(success);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket catchMonster(int mobid, int itemid, byte success) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.CATCH_MONSTER.getValue());
+        mplew.writeInt(mobid);
+        mplew.writeInt(itemid);
+        mplew.write(success);
+
+        return mplew.getPacket();
+    }
 }

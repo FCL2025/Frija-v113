@@ -24,6 +24,7 @@ import handling.MaplePacket;
 import handling.SendPacketOpcode;
 import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import constants.ServerConstants;
 
 public class UIPacket {
 
@@ -179,6 +180,68 @@ public class UIPacket {
         mplew.writeShort(SendPacketOpcode.FISHING_CAUGHT.getValue());
         mplew.writeInt(chrid);
         mplew.writeInt(1);
+
+        return mplew.getPacket();
+    }
+
+    // ----- E5：以下由 tools.MaplePacketCreator 搬入 -----
+
+    public static MaplePacket sendHint(String hint, int width, int height) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        if (width < 1) {
+            width = hint.length() * 10;
+            if (width < 40) {
+                width = 40;
+            }
+        }
+        if (height < 5) {
+            height = 5;
+        }
+        mplew.writeShort(SendPacketOpcode.PLAYER_HINT.getValue());
+        mplew.writeMapleAsciiString(hint);
+        mplew.writeShort(width);
+        mplew.writeShort(height);
+        mplew.write(1);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket getPollQuestion() {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.GAME_POLL_QUESTION.getValue());
+        mplew.writeInt(1);
+        mplew.writeInt(14);
+        mplew.writeMapleAsciiString(ServerConstants.Poll_Question);
+        mplew.writeInt(ServerConstants.Poll_Answers.length); // pollcount
+        for (byte i = 0; i < ServerConstants.Poll_Answers.length; i++) {
+            mplew.writeMapleAsciiString(ServerConstants.Poll_Answers[i]);
+        }
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket getPollReply(String message) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.GAME_POLL_REPLY.getValue());
+        mplew.writeMapleAsciiString(message);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket getEvanTutorial(String data) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.NPC_TALK.getValue());
+
+        mplew.writeInt(8);
+        mplew.write(0);
+        mplew.write(1);
+        mplew.write(1);
+        mplew.write(1);
+        mplew.writeMapleAsciiString(data);
 
         return mplew.getPacket();
     }

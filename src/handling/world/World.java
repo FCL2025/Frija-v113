@@ -59,7 +59,7 @@ public class World {
     }
 
     public static Map<Integer, Integer> getConnected() {
-        Map<Integer, Integer> ret = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> ret = new HashMap<>();
         int total = 0;
         for (ChannelServer cs : ChannelServer.getAllInstances()) {
             int curConnected = cs.getConnectedClients();
@@ -71,7 +71,7 @@ public class World {
     }
 
     public static List<CheaterData> getCheaters() {
-        List<CheaterData> allCheaters = new ArrayList<CheaterData>();
+        List<CheaterData> allCheaters = new ArrayList<>();
         for (ChannelServer cs : ChannelServer.getAllInstances()) {
             allCheaters.addAll(cs.getCheaters());
         }
@@ -124,7 +124,7 @@ public class World {
 
     public static class Party {
 
-        private static final Map<Integer, MapleParty> parties = new HashMap<Integer, MapleParty>();
+        private static final Map<Integer, MapleParty> parties = new HashMap<>();
         private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         private static final AtomicInteger runningPartyId = new AtomicInteger();
 
@@ -353,7 +353,7 @@ public class World {
 
     public static class Messenger {
 
-        private static final Map<Integer, MapleMessenger> messengers = new HashMap<Integer, MapleMessenger>();
+        private static final Map<Integer, MapleMessenger> messengers = new HashMap<>();
         private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         private static final AtomicInteger runningMessengerId = new AtomicInteger();
 
@@ -565,7 +565,7 @@ public class World {
 
     public static class Guild {
 
-        private static final Map<Integer, MapleGuild> guilds = new LinkedHashMap<Integer, MapleGuild>();
+        private static final Map<Integer, MapleGuild> guilds = new LinkedHashMap<>();
         private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
         static {
@@ -949,8 +949,8 @@ public class World {
     public static class Find {
 
         private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        private static final Map<Integer, Integer> idToChannel = new HashMap<Integer, Integer>();
-        private static final Map<String, Integer> nameToChannel = new HashMap<String, Integer>();
+        private static final Map<Integer, Integer> idToChannel = new HashMap<>();
+        private static final Map<String, Integer> nameToChannel = new HashMap<>();
 
         public static void register(int id, String name, int channel) {
             lock.writeLock().lock();
@@ -1027,7 +1027,7 @@ public class World {
         }
 
         public static CharacterIdChannelPair[] multiBuddyFind(int charIdFrom, int[] characterIds) {
-            List<CharacterIdChannelPair> foundsChars = new ArrayList<CharacterIdChannelPair>(characterIds.length);
+            List<CharacterIdChannelPair> foundsChars = new ArrayList<>(characterIds.length);
             for (int i : characterIds) {
                 int channel = findChannel(i);
                 if (channel > 0) {
@@ -1041,7 +1041,7 @@ public class World {
 
     public static class Alliance {
 
-        private static final Map<Integer, MapleGuildAlliance> alliances = new LinkedHashMap<Integer, MapleGuildAlliance>();
+        private static final Map<Integer, MapleGuildAlliance> alliances = new LinkedHashMap<>();
         private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
         static {
@@ -1280,7 +1280,7 @@ public class World {
         }
 
         public static List<MaplePacket> getAllianceInfo(final int allianceid, final boolean start) {
-            List<MaplePacket> ret = new ArrayList<MaplePacket>();
+            List<MaplePacket> ret = new ArrayList<>();
             final MapleGuildAlliance alliance = getAlliance(allianceid);
             if (alliance != null) {
                 if (start) {
@@ -1312,7 +1312,7 @@ public class World {
         // CopyOnWriteArrayList makes individual add/remove/iterate calls safe;
         // addClient is additionally synchronized so the "contains, then add"
         // check-then-act stays a single atomic step.
-        private static final List<MapleClient> clients = new CopyOnWriteArrayList<MapleClient>();
+        private static final List<MapleClient> clients = new CopyOnWriteArrayList<>();
 
         public static synchronized void addClient(MapleClient c) {
             if (!clients.contains(c)) {
@@ -1330,7 +1330,7 @@ public class World {
     }
     public static class Family {
 
-        private static final Map<Integer, MapleFamily> families = new LinkedHashMap<Integer, MapleFamily>();
+        private static final Map<Integer, MapleFamily> families = new LinkedHashMap<>();
         private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
         static {

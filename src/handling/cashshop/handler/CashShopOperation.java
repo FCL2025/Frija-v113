@@ -133,7 +133,7 @@ public class CashShopOperation {
              * Type 4: A-Cash Coupon that can be used over and over
              * Type 5: Mesos
              */
-            Map<Integer, IItem> itemz = new HashMap<Integer, IItem>();
+            Map<Integer, IItem> itemz = new HashMap<>();
             int maplePoints = 0, mesos = 0;
             switch (type) {
                 case 1:
@@ -432,7 +432,7 @@ public class CashShopOperation {
                     return;
                 }
             }
-            Map<Integer, IItem> ccz = new HashMap<Integer, IItem>();
+            Map<Integer, IItem> ccz = new HashMap<>();
             for (CashItemInfo i : ccc) {
                 for (int iz : GameConstants.cashBlock) {
                     if (i.getId() == iz) {

@@ -47,9 +47,9 @@ public class BuddyList implements Serializable {
         BUDDYLIST_FULL, ALREADY_ON_LIST, OK
     }
     private static final long serialVersionUID = 1413738569L;
-    private Map<Integer, BuddylistEntry> buddies = new LinkedHashMap<Integer, BuddylistEntry>();
+    private Map<Integer, BuddylistEntry> buddies = new LinkedHashMap<>();
     private byte capacity;
-    private Deque<CharacterNameAndId> pendingRequests = new LinkedList<CharacterNameAndId>();
+    private Deque<CharacterNameAndId> pendingRequests = new LinkedList<>();
 
     public BuddyList(byte capacity) {
         super();

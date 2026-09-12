@@ -50,7 +50,7 @@ public class MapleMount implements Serializable {
         this.fatigue = fatigue;
         this.level = level;
         this.exp = exp;
-        this.owner = new WeakReference<MapleCharacter>(owner);
+        this.owner = new WeakReference<>(owner);
     }
 
     public void saveMount(final int charid) throws SQLException {

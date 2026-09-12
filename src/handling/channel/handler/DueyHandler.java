@@ -234,7 +234,7 @@ public class DueyHandler {
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    ItemLoader.DUEY.saveItems(Collections.singletonList(new Pair<IItem, MapleInventoryType>(item, GameConstants.getInventoryType(item.getItemId()))), rs.getInt(1));
+                    ItemLoader.DUEY.saveItems(Collections.singletonList(new Pair<>(item, GameConstants.getInventoryType(item.getItemId()))), rs.getInt(1));
                 }
             }
 
@@ -246,7 +246,7 @@ public class DueyHandler {
     }
 
     public static final List<MapleDueyActions> loadItems(final MapleCharacter chr) {
-        List<MapleDueyActions> packages = new LinkedList<MapleDueyActions>();
+        List<MapleDueyActions> packages = new LinkedList<>();
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT * FROM dueypackages WHERE RecieverId = ?")) {
             ps.setInt(1, chr.getId());
@@ -272,7 +272,7 @@ public class DueyHandler {
     }
 
     public static final MapleDueyActions loadSingleItem(final int packageid, final int charid) {
-        List<MapleDueyActions> packages = new LinkedList<MapleDueyActions>();
+        List<MapleDueyActions> packages = new LinkedList<>();
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT * FROM dueypackages WHERE PackageId = ? and RecieverId = ?")) {
             ps.setInt(1, packageid);

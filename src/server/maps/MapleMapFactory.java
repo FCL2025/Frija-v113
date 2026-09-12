@@ -101,7 +101,7 @@ public class MapleMapFactory {
                 for (MapleData portal : mapData.getChildByPath("portal")) {
                     map.addPortal(portalFactory.makePortal(MapleDataTool.getInt(portal.getChildByPath("pt")), portal));
                 }
-                List<MapleFoothold> allFootholds = new LinkedList<MapleFoothold>();
+                List<MapleFoothold> allFootholds = new LinkedList<>();
                 Point lBound = new Point();
                 Point uBound = new Point();
                 MapleFoothold fh;
@@ -292,7 +292,7 @@ public class MapleMapFactory {
         for (MapleData portal : mapData.getChildByPath("portal")) {
             map.addPortal(portalFactory.makePortal(MapleDataTool.getInt(portal.getChildByPath("pt")), portal));
         }
-        List<MapleFoothold> allFootholds = new LinkedList<MapleFoothold>();
+        List<MapleFoothold> allFootholds = new LinkedList<>();
         Point lBound = new Point();
         Point uBound = new Point();
         for (MapleData footRoot : mapData.getChildByPath("foothold")) {
@@ -748,7 +748,7 @@ public class MapleMapFactory {
                             nodeInfo.setNodeEnd(MapleDataTool.getInt(node, 0));
                             continue;
                         }
-                        List<Integer> edges = new ArrayList<Integer>();
+                        List<Integer> edges = new ArrayList<>();
                         if (node.getChildByPath("edge") != null) {
                             for (MapleData edge : node.getChildByPath("edge")) {
                                 edges.add(MapleDataTool.getInt(edge, -1));
@@ -776,7 +776,7 @@ public class MapleMapFactory {
                         if (sn_count <= 0 || speed <= 0 || name.equals("")) {
                             continue;
                         }
-                        final List<Integer> SN = new ArrayList<Integer>();
+                        final List<Integer> SN = new ArrayList<>();
                         for (int x = 0; x < sn_count; x++) {
                             SN.add(MapleDataTool.getIntConvert("SN" + x, node, 0));
                         }

@@ -23,7 +23,7 @@ import tools.MaplePacketCreator;
 
 public class MapleShop {
 
-    private static final Set<Integer> rechargeableItems = new LinkedHashSet<Integer>();
+    private static final Set<Integer> rechargeableItems = new LinkedHashSet<>();
     private int id;
     private int npcId;
     private List<MapleShopItem> items;
@@ -69,7 +69,7 @@ public class MapleShop {
     private MapleShop(int id, int npcId) {
         this.id = id;
         this.npcId = npcId;
-        items = new LinkedList<MapleShopItem>();
+        items = new LinkedList<>();
     }
 
     public void addItem(MapleShopItem item) {
@@ -225,7 +225,7 @@ public class MapleShop {
             try (PreparedStatement ps = con.prepareStatement("SELECT * FROM shopitems WHERE shopid = ? ORDER BY position ASC")) {
                 ps.setInt(1, shopId);
                 try (ResultSet rs = ps.executeQuery()) {
-                    List<Integer> recharges = new ArrayList<Integer>(rechargeableItems);
+                    List<Integer> recharges = new ArrayList<>(rechargeableItems);
                     while (rs.next()) {
                         if (GameConstants.isThrowingStar(rs.getInt("itemid")) || GameConstants.isBullet(rs.getInt("itemid"))) {
                             MapleShopItem starItem = new MapleShopItem((short) 1, rs.getInt("itemid"), rs.getInt("price"), rs.getInt("reqitem"), rs.getInt("reqitemq"));

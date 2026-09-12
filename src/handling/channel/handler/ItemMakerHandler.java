@@ -329,7 +329,7 @@ public class ItemMakerHandler {
 
     private static final int getRandomGem(final List<Pair<Integer, Integer>> rewards) {
         int itemid;
-        final List<Integer> items = new ArrayList<Integer>();
+        final List<Integer> items = new ArrayList<>();
 
         for (final Pair p : rewards) {
             itemid = (Integer) p.getLeft();

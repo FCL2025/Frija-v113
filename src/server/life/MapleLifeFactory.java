@@ -85,7 +85,7 @@ public class MapleLifeFactory {
                     final int id = Integer.parseInt(entry.getName().substring(0, entry.getName().length() - 4));
                     MapleData dat = data.getData("QuestCountGroup/" + entry.getName());
                     if (dat != null && dat.getChildByPath("info") != null) {
-                        List<Integer> z = new ArrayList<Integer>();
+                        List<Integer> z = new ArrayList<>();
                         for (MapleData da : dat.getChildByPath("info")) {
                             z.add(MapleDataTool.getInt(da, 0));
                         }
@@ -183,7 +183,7 @@ public class MapleLifeFactory {
 
             final MapleData reviveInfo = monsterInfoData.getChildByPath("revive");
             if (reviveInfo != null) {
-                List<Integer> revives = new LinkedList<Integer>();
+                List<Integer> revives = new LinkedList<>();
                 for (MapleData bdata : reviveInfo) {
                     revives.add(MapleDataTool.getInt(bdata));
                 }
@@ -193,9 +193,9 @@ public class MapleLifeFactory {
             final MapleData monsterSkillData = monsterInfoData.getChildByPath("skill");
             if (monsterSkillData != null) {
                 int i = 0;
-                List<Pair<Integer, Integer>> skills = new ArrayList<Pair<Integer, Integer>>();
+                List<Pair<Integer, Integer>> skills = new ArrayList<>();
                 while (monsterSkillData.getChildByPath(Integer.toString(i)) != null) {
-                    skills.add(new Pair<Integer, Integer>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillData, 0))));
+                    skills.add(new Pair<>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillData, 0))));
                     i++;
                 }
                 stats.setSkills(skills);

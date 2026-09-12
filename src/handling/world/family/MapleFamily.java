@@ -48,7 +48,7 @@ public class MapleFamily implements java.io.Serializable {
     }
     public static final long serialVersionUID = 6322150443228168192L;
     //does not need to be in order :) CID -> MFC
-    private final Map<Integer, MapleFamilyCharacter> members = new ConcurrentHashMap<Integer, MapleFamilyCharacter>();
+    private final Map<Integer, MapleFamilyCharacter> members = new ConcurrentHashMap<>();
     private String leadername = null, notice;
     private int id, leaderid, generations = 0;
     private boolean proper = true, bDirty = false, changed = false;
@@ -169,7 +169,7 @@ public class MapleFamily implements java.io.Serializable {
     }
 
     public static final Collection<MapleFamily> loadAll() {
-        final Collection<MapleFamily> ret = new ArrayList<MapleFamily>();
+        final Collection<MapleFamily> ret = new ArrayList<>();
         MapleFamily g;
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT familyid FROM families");
@@ -313,7 +313,7 @@ public class MapleFamily implements java.io.Serializable {
             //mgc.setCurrentRep(mgc.getCurrentRep()+addrep);
             //mgc.setTotalRep(mgc.getTotalRep()+addrep);
             if (mgc.isOnline()) {
-                List<Integer> dummy = new ArrayList<Integer>();
+                List<Integer> dummy = new ArrayList<>();
                 dummy.add(mgc.getId());
                 broadcast(FamilyPacket.changeRep(addrep), -1, dummy);
                 World.Family.setFamily(id, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep() + addrep, mgc.getTotalRep() + addrep, mgc.getId());
@@ -330,7 +330,7 @@ public class MapleFamily implements java.io.Serializable {
         members.put(mc.getId(), ret);
         ret.resetPedigree(this);
         bDirty = true;
-        List<Integer> toRemove = new ArrayList<Integer>();
+        List<Integer> toRemove = new ArrayList<>();
         for (int i = 0; i < ret.getPedigree().size(); i++) {
             if (ret.getPedigree().get(i) == ret.getId()) {
                 continue;
@@ -467,7 +467,7 @@ public class MapleFamily implements java.io.Serializable {
                     }
                 }
             }
-            List<Integer> dummy = new ArrayList<Integer>();
+            List<Integer> dummy = new ArrayList<>();
             dummy.add(mgc.getId());
             broadcast(null, -1, FCOp.DISBAND, dummy);
             resetPedigree(); //ex but eh

@@ -525,7 +525,7 @@ public class AdminCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             c.getPlayer().setRemainingAp((short) CommandProcessorUtil.getOptionalIntArg(splitted, 1, 1));
-            final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<Pair<MapleStat, Integer>>();
+            final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>();
             c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, c.getPlayer().getJob()));
             return 1;
         }
@@ -639,36 +639,36 @@ public class AdminCommand {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            java.util.Map<Pair<Short, Short>, MapleInventoryType> eqs = new ArrayMap<Pair<Short, Short>, MapleInventoryType>();
+            java.util.Map<Pair<Short, Short>, MapleInventoryType> eqs = new ArrayMap<>();
             if (splitted[1].equals("all")) {
                 for (MapleInventoryType type : MapleInventoryType.values()) {
                     for (IItem item : c.getPlayer().getInventory(type)) {
-                        eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), type);
+                        eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), type);
                     }
                 }
             } else if (splitted[1].equals("eqp")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.EQUIPPED)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIPPED);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIPPED);
                 }
             } else if (splitted[1].equals("eq")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.EQUIP)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIP);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIP);
                 }
             } else if (splitted[1].equals("u")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.USE)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.USE);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.USE);
                 }
             } else if (splitted[1].equals("s")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.SETUP)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.SETUP);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.SETUP);
                 }
             } else if (splitted[1].equals("e")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.ETC)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.ETC);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.ETC);
                 }
             } else if (splitted[1].equals("c")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.CASH)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.CASH);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.CASH);
                 }
             } else {
                 c.getPlayer().dropMessage(6, "[all/eqp/eq/u/s/e/c]");
@@ -684,7 +684,7 @@ public class AdminCommand {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            java.util.Map<IItem, MapleInventoryType> eqs = new ArrayMap<IItem, MapleInventoryType>();
+            java.util.Map<IItem, MapleInventoryType> eqs = new ArrayMap<>();
             boolean add = false;
             if (splitted.length < 2 || splitted[1].equals("all")) {
                 for (MapleInventoryType type : MapleInventoryType.values()) {
@@ -938,7 +938,7 @@ public class AdminCommand {
                 return 0;
             }
             String splitString = StringUtil.joinStringFrom(splitted, 2);
-            List<Integer> chars = new ArrayList<Integer>();
+            List<Integer> chars = new ArrayList<>();
             splitString = splitString.toUpperCase();
             for (int i = 0; i < splitString.length(); i++) {
                 char chr = splitString.charAt(i);
@@ -1406,7 +1406,7 @@ public class AdminCommand {
                 }
                 MapleInventory equipped = mchr.getInventory(MapleInventoryType.EQUIPPED);
                 MapleInventory equip = mchr.getInventory(MapleInventoryType.EQUIP);
-                List<Byte> ids = new ArrayList<Byte>();
+                List<Byte> ids = new ArrayList<>();
                 for (IItem item : equipped.list()) {
                     ids.add((byte) item.getPosition());
                 }
@@ -1984,7 +1984,7 @@ public class AdminCommand {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            final Collection<MapleSquad> squadz = new ArrayList<MapleSquad>(c.getChannelServer().getAllSquads().values());
+            final Collection<MapleSquad> squadz = new ArrayList<>(c.getChannelServer().getAllSquads().values());
             for (MapleSquad squads : squadz) {
                 squads.clear();
             }
@@ -2128,7 +2128,7 @@ public class AdminCommand {
 
     public static class GoTo extends CommandExecute {
 
-        private static final HashMap<String, Integer> gotomaps = new HashMap<String, Integer>();
+        private static final HashMap<String, Integer> gotomaps = new HashMap<>();
 
         static {
             gotomaps.put("gmmap", 180000000);
@@ -2782,11 +2782,11 @@ public class AdminCommand {
                 c.getPlayer().dropMessage(6, "<<Type: " + type + " | Search: " + search + ">>");
 
                 if (type.equalsIgnoreCase("NPC")) {
-                    List<String> retNpcs = new ArrayList<String>();
+                    List<String> retNpcs = new ArrayList<>();
                     data = dataProvider.getData("Npc.img");
-                    List<Pair<Integer, String>> npcPairList = new LinkedList<Pair<Integer, String>>();
+                    List<Pair<Integer, String>> npcPairList = new LinkedList<>();
                     for (MapleData npcIdData : data.getChildren()) {
-                        npcPairList.add(new Pair<Integer, String>(Integer.parseInt(npcIdData.getName()), MapleDataTool.getString(npcIdData.getChildByPath("name"), "NO-NAME")));
+                        npcPairList.add(new Pair<>(Integer.parseInt(npcIdData.getName()), MapleDataTool.getString(npcIdData.getChildByPath("name"), "NO-NAME")));
                     }
                     for (Pair<Integer, String> npcPair : npcPairList) {
                         if (npcPair.getRight().toLowerCase().contains(search.toLowerCase())) {
@@ -2802,12 +2802,12 @@ public class AdminCommand {
                     }
 
                 } else if (type.equalsIgnoreCase("MAP")) {
-                    List<String> retMaps = new ArrayList<String>();
+                    List<String> retMaps = new ArrayList<>();
                     data = dataProvider.getData("Map.img");
-                    List<Pair<Integer, String>> mapPairList = new LinkedList<Pair<Integer, String>>();
+                    List<Pair<Integer, String>> mapPairList = new LinkedList<>();
                     for (MapleData mapAreaData : data.getChildren()) {
                         for (MapleData mapIdData : mapAreaData.getChildren()) {
-                            mapPairList.add(new Pair<Integer, String>(Integer.parseInt(mapIdData.getName()), MapleDataTool.getString(mapIdData.getChildByPath("streetName"), "NO-NAME") + " - " + MapleDataTool.getString(mapIdData.getChildByPath("mapName"), "NO-NAME")));
+                            mapPairList.add(new Pair<>(Integer.parseInt(mapIdData.getName()), MapleDataTool.getString(mapIdData.getChildByPath("streetName"), "NO-NAME") + " - " + MapleDataTool.getString(mapIdData.getChildByPath("mapName"), "NO-NAME")));
                         }
                     }
                     for (Pair<Integer, String> mapPair : mapPairList) {
@@ -2823,11 +2823,11 @@ public class AdminCommand {
                         c.getPlayer().dropMessage(6, "No Maps Found");
                     }
                 } else if (type.equalsIgnoreCase("MOB")) {
-                    List<String> retMobs = new ArrayList<String>();
+                    List<String> retMobs = new ArrayList<>();
                     data = dataProvider.getData("Mob.img");
-                    List<Pair<Integer, String>> mobPairList = new LinkedList<Pair<Integer, String>>();
+                    List<Pair<Integer, String>> mobPairList = new LinkedList<>();
                     for (MapleData mobIdData : data.getChildren()) {
-                        mobPairList.add(new Pair<Integer, String>(Integer.parseInt(mobIdData.getName()), MapleDataTool.getString(mobIdData.getChildByPath("name"), "NO-NAME")));
+                        mobPairList.add(new Pair<>(Integer.parseInt(mobIdData.getName()), MapleDataTool.getString(mobIdData.getChildByPath("name"), "NO-NAME")));
                     }
                     for (Pair<Integer, String> mobPair : mobPairList) {
                         if (mobPair.getRight().toLowerCase().contains(search.toLowerCase())) {
@@ -2843,7 +2843,7 @@ public class AdminCommand {
                     }
 
                 } else if (type.equalsIgnoreCase("ITEM")) {
-                    List<String> retItems = new ArrayList<String>();
+                    List<String> retItems = new ArrayList<>();
                     for (Pair<Integer, String> itemPair : MapleItemInformationProvider.getInstance().getAllItems()) {
                         if (itemPair.getRight().toLowerCase().contains(search.toLowerCase())) {
                             retItems.add(itemPair.getLeft() + " - " + itemPair.getRight());
@@ -2858,11 +2858,11 @@ public class AdminCommand {
                     }
 
                 } else if (type.equalsIgnoreCase("SKILL")) {
-                    List<String> retSkills = new ArrayList<String>();
+                    List<String> retSkills = new ArrayList<>();
                     data = dataProvider.getData("Skill.img");
-                    List<Pair<Integer, String>> skillPairList = new LinkedList<Pair<Integer, String>>();
+                    List<Pair<Integer, String>> skillPairList = new LinkedList<>();
                     for (MapleData skillIdData : data.getChildren()) {
-                        skillPairList.add(new Pair<Integer, String>(Integer.parseInt(skillIdData.getName()), MapleDataTool.getString(skillIdData.getChildByPath("name"), "NO-NAME")));
+                        skillPairList.add(new Pair<>(Integer.parseInt(skillIdData.getName()), MapleDataTool.getString(skillIdData.getChildByPath("name"), "NO-NAME")));
                     }
                     for (Pair<Integer, String> skillPair : skillPairList) {
                         if (skillPair.getRight().toLowerCase().contains(search.toLowerCase())) {

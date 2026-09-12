@@ -81,7 +81,7 @@ public class MapleItemInformationProvider {
     protected final Map<Integer, List<Integer>> petsCanConsumeCache = new ConcurrentHashMap<>();
     protected final Map<Integer, Boolean> logoutExpireCache = new ConcurrentHashMap<>();
     protected final Map<Integer, List<Pair<Integer, Integer>>> summonMobCache = new ConcurrentHashMap<>();
-    protected final List<Pair<Integer, String>> itemNameCache = new ArrayList<Pair<Integer, String>>();
+    protected final List<Pair<Integer, String>> itemNameCache = new ArrayList<>();
     protected final Map<Integer, Map<Integer, Map<String, Integer>>> equipIncsCache = new ConcurrentHashMap<>();
     protected final Map<Integer, Map<Integer, List<Integer>>> equipSkillsCache = new ConcurrentHashMap<>();
     protected final Map<Integer, Pair<Integer, List<StructRewardItem>>> RewardItem = new ConcurrentHashMap<>();
@@ -218,39 +218,39 @@ public class MapleItemInformationProvider {
         if (itemNameCache.size() != 0) {
             return itemNameCache;
         }
-        final List<Pair<Integer, String>> itemPairs = new ArrayList<Pair<Integer, String>>();
+        final List<Pair<Integer, String>> itemPairs = new ArrayList<>();
         MapleData itemsData;
 
         itemsData = stringData.getData("Cash.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Consume.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Eqp.img").getChildByPath("Eqp");
         for (final MapleData eqpType : itemsData.getChildren()) {
             for (final MapleData itemFolder : eqpType.getChildren()) {
-                itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+                itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
             }
         }
 
         itemsData = stringData.getData("Etc.img").getChildByPath("Etc");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Ins.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Pet.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
         return itemPairs;
     }
@@ -445,7 +445,7 @@ public class MapleItemInformationProvider {
         if (itemId / 10000 != 425) {
             return null;
         }
-        final Map<String, Byte> ret = new LinkedHashMap<String, Byte>();
+        final Map<String, Byte> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -529,7 +529,7 @@ public class MapleItemInformationProvider {
         if (cached != null) {
             return cached;
         }
-        final Map<Integer, Map<String, Integer>> ret = new LinkedHashMap<Integer, Map<String, Integer>>();
+        final Map<Integer, Map<String, Integer>> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -539,7 +539,7 @@ public class MapleItemInformationProvider {
             return null;
         }
         for (MapleData dat : info.getChildren()) {
-            Map<String, Integer> incs = new HashMap<String, Integer>();
+            Map<String, Integer> incs = new HashMap<>();
             for (MapleData data : dat.getChildren()) { //why we have to do this? check if number has skills or not
                 if (data.getName().length() > 3) {
                     incs.put(data.getName().substring(3), MapleDataTool.getIntConvert(data.getName(), dat, 0));
@@ -556,7 +556,7 @@ public class MapleItemInformationProvider {
         if (cached != null) {
             return cached;
         }
-        final Map<Integer, List<Integer>> ret = new LinkedHashMap<Integer, List<Integer>>();
+        final Map<Integer, List<Integer>> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -568,7 +568,7 @@ public class MapleItemInformationProvider {
         for (MapleData dat : info.getChildren()) {
             for (MapleData data : dat.getChildren()) { //why we have to do this? check if number has skills or not
                 if (data.getName().length() == 1) { //the numbers all them are one digit. everything else isnt so we're lucky here..
-                    List<Integer> adds = new ArrayList<Integer>();
+                    List<Integer> adds = new ArrayList<>();
                     for (MapleData skil : data.getChildByPath("Skill").getChildren()) {
                         adds.add(MapleDataTool.getIntConvert("id", skil, 0));
                     }
@@ -585,7 +585,7 @@ public class MapleItemInformationProvider {
         if (cached != null) {
             return cached;
         }
-        final Map<String, Integer> ret = new LinkedHashMap<String, Integer>();
+        final Map<String, Integer> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -668,7 +668,7 @@ public class MapleItemInformationProvider {
         if (cached != null) {
             return cached;
         }
-        final List<Integer> ret = new ArrayList<Integer>();
+        final List<Integer> ret = new ArrayList<>();
         final MapleData data = getItemData(itemId).getChildByPath("req");
 
         if (data == null) {
@@ -1004,10 +1004,10 @@ public class MapleItemInformationProvider {
         if (data == null) {
             return null;
         }
-        final List<Pair<Integer, Integer>> mobPairs = new ArrayList<Pair<Integer, Integer>>();
+        final List<Pair<Integer, Integer>> mobPairs = new ArrayList<>();
 
         for (final MapleData child : data.getChildren()) {
-            mobPairs.add(new Pair<Integer, Integer>(
+            mobPairs.add(new Pair<>(
                     MapleDataTool.getIntConvert("id", child),
                     MapleDataTool.getIntConvert("prob", child)));
         }
@@ -1252,7 +1252,7 @@ public class MapleItemInformationProvider {
             return null;
         }
         int totalprob = 0; // As there are some rewards with prob above 2000, we can't assume it's always 100
-        List<StructRewardItem> all = new ArrayList<StructRewardItem>();
+        List<StructRewardItem> all = new ArrayList<>();
 
         for (final MapleData reward : rewards) {
             StructRewardItem struct = new StructRewardItem();
@@ -1268,7 +1268,7 @@ public class MapleItemInformationProvider {
 
             all.add(struct);
         }
-        Pair<Integer, List<StructRewardItem>> toreturn = new Pair<Integer, List<StructRewardItem>>(totalprob, all);
+        Pair<Integer, List<StructRewardItem>> toreturn = new Pair<>(totalprob, all);
         RewardItem.put(itemid, toreturn);
         return toreturn;
     }
@@ -1289,7 +1289,7 @@ public class MapleItemInformationProvider {
         if (info == null) {
             return null;
         }
-        final Map<String, Integer> ret = new LinkedHashMap<String, Integer>();
+        final Map<String, Integer> ret = new LinkedHashMap<>();
         for (final MapleData data : info.getChildren()) {
             if (data.getName().startsWith("inc")) {
                 ret.put(data.getName().substring(3), MapleDataTool.getIntConvert(data));
@@ -1313,7 +1313,7 @@ public class MapleItemInformationProvider {
         if (cached != null) {
             return cached;
         }
-        final List<Integer> ret = new ArrayList<Integer>();
+        final List<Integer> ret = new ArrayList<>();
         final MapleData data = getItemData(itemId);
         if (data == null || data.getChildByPath("spec") == null) {
             return ret;
@@ -1357,11 +1357,11 @@ public class MapleItemInformationProvider {
         if (itemD == null || itemD.getChildByPath("consumeItem") == null) {
             return null;
         }
-        final List<Integer> consumeItems = new ArrayList<Integer>();
+        final List<Integer> consumeItems = new ArrayList<>();
         for (MapleData consume : itemD.getChildByPath("consumeItem")) {
             consumeItems.add(MapleDataTool.getInt(consume, 0));
         }
-        final Pair<Integer, List<Integer>> questItem = new Pair<Integer, List<Integer>>(MapleDataTool.getIntConvert("questId", itemD, 0), consumeItems);
+        final Pair<Integer, List<Integer>> questItem = new Pair<>(MapleDataTool.getIntConvert("questId", itemD, 0), consumeItems);
         questItems.put(itemId, questItem);
         return questItem;
     }
@@ -1380,7 +1380,7 @@ public class MapleItemInformationProvider {
         if (!faceList.isEmpty()) {
             return;
         }
-        final List<String> types = new ArrayList<String>();
+        final List<String> types = new ArrayList<>();
         types.add("Face");
         for (final String type : types) {
             for (MapleData c : stringData.getData("Eqp.img").getChildByPath("Eqp/" + type)) {

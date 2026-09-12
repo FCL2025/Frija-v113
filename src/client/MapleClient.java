@@ -90,9 +90,9 @@ public class MapleClient implements Serializable {
     private boolean gm;
     private byte greason = 1, gender = -1;
     public transient short loginAttempt = 0;
-    private transient List<Integer> allowedChar = new LinkedList<Integer>();
-    private transient Set<String> macs = new HashSet<String>();
-    private transient Map<String, ScriptEngine> engines = new HashMap<String, ScriptEngine>();
+    private transient List<Integer> allowedChar = new LinkedList<>();
+    private transient Set<String> macs = new HashSet<>();
+    private transient Map<String, ScriptEngine> engines = new HashMap<>();
     private transient ScheduledFuture<?> idleTask = null;
     private transient String secondPassword, salt2; // To be used only on login
     private final transient Lock mutex = new ReentrantLock(true);
@@ -142,7 +142,7 @@ public class MapleClient implements Serializable {
     }
 
     public final List<MapleCharacter> loadCharacters(final int serverId) { // TODO make this less costly zZz
-        final List<MapleCharacter> chars = new LinkedList<MapleCharacter>();
+        final List<MapleCharacter> chars = new LinkedList<>();
 
         for (final CharNameAndId cni : loadCharactersInternal(serverId)) {
             final MapleCharacter chr = MapleCharacter.loadCharFromDB(cni.id, this, false);
@@ -153,7 +153,7 @@ public class MapleClient implements Serializable {
     }
 
     public List<String> loadCharacterNames(int serverId) {
-        List<String> chars = new LinkedList<String>();
+        List<String> chars = new LinkedList<>();
         for (CharNameAndId cni : loadCharactersInternal(serverId)) {
             chars.add(cni.name);
         }
@@ -161,7 +161,7 @@ public class MapleClient implements Serializable {
     }
 
     private List<CharNameAndId> loadCharactersInternal(int serverId) {
-        List<CharNameAndId> chars = new LinkedList<CharNameAndId>();
+        List<CharNameAndId> chars = new LinkedList<>();
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT id, name FROM characters WHERE accountid = ? AND world = ?")) {
             ps.setInt(1, accId);

@@ -32,7 +32,7 @@ import database.DatabaseConnection;
 public class MapleGuildRanking {
 
     private static MapleGuildRanking instance = new MapleGuildRanking();
-    private List<GuildRankingInfo> ranks = new LinkedList<GuildRankingInfo>();
+    private List<GuildRankingInfo> ranks = new LinkedList<>();
 
     public static MapleGuildRanking getInstance() {
         return instance;

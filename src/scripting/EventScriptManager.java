@@ -47,7 +47,7 @@ public class EventScriptManager extends AbstractScriptManager {
         public Invocable iv;
         public EventManager em;
     }
-    private final Map<String, EventEntry> events = new LinkedHashMap<String, EventEntry>();
+    private final Map<String, EventEntry> events = new LinkedHashMap<>();
     private final AtomicInteger runningInstanceMapId = new AtomicInteger(0);
 
     public final int getNewInstanceMapId() {

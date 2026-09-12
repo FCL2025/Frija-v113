@@ -237,7 +237,7 @@ public class HiredMerchantHandler {
 
             Map<Integer, Pair<IItem, MapleInventoryType>> items = ItemLoader.HIRED_MERCHANT.loadItems(false, packageid, accountid, charid);
             if (items != null) {
-                List<IItem> iters = new ArrayList<IItem>();
+                List<IItem> iters = new ArrayList<>();
                 for (Pair<IItem, MapleInventoryType> z : items.values()) {
                     iters.add(z.left);
                 }

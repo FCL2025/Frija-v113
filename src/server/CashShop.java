@@ -49,8 +49,8 @@ public class CashShop implements Serializable {
     private static final long serialVersionUID = 231541893513373579L;
     private int accountId, characterId;
     private ItemLoader factory;
-    private List<IItem> inventory = new ArrayList<IItem>();
-    private List<Integer> uniqueids = new ArrayList<Integer>();
+    private List<IItem> inventory = new ArrayList<>();
+    private List<Integer> uniqueids = new ArrayList<>();
 
     public CashShop(int accountId, int characterId, int jobType) throws SQLException {
         this.accountId = accountId;
@@ -94,7 +94,7 @@ public class CashShop implements Serializable {
     }
 
     public void checkExpire(MapleClient c) {
-        List<IItem> toberemove = new ArrayList<IItem>();
+        List<IItem> toberemove = new ArrayList<>();
         for (IItem item : inventory) {
             if (item != null && !GameConstants.isPet(item.getItemId()) && item.getExpiration() > 0 && item.getExpiration() < System.currentTimeMillis()) {
                 toberemove.add(item);
@@ -188,7 +188,7 @@ public class CashShop implements Serializable {
     }
 
     public List<Pair<IItem, String>> loadGifts() {
-        List<Pair<IItem, String>> gifts = new ArrayList<Pair<IItem, String>>();
+        List<Pair<IItem, String>> gifts = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection()) {
             try (PreparedStatement ps = con.prepareStatement("SELECT * FROM `gifts` WHERE `recipient` = ?")) {
                 ps.setInt(1, characterId);
@@ -196,7 +196,7 @@ public class CashShop implements Serializable {
                     while (rs.next()) {
                         CashItemInfo cItem = CashItemFactory.getInstance().getItem(rs.getInt("sn"));
                         IItem item = toItem(cItem, rs.getInt("uniqueid"), rs.getString("from"));
-                        gifts.add(new Pair<IItem, String>(item, rs.getString("message")));
+                        gifts.add(new Pair<>(item, rs.getString("message")));
                         uniqueids.add(item.getUniqueId());
                         List<CashItemInfo> packages = CashItemFactory.getInstance().getPackageItems(cItem.getId());
                         if (packages != null && packages.size() > 0) {
@@ -234,10 +234,10 @@ public class CashShop implements Serializable {
     }
 
     public void save() throws SQLException {
-        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<Pair<IItem, MapleInventoryType>>();
+        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<>();
 
         for (IItem item : inventory) {
-            itemsWithType.add(new Pair<IItem, MapleInventoryType>(item, GameConstants.getInventoryType(item.getItemId())));
+            itemsWithType.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
         }
 
         factory.saveItems(itemsWithType, accountId);

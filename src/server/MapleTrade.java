@@ -17,7 +17,7 @@ import tools.packet.PlayerShopPacket;
 public class MapleTrade {
 
     private MapleTrade partner = null;
-    private final List<IItem> items = new LinkedList<IItem>();
+    private final List<IItem> items = new LinkedList<>();
     private List<IItem> exchangeItems;
     private int meso = 0, exchangeMeso = 0;
     private boolean locked = false;
@@ -26,7 +26,7 @@ public class MapleTrade {
 
     public MapleTrade(final byte tradingslot, final MapleCharacter chr) {
         this.tradingslot = tradingslot;
-        this.chr = new WeakReference<MapleCharacter>(chr);
+        this.chr = new WeakReference<>(chr);
     }
 
     public final void CompleteTrade() {

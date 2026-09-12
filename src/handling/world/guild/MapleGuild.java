@@ -55,13 +55,13 @@ public class MapleGuild implements java.io.Serializable {
         NONE, DISBAND, EMBELMCHANGE
     }
     public static final long serialVersionUID = 6322150443228168192L;
-    private final List<MapleGuildCharacter> members = new CopyOnWriteArrayList<MapleGuildCharacter>();
+    private final List<MapleGuildCharacter> members = new CopyOnWriteArrayList<>();
     private final String rankTitles[] = new String[5]; // 1 = master, 2 = jr, 5 = lowest member
     private String name, notice;
     private int id, gp, logo, logoColor, leader, capacity, logoBG, logoBGColor, signature;
     private boolean bDirty = true, proper = true;
     private int allianceid = 0, invitedid = 0;
-    private final Map<Integer, MapleBBSThread> bbs = new HashMap<Integer, MapleBBSThread>();
+    private final Map<Integer, MapleBBSThread> bbs = new HashMap<>();
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final Lock rL = lock.readLock(), wL = lock.writeLock();
     private boolean init = false;
@@ -152,7 +152,7 @@ public class MapleGuild implements java.io.Serializable {
     }
 
     public static final Collection<MapleGuild> loadAll() {
-        final Collection<MapleGuild> ret = new ArrayList<MapleGuild>();
+        final Collection<MapleGuild> ret = new ArrayList<>();
         MapleGuild g;
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT guildid FROM guilds");
@@ -381,7 +381,7 @@ public class MapleGuild implements java.io.Serializable {
         if (!bDirty) {
             return;
         }
-        final List<Integer> mem = new LinkedList<Integer>();
+        final List<Integer> mem = new LinkedList<>();
         final Iterator<MapleGuildCharacter> toRemove = members.iterator();
         while (toRemove.hasNext()) {
             MapleGuildCharacter mgc = toRemove.next();
@@ -777,7 +777,7 @@ public class MapleGuild implements java.io.Serializable {
     }
 
     public final List<MapleBBSThread> getBBS() {
-        final List<MapleBBSThread> ret = new ArrayList<MapleBBSThread>(bbs.values());
+        final List<MapleBBSThread> ret = new ArrayList<>(bbs.values());
         Collections.sort(ret, new MapleBBSThread.ThreadComparator());
         return ret;
     }

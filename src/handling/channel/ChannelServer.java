@@ -80,13 +80,13 @@ public class ChannelServer implements Serializable {
      * on any channel looks channels up through it - so it has to be concurrent.
      */
     private static final Map<Integer, ChannelServer> instances = new ConcurrentHashMap<>();
-    private final Map<MapleSquadType, MapleSquad> mapleSquads = new ConcurrentEnumMap<MapleSquadType, MapleSquad>(MapleSquadType.class);
-    private final Map<Integer, HiredMerchant> merchants = new HashMap<Integer, HiredMerchant>();
-    private final Map<Integer, PlayerNPC> playerNPCs = new HashMap<Integer, PlayerNPC>();
+    private final Map<MapleSquadType, MapleSquad> mapleSquads = new ConcurrentEnumMap<>(MapleSquadType.class);
+    private final Map<Integer, HiredMerchant> merchants = new HashMap<>();
+    private final Map<Integer, PlayerNPC> playerNPCs = new HashMap<>();
     private final ReentrantReadWriteLock merchLock = new ReentrantReadWriteLock(); //merchant
     private final ReentrantReadWriteLock squadLock = new ReentrantReadWriteLock(); //squad
     private int eventmap = -1;
-    private final Map<MapleEventType, MapleEvent> events = new EnumMap<MapleEventType, MapleEvent>(MapleEventType.class);
+    private final Map<MapleEventType, MapleEvent> events = new EnumMap<>(MapleEventType.class);
     private boolean debugMode = false;
 
     private ChannelServer(final int channel) {
@@ -96,7 +96,7 @@ public class ChannelServer implements Serializable {
     }
 
     public static Set<Integer> getAllInstance() {
-        return new HashSet<Integer>(instances.keySet());
+        return new HashSet<>(instances.keySet());
     }
 
     public final void loadEvents() {
@@ -423,7 +423,7 @@ public class ChannelServer implements Serializable {
     }
 
     public final List<HiredMerchant> searchMerchant(final int itemSearch) {
-        final List<HiredMerchant> list = new LinkedList<HiredMerchant>();
+        final List<HiredMerchant> list = new LinkedList<>();
         merchLock.readLock().lock();
         try {
             final Iterator itr = merchants.values().iterator();
@@ -496,7 +496,7 @@ public class ChannelServer implements Serializable {
     }
 
     public static final Set<Integer> getChannelServer() {
-        return new HashSet<Integer>(instances.keySet());
+        return new HashSet<>(instances.keySet());
     }
 
     public final void setShutdown() {
@@ -526,7 +526,7 @@ public class ChannelServer implements Serializable {
     }
 
     public static Map<Integer, Integer> getChannelLoad() {
-        Map<Integer, Integer> ret = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> ret = new HashMap<>();
         for (ChannelServer cs : instances.values()) {
             ret.put(cs.getChannel(), cs.getConnectedClients());
         }

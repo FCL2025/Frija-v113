@@ -40,7 +40,7 @@ import tools.data.input.SeekableLittleEndianAccessor;
 public class StatsHandling {
 
     public static final void DistributeAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
-        final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<Pair<MapleStat, Integer>>(2);
+        final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
         c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
         chr.updateTick(slea.readInt());
 
@@ -53,28 +53,28 @@ public class StatsHandling {
                         return;
                     }
                     stat.setStr((short) (stat.getStr() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, (int) stat.getStr()));
+                    statupdate.add(new Pair<>(MapleStat.STR, (int) stat.getStr()));
                     break;
                 case 128: // Dex
                     if (stat.getDex() >= 999) {
                         return;
                     }
                     stat.setDex((short) (stat.getDex() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, (int) stat.getDex()));
+                    statupdate.add(new Pair<>(MapleStat.DEX, (int) stat.getDex()));
                     break;
                 case 256: // Int
                     if (stat.getInt() >= 999) {
                         return;
                     }
                     stat.setInt((short) (stat.getInt() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, (int) stat.getInt()));
+                    statupdate.add(new Pair<>(MapleStat.INT, (int) stat.getInt()));
                     break;
                 case 512: // Luk
                     if (stat.getLuk() >= 999) {
                         return;
                     }
                     stat.setLuk((short) (stat.getLuk() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, (int) stat.getLuk()));
+                    statupdate.add(new Pair<>(MapleStat.LUK, (int) stat.getLuk()));
                     break;
                 case 2048: // HP
                     short maxhp = stat.getMaxHp();
@@ -125,7 +125,7 @@ public class StatsHandling {
                     maxhp = (short) Math.min(30000, Math.abs(maxhp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
                     stat.setMaxHp(maxhp);
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXHP, (int) maxhp));
+                    statupdate.add(new Pair<>(MapleStat.MAXHP, (int) maxhp));
                     break;
                 case 8192: // MP
                     short maxmp = stat.getMaxMp();
@@ -163,14 +163,14 @@ public class StatsHandling {
                     maxmp = (short) Math.min(30000, Math.abs(maxmp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
                     stat.setMaxMp(maxmp);
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXMP, (int) maxmp));
+                    statupdate.add(new Pair<>(MapleStat.MAXMP, (int) maxmp));
                     break;
                 default:
                     c.getSession().write(MaplePacketCreator.updatePlayerStats(MaplePacketCreator.EMPTY_STATUPDATE, true, chr.getJob()));
                     return;
             }
             chr.setRemainingAp((short) (chr.getRemainingAp() - 1));
-            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
+            statupdate.add(new Pair<>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
             c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
         }
     }
@@ -291,7 +291,7 @@ public class StatsHandling {
 
         final PlayerStats playerst = chr.getStat();
 
-        List<Pair<MapleStat, Integer>> statupdate = new ArrayList<Pair<MapleStat, Integer>>(2);
+        List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
         c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
 
         if (chr.getRemainingAp() == amount + amount2) {
@@ -301,28 +301,28 @@ public class StatsHandling {
                         return;
                     }
                     playerst.setStr((short) (playerst.getStr() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, (int) playerst.getStr()));
+                    statupdate.add(new Pair<>(MapleStat.STR, (int) playerst.getStr()));
                     break;
                 case 128: // Dex
                     if (playerst.getDex() + amount > 999) {
                         return;
                     }
                     playerst.setDex((short) (playerst.getDex() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, (int) playerst.getDex()));
+                    statupdate.add(new Pair<>(MapleStat.DEX, (int) playerst.getDex()));
                     break;
                 case 256: // Int
                     if (playerst.getInt() + amount > 999) {
                         return;
                     }
                     playerst.setInt((short) (playerst.getInt() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, (int) playerst.getInt()));
+                    statupdate.add(new Pair<>(MapleStat.INT, (int) playerst.getInt()));
                     break;
                 case 512: // Luk
                     if (playerst.getLuk() + amount > 999) {
                         return;
                     }
                     playerst.setLuk((short) (playerst.getLuk() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, (int) playerst.getLuk()));
+                    statupdate.add(new Pair<>(MapleStat.LUK, (int) playerst.getLuk()));
                     break;
                 default:
                     c.getSession().write(MaplePacketCreator.updatePlayerStats(MaplePacketCreator.EMPTY_STATUPDATE, true, chr.getJob()));
@@ -334,35 +334,35 @@ public class StatsHandling {
                         return;
                     }
                     playerst.setStr((short) (playerst.getStr() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, (int) playerst.getStr()));
+                    statupdate.add(new Pair<>(MapleStat.STR, (int) playerst.getStr()));
                     break;
                 case 128: // Dex
                     if (playerst.getDex() + amount2 > 999) {
                         return;
                     }
                     playerst.setDex((short) (playerst.getDex() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, (int) playerst.getDex()));
+                    statupdate.add(new Pair<>(MapleStat.DEX, (int) playerst.getDex()));
                     break;
                 case 256: // Int
                     if (playerst.getInt() + amount2 > 999) {
                         return;
                     }
                     playerst.setInt((short) (playerst.getInt() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, (int) playerst.getInt()));
+                    statupdate.add(new Pair<>(MapleStat.INT, (int) playerst.getInt()));
                     break;
                 case 512: // Luk
                     if (playerst.getLuk() + amount2 > 999) {
                         return;
                     }
                     playerst.setLuk((short) (playerst.getLuk() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, (int) playerst.getLuk()));
+                    statupdate.add(new Pair<>(MapleStat.LUK, (int) playerst.getLuk()));
                     break;
                 default:
                     c.getSession().write(MaplePacketCreator.updatePlayerStats(MaplePacketCreator.EMPTY_STATUPDATE, true, chr.getJob()));
                     return;
             }
             chr.setRemainingAp((short) (chr.getRemainingAp() - (amount + amount2)));
-            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
+            statupdate.add(new Pair<>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
             c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
         }
     }

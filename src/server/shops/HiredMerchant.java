@@ -46,7 +46,7 @@ public class HiredMerchant extends AbstractPlayerStore {
     public HiredMerchant(MapleCharacter owner, int itemId, String desc) {
         super(owner, itemId, desc, "", 3);
         start = System.currentTimeMillis();
-        blacklist = new LinkedList<String>();
+        blacklist = new LinkedList<>();
         this.schedule = EtcTimer.getInstance().schedule(() -> {
             closeShop(true, true);
         }, 1000 * 60 * 60 * 24);
@@ -61,7 +61,7 @@ public class HiredMerchant extends AbstractPlayerStore {
     }
 
     public List<MaplePlayerShopItem> searchItem(final int itemSearch) {
-        final List<MaplePlayerShopItem> itemz = new LinkedList<MaplePlayerShopItem>();
+        final List<MaplePlayerShopItem> itemz = new LinkedList<>();
         for (MaplePlayerShopItem item : items) {
             if (item.item.getItemId() == itemSearch && item.bundles > 0) {
                 itemz.add(item);

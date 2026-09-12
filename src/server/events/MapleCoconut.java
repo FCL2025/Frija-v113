@@ -31,7 +31,7 @@ import tools.MaplePacketCreator;
 
 public class MapleCoconut extends MapleEvent {
 
-    private List<MapleCoconuts> coconuts = new LinkedList<MapleCoconuts>();
+    private List<MapleCoconuts> coconuts = new LinkedList<>();
     private int[] coconutscore = new int[2];
     private int countBombing = 0;
     private int countFalling = 0;

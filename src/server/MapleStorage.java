@@ -32,12 +32,12 @@ public class MapleStorage implements Serializable {
     private int meso;
     private byte slots;
     private boolean changed = false;
-    private Map<MapleInventoryType, List<IItem>> typeItems = new EnumMap<MapleInventoryType, List<IItem>>(MapleInventoryType.class);
+    private Map<MapleInventoryType, List<IItem>> typeItems = new EnumMap<>(MapleInventoryType.class);
 
     private MapleStorage(int id, byte slots, int meso, int accountId) {
         this.id = id;
         this.slots = slots;
-        this.items = new LinkedList<IItem>();
+        this.items = new LinkedList<>();
         this.meso = meso;
         this.accountId = accountId;
     }
@@ -116,7 +116,7 @@ public class MapleStorage implements Serializable {
         changed = true;
         IItem ret = items.remove(slot);
         MapleInventoryType type = GameConstants.getInventoryType(ret.getItemId());
-        typeItems.put(type, new ArrayList<IItem>(filterItems(type)));
+        typeItems.put(type, new ArrayList<>(filterItems(type)));
         return ret;
     }
 
@@ -124,7 +124,7 @@ public class MapleStorage implements Serializable {
         changed = true;
         items.add(item);
         MapleInventoryType type = GameConstants.getInventoryType(item.getItemId());
-        typeItems.put(type, new ArrayList<IItem>(filterItems(type)));
+        typeItems.put(type, new ArrayList<>(filterItems(type)));
     }
 
     public List<IItem> getItems() {
@@ -132,7 +132,7 @@ public class MapleStorage implements Serializable {
     }
 
     private List<IItem> filterItems(MapleInventoryType type) {
-        List<IItem> ret = new LinkedList<IItem>();
+        List<IItem> ret = new LinkedList<>();
 
         for (IItem item : items) {
             if (GameConstants.getInventoryType(item.getItemId()) == type) {
@@ -169,7 +169,7 @@ public class MapleStorage implements Serializable {
             }
         });
         for (MapleInventoryType type : MapleInventoryType.values()) {
-            typeItems.put(type, new ArrayList<IItem>(items));
+            typeItems.put(type, new ArrayList<>(items));
         }
         c.getSession().write(MaplePacketCreator.getStorage(npcId, slots, items, meso));
     }

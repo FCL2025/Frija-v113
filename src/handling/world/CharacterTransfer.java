@@ -55,13 +55,13 @@ public class CharacterTransfer implements Externalizable {
     public Object inventorys, skillmacro, storage, cs;
     public int[] savedlocation, wishlist, rocks, remainingSp, regrocks;
     public byte[] petStore;
-    public Map<Integer, Integer> mbook = new LinkedHashMap<Integer, Integer>();
-    public Map<Integer, Pair<Byte, Integer>> keymap = new LinkedHashMap<Integer, Pair<Byte, Integer>>();
-    public final List<Integer> finishedAchievements = new ArrayList<Integer>(), famedcharacters = new ArrayList<Integer>();
-    public final Map<CharacterNameAndId, Boolean> buddies = new LinkedHashMap<CharacterNameAndId, Boolean>();
-    public final Map<Integer, Object> Quest = new LinkedHashMap<Integer, Object>(); // Questid instead of MapleQuest, as it's huge. Cant be transporting MapleQuest.java
-    public Map<Integer, String> InfoQuest = new LinkedHashMap<Integer, String>();
-    public final Map<Integer, SkillEntry> Skills = new LinkedHashMap<Integer, SkillEntry>(); // Skillid instead of Skill.java, as it's huge. Cant be transporting Skill.java and MapleStatEffect.java
+    public Map<Integer, Integer> mbook = new LinkedHashMap<>();
+    public Map<Integer, Pair<Byte, Integer>> keymap = new LinkedHashMap<>();
+    public final List<Integer> finishedAchievements = new ArrayList<>(), famedcharacters = new ArrayList<>();
+    public final Map<CharacterNameAndId, Boolean> buddies = new LinkedHashMap<>();
+    public final Map<Integer, Object> Quest = new LinkedHashMap<>(); // Questid instead of MapleQuest, as it's huge. Cant be transporting MapleQuest.java
+    public Map<Integer, String> InfoQuest = new LinkedHashMap<>();
+    public final Map<Integer, SkillEntry> Skills = new LinkedHashMap<>(); // Skillid instead of Skill.java, as it's huge. Cant be transporting Skill.java and MapleStatEffect.java
 
     public CharacterTransfer() {
     }
@@ -342,7 +342,7 @@ public class CharacterTransfer implements Externalizable {
 
         final int keysize = in.readInt();
         for (int i = 0; i < keysize; i++) {
-            this.keymap.put(in.readInt(), new Pair<Byte, Integer>(in.readByte(), in.readInt()));
+            this.keymap.put(in.readInt(), new Pair<>(in.readByte(), in.readInt()));
         }
         this.petStore = new byte[in.readByte()];
         for (int i = 0; i < 3; i++) {

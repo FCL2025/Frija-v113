@@ -44,7 +44,7 @@ public class MapleMonsterInformationProvider {
      * Panel-Worker-N thread, so it has to be concurrent. The per-monster lists
      * are still filled in outside the map - see {@link #retrieveDrop}.
      */
-    private final Map<Integer, List<MonsterDropEntry>> drops = new ConcurrentHashMap<Integer, List<MonsterDropEntry>>();
+    private final Map<Integer, List<MonsterDropEntry>> drops = new ConcurrentHashMap<>();
     /**
      * The global drop table is not looked up per monster, so it is a whole list
      * that a reload <em>replaces</em> rather than empties and refills: a reader
@@ -52,7 +52,7 @@ public class MapleMonsterInformationProvider {
      * empty middle of a reload, and never a list being appended to while it
      * walks it. The list itself is never mutated once published.
      */
-    private volatile List<MonsterGlobalDropEntry> globaldrops = new ArrayList<MonsterGlobalDropEntry>();
+    private volatile List<MonsterGlobalDropEntry> globaldrops = new ArrayList<>();
 
     protected MapleMonsterInformationProvider() {
         retrieveGlobal();
@@ -67,7 +67,7 @@ public class MapleMonsterInformationProvider {
     }
 
     private final void retrieveGlobal() {
-        final List<MonsterGlobalDropEntry> fresh = new ArrayList<MonsterGlobalDropEntry>();
+        final List<MonsterGlobalDropEntry> fresh = new ArrayList<>();
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT * FROM drop_data_global WHERE chance > 0");
@@ -97,7 +97,7 @@ public class MapleMonsterInformationProvider {
         if (cached != null) {
             return cached;
         }
-        final List<MonsterDropEntry> ret = new LinkedList<MonsterDropEntry>();
+        final List<MonsterDropEntry> ret = new LinkedList<>();
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT * FROM drop_data WHERE dropperid = ?")) {

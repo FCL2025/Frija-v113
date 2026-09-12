@@ -37,7 +37,7 @@ public class PetDataFactory {
 
     public static final PetCommand getPetCommand(final int petId, final int skillId) {
         // Neither loader re-enters petCommands/petHunger, so computeIfAbsent is safe here.
-        return petCommands.computeIfAbsent(new Pair<Integer, Integer>(Integer.valueOf(petId), Integer.valueOf(skillId)), key -> {
+        return petCommands.computeIfAbsent(new Pair<>(Integer.valueOf(petId), Integer.valueOf(skillId)), key -> {
             final MapleData skillData = dataRoot.getData("Pet/" + petId + ".img");
             int prob = 0;
             int inc = 0;

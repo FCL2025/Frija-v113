@@ -62,7 +62,7 @@ public class PlayerStorage {
             // would still be backed live by idToChar, so a caller iterating it after this
             // method returns (i.e. after rL is released) could still race a concurrent
             // registerPlayer/deregisterPlayer and get a ConcurrentModificationException.
-            return Collections.unmodifiableList(new ArrayList<MapleCharacter>(idToChar.values()));
+            return Collections.unmodifiableList(new ArrayList<>(idToChar.values()));
         } finally {
             rL.unlock();
         }

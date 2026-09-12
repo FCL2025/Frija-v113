@@ -56,7 +56,7 @@ public class PortalScriptManager {
      * That negative has to keep working: without it every step into such a
      * portal would read and recompile a script file.
      */
-    private final Map<String, Optional<PortalScript>> scripts = new ConcurrentHashMap<String, Optional<PortalScript>>();
+    private final Map<String, Optional<PortalScript>> scripts = new ConcurrentHashMap<>();
     private final static ScriptEngineFactory sef = findNashorn();
 
     /**

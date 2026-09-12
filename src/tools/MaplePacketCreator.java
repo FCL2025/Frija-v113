@@ -541,8 +541,8 @@ public class MaplePacketCreator {
         mplew.write(0);
         mplew.writeInt(npc.getHair());
         Map<Byte, Integer> equip = npc.getEquips();
-        Map<Byte, Integer> myEquip = new LinkedHashMap<Byte, Integer>();
-        Map<Byte, Integer> maskedEquip = new LinkedHashMap<Byte, Integer>();
+        Map<Byte, Integer> myEquip = new LinkedHashMap<>();
+        Map<Byte, Integer> maskedEquip = new LinkedHashMap<>();
         for (Entry<Byte, Integer> position : equip.entrySet()) {
             byte pos = (byte) (position.getKey() * -1);
             if (pos < 100 && myEquip.get(pos) == null) {
@@ -820,7 +820,7 @@ public class MaplePacketCreator {
             }
         }
         //mplew.writeInt(3); after aftershock
-        List<Pair<Integer, Boolean>> buffvalue = new ArrayList<Pair<Integer, Boolean>>();
+        List<Pair<Integer, Boolean>> buffvalue = new ArrayList<>();
         long fbuffmask = 0xFFFC0000000000L; //becomes F8000000 after bb?
         //if (chr.getBuffedValue(MapleBuffStat.FINAL_CUT) != null) {
         //    fbuffmask |= MapleBuffStat.FINAL_CUT.getValue();
@@ -866,7 +866,7 @@ public class MaplePacketCreator {
         }
         if (chr.getBuffedValue(MapleBuffStat.COMBO) != null) {
             buffmask |= MapleBuffStat.COMBO.getValue();
-            buffvalue.add(new Pair<Integer, Boolean>(Integer.valueOf(chr.getBuffedValue(MapleBuffStat.COMBO).intValue()), false));
+            buffvalue.add(new Pair<>(Integer.valueOf(chr.getBuffedValue(MapleBuffStat.COMBO).intValue()), false));
         }
         if (chr.getBuffedValue(MapleBuffStat.SHADOWPARTNER) != null) {
             buffmask |= MapleBuffStat.SHADOWPARTNER.getValue();
@@ -882,7 +882,7 @@ public class MaplePacketCreator {
         }
         if (chr.getBuffedValue(MapleBuffStat.MORPH) != null) {
             buffmask |= MapleBuffStat.MORPH.getValue();
-            buffvalue.add(new Pair<Integer, Boolean>(Integer.valueOf(chr.getBuffedValue(MapleBuffStat.MORPH).intValue()), true));
+            buffvalue.add(new Pair<>(Integer.valueOf(chr.getBuffedValue(MapleBuffStat.MORPH).intValue()), true));
         }
 
         mplew.writeLong(buffmask);
@@ -1734,7 +1734,7 @@ public class MaplePacketCreator {
 
         IItem medal = chr.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -21);
         mplew.writeInt(medal == null ? 0 : medal.getItemId());
-        List<Integer> medalQuests = new ArrayList<Integer>();
+        List<Integer> medalQuests = new ArrayList<>();
         List<MapleQuestStatus> completed = chr.getCompletedQuests();
         for (MapleQuestStatus q : completed) {
             if (q.getQuest().getMedalItem() > 0 && GameConstants.getInventoryType(q.getQuest().getMedalItem()) == MapleInventoryType.EQUIP) { //chair kind medal viewmedal is weird
@@ -2680,7 +2680,7 @@ public class MaplePacketCreator {
     }
 
     private static void addPartyStatus(int forchannel, MapleParty party, LittleEndianWriter lew, boolean leaving) {
-        List<MaplePartyCharacter> partymembers = new ArrayList<MaplePartyCharacter>(party.getMembers());
+        List<MaplePartyCharacter> partymembers = new ArrayList<>(party.getMembers());
         while (partymembers.size() < 6) {
             partymembers.add(new MaplePartyCharacter());
         }
@@ -4252,29 +4252,29 @@ public class MaplePacketCreator {
     }
 
     public static final MaplePacket temporaryStats_Aran() {
-        final List<Pair<MapleStat.Temp, Integer>> stats = new ArrayList<Pair<MapleStat.Temp, Integer>>();
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.STR, 999));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.DEX, 999));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.INT, 999));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.LUK, 999));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.WATK, 255));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.ACC, 999));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.AVOID, 999));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.SPEED, 140));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.JUMP, 120));
+        final List<Pair<MapleStat.Temp, Integer>> stats = new ArrayList<>();
+        stats.add(new Pair<>(MapleStat.Temp.STR, 999));
+        stats.add(new Pair<>(MapleStat.Temp.DEX, 999));
+        stats.add(new Pair<>(MapleStat.Temp.INT, 999));
+        stats.add(new Pair<>(MapleStat.Temp.LUK, 999));
+        stats.add(new Pair<>(MapleStat.Temp.WATK, 255));
+        stats.add(new Pair<>(MapleStat.Temp.ACC, 999));
+        stats.add(new Pair<>(MapleStat.Temp.AVOID, 999));
+        stats.add(new Pair<>(MapleStat.Temp.SPEED, 140));
+        stats.add(new Pair<>(MapleStat.Temp.JUMP, 120));
         return temporaryStats(stats);
     }
 
     public static final MaplePacket temporaryStats_Balrog(final MapleCharacter chr) {
-        final List<Pair<MapleStat.Temp, Integer>> stats = new ArrayList<Pair<MapleStat.Temp, Integer>>();
+        final List<Pair<MapleStat.Temp, Integer>> stats = new ArrayList<>();
         int offset = 1 + (chr.getLevel() - 90) / 20;
         //every 20 levels above 90, +1
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.STR, chr.getStat().getTotalStr() / offset));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.DEX, chr.getStat().getTotalDex() / offset));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.INT, chr.getStat().getTotalInt() / offset));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.LUK, chr.getStat().getTotalLuk() / offset));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.WATK, chr.getStat().getTotalWatk() / offset));
-        stats.add(new Pair<MapleStat.Temp, Integer>(MapleStat.Temp.MATK, chr.getStat().getTotalMagic() / offset));
+        stats.add(new Pair<>(MapleStat.Temp.STR, chr.getStat().getTotalStr() / offset));
+        stats.add(new Pair<>(MapleStat.Temp.DEX, chr.getStat().getTotalDex() / offset));
+        stats.add(new Pair<>(MapleStat.Temp.INT, chr.getStat().getTotalInt() / offset));
+        stats.add(new Pair<>(MapleStat.Temp.LUK, chr.getStat().getTotalLuk() / offset));
+        stats.add(new Pair<>(MapleStat.Temp.WATK, chr.getStat().getTotalWatk() / offset));
+        stats.add(new Pair<>(MapleStat.Temp.MATK, chr.getStat().getTotalMagic() / offset));
         return temporaryStats(stats);
     }
 

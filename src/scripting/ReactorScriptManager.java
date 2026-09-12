@@ -47,7 +47,7 @@ public class ReactorScriptManager extends AbstractScriptManager {
      * Panel-Worker-N thread. Concurrent for that reason alone - the lists in it
      * are built and finished before they ever go into the map.
      */
-    private final Map<Integer, List<ReactorDropEntry>> drops = new ConcurrentHashMap<Integer, List<ReactorDropEntry>>();
+    private final Map<Integer, List<ReactorDropEntry>> drops = new ConcurrentHashMap<>();
 
     public static final ReactorScriptManager getInstance() {
         return instance;
@@ -76,7 +76,7 @@ public class ReactorScriptManager extends AbstractScriptManager {
         if (ret != null) {
             return ret;
         }
-        ret = new LinkedList<ReactorDropEntry>();
+        ret = new LinkedList<>();
 
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT * FROM reactordrops WHERE reactorid = ?")) {

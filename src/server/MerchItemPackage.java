@@ -9,7 +9,7 @@ public class MerchItemPackage {
 
     private long sentTime;
     private int mesos = 0, packageid;
-    private List<IItem> items = new ArrayList<IItem>();
+    private List<IItem> items = new ArrayList<>();
 
     public void setItems(List<IItem> items) {
         this.items = items;

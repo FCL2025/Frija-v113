@@ -962,7 +962,7 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
                 System.out.println("slea.available != 13-26 (movement parsing error)\n" + slea.toString(true));
                 return;
             }
-            final List<LifeMovementFragment> res2 = new ArrayList<LifeMovementFragment>(res);
+            final List<LifeMovementFragment> res2 = new ArrayList<>(res);
             final MapleMap map = c.getPlayer().getMap();
 
             if (chr.isHidden()) {
@@ -995,7 +995,7 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
             for (int i = 0; i < clones.length; i++) {
                 if (clones[i].get() != null) {
                     final MapleCharacter clone = clones[i].get();
-                    final List<LifeMovementFragment> res3 = new ArrayList<LifeMovementFragment>(res2);
+                    final List<LifeMovementFragment> res3 = new ArrayList<>(res2);
                     CloneTimer.getInstance().schedule(() -> {
                         try {
                             if (clone.getMap() == map) {

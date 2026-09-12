@@ -69,7 +69,7 @@ public class SummonHandler {
                 if (clones[i].get() != null) {
                     final MapleMap map = chr.getMap();
                     final MapleCharacter clone = clones[i].get();
-                    final List<LifeMovementFragment> res3 = new ArrayList<LifeMovementFragment>(res);
+                    final List<LifeMovementFragment> res3 = new ArrayList<>(res);
                     CloneTimer.getInstance().schedule(() -> {
                         try {
                             if (clone.getMap() == map && clone.getDragon() != null) {
@@ -164,7 +164,7 @@ public class SummonHandler {
             return;
         }
         slea.skip(8); //some pos stuff
-        final List<SummonAttackEntry> allDamage = new ArrayList<SummonAttackEntry>();
+        final List<SummonAttackEntry> allDamage = new ArrayList<>();
         chr.getCheatTracker().checkSummonAttack();
 
         for (int i = 0; i < numAttacked; i++) {

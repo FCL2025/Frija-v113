@@ -33,7 +33,7 @@ import provider.WzXML.MapleDataType;
 public class MapleCustomQuestData implements MapleData, Serializable {
 
     private static final long serialVersionUID = -8600005891655365066L;
-    private List<MapleCustomQuestData> children = new LinkedList<MapleCustomQuestData>();
+    private List<MapleCustomQuestData> children = new LinkedList<>();
     private String name;
     private Object data;
     private MapleDataEntity parent;
@@ -59,7 +59,7 @@ public class MapleCustomQuestData implements MapleData, Serializable {
     public List<MapleData> getChildren() {
         MapleData[] ret = new MapleData[children.size()];
         ret = children.toArray(ret);
-        return new ArrayList<MapleData>(Arrays.asList(ret));
+        return new ArrayList<>(Arrays.asList(ret));
     }
 
     public MapleData getChildByPath(String name) {

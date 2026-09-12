@@ -19,9 +19,9 @@ public class MapleShopFactory {
      * id both run {@code createFromDB} and store equivalent shops, which is
      * cheaper than serialising every miss behind the database call.
      */
-    private final Map<Integer, Optional<MapleShop>> shops = new ConcurrentHashMap<Integer, Optional<MapleShop>>();
+    private final Map<Integer, Optional<MapleShop>> shops = new ConcurrentHashMap<>();
     /** The same shops again, keyed by the NPC that opens them; see {@link #shops}. */
-    private final Map<Integer, Optional<MapleShop>> npcShops = new ConcurrentHashMap<Integer, Optional<MapleShop>>();
+    private final Map<Integer, Optional<MapleShop>> npcShops = new ConcurrentHashMap<>();
     private static final MapleShopFactory instance = new MapleShopFactory();
 
     public static MapleShopFactory getInstance() {

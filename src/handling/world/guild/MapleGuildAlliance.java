@@ -75,7 +75,7 @@ public class MapleGuildAlliance implements java.io.Serializable {
     }
 
     public static final Collection<MapleGuildAlliance> loadAll() {
-        final Collection<MapleGuildAlliance> ret = new ArrayList<MapleGuildAlliance>();
+        final Collection<MapleGuildAlliance> ret = new ArrayList<>();
         MapleGuildAlliance g;
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT id FROM alliances");

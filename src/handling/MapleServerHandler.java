@@ -74,7 +74,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
      * which is what it was, with no lock anywhere near it.
      */
     private final Set<String> BlockedIP = ConcurrentHashMap.newKeySet();
-    private final Map<String, Pair<Long, Byte>> tracker = new ConcurrentHashMap<String, Pair<Long, Byte>>();
+    private final Map<String, Pair<Long, Byte>> tracker = new ConcurrentHashMap<>();
     private static final String nl = System.lineSeparator();
     /**
      * Opt-in list of IPs to keep a full packet log for, one address per line;

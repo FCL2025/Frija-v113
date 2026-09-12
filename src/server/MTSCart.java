@@ -42,9 +42,9 @@ public class MTSCart implements Serializable {
     //tab; 1 = buy now, 2 = wanted, 3 = auction, 4 = cart
     //type = inventorytype; 0 = anything
     //page = whatever
-    private List<IItem> transfer = new ArrayList<IItem>();
-    private List<Integer> cart = new ArrayList<Integer>();
-    private List<Integer> notYetSold = new ArrayList<Integer>(10);
+    private List<IItem> transfer = new ArrayList<>();
+    private List<Integer> cart = new ArrayList<>();
+    private List<Integer> notYetSold = new ArrayList<>(10);
     private int owedNX = 0;
 
     public MTSCart(int characterId) throws SQLException {
@@ -115,10 +115,10 @@ public class MTSCart implements Serializable {
     }
 
     public void save() throws SQLException {
-        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<Pair<IItem, MapleInventoryType>>();
+        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<>();
 
         for (IItem item : getInventory()) {
-            itemsWithType.add(new Pair<IItem, MapleInventoryType>(item, GameConstants.getInventoryType(item.getItemId())));
+            itemsWithType.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
         }
 
         ItemLoader.MTS_TRANSFER.saveItems(itemsWithType, characterId);

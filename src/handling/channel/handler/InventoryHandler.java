@@ -149,7 +149,7 @@ public class InventoryHandler {
         final MapleInventoryType invType = MapleInventoryType.getByType(mode);
         MapleInventory Inv = c.getPlayer().getInventory(invType);
 
-        final List<IItem> itemMap = new LinkedList<IItem>();
+        final List<IItem> itemMap = new LinkedList<>();
         for (IItem item : Inv.list()) {
             itemMap.add(item.copy()); // clone all  items T___T.
         }
@@ -168,13 +168,13 @@ public class InventoryHandler {
     }
 
     private static final List<IItem> sortItems(final List<IItem> passedMap) {
-        final List<Integer> itemIds = new ArrayList<Integer>(); // empty list.
+        final List<Integer> itemIds = new ArrayList<>(); // empty list.
         for (IItem item : passedMap) {
             itemIds.add(item.getItemId()); // adds all item ids to the empty list to be sorted.
         }
         Collections.sort(itemIds); // sorts item ids
 
-        final List<IItem> sortedList = new LinkedList<IItem>(); // ordered list pl0x <3.
+        final List<IItem> sortedList = new LinkedList<>(); // ordered list pl0x <3.
 
         for (Integer val : itemIds) {
             for (IItem item : passedMap) {
@@ -299,7 +299,7 @@ public class InventoryHandler {
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         final int reqLevel = ii.getReqLevel(eqq.getItemId()) / 10;
         if (eqq.getState() == 1 && (magnify.getItemId() == 2460003 || (magnify.getItemId() == 2460002 && reqLevel <= 12) || (magnify.getItemId() == 2460001 && reqLevel <= 7) || (magnify.getItemId() == 2460000 && reqLevel <= 3))) {
-            final List<List<StructPotentialItem>> pots = new LinkedList<List<StructPotentialItem>>(ii.getAllPotentialInfo().values());
+            final List<List<StructPotentialItem>> pots = new LinkedList<>(ii.getAllPotentialInfo().values());
             int new_state = Math.abs(eqq.getPotential1());
             if (new_state > 7 || new_state < 5) { //luls
                 new_state = 5;
@@ -990,7 +990,7 @@ public class InventoryHandler {
                 break;
             }
             case 5050000: { // AP Reset
-                List<Pair<MapleStat, Integer>> statupdate = new ArrayList<Pair<MapleStat, Integer>>(2);
+                List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
                 final int apto = slea.readInt();
                 final int apfrom = slea.readInt();
 
@@ -1070,25 +1070,25 @@ public class InventoryHandler {
                         case 64: { // str
                             final int toSet = playerst.getStr() + 1;
                             playerst.setStr((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, toSet));
+                            statupdate.add(new Pair<>(MapleStat.STR, toSet));
                             break;
                         }
                         case 128: { // dex
                             final int toSet = playerst.getDex() + 1;
                             playerst.setDex((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, toSet));
+                            statupdate.add(new Pair<>(MapleStat.DEX, toSet));
                             break;
                         }
                         case 256: { // int
                             final int toSet = playerst.getInt() + 1;
                             playerst.setInt((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, toSet));
+                            statupdate.add(new Pair<>(MapleStat.INT, toSet));
                             break;
                         }
                         case 512: { // luk
                             final int toSet = playerst.getLuk() + 1;
                             playerst.setLuk((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, toSet));
+                            statupdate.add(new Pair<>(MapleStat.LUK, toSet));
                             break;
                         }
                         case 2048: // hp
@@ -1138,7 +1138,7 @@ public class InventoryHandler {
                             maxhp = (short) Math.min(30000, Math.abs(maxhp));
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
                             playerst.setMaxHp(maxhp);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXHP, (int) maxhp));
+                            statupdate.add(new Pair<>(MapleStat.MAXHP, (int) maxhp));
                             break;
 
                         case 8192: // mp
@@ -1174,32 +1174,32 @@ public class InventoryHandler {
                             maxmp = (short) Math.min(30000, Math.abs(maxmp));
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
                             playerst.setMaxMp(maxmp);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXMP, (int) maxmp));
+                            statupdate.add(new Pair<>(MapleStat.MAXMP, (int) maxmp));
                             break;
                     }
                     switch (apfrom) { // AP from
                         case 64: { // str
                             final int toSet = playerst.getStr() - 1;
                             playerst.setStr((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, toSet));
+                            statupdate.add(new Pair<>(MapleStat.STR, toSet));
                             break;
                         }
                         case 128: { // dex
                             final int toSet = playerst.getDex() - 1;
                             playerst.setDex((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, toSet));
+                            statupdate.add(new Pair<>(MapleStat.DEX, toSet));
                             break;
                         }
                         case 256: { // int
                             final int toSet = playerst.getInt() - 1;
                             playerst.setInt((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, toSet));
+                            statupdate.add(new Pair<>(MapleStat.INT, toSet));
                             break;
                         }
                         case 512: { // luk
                             final int toSet = playerst.getLuk() - 1;
                             playerst.setLuk((short) toSet);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, toSet));
+                            statupdate.add(new Pair<>(MapleStat.LUK, toSet));
                             break;
                         }
                         case 2048: // HP
@@ -1248,7 +1248,7 @@ public class InventoryHandler {
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
                             playerst.setHp(maxhp);
                             playerst.setMaxHp(maxhp);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXHP, (int) maxhp));
+                            statupdate.add(new Pair<>(MapleStat.MAXHP, (int) maxhp));
                             break;
                         case 8192: // MP
                             short maxmp = playerst.getMaxMp();
@@ -1282,7 +1282,7 @@ public class InventoryHandler {
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
                             playerst.setMp(maxmp);
                             playerst.setMaxMp(maxmp);
-                            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXMP, (int) maxmp));
+                            statupdate.add(new Pair<>(MapleStat.MAXMP, (int) maxmp));
                             break;
                     }
                     c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, c.getPlayer().getJob()));
@@ -1646,7 +1646,7 @@ public class InventoryHandler {
                     if (numLines > 3) {
                         return;
                     }
-                    final List<String> messages = new LinkedList<String>();
+                    final List<String> messages = new LinkedList<>();
                     String message;
                     for (int i = 0; i < numLines; i++) {
                         message = slea.readMapleAsciiString();
@@ -2195,7 +2195,7 @@ public class InventoryHandler {
             }
             if (mapitem.getMeso() > 0) {
                 if (chr.getParty() != null && mapitem.getOwner() != chr.getId()) {
-                    final List<MapleCharacter> toGive = new LinkedList<MapleCharacter>();
+                    final List<MapleCharacter> toGive = new LinkedList<>();
 
                     for (MaplePartyCharacter z : chr.getParty().getMembers()) {
                         MapleCharacter m = chr.getMap().getCharacterById(z.getId());
@@ -2277,7 +2277,7 @@ public class InventoryHandler {
 
             if (mapitem.getMeso() > 0) {
                 if (chr.getParty() != null && mapitem.getOwner() != chr.getId()) {
-                    final List<MapleCharacter> toGive = new LinkedList<MapleCharacter>();
+                    final List<MapleCharacter> toGive = new LinkedList<>();
                     final int splitMeso = mapitem.getMeso() * 40 / 100;
                     for (MaplePartyCharacter z : chr.getParty().getMembers()) {
                         MapleCharacter m = chr.getMap().getCharacterById(z.getId());

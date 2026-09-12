@@ -45,7 +45,7 @@ public class MobAttackInfoFactory {
     }
 
     public MobAttackInfo getMobAttackInfo(MapleMonster mob, int attack) {
-        final Pair<Integer, Integer> key = new Pair<Integer, Integer>(Integer.valueOf(mob.getId()), Integer.valueOf(attack));
+        final Pair<Integer, Integer> key = new Pair<>(Integer.valueOf(mob.getId()), Integer.valueOf(attack));
         MobAttackInfo ret = mobAttacks.get(key);
         if (ret != null) {
             return ret == NOT_FOUND ? null : ret;

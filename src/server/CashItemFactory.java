@@ -98,7 +98,7 @@ public class CashItemFactory {
             } catch (NumberFormatException e) {
                 continue;
             }
-            final List<CashItemInfo> packageItems = new ArrayList<CashItemInfo>();
+            final List<CashItemInfo> packageItems = new ArrayList<>();
             for (MapleData d : sns.getChildren()) {
                 // itemStats may not know the SN; the old code added the null too.
                 packageItems.add(itemStats.get(Integer.valueOf(MapleDataTool.getIntConvert(d))));

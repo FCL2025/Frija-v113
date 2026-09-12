@@ -61,7 +61,7 @@ public class EventManager {
     private static int[] eventChannel = new int[2];
     private Invocable iv;
     private int channel;
-    private Map<String, EventInstanceManager> instances = new WeakHashMap<String, EventInstanceManager>();
+    private Map<String, EventInstanceManager> instances = new WeakHashMap<>();
     private Properties props = new Properties();
     private String name;
 
@@ -335,7 +335,7 @@ public class EventManager {
     }
 
     public List<MapleCharacter> newCharList() {
-        return new ArrayList<MapleCharacter>();
+        return new ArrayList<>();
     }
 
     public MapleMonster getMonster(final int id) {

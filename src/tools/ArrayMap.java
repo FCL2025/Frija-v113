@@ -140,7 +140,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * Class constructor
      */
     public ArrayMap() {
-        list = new ArrayList<Entry<K, V>>();
+        list = new ArrayList<>();
     }
 
     /**
@@ -150,7 +150,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * import.
      */
     public ArrayMap(Map<K, V> map) {
-        list = new ArrayList<Entry<K, V>>();
+        list = new ArrayList<>();
         putAll(map);
     }
 
@@ -160,7 +160,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * @param initialCapacity The initial size of the ArrayMap.
      */
     public ArrayMap(int initialCapacity) {
-        list = new ArrayList<Entry<K, V>>(initialCapacity);
+        list = new ArrayList<>(initialCapacity);
     }
 
     /**
@@ -226,7 +226,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
             oldValue = entry.getValue();
             entry.setValue(value);
         } else {
-            list.add(new Entry<K, V>(key, value));
+            list.add(new Entry<>(key, value));
         }
         return oldValue;
     }

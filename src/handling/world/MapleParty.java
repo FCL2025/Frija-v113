@@ -38,7 +38,7 @@ public class MapleParty implements Serializable {
     // while World.Party is mutating it; CopyOnWriteArrayList makes every read a
     // safe, consistent snapshot regardless of concurrent mutation.
     private volatile MaplePartyCharacter leader;
-    private final List<MaplePartyCharacter> members = new CopyOnWriteArrayList<MaplePartyCharacter>();
+    private final List<MaplePartyCharacter> members = new CopyOnWriteArrayList<>();
     private int id;
 
     public MapleParty(int id, MaplePartyCharacter chrfor) {
@@ -86,7 +86,7 @@ public class MapleParty implements Serializable {
         // (handlers, scripts, packet builders) without knowing about World.Party's
         // lock, so a live reference here would be a ConcurrentModificationException
         // (or a torn read) waiting to happen even with a thread-safe backing list.
-        return Collections.unmodifiableList(new ArrayList<MaplePartyCharacter>(members));
+        return Collections.unmodifiableList(new ArrayList<>(members));
     }
 
     public int getId() {

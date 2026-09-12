@@ -33,8 +33,8 @@ import java.util.Map;
 
 public class RankingWorker {
 
-    private final Map<Integer, List<RankingInformation>> rankings = new HashMap<Integer, List<RankingInformation>>();
-    private final Map<String, Integer> jobCommands = new HashMap<String, Integer>();
+    private final Map<Integer, List<RankingInformation>> rankings = new HashMap<>();
+    private final Map<String, Integer> jobCommands = new HashMap<>();
     private static RankingWorker instance;
 
     public static final RankingWorker getInstance() {
@@ -77,10 +77,10 @@ public class RankingWorker {
              ResultSet rs = charSelect.executeQuery();
              PreparedStatement ps = con.prepareStatement("UPDATE characters SET jobRank = ?, jobRankMove = ?, rank = ?, rankMove = ? WHERE id = ?")) {
             int rank = 0; //for "all"
-            final Map<Integer, Integer> rankMap = new LinkedHashMap<Integer, Integer>();
+            final Map<Integer, Integer> rankMap = new LinkedHashMap<>();
             for (int i : jobCommands.values()) {
                 rankMap.put(i, 0); //job to rank
-                rankings.put(i, new ArrayList<RankingInformation>());
+                rankings.put(i, new ArrayList<>());
             }
             while (rs.next()) {
                 int job = rs.getInt("job");

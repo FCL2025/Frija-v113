@@ -65,8 +65,8 @@ public class CashShopDumper {
         CashItemFactory.getInstance().initialize();
         Collection<CashModInfo> list = CashItemFactory.getInstance().getAllModInfo();
 
-        final List<Integer> itemids = new ArrayList<Integer>();
-        List<Integer> qq = new ArrayList<Integer>();
+        final List<Integer> itemids = new ArrayList<>();
+        List<Integer> qq = new ArrayList<>();
 
         Map<Integer, List<String>> dics = new HashMap<>();
 

@@ -56,9 +56,9 @@ public class AutobanManager implements Runnable {
             Comparator.comparingLong((ExpirationEntry e) -> e.time)
                     .thenComparingInt(e -> e.acc)
                     .thenComparingInt(e -> e.points);
-    private Map<Integer, Integer> points = new HashMap<Integer, Integer>();
-    private Map<Integer, List<String>> reasons = new HashMap<Integer, List<String>>();
-    private Set<ExpirationEntry> expirations = new TreeSet<ExpirationEntry>();
+    private Map<Integer, Integer> points = new HashMap<>();
+    private Map<Integer, List<String>> reasons = new HashMap<>();
+    private Set<ExpirationEntry> expirations = new TreeSet<>();
     private static final int AUTOBAN_POINTS = 5000;
     private static AutobanManager instance = new AutobanManager();
     private final ReentrantLock lock = new ReentrantLock(true);
@@ -91,7 +91,7 @@ public class AutobanManager implements Runnable {
                 reasonList.add(reason);
             } else {
                 this.points.put(acc, points);
-                reasonList = new LinkedList<String>();
+                reasonList = new LinkedList<>();
                 reasonList.add(reason);
                 this.reasons.put(acc, reasonList);
             }

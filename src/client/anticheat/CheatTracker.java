@@ -45,7 +45,7 @@ public class CheatTracker {
 
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final Lock rL = lock.readLock(), wL = lock.writeLock();
-    private final Map<CheatingOffense, CheatingOffenseEntry> offenses = new LinkedHashMap<CheatingOffense, CheatingOffenseEntry>();
+    private final Map<CheatingOffense, CheatingOffenseEntry> offenses = new LinkedHashMap<>();
     private final WeakReference<MapleCharacter> chr;
     // For keeping track of speed attack hack.
     private int lastAttackTickCount = 0;
@@ -73,7 +73,7 @@ public class CheatTracker {
     private long[] lastTime = new long[6];
 
     public CheatTracker(final MapleCharacter chr) {
-        this.chr = new WeakReference<MapleCharacter>(chr);
+        this.chr = new WeakReference<>(chr);
         invalidationTask = CheatTimer.getInstance().register(new InvalidationTask(), 60000);
         takingDamageSince = System.currentTimeMillis();
     }
@@ -347,7 +347,7 @@ public class CheatTracker {
 
     public final String getSummary() {
         final StringBuilder ret = new StringBuilder();
-        final List<CheatingOffenseEntry> offenseList = new ArrayList<CheatingOffenseEntry>();
+        final List<CheatingOffenseEntry> offenseList = new ArrayList<>();
         rL.lock();
         try {
             for (final CheatingOffenseEntry entry : offenses.values()) {

@@ -102,13 +102,13 @@ public final class MapleMap {
      */
     private final Map<MapleMapObjectType, LinkedHashMap<Integer, MapleMapObject>> mapobjects;
     private final Map<MapleMapObjectType, ReentrantReadWriteLock> mapobjectlocks;
-    private final List<MapleCharacter> characters = new ArrayList<MapleCharacter>();
+    private final List<MapleCharacter> characters = new ArrayList<>();
     private final ReentrantReadWriteLock charactersLock = new ReentrantReadWriteLock();
     private int runningOid = 100000;
     private final Lock runningOidLock = new ReentrantLock();
-    private final List<Spawns> monsterSpawn = new ArrayList<Spawns>();
+    private final List<Spawns> monsterSpawn = new ArrayList<>();
     private final AtomicInteger spawnedMonstersOnMap = new AtomicInteger(0);
-    private final Map<Integer, MaplePortal> portals = new HashMap<Integer, MaplePortal>();
+    private final Map<Integer, MaplePortal> portals = new HashMap<>();
     private MapleFootholdTree footholds = null;
     private float monsterRate, recoveryRate;
     private MapleMapEffect mapEffect;
@@ -120,12 +120,12 @@ public final class MapleMap {
     private boolean town, clock, personalShop, everlast = false, dropsDisabled = false, gDropsDisabled = false,
             soaring = false, squadTimer = false, isSpawns = true;
     private String mapName, streetName, onUserEnter, onFirstUserEnter, speedRunLeader = "";
-    private List<Integer> dced = new ArrayList<Integer>();
+    private List<Integer> dced = new ArrayList<>();
     private ScheduledFuture<?> squadSchedule;
     private long speedRunStart = 0, lastSpawnTime = 0, lastHurtTime = 0;
     private MapleNodes nodes;
     private MapleSquadType squad;
-    private Map<String, Integer> environment = new LinkedHashMap<String, Integer>();
+    private Map<String, Integer> environment = new LinkedHashMap<>();
 
     public MapleMap(final int mapid, final int channel, final int returnMapId, final float monsterRate) {
         this.mapid = mapid;
@@ -135,10 +135,10 @@ public final class MapleMap {
             this.returnMapId = mapid;
         }
         this.monsterRate = monsterRate;
-        EnumMap<MapleMapObjectType, LinkedHashMap<Integer, MapleMapObject>> objsMap = new EnumMap<MapleMapObjectType, LinkedHashMap<Integer, MapleMapObject>>(MapleMapObjectType.class);
-        EnumMap<MapleMapObjectType, ReentrantReadWriteLock> objlockmap = new EnumMap<MapleMapObjectType, ReentrantReadWriteLock>(MapleMapObjectType.class);
+        EnumMap<MapleMapObjectType, LinkedHashMap<Integer, MapleMapObject>> objsMap = new EnumMap<>(MapleMapObjectType.class);
+        EnumMap<MapleMapObjectType, ReentrantReadWriteLock> objlockmap = new EnumMap<>(MapleMapObjectType.class);
         for (MapleMapObjectType type : MapleMapObjectType.values()) {
-            objsMap.put(type, new LinkedHashMap<Integer, MapleMapObject>());
+            objsMap.put(type, new LinkedHashMap<>());
             objlockmap.put(type, new ReentrantReadWriteLock());
         }
         mapobjects = Collections.unmodifiableMap(objsMap);
@@ -451,7 +451,7 @@ public final class MapleMap {
         // through two ListIterators while a third walked it in the loop below.
         // MapleMonster.handleSteal and the global table on the next page both
         // already copy; this was the one site that did not.
-        final List<MonsterDropEntry> dropEntry = new ArrayList<MonsterDropEntry>(mi.retrieveDrop(mob.getId()));
+        final List<MonsterDropEntry> dropEntry = new ArrayList<>(mi.retrieveDrop(mob.getId()));
         Collections.shuffle(dropEntry);
 
         for (final MonsterDropEntry de : dropEntry) {
@@ -482,7 +482,7 @@ public final class MapleMap {
                 d++;
             }
         }
-        final List<MonsterGlobalDropEntry> globalEntry = new ArrayList<MonsterGlobalDropEntry>(mi.getGlobalDrop());
+        final List<MonsterGlobalDropEntry> globalEntry = new ArrayList<>(mi.getGlobalDrop());
         Collections.shuffle(globalEntry);
         final int cashz = (int) ((mob.getStats().isBoss() && mob.getStats().getHPDisplayType() == 0 ? 20 : 1) * caServerrate);
         final int cashModifier = (int) ((mob.getStats().isBoss() ? 0 : (mob.getMobExp() / 1000 + mob.getMobMaxHp() / 10000))); //no rate
@@ -779,7 +779,7 @@ public final class MapleMap {
     }
 
     public List<MapleReactor> getAllReactorsThreadsafe() {
-        ArrayList<MapleReactor> ret = new ArrayList<MapleReactor>();
+        ArrayList<MapleReactor> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.REACTOR).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.REACTOR).values()) {
@@ -796,7 +796,7 @@ public final class MapleMap {
     }
 
     public List<MapleMapObject> getAllDoorsThreadsafe() {
-        ArrayList<MapleMapObject> ret = new ArrayList<MapleMapObject>();
+        ArrayList<MapleMapObject> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.DOOR).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.DOOR).values()) {
@@ -813,7 +813,7 @@ public final class MapleMap {
     }
 
     public List<MapleMapObject> getAllHiredMerchantsThreadsafe() {
-        ArrayList<MapleMapObject> ret = new ArrayList<MapleMapObject>();
+        ArrayList<MapleMapObject> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.HIRED_MERCHANT).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.HIRED_MERCHANT).values()) {
@@ -830,7 +830,7 @@ public final class MapleMap {
     }
 
     public List<MapleMonster> getAllMonstersThreadsafe() {
-        ArrayList<MapleMonster> ret = new ArrayList<MapleMonster>();
+        ArrayList<MapleMonster> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.MONSTER).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.MONSTER).values()) {
@@ -883,8 +883,8 @@ public final class MapleMap {
     }
 
     public final void limitReactor(final int rid, final int num) {
-        List<MapleReactor> toDestroy = new ArrayList<MapleReactor>();
-        Map<Integer, Integer> contained = new LinkedHashMap<Integer, Integer>();
+        List<MapleReactor> toDestroy = new ArrayList<>();
+        Map<Integer, Integer> contained = new LinkedHashMap<>();
         mapobjectlocks.get(MapleMapObjectType.REACTOR).readLock().lock();
         try {
             for (MapleMapObject obj : mapobjects.get(MapleMapObjectType.REACTOR).values()) {
@@ -908,7 +908,7 @@ public final class MapleMap {
     }
 
     public final void destroyReactors(final int first, final int last) {
-        List<MapleReactor> toDestroy = new ArrayList<MapleReactor>();
+        List<MapleReactor> toDestroy = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.REACTOR).readLock().lock();
         try {
             for (MapleMapObject obj : mapobjects.get(MapleMapObjectType.REACTOR).values()) {
@@ -940,7 +940,7 @@ public final class MapleMap {
     }
 
     public final void reloadReactors() {
-        List<MapleReactor> toSpawn = new ArrayList<MapleReactor>();
+        List<MapleReactor> toSpawn = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.REACTOR).readLock().lock();
         try {
             for (MapleMapObject obj : mapobjects.get(MapleMapObjectType.REACTOR).values()) {
@@ -992,7 +992,7 @@ public final class MapleMap {
     }
 
     public final void shuffleReactors(int first, int last) {
-        List<Point> points = new ArrayList<Point>();
+        List<Point> points = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.REACTOR).readLock().lock();
         try {
             for (MapleMapObject obj : mapobjects.get(MapleMapObjectType.REACTOR).values()) {
@@ -1299,7 +1299,7 @@ public final class MapleMap {
     }
 
     public List<MapleMist> getAllMistsThreadsafe() {
-        ArrayList<MapleMist> ret = new ArrayList<MapleMist>();
+        ArrayList<MapleMist> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.MIST).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.MIST).values()) {
@@ -1682,7 +1682,7 @@ public final class MapleMap {
     }
 
     public List<MapleMapItem> getAllItemsThreadsafe() {
-        ArrayList<MapleMapItem> ret = new ArrayList<MapleMapItem>();
+        ArrayList<MapleMapItem> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.ITEM).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.ITEM).values()) {
@@ -1979,7 +1979,7 @@ public final class MapleMap {
             final MapleMap returnMapz = returnMapa;
             if (!spawned) { //no monsters yet; inforce timer to spawn it quickly
                 final List<MapleMonster> monsterz = getAllMonstersThreadsafe();
-                final List<Integer> monsteridz = new ArrayList<Integer>();
+                final List<Integer> monsteridz = new ArrayList<>();
                 for (MapleMapObject m : monsterz) {
                     monsteridz.add(m.getObjectId());
                 }
@@ -2236,7 +2236,7 @@ public final class MapleMap {
         chr.checkFollow();
         broadcastMessage(MaplePacketCreator.removePlayerFromMap(chr.getId()));
         if (!chr.isClone()) {
-            final List<MapleMonster> update = new ArrayList<MapleMonster>();
+            final List<MapleMonster> update = new ArrayList<>();
             final Iterator<MapleMonster> controlled = chr.getControlled().iterator();
 
             while (controlled.hasNext()) {
@@ -2341,7 +2341,7 @@ public final class MapleMap {
     }
 
     public final List<MapleMapObject> getMapObjectsInRange(final Point from, final double rangeSq) {
-        final List<MapleMapObject> ret = new ArrayList<MapleMapObject>();
+        final List<MapleMapObject> ret = new ArrayList<>();
         for (MapleMapObjectType type : MapleMapObjectType.values()) {
             mapobjectlocks.get(type).readLock().lock();
             try {
@@ -2364,7 +2364,7 @@ public final class MapleMap {
     }
 
     public final List<MapleMapObject> getMapObjectsInRange(final Point from, final double rangeSq, final List<MapleMapObjectType> MapObject_types) {
-        final List<MapleMapObject> ret = new ArrayList<MapleMapObject>();
+        final List<MapleMapObject> ret = new ArrayList<>();
         for (MapleMapObjectType type : MapObject_types) {
             mapobjectlocks.get(type).readLock().lock();
             try {
@@ -2383,7 +2383,7 @@ public final class MapleMap {
     }
 
     public final List<MapleMapObject> getMapObjectsInRect(final Rectangle box, final List<MapleMapObjectType> MapObject_types) {
-        final List<MapleMapObject> ret = new ArrayList<MapleMapObject>();
+        final List<MapleMapObject> ret = new ArrayList<>();
         for (MapleMapObjectType type : MapObject_types) {
             mapobjectlocks.get(type).readLock().lock();
             try {
@@ -2402,7 +2402,7 @@ public final class MapleMap {
     }
 
     public final List<MapleCharacter> getPlayersInRectAndInList(final Rectangle box, final List<MapleCharacter> chrList) {
-        final List<MapleCharacter> character = new LinkedList<MapleCharacter>();
+        final List<MapleCharacter> character = new LinkedList<>();
 
         charactersLock.readLock().lock();
         try {
@@ -2462,8 +2462,8 @@ public final class MapleMap {
         if (fixedMob > 0) {
             maxRegularSpawn = fixedMob;
         }
-        Collection<Spawns> newSpawn = new LinkedList<Spawns>();
-        Collection<Spawns> newBossSpawn = new LinkedList<Spawns>();
+        Collection<Spawns> newSpawn = new LinkedList<>();
+        Collection<Spawns> newBossSpawn = new LinkedList<>();
         for (final Spawns s : monsterSpawn) {
             if (s.getCarnivalTeam() >= 2) {
                 continue; // Remove carnival spawned mobs
@@ -2545,7 +2545,7 @@ public final class MapleMap {
     }
 
     public final List<MapleCharacter> getCharactersThreadsafe() {
-        final List<MapleCharacter> chars = new ArrayList<MapleCharacter>();
+        final List<MapleCharacter> chars = new ArrayList<>();
 
         charactersLock.readLock().lock();
         try {
@@ -2611,7 +2611,7 @@ public final class MapleMap {
         if (!player.isClone()) {
             try {
                 Collection<MapleMapObject> visibleObjects = player.getAndWriteLockVisibleMapObjects();
-                ArrayList<MapleMapObject> copy = new ArrayList<MapleMapObject>(visibleObjects);
+                ArrayList<MapleMapObject> copy = new ArrayList<>(visibleObjects);
                 Iterator<MapleMapObject> itr = copy.iterator();
                 while (itr.hasNext()) {
                     MapleMapObject mo = itr.next();
@@ -2750,7 +2750,7 @@ public final class MapleMap {
             if (numShouldSpawn > 0) {
                 int spawned = 0;
 
-                final List<Spawns> randomSpawn = new ArrayList<Spawns>(monsterSpawn);
+                final List<Spawns> randomSpawn = new ArrayList<>(monsterSpawn);
                 Collections.shuffle(randomSpawn);
 
                 for (Spawns spawnPoint : randomSpawn) {
@@ -2851,7 +2851,7 @@ public final class MapleMap {
             }
 
             if (SpeedRunner.getInstance().getSpeedRunData(type) == null) { //great, we just add it
-                SpeedRunner.getInstance().addSpeedRunData(type, SpeedRunner.getInstance().addSpeedRunData(new StringBuilder("#rThese are the speedrun times for " + type + ".#k\r\n\r\n"), new HashMap<Integer, String>(), z, leader, 1, time));
+                SpeedRunner.getInstance().addSpeedRunData(type, SpeedRunner.getInstance().addSpeedRunData(new StringBuilder("#rThese are the speedrun times for " + type + ".#k\r\n\r\n"), new HashMap<>(), z, leader, 1, time));
             } else {
                 //i wish we had a way to get the rank
                 //TODO revamp
@@ -2881,7 +2881,7 @@ public final class MapleMap {
     }
 
     public List<MapleNPC> getAllNPCsThreadsafe() {
-        ArrayList<MapleNPC> ret = new ArrayList<MapleNPC>();
+        ArrayList<MapleNPC> ret = new ArrayList<>();
         mapobjectlocks.get(MapleMapObjectType.NPC).readLock().lock();
         try {
             for (MapleMapObject mmo : mapobjects.get(MapleMapObjectType.NPC).values()) {
@@ -2939,7 +2939,7 @@ public final class MapleMap {
     }
 
     public final void resetAllSpawnPoint(int mobid, int mobTime) {
-        Collection<Spawns> sss = new LinkedList<Spawns>(monsterSpawn);
+        Collection<Spawns> sss = new LinkedList<>(monsterSpawn);
         resetFully();
         monsterSpawn.clear();
         for (Spawns s : sss) {

@@ -696,12 +696,10 @@ public class AdminCommand {
                         if (ItemFlag.LOCK.check(item.getFlag())) {
                             item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                             add = true;
-                            //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                         }
                         if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                             item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                             add = true;
-                            //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                         }
                         if (add) {
                             eqs.put(item, type);
@@ -714,12 +712,10 @@ public class AdminCommand {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (add) {
                         eqs.put(item, MapleInventoryType.EQUIP);
@@ -731,12 +727,10 @@ public class AdminCommand {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (add) {
                         eqs.put(item, MapleInventoryType.EQUIP);
@@ -748,12 +742,10 @@ public class AdminCommand {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (add) {
                         eqs.put(item, MapleInventoryType.USE);
@@ -765,12 +757,10 @@ public class AdminCommand {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (add) {
                         eqs.put(item, MapleInventoryType.SETUP);
@@ -782,12 +772,10 @@ public class AdminCommand {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (add) {
                         eqs.put(item, MapleInventoryType.ETC);
@@ -799,12 +787,10 @@ public class AdminCommand {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.LOCK.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (ItemFlag.UNTRADEABLE.check(item.getFlag())) {
                         item.setFlag((byte) (item.getFlag() - ItemFlag.UNTRADEABLE.getValue()));
                         add = true;
-                        //c.getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                     }
                     if (add) {
                         eqs.put(item, MapleInventoryType.CASH);
@@ -958,7 +944,6 @@ public class AdminCommand {
             String splitString = StringUtil.joinStringFrom(splitted, 2);
             List<Integer> chars = new ArrayList<Integer>();
             splitString = splitString.toUpperCase();
-            // System.out.println(splitString);
             for (int i = 0; i < splitString.length(); i++) {
                 char chr = splitString.charAt(i);
                 if (chr == ' ') {
@@ -1246,7 +1231,6 @@ public class AdminCommand {
                 type = MapleInventoryType.EQUIPPED;
                 for (IItem item : chr.getInventory(type).listById(itemid)) {
                     item.setFlag((byte) (item.getFlag() | ItemFlag.LOCK.getValue()));
-                    //chr.getClient().getSession().write(MaplePacketCreator.updateSpecialItemUse(item, type.getType()));
                 }
             }
             c.getPlayer().dropMessage(6, "All items with the ID " + splitted[2] + " has been locked from the inventory of " + splitted[1] + ".");

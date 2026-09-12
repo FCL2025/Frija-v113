@@ -22,7 +22,6 @@ package handling.channel.handler;
 
 import client.MapleCharacter;
 import client.MapleClient;
-//import net.sf.odinms.server.Randomizer;
 import client.MapleDisease;
 import java.util.List;
 import server.MapleCarnivalFactory;
@@ -103,7 +102,6 @@ public class MonsterCarnivalHandler {
                 c.getPlayer().CPUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
                 for (MapleCharacter chr : c.getPlayer().getMap().getCharactersThreadsafe()) {
                     chr.CPUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
-                    //chr.dropMessage(5, "[" + (c.getPlayer().getCarnivalParty().getTeam() == 0 ? "Red" : "Blue") + "] " + c.getPlayer().getName() + " has used a skill. [" + dis.name() + "].");
                 }
                 c.getPlayer().getMap().broadcastMessage(MonsterCarnivalPacket.playerSummoned(c.getPlayer().getName(), tab, num));
                 c.getSession().write(MaplePacketCreator.enableActions());

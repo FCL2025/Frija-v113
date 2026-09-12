@@ -40,7 +40,6 @@ public class MapleCustomEncryption {
         for (int j = 0; j < 6; j++) {
             byte remember = 0;
             byte dataLength = (byte) (data.length & 0xFF);
-            // printByteArray(data);
             if (j % 2 == 0) {
                 for (int i = 0; i < data.length; i++) {
                     byte cur = data[i];

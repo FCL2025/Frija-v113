@@ -1439,7 +1439,6 @@ public class InventoryHandler {
                     if (eq.getState() >= 5) {
                         eq.renewPotential();
                         c.getSession().write(MaplePacketCreator.scrolledItem(toUse, item, false, true));
-                        //c.getPlayer().getMap().broadcastMessage(MaplePacketCreator.getPotentialEffect(c.getPlayer().getId(), eq.getItemId()));
                         c.getPlayer().forceReAddItem_NoUpdate(item, MapleInventoryType.EQUIP);
                         MapleInventoryManipulator.addById(c, 2430112, (short) 1);
                         used = true;
@@ -1482,8 +1481,6 @@ public class InventoryHandler {
                         item.setUpgradeSlots((byte) (item.getUpgradeSlots() + 1));
 
                         c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIP);
-                        //c.getSession().write(MTSCSPacket.ViciousHammer(true, (byte) item.getViciousHammer()));
-                        //c.getSession().write(MTSCSPacket.ViciousHammer(false, (byte) 0));
                         used = true;
                         cc = true;
                     } else {
@@ -1930,45 +1927,18 @@ public class InventoryHandler {
                 break;
             }
             case 5170000: { // Pet name change
-/*                final int uniqueid = (int) slea.readLong();*/
                 MaplePet pet = c.getPlayer().getPet(0);
                 int slo = 0;
 
                 if (pet == null) {
                     break;
                 }
-                /*                if (pet.getUniqueId() != uniqueid) {
-                 pet = c.getPlayer().getPet(1);
-                 slo = 1;
-                 if (pet != null) {
-                 if (pet.getUniqueId() != uniqueid) {
-                 pet = c.getPlayer().getPet(2);
-                 slo = 2;
-                 if (pet != null) {
-                 if (pet.getUniqueId() != uniqueid) {
-                 break;
-                 }
-                 } else {
-                 break;
-                 }
-                 }
-                 } else {
-                 break;
-                 }
-                 }*/
                 String nName = slea.readMapleAsciiString();
-                /*                for (String z : GameConstants.RESERVED) {
-                 if (pet.getName().indexOf(z) != -1 || nName.indexOf(z) != -1) {
-                 break;
-                 }
-                 }*/
-//                if (MapleCharacterUtil.canChangePetName(nName)) {
                 pet.setName(nName);
                 c.getSession().write(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
                 c.getSession().write(MaplePacketCreator.enableActions());
                 c.getPlayer().getMap().broadcastMessage(MTSCSPacket.changePetName(c.getPlayer(), nName, slo));
                 used = true;
-//                }
                 break;
             }
             case 5240000:
@@ -2108,7 +2078,6 @@ public class InventoryHandler {
               
             case 5450000: { // Mu Mu the Travelling Merchant
                 MapleShopFactory.getInstance().getShop(61).sendShop(c);
-                //used = true;
                 break;
             }
 			case 5152100:
@@ -2136,7 +2105,6 @@ public class InventoryHandler {
             default:
                 if (itemId / 10000 == 512) {
                     final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                    //final String msg = ii.getMsg(itemId).replaceFirst("%s", c.getPlayer().getName()).replaceFirst("%s", slea.readMapleAsciiString());
                     final String msg = slea.readMapleAsciiString();
                     c.getPlayer().getMap().startMapEffect(msg, itemId);
 

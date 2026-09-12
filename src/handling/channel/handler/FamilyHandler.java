@@ -103,7 +103,6 @@ public class FamilyHandler {
                         }
                         MapleCharacter chrr = World.getStorage(chr).getCharacterById(chrz.getId());
                         entry.applyTo(chrr);
-                        //chrr.getClient().getSession().write(FamilyPacket.familyBuff(entry.type, type, entry.effect, entry.duration*60000));
                     }
                 }
                 break;
@@ -114,20 +113,17 @@ public class FamilyHandler {
             case 6: // exp rate + 100% 15 min
             case 7: // drop rate + 100% 30 min
             case 8: // exp rate + 100% 30 min
-                //c.getSession().write(FamilyPacket.familyBuff(entry.type, type, entry.effect, entry.duration*60000));
                 entry.applyTo(c.getPlayer());
                 break;
             case 9: // drop rate + 100% party 30 min
             case 10: // exp rate + 100% party 30 min
                 entry.applyTo(c.getPlayer());
-                //c.getSession().write(FamilyPacket.familyBuff(entry.type, type, entry.effect, entry.duration*60000));
                 if (c.getPlayer().getParty() != null) {
                     for (MaplePartyCharacter mpc : c.getPlayer().getParty().getMembers()) {
                         if (mpc.getId() != c.getPlayer().getId()) {
                             MapleCharacter chr = c.getPlayer().getMap().getCharacterById(mpc.getId());
                             if (chr != null) {
                                 entry.applyTo(chr);
-                                //chr.getClient().getSession().write(FamilyPacket.familyBuff(entry.type, type, entry.effect, entry.duration*60000));
                             }
                         }
                     }
@@ -160,8 +156,6 @@ public class FamilyHandler {
             c.getPlayer().dropMessage(1, "該玩家等級高過你");
         } else if (addChr.getLevel() < c.getPlayer().getLevel() - 20) {
             c.getPlayer().dropMessage(1, "雙方等級差異超過二十");
-	//} else if (c.getPlayer().getFamilyId() != 0 && c.getPlayer().getFamily().getGens() >= 1000) {
-            //	c.getPlayer().dropMessage(5, "Your family cannot extend more than 1000 generations from above and below.");
         } else if (addChr.getLevel() < 10) {
             c.getPlayer().dropMessage(1, "跟隨者等級必須在10級以上");
         } else if (c.getPlayer().getJunior1() > 0 && c.getPlayer().getJunior2() > 0) {
@@ -177,7 +171,6 @@ public class FamilyHandler {
         if (fam == null || fam.getLeaderId() != c.getPlayer().getId()) {
             return;
         }
-        //fam.setNotice(slea.readMapleAsciiString());
         fam.setNotice(slea.readMapleAsciiString());
         c.getPlayer().dropMessage(1, "重開家族視窗即可套用.");
     }
@@ -225,9 +218,7 @@ public class FamilyHandler {
         }
         c.getPlayer().saveFamilyStatus();
         other.setSeniorId(0);
-        //if (!other.isOnline()) {
         MapleFamily.setOfflineFamilyStatus(other.getFamilyId(), other.getSeniorId(), other.getJunior1(), other.getJunior2(), other.getCurrentRep(), other.getTotalRep(), other.getId());
-        //}
         MapleCharacterUtil.sendNote(other.getName(), c.getPlayer().getName(), c.getPlayer().getName() + " 解散了家族", 0);
         if (!fam.splitFamily(juniorid, other)) { //juniorid splits to make their own family. function should handle the rest
             if (!junior2) {
@@ -254,9 +245,7 @@ public class FamilyHandler {
         } else {
             mgc.setJunior1(0);
         }
-        //if (!mgc.isOnline()) {
         MapleFamily.setOfflineFamilyStatus(mgc.getFamilyId(), mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
-        //}
         c.getPlayer().saveFamilyStatus();
         MapleCharacterUtil.sendNote(mgc.getName(), c.getPlayer().getName(), c.getPlayer().getName() + " 離開你的家族", 0);
         if (!fam.splitFamily(c.getPlayer().getId(), mgc_)) { //now, we're the family leader
@@ -275,7 +264,6 @@ public class FamilyHandler {
             boolean accepted = slea.readByte() > 0;
             inviter.getClient().getSession().write(FamilyPacket.sendFamilyJoinResponse(accepted, c.getPlayer().getName()));
             if (accepted) {
-                //c.getSession().write(FamilyPacket.sendFamilyMessage(0));
                 c.getSession().write(FamilyPacket.getSeniorMessage(inviter.getName()));
                 int old = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getFamilyId();
                 int oldj1 = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getJunior1();

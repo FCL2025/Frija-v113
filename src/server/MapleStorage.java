@@ -143,7 +143,6 @@ public class MapleStorage implements Serializable {
     }
 
     public byte getSlot(MapleInventoryType type, byte slot) {
-        // MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         byte ret = 0;
         final List<IItem> it = typeItems.get(type);
         if (slot >= it.size() || slot < 0) {

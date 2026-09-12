@@ -19,7 +19,6 @@ public class MTSOperation {
 
     public static void MTSOperation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final MTSCart cart = MTSStorage.getInstance().getCart(c.getPlayer().getId());
-        //System.out.println(slea.toString());
         if (slea.available() <= 0) {
             doMTSPackets(cart, c);
             return;
@@ -50,8 +49,6 @@ public class MTSOperation {
             //again? =/
             if (invType == 1) {
                 slea.skip(32);
-//                slea.skip(48);
-//                slot = (byte) slea.readInt();
 //                slea.skip(4); //skip the quantity int, equips are always 1
             } else {
                 slea.readShort(); //flag
@@ -110,7 +107,6 @@ public class MTSOperation {
                 return;
             }
             final IItem item = cart.getInventory().get(id); //by index
-            //System.out.println("NumItems: " + cart.getInventory().size() + ", ID: " + id + ", ItemExists?: " + (item != null));
             if (item != null && item.getQuantity() > 0 && MapleInventoryManipulator.checkSpace(c, item.getItemId(), item.getQuantity(), item.getOwner())) {
                 IItem item_ = item.copy();
                 short pos = MapleInventoryManipulator.addbyItem(c, item_, true);
@@ -124,11 +120,9 @@ public class MTSOperation {
                     sendMTSPackets(cart, c, true);
                     return;
                 } else {
-                    //System.out.println("addByItem is less than 0");
                     c.getSession().write(MTSCSPacket.getMTSFailBuy());
                 }
             } else {
-                //System.out.println("CheckSpace return false");
                 c.getSession().write(MTSCSPacket.getMTSFailBuy());
             }
         } else if (op == 9) { //add to cart
@@ -166,7 +160,6 @@ public class MTSOperation {
                 c.getSession().write(MTSCSPacket.getMTSFailBuy());
             }
         } else if (c.getPlayer().isAdmin()) {
-            //System.out.println("New MTS Op " + op + ", \n" + slea.toString());
         }
         doMTSPackets(cart, c);
     }

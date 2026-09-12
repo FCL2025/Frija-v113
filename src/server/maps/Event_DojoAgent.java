@@ -181,7 +181,6 @@ public class Event_DojoAgent {
                 return true;
             }
 
-            //final int nextmapid = 925020000 + ((thisStage + 1) * 100);
             final MapleMap map = ch.getMapFactory().getMap(currentmap.getId() + 100);
             if (map.getCharactersSize() == 0) {
                 clearMap(map, false);

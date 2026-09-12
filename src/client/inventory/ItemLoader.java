@@ -178,27 +178,6 @@ public enum ItemLoader {
         try (Connection con = DatabaseConnection.getConnection()) {
             saveItems(items, con, id);
         }
-        /*try {
-
-         con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
-         con.setAutoCommit(false);*/
-        /*	con.commit();
-         } catch (Exception e) {
-         e.printStackTrace();
-         System.err.println("[charsave] Error saving inventory" + e);
-         try {
-         con.rollback();
-         } catch (SQLException ex) {
-         System.err.println("[charsave] Error Rolling Back inventory" + e);
-         }
-         } finally {
-         try {
-         con.setAutoCommit(true);
-         con.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-         } catch (SQLException e) {
-         System.err.println("[charsave] Error going back to autocommit mode inventory" + e);
-         }
-         }*/
     }
 
     public void saveItems(List<Pair<IItem, MapleInventoryType>> items, final Connection con, Integer... id) throws SQLException {

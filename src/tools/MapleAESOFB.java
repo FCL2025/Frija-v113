@@ -168,9 +168,6 @@ public class MapleAESOFB {
                     if ((x - start) % myIv.length == 0) {
                         byte[] newIv = cipher.doFinal(myIv);
                         System.arraycopy(newIv, 0, myIv, 0, myIv.length);
-                        // System.out
-                        // .println("Iv is now " + HexTool.toString(this.iv));
-
                     }
                     data[x] ^= myIv[(x - start) % myIv.length];
                 }
@@ -252,7 +249,6 @@ public class MapleAESOFB {
         // ;)
         for (int x = 0; x < 4; x++) {
             funnyShit(oldIv[x], in);
-            // System.out.println(HexTool.toString(in));
         }
         return in;
     }

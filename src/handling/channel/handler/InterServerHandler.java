@@ -53,16 +53,10 @@ public class InterServerHandler {
 
     public static final void EnterCS(final MapleClient c, final MapleCharacter chr, final boolean mts) {
         if (!chr.isAlive() || chr.getEventInstance() != null || c.getChannelServer() == null) {
-//      if (chr.isGM() == false) {
             c.getSession().write(MaplePacketCreator.serverBlocked(2));
             c.getSession().write(MaplePacketCreator.enableActions());
             return;
         }
-        //if (c.getChannel() == 1 && !c.getPlayer().isGM()) {
-        //    c.getPlayer().dropMessage(5, "You may not enter on this channel. Please change channels and try again.");
-        //    c.getSession().write(MaplePacketCreator.enableActions());
-        //    return;
-        //}
         final ChannelServer ch = ChannelServer.getInstance(c.getChannel());
 
         chr.changeRemoval();
@@ -86,10 +80,6 @@ public class InterServerHandler {
     }
 
     public static final void Loggedin(final int playerid, final MapleClient c) {
-//        if (c.getIdleTask() != null) {
-//        c.getIdleTask().cancel(true);
-//        }
-//        c.updateLoginState(MapleClient.LOGIN_LOGGEDIN, c.getSessionIPAddress());
         final ChannelServer channelServer = c.getChannelServer();
         MapleCharacter player;
         final CharacterTransfer transfer = channelServer.getPlayerStorage().getPendingCharacter(playerid);
@@ -136,21 +126,7 @@ public class InterServerHandler {
             player.giveSilentDebuff(PlayerBuffStorage.getDiseaseFromStorage(player.getId()));
 
             // Start of buddylist
-           /* final int buddyIds[] = player.getBuddylist().getBuddyIds();
-             World.Buddy.loggedOn(player.getName(), player.getId(), c.getChannel(), buddyIds, player.getGMLevel(), player.isHidden());
-             if (player.getParty() != null) {
-             World.Party.updateParty(player.getParty().getId(), PartyOperation.LOG_ONOFF, new MaplePartyCharacter(player));
-             }
-             final CharacterIdChannelPair[] onlineBuddies = World.Find.multiBuddyFind(player.getId(), buddyIds);
-             for (CharacterIdChannelPair onlineBuddy : onlineBuddies) {
-             final BuddylistEntry ble = player.getBuddylist().get(onlineBuddy.getCharacterId());
-             ble.setChannel(onlineBuddy.getChannel());
-             player.getBuddylist().put(ble);
-             }
-             c.getSession().write(MaplePacketCreator.updateBuddylist(player.getBuddylist().getBuddies()));*/
-            // Start of buddylist
             final int buddyIds[] = player.getBuddylist().getBuddyIds();
-            //World.Buddy.loggedOn(player.getName(), player.getId(), c.getChannel(), buddyIds);
             World.Buddy.loggedOn(player.getName(), player.getId(), c.getChannel(), buddyIds, player.getGMLevel(), player.isHidden());
             if (player.getParty() != null) {
                 World.Party.updateParty(player.getParty().getId(), PartyOperation.LOG_ONOFF, new MaplePartyCharacter(player));
@@ -172,7 +148,6 @@ public class InterServerHandler {
 
             // Start of Guild and alliance
             if(player.getGuildId() <= 0){
-                //System.out.println("writefuckguildinfo");
                 c.getSession().write(MaplePacketCreator.fuckGuildInfo(player));
             }/* else */
             if (player.getGuildId() > 0) {

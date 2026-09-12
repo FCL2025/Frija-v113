@@ -68,7 +68,6 @@ public class AramiaFireWorks {
     }
 
     private final void broadcastEvent(final MapleCharacter c) {
-//        broadcastServer(c, KEG_ID);
         // Henesys Park
         EventTimer.getInstance().schedule(new Runnable() {
 

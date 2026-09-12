@@ -91,7 +91,6 @@ public class CheatTracker {
         // For lagging, it isn't an issue since TIME is running simotaniously, client
         // will be sending values of older time
 
-//	System.out.println("Delay [" + skillId + "] = " + (tickcount - lastAttackTickCount) + ", " + (Server_ClientAtkTickDiff - STime_TC));
         Attack_tickResetCount++; // Without this, the difference will always be at 100
         if (Attack_tickResetCount >= (AtkDelay <= 200 ? 2 : 4)) {
             Attack_tickResetCount = 0;
@@ -105,9 +104,6 @@ public class CheatTracker {
         numSequentialDamage++;
         lastDamageTakenTime = System.currentTimeMillis();
 
-        // System.out.println("tb" + timeBetweenDamage);
-        // System.out.println("ns" + numSequentialDamage);
-        // System.out.println(timeBetweenDamage / 1500 + "(" + timeBetweenDamage / numSequentialDamage + ")");
         if (lastDamageTakenTime - takingDamageSince / 500 < numSequentialDamage) {
 //            registerOffense(CheatingOffense.FAST_TAKE_DAMAGE);
         }
@@ -174,7 +170,6 @@ public class CheatTracker {
     public final boolean checkSummonAttack() {
         numSequentialSummonAttack++;
         //estimated
-        // System.out.println(numMPRegens + "/" + allowedRegens);
         if ((System.currentTimeMillis() - summonSummonTime) / (2000 + 1) < numSequentialSummonAttack) {
             registerOffense(CheatingOffense.FAST_SUMMON_ATTACK);
             return false;

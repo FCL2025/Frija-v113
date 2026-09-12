@@ -1216,17 +1216,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             }
             ps.close();
 
-            /* deleteWhereCharacterId(con, "DELETE FROM buddies WHERE characterid = ? AND pending = 0");
-             ps = con.prepareStatement("INSERT INTO buddies (characterid, `buddyid`, `pending`) VALUES (?, ?, 0)");
-             ps.setInt(1, id);
-             for (BuddylistEntry entry : buddylist.getBuddies()) {
-             if (entry.isVisible()) {
-             ps.setInt(2, entry.getCharacterId());
-             ps.execute();
-             }
-             }
-             ps.close();*/
-            // if (buddylist.changed()) {
             deleteWhereCharacterId(con, "DELETE FROM buddies WHERE characterid = ?");
             ps = con.prepareStatement("INSERT INTO buddies (characterid, `buddyid`, `pending`) VALUES (?, ?, ?)");
             ps.setInt(1, id);
@@ -1236,8 +1225,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                 ps.execute();
             }
             ps.close();
-                //buddylist.setChanged(false);
-            // }
 
             ps = con.prepareStatement("UPDATE accounts SET `ACash` = ?, `mPoints` = ?, `points` = ?, `vpoints` = ? WHERE id = ?");
             ps.setInt(1, acash);
@@ -3333,38 +3320,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                     break;
             }
         }
-        /*        if (getSubcategory() == 1) { //db level 2
-         switch (level) {
-         case 2:
-         client.getSession().write(MaplePacketCreator.startMapEffect("Click the lightbulb above you and accept the [Required] quest. Remake the character if this quest is not showing.", 5120009, true));
-         break;
-         case 10:
-         client.getSession().write(MaplePacketCreator.startMapEffect("Go and advance to a Rogue at Dark Lord in Kerning City. Make sure you do ALL the [Required] quests.", 5120000, true));
-         break;
-         case 15:
-         client.getSession().write(MaplePacketCreator.startMapEffect("Make sure you have been doing all the required quests. Remember that saving SP is possible.", 5120000, true));
-         break;
-         case 20:
-         client.getSession().write(MaplePacketCreator.startMapEffect("You have reached level 20. If you have done all your required quests, you can enter Secret Garden and advance.", 5120000, true));
-         break;
-         case 30:
-         client.getSession().write(MaplePacketCreator.startMapEffect("You have reached level 30. Please go to Lady Syl to advance.", 5120000, true));
-         break;
-         case 55:
-         client.getSession().write(MaplePacketCreator.startMapEffect("You have reached level 55. Please go to Lady Syl and do a few quests to advance.", 5120000, true));
-         break;
-         case 70:
-         client.getSession().write(MaplePacketCreator.startMapEffect("You have reached level 70. Please go to your job instructor in Elnath to advance.", 5120000, true));
-         break;
-         case 120:
-         client.getSession().write(MaplePacketCreator.startMapEffect("You have reached level 120. Please go to your job instructor in Leafre to advance.", 5120000, true));
-         break;
-         }
-         }*/
-        //if (map.getForceMove() > 0 && map.getForceMove() <= getLevel()) {
-        //    changeMap(map.getReturnMap(), map.getReturnMap().getPortal(0));
-        //    dropMessage(-1, "You have been expelled from the map.");
-        //}
     }
 
     public void changeKeybinding(int key, byte type, int action) {
@@ -3751,21 +3706,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
         if (pet.getSummoned()) {
             pet.saveToDb();
             map.broadcastMessage(this, PetPacket.showPet(this, pet, true, hunger), true);
-            //List<Pair<MapleStat, Integer>> stats = new ArrayList<Pair<MapleStat, Integer>>();
-            //stats.add(new Pair<MapleStat, Integer>(MapleStat.PET, Integer.valueOf(0)));
             removePet(pet, shiftLeft);
             client.getSession().write(PetPacket.petStatUpdate(this));
             client.getSession().write(MaplePacketCreator.enableActions());
         }
     }
 
-    /*    public void shiftPetsRight() {
-     if (pets[2] == null) {
-     pets[2] = pets[1];
-     pets[1] = pets[0];
-     pets[0] = null;
-     }
-     }*/
     public final long getLastFameTime() {
         return lastfametime;
     }
@@ -4029,7 +3975,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             System.out.println("SQLException: " + se.getLocalizedMessage());
             se.printStackTrace();
         }
-        //MapleFamily.setOfflineFamilyStatus(familyid, seniorid, junior1, junior2, currentrep, totalrep, id);
     }
 
     public void modifyCSPoints(int type, int quantity) {
@@ -4555,7 +4500,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             }
             return ret_count;
         } catch (Exception Ex) {
-            //log.error("Error while read bosslog.", Ex);
             return -1;
         }
     }
@@ -4897,7 +4841,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                         if (getSkillLevel(SkillFactory.getSkill(leadid)) == 0 && getPet(0) != null) {
                             unequipPet(getPet(0), false, false);
                         } else if (lead && getSkillLevel(SkillFactory.getSkill(leadid)) > 0) { // Follow the Lead
-                            //			    shiftPetsRight();
                         }
                         final Point pos = getPosition();
                         pet.setPos(pos);
@@ -4912,7 +4855,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                         addPet(pet);
 
 						if (lead && getSkillLevel(SkillFactory.getSkill(leadid)) > 0) { // Follow the Lead
-               			    //shiftPetsRight();
 							int count = 0 ;
 							for (final MaplePet p : pets) {
 								if (p.getSummoned()) {
@@ -4934,8 +4876,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                         if (broadcast) {
                             getMap().broadcastMessage(this, PetPacket.showPet(this, pet, false, false), true);
 							client.getSession().write(PetPacket.PetComplete(this, pet));
-                            //final List<Pair<MapleStat, Integer>> stats = new ArrayList<Pair<MapleStat, Integer>>(1);
-                            //stats.add(new Pair<MapleStat, Integer>(MapleStat.PET, Integer.valueOf(pet.getUniqueId())));
                             client.getSession().write(PetPacket.petStatUpdate(this));
                         }
                     }
@@ -5693,22 +5633,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
 //        mapp.setCheckStates(true);
     }
 
-    /*public String getcharmessage(){
-     System.err.println("CharMessage(get)");
-     return charmessage;
-     }
-
-     public void setcharmessage(int s){
-     System.err.println("CharMessage(set)");
-     charmessage += s;
-     }*/
     public String getcharmessage() {
-        //System.err.println("CharMessage(get)");
         return charmessage;
     }
 
     public void setcharmessage(String s) {
-        //System.err.println("CharMessage(set)");
         charmessage /*+*/ = s;
     }
 

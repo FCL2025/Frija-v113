@@ -156,7 +156,6 @@ public class MapleMount implements Serializable {
     public void update() {
         final MapleCharacter chr = owner.get();
         if (chr != null) {
-//	    cancelSchedule();
             chr.getMap().broadcastMessage(MaplePacketCreator.updateMount(chr, false));
         }
     }

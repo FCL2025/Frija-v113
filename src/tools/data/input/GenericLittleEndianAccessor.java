@@ -142,7 +142,6 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
      * @return The string read.
      */
     public final String readAsciiString(int n) {
-//char ret[] = new char[n];
         byte ret[] = new byte[n];
         for (int x = 0; x < n; x++) {
             ret[x] = (byte) readByte();
@@ -156,19 +155,6 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
         return null;
     }
 
-    /*public final String readAsciiString(final int n) {
-     final byte ret[] = new byte[n];
-     for (int x = 0; x < n; x++) {
-     ret[x] = (byte) readByte();
-     }
-     try {
-     String str = new String(ret, "BIG5");
-     return str;
-     } catch (Exception e) {
-     System.err.println(e);
-     }
-     return "";
-     }*/
     /**
      * Gets the number of bytes read from the stream so far.
      *

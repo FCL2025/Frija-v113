@@ -72,7 +72,6 @@ public class DamageParse {
             }
             if (GameConstants.isMulungSkill(attack.skill)) {
                 if (player.getMapId() / 10000 != 92502) {
-                    //AutobanManager.getInstance().autoban(player.getClient(), "Using Mu Lung dojo skill out of dojo maps.");
                     return;
                 } else {
                     player.mulung_EnergyModify(false);
@@ -80,7 +79,6 @@ public class DamageParse {
             }
             if (GameConstants.isPyramidSkill(attack.skill)) {
                 if (player.getMapId() / 1000000 != 926) {
-                    //AutobanManager.getInstance().autoban(player.getClient(), "Using Pyramid skill outside of pyramid maps.");
                     return;
                 } else {
                     if (player.getPyramidSubway() == null || !player.getPyramidSubway().onSkillUse(player)) {
@@ -205,7 +203,6 @@ public class DamageParse {
                     if (overallAttackCount - 1 == attackCount) { // Is a Shadow partner hit so let's divide it once
                         maxDamagePerHit = (maxDamagePerHit / 100) * ShdowPartnerAttackPercentage;
                     }
-                    // System.out.println("Client damage : " + eachd + " Server : " + maxDamagePerHit);
                     if (fixeddmg != -1) {
                         if (monsterstats.getOnlyNoramlAttack()) {
                             eachd = attack.skill != 0 ? 0 : fixeddmg;
@@ -379,7 +376,6 @@ public class DamageParse {
                             break;
                         }
                         case 4201004: { //steal
-//                            monster.handleSteal(player);
                             break;
                         }
                         //case 21101003: // body pressure
@@ -505,7 +501,6 @@ public class DamageParse {
         }
         if (GameConstants.isMulungSkill(attack.skill)) {
             if (player.getMapId() / 10000 != 92502) {
-                //AutobanManager.getInstance().autoban(player.getClient(), "Using Mu Lung dojo skill out of dojo maps.");
                 return;
             } else {
                 player.mulung_EnergyModify(false);
@@ -513,7 +508,6 @@ public class DamageParse {
         }
         if (GameConstants.isPyramidSkill(attack.skill)) {
             if (player.getMapId() / 1000000 != 926) {
-                //AutobanManager.getInstance().autoban(player.getClient(), "Using Pyramid skill outside of pyramid maps.");
                 return;
             } else {
                 if (player.getPyramidSubway() == null || !player.getPyramidSubway().onSkillUse(player)) {
@@ -577,7 +571,6 @@ public class DamageParse {
                         if (monsterstats.getOnlyNoramlAttack()) {
                             eachd = 0; // Magic is always not a normal attack
                         } else if (!player.isGM()) {
-//			    System.out.println("Client damage : " + eachd + " Server : " + MaxDamagePerHit);
 
                             if (Tempest) { // Buffed with Tempest
                                 // In special case such as Chain lightning, the damage will be reduced from the maxMP.
@@ -589,7 +582,6 @@ public class DamageParse {
                                 if (eachd > maxDamagePerHit * 2) {
                                     player.getCheatTracker().registerOffense(CheatingOffense.HIGH_DAMAGE_MAGIC);
                                     if (eachd > MaxDamagePerHit * 3) {
-//				    System.out.println("EXCEED!!! Client damage : " + eachd + " Server : " + MaxDamagePerHit);
                                         eachd = (int) (MaxDamagePerHit * 3); // Convert to server calculated damage
                                         player.getCheatTracker().registerOffense(CheatingOffense.HIGH_DAMAGE_MAGIC_2);
                                     }
@@ -946,7 +938,6 @@ public class DamageParse {
                                 eachd.right = (Randomizer.nextInt(100)/*chr.CRand().CRand32__Random_ForMonster() % 100*/) < CriticalRate;
                             }
                             eachd_copy.get(hit - 1).right = eachd.right;
-                            //System.out.println("CRITICAL RATE: " + CriticalRate + ", passive rate: " + chr.getStat().passive_sharpeye_rate() + ", critical: " + eachd.right);
                         }
                     }
                 }
@@ -956,13 +947,11 @@ public class DamageParse {
     }
 
     public static final AttackInfo parseDmgMa(final LittleEndianAccessor lea) {
-        //System.out.println(lea.toString());
         final AttackInfo ret = new AttackInfo();
 
         lea.skip(1);
         lea.skip(8);
         ret.tbyte = lea.readByte();
-        //System.out.println("TBYTE: " + tbyte);
         ret.targets = (byte) ((ret.tbyte >>> 4) & 0xF);
         ret.hits = (byte) (ret.tbyte & 0xF);
         lea.skip(8); //?
@@ -1012,13 +1001,11 @@ public class DamageParse {
     }
 
     public static final AttackInfo parseDmgM(final LittleEndianAccessor lea) {
-        //System.out.println(lea.toString());
         final AttackInfo ret = new AttackInfo();
 
         lea.skip(1);
         lea.skip(8);
         ret.tbyte = lea.readByte();
-        //System.out.println("TBYTE: " + tbyte);
         ret.targets = (byte) ((ret.tbyte >>> 4) & 0xF);
         ret.hits = (byte) (ret.tbyte & 0xF);
         lea.skip(8);
@@ -1056,14 +1043,12 @@ public class DamageParse {
 
         for (int i = 0; i < ret.targets; i++) {
             oid = lea.readInt();
-//	    System.out.println(tools.HexTool.toString(lea.read(14)));
             lea.skip(14); // [1] Always 6?, [3] unk, [4] Pos1, [4] Pos2, [2] seems to change randomly for some attack
 
             allDamageNumbers = new ArrayList<Pair<Integer, Boolean>>();
 
             for (int j = 0; j < ret.hits; j++) {
                 damage = lea.readInt();
-                // System.out.println("Damage: " + damage);
                 allDamageNumbers.add(new Pair<Integer, Boolean>(Integer.valueOf(damage), false));
             }
             lea.skip(4); // CRC of monster [Wz Editing]
@@ -1074,13 +1059,12 @@ public class DamageParse {
     }
 
     public static final AttackInfo parseDmgR(final LittleEndianAccessor lea) {
-        //System.out.println(lea.toString()); //<-- packet needs revision
+        //<-- packet needs revision
         final AttackInfo ret = new AttackInfo();
 
         lea.skip(1);
         lea.skip(8);
         ret.tbyte = lea.readByte();
-        //System.out.println("TBYTE: " + tbyte);
         ret.targets = (byte) ((ret.tbyte >>> 4) & 0xF);
         ret.hits = (byte) (ret.tbyte & 0xF);
         lea.skip(8);
@@ -1116,17 +1100,14 @@ public class DamageParse {
 
         for (int i = 0; i < ret.targets; i++) {
             oid = lea.readInt();
-//	    System.out.println(tools.HexTool.toString(lea.read(14)));
             lea.skip(14); // [1] Always 6?, [3] unk, [4] Pos1, [4] Pos2, [2] seems to change randomly for some attack
 
             allDamageNumbers = new ArrayList<Pair<Integer, Boolean>>();
             for (int j = 0; j < ret.hits; j++) {
                 damage = lea.readInt();
                 allDamageNumbers.add(new Pair<Integer, Boolean>(Integer.valueOf(damage), false));
-                //System.out.println("Hit " + j + " from " + i + " to mobid " + oid + ", damage " + damage);
             }
             lea.skip(4); // CRC of monster [Wz Editing]
-//	    System.out.println(tools.HexTool.toString(lea.read(4)));
 
             ret.allDamage.add(new AttackPair(Integer.valueOf(oid), allDamageNumbers));
         }
@@ -1137,7 +1118,6 @@ public class DamageParse {
     }
 
     public static final AttackInfo parseMesoExplosion(final LittleEndianAccessor lea, final AttackInfo ret) {
-        //System.out.println(lea.toString(true));
         byte bullets;
         if (ret.hits == 0) {
             lea.skip(4);

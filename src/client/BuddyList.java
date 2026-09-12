@@ -151,9 +151,6 @@ public class BuddyList implements Serializable {
                 ps.executeUpdate();
             }
         }
-        /*} catch (SQLException ex) {
-         ex.printStackTrace();
-         }*/
     }
 
     public CharacterNameAndId pollPendingRequest() {

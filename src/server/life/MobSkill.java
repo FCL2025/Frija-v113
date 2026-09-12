@@ -42,7 +42,6 @@ public class MobSkill {
     private int skillId, skillLevel, mpCon, spawnEffect, hp, x, y;
     private long duration, cooltime;
     private float prop;
-//    private short effect_delay;
     private short limit;
     private List<Integer> toSummon = new ArrayList<Integer>();
     private Point lt, rb;
@@ -60,9 +59,6 @@ public class MobSkill {
         this.toSummon = toSummon;
     }
 
-    /*   public void setEffectDelay(short effect_delay) {
-     this.effect_delay = effect_delay;
-     }*/
     public void setSpawnEffect(int spawnEffect) {
         this.spawnEffect = spawnEffect;
     }
@@ -365,9 +361,6 @@ public class MobSkill {
         return Collections.unmodifiableList(toSummon);
     }
 
-    /*    public short getEffectDelay() {
-     return effect_delay;
-     }*/
     public int getSpawnEffect() {
         return spawnEffect;
     }

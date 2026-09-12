@@ -39,8 +39,6 @@ public class CashShopOperation {
             World.ChannelChange_Data(new CharacterTransfer(chr), chr.getId(), c.getChannel());
             c.getSession().write(MaplePacketCreator.getChannelChange(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1])));
         } finally {
-//          c.getSession().close();
-
             chr.saveToDB(false, true);
             c.setPlayer(null);
             c.setReceiving(false);
@@ -182,7 +180,6 @@ public class CashShopOperation {
             CouponCode(slea.readMapleAsciiString(), c);
         } else if (action == 3) {
             final byte type = slea.readByte() ==0 ?(byte)1 : (byte)2;
-            //slea.skip(1);
             final CashItemInfo item = CashItemFactory.getInstance().getItem(slea.readInt());
 
             if (item != null && chr.getCSPoints(type) >= item.getPrice()) {
@@ -206,7 +203,6 @@ public class CashShopOperation {
                 IItem itemz = chr.getCashInventory().toItem(item);
                 if (itemz != null && itemz.getUniqueId() > 0 && itemz.getItemId() == item.getId() && itemz.getQuantity() == item.getCount()) {
                     chr.getCashInventory().addToInventory(itemz);
-                    //c.getSession().write(MTSCSPacket.confirmToCSInventory(itemz, c.getAccID(), item.getSN()));
                     c.getSession().write(MTSCSPacket.showBoughtCSItem(itemz, item.getSN(), c.getAccID()));
                 } else {
                     c.getSession().write(MTSCSPacket.sendCSFail(0));
@@ -291,7 +287,6 @@ public class CashShopOperation {
                 chr.modifyCSPoints(useCash, -100, false);
                 chr.getStorage().increaseSlots((byte) 4);
                 chr.getStorage().saveToDB();
-                //c.getSession().write(MTSCSPacket.increasedStorageSlots(chr.getStorage().getSlots()));
                 chr.dropMessage(1, "倉庫欄位增加至 " +chr.getStorage().getSlots());
             } else {
                 c.getSession().write(MTSCSPacket.sendCSFail(0xA4));
@@ -336,7 +331,6 @@ public class CashShopOperation {
             IItem item = c.getPlayer().getInventory(type).findByUniqueId(uniqueid);
             if (item != null && item.getQuantity() > 0 && item.getUniqueId() > 0 && c.getPlayer().getCashInventory().getItemsSize() < 100) {
                 IItem item_ = item.copy();
-                //MapleInventoryManipulator.removeFromSlot(c, type, item.getPosition(), item.getQuantity(), false);
 		c.getPlayer().getInventory(type).removeItem(item.getPosition(), item.getQuantity(), false);
                 if (item_.getPet() != null) {
                     c.getPlayer().removePetCS(item_.getPet());
@@ -360,7 +354,6 @@ public class CashShopOperation {
             doCSPackets(c);
             return ;
         } else if (action == 29 || action == 35) { //35 = friendship, 29 = crush
-            //c.getSession().write(MTSCSPacket.sendCSFail(0));
             slea.readMapleAsciiString(); // as13
             final CashItemInfo item = CashItemFactory.getInstance().getItem(slea.readInt());
             final String partnerName = slea.readMapleAsciiString();
@@ -409,7 +402,6 @@ public class CashShopOperation {
                     return;
                 }
                 c.getPlayer().modifyCSPoints(1, -item.getPrice(), false);
-                //c.getSession().write(MTSCSPacket.showBoughtCSItem(itemz, item.getSN(), c.getAccID()));
                 c.getSession().write(MTSCSPacket.sendGift(item.getPrice(), item.getId(), item.getCount(), partnerName,false));
             }
 

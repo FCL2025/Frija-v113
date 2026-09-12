@@ -42,7 +42,6 @@ public class AllianceHandler {
             c.getSession().write(MaplePacketCreator.enableActions());
             return;
         }
-        //System.out.println("Unhandled GuildAlliance \n" + slea.toString());
         byte op = slea.readByte();
         if (c.getPlayer().getGuildRank() != 1 && op != 1) { //only updating doesn't need guild leader
             return;
@@ -149,7 +148,6 @@ public class AllianceHandler {
                 System.out.println("Unhandled GuildAlliance op: " + op + ", \n" + slea.toString());
                 break;
         }
-        //c.getSession().write(MaplePacketCreator.enableActions());
     }
 
     public static final void DenyInvite(MapleClient c, final MapleGuild gs) { //playername that invited -> guildname that was invited but we also don't care
@@ -164,6 +162,5 @@ public class AllianceHandler {
                 World.Guild.setInvitedId(c.getPlayer().getGuildId(), 0);
             }
         }
-        //c.getSession().write(MaplePacketCreator.enableActions());
     }
 }

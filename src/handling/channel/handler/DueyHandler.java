@@ -159,7 +159,6 @@ public class DueyHandler {
                     return;
                 }
                 final int packageid = slea.readInt();
-                //System.out.println("Item attempted : " + packageid);
                 final MapleDueyActions dp = loadSingleItem(packageid, c.getPlayer().getId());
                 if (dp == null) {
                     return;
@@ -172,7 +171,6 @@ public class DueyHandler {
                     return;
                 }
                 removeItemFromDB(packageid, c.getPlayer().getId()); // Remove first
-                //System.out.println("Item removed : " + packageid);
                 if (dp.getItem() != null) {
                     MapleInventoryManipulator.addFromDrop(c, dp.getItem(), false);
                 }
@@ -296,7 +294,6 @@ public class DueyHandler {
                 }
             }
         } catch (SQLException se) {
-//	    se.printStackTrace();
             return null;
         }
     }

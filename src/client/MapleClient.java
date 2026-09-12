@@ -680,7 +680,6 @@ public class MapleClient implements Serializable {
         try {
             player.cancelAllBuffs_();
             player.cancelAllDebuffs();
-//			player.cancelAllTimers();
             if (player.getMarriageId() > 0) {
                 final MapleQuestStatus stat1 = player.getQuestNAdd(MapleQuest.getInstance(160001));
                 final MapleQuestStatus stat2 = player.getQuestNAdd(MapleQuest.getInstance(160002));

@@ -130,7 +130,6 @@ public class MapleMonster extends AbstractLoadedMapleLife {
         hp = stats.getHp();
         mp = stats.getMp();
         venom_counter = 0;
-//	showdown = 100;
         carnivalTeam = -1;
         fake = false;
         dropsDisabled = false;
@@ -511,7 +510,6 @@ public class MapleMonster extends AbstractLoadedMapleLife {
         nodepack = null;
         reflectpack = null;
         stati.clear();
-        //attackers.clear();
         cancelDropItem();
         if (listener != null) {
             listener.monsterKilled();

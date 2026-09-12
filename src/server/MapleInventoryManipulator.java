@@ -34,7 +34,6 @@ public class MapleInventoryManipulator {
             return;
         }
         chr.getCashInventory().addToInventory(ring);
-        //chr.getClient().getSession().write(MTSCSPacket.confirmToCSInventory(ring, chr.getClient().getAccID(), csi.getSN()));
         chr.getClient().getSession().write(MTSCSPacket.showBoughtCSItem(ring, sn, chr.getClient().getAccID()));
     }
 
@@ -415,7 +414,6 @@ public class MapleInventoryManipulator {
             final Equip eq = (Equip) before;
             if (eq.getState() == 0 && (eq.getUpgradeSlots() >= 1 || eq.getLevel() >= 1) && Randomizer.nextInt(100) > 80) { //20% chance of pot?
                 eq.resetPotential();
-                //chr.dropMessage(5, "You have obtained an item with hidden Potential.");
             }
         }
         return before;

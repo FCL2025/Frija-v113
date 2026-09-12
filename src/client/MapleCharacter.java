@@ -852,7 +852,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
             con.setAutoCommit(false);
 
-            ps = con.prepareStatement("INSERT INTO characters (level, fame, str, dex, luk, `int`, exp, hp, mp, maxhp, maxmp, sp, ap, gm, skincolor, gender, job, hair, face, map, meso, hpApUsed, spawnpoint, party, buddyCapacity, monsterbookcover, dojo_pts, dojoRecord, pets, subcategory, marriageId, currentrep, totalrep, prefix, accountid, name, world) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS);
+            ps = con.prepareStatement("""
+                    INSERT INTO characters (
+                            level, fame, str, dex, luk, `int`, exp, hp, mp, maxhp, maxmp, sp, ap,
+                            gm, skincolor, gender, job, hair, face, map, meso, hpApUsed, spawnpoint,
+                            party, buddyCapacity, monsterbookcover, dojo_pts, dojoRecord, pets,
+                            subcategory, marriageId, currentrep, totalrep, prefix, accountid, name,
+                            world
+                    ) VALUES (
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                    """, DatabaseConnection.RETURN_GENERATED_KEYS);
 
             ps.setInt(1, 1); // Level
             ps.setShort(2, (short) 0); // Fame
@@ -1022,7 +1033,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
             con.setAutoCommit(false);
 
-            ps = con.prepareStatement("UPDATE characters SET level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?, skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?, meso = ?, hpApUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?, monsterbookcover = ?, dojo_pts = ?, dojoRecord = ?, pets = ?, subcategory = ?, marriageId = ?, currentrep = ?, totalrep = ?, charmessage = ?, expression = ?, constellation = ?, blood = ?, month = ?, day = ?, beans = ?, prefix = ?, name = ?, gachexp = ? WHERE id = ?", DatabaseConnection.RETURN_GENERATED_KEYS);
+            ps = con.prepareStatement("""
+                    UPDATE characters SET
+                            level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?,
+                            hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?,
+                            skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?,
+                            meso = ?, hpApUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?,
+                            monsterbookcover = ?, dojo_pts = ?, dojoRecord = ?, pets = ?,
+                            subcategory = ?, marriageId = ?, currentrep = ?, totalrep = ?,
+                            charmessage = ?, expression = ?, constellation = ?, blood = ?,
+                            month = ?, day = ?, beans = ?, prefix = ?, name = ?, gachexp = ?
+                    WHERE id = ?
+                    """, DatabaseConnection.RETURN_GENERATED_KEYS);
             ps.setInt(1, level);
             ps.setShort(2, fame);
             ps.setShort(3, stats.getStr());

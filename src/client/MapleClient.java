@@ -60,6 +60,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.mina.common.IoSession;
+import server.Timer.EtcTimer;
 import server.Timer.PingTimer;
 import server.quest.MapleQuest;
 import tools.MaplePacketCreator;
@@ -500,21 +501,12 @@ public class MapleClient implements Serializable {
     public final void unLockDisconnect() {
         getSession().write(MaplePacketCreator.serverNotice(1, "帳號被他人登入。"));
         disconnect(serverTransition, getChannel() == -10);
-        final MapleClient client = this;
-        Thread closeSession = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    sleep(3000);
-                } catch (InterruptedException ex) {
-                }
-                getSession().close();
-            }
-        };
-        try {
-            closeSession.start();
-        } catch (Exception ex) {
-        }
+        // Three seconds so the client can show the notice before its socket
+        // goes away. This used to be a bare Thread that slept, which breaks the
+        // rule that every delayed job in here runs on a server.Timer pool: a
+        // burst of duplicate logins would spawn one short-lived thread each,
+        // and none of them were named, daemons, or cancellable.
+        EtcTimer.getInstance().schedule(() -> getSession().close(), 3000);
     }
     public boolean CheckSecondPassword(String in) {
         // Check if the passwords are correct here. :B

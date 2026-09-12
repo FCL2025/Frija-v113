@@ -2,20 +2,14 @@
 /*     */
 /*     */ import java.io.Console;
 /*     */ import java.io.File;
-/*     */ import java.io.FileNotFoundException;
 /*     */ import java.io.FileOutputStream;
 /*     */ import java.io.IOException;
 /*     */ import java.io.PrintStream;
-/*     */ import java.rmi.NotBoundException;
 /*     */ import java.util.ArrayList;
 /*     */ import java.util.HashMap;
 /*     */ import java.util.List;
 /*     */ import java.util.Map;
 /*     */ import java.util.Map.Entry;
-/*     */ import javax.management.InstanceAlreadyExistsException;
-/*     */ import javax.management.MBeanRegistrationException;
-/*     */ import javax.management.MalformedObjectNameException;
-/*     */ import javax.management.NotCompliantMBeanException;
 /*     */ import provider.MapleData;
 /*     */ import provider.MapleDataProvider;
 /*     */ import provider.MapleDataProviderFactory;
@@ -36,7 +30,7 @@
     /*  39 */    protected static List<Pair<Integer, MobInfo>> mobCache = new ArrayList();
     /*  40 */    protected static Map<Integer, Boolean> bossCache = new HashMap();
     /*     */
-    /*     */ public static void main(String[] args) throws FileNotFoundException, IOException, NotBoundException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException, MalformedObjectNameException {
+    /*     */ public static void main(String[] args) throws IOException {
         /*  43 */ MapleData data = MapleDataProviderFactory.getDataProvider(new File(new StringBuilder().append(System.getProperty("wzpath")).append("String.wz").toString())).getData("MonsterBook.img");
         /*     */
         /*  45 */ System.out.println("準備提取數據!");

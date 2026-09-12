@@ -20,7 +20,6 @@
  */
 package handling.channel.handler;
 
-import java.rmi.RemoteException;
 import java.util.Iterator;
 
 import client.MapleCharacter;

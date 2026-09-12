@@ -20,7 +20,6 @@
  */
 package scripting;
 
-import java.rmi.RemoteException;
 import java.awt.Point;
 import java.util.List;
 

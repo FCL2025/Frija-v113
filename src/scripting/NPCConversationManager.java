@@ -65,7 +65,6 @@ import handling.world.guild.MapleGuild;
 import server.MapleCarnivalChallenge;
 import java.util.HashMap;
 import handling.world.guild.MapleGuildAlliance;
-import java.rmi.RemoteException;
 import java.util.Arrays;
 import javax.script.Invocable;
 import server.MapleStatEffect;

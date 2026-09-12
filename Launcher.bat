@@ -24,8 +24,7 @@ rem  runs; it just says so, and the panel serves a "not built" page.
 rem
 rem  JDK 26 is required. The sources are UTF-8 and contain Chinese identifiers
 rem  (e.g. the inner classes of PlayerCommand), so -encoding UTF-8 is required.
-rem  `ant` cannot build this tree: build.xml imports nbproject\build-impl.xml,
-rem  and nbproject\ is not in the repository.
+rem  There is no ant or IDE project file any more; this script is the build.
 rem
 rem  The working directory has to stay the repo root - Settings.ini, Libs\,
 rem  Logs\ and the wz path are all resolved relative to it.

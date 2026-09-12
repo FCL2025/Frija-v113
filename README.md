@@ -32,8 +32,8 @@ Launcher.bat build      強制重新建置，建置完就結束（不啟動伺�
 Launcher.bat cashshop   改跑 tools.wztosql.CashShopDumper
 ```
 
-`build.xml` 是 NetBeans 產生的殼，會 `<import>` 未納入版控的 `nbproject\build-impl.xml`，
-所以從乾淨的 checkout 直接跑 `ant` 是不會動的；請改用 `Launcher.bat`。
+專案裡沒有 ant 或 IDE 的專案檔：NetBeans 留下的 `build.xml` 只是個殼，它 `<import>` 的
+`nbproject\build-impl.xml` 從未納入版控、從來跑不起來，已經移除。建置流程就是 `Launcher.bat` 本身。
 
 執行前需要：
 

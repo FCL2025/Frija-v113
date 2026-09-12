@@ -3,7 +3,6 @@ package handling.world;
 import client.BuddyList;
 import client.BuddyList.BuddyAddResult;
 import client.BuddyList.BuddyOperation;
-import java.rmi.RemoteException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -57,24 +56,6 @@ public class World {
         World.Family.lock.toString();
         World.Messenger.getMessenger(0);
         World.Party.getParty(0);
-    }
-
-    public static String getStatus() throws RemoteException {
-        StringBuilder ret = new StringBuilder();
-        int totalUsers = 0;
-        for (ChannelServer cs : ChannelServer.getAllInstances()) {
-            ret.append("Channel ");
-            ret.append(cs.getChannel());
-            ret.append(": ");
-            int channelUsers = cs.getConnectedClients();
-            totalUsers += channelUsers;
-            ret.append(channelUsers);
-            ret.append(" users\n");
-        }
-        ret.append("Total users online: ");
-        ret.append(totalUsers);
-        ret.append("\n");
-        return ret.toString();
     }
 
     public static Map<Integer, Integer> getConnected() {

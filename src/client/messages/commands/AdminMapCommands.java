@@ -8,7 +8,7 @@ import client.MapleStat;
 import client.messages.CommandProcessorUtil;
 import database.DatabaseConnection;
 import handling.channel.ChannelServer;
-import handling.world.World;
+import handling.world.Find;
 import java.awt.Point;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -746,7 +746,7 @@ public class AdminMapCommands {
             } else {
                 try {
                     victim = c.getPlayer();
-                    int ch = World.Find.findChannel(splitted[1]);
+                    int ch = Find.findChannel(splitted[1]);
                     if (ch < 0) {
                         MapleMap target = c.getChannelServer().getMapFactory().getMap(Integer.parseInt(splitted[1]));
                         c.getPlayer().changeMap(target, target.getPortal(0));
@@ -794,7 +794,7 @@ public class AdminMapCommands {
             if (victim != null) {
                 victim.changeMap(c.getPlayer().getMap(), c.getPlayer().getMap().findClosestSpawnpoint(c.getPlayer().getPosition()));
             } else {
-                int ch = World.Find.findChannel(splitted[1]);
+                int ch = Find.findChannel(splitted[1]);
                 if (ch < 0) {
                     c.getPlayer().dropMessage(5, "Not found.");
                     return 0;

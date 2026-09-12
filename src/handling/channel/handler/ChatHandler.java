@@ -25,8 +25,14 @@ import client.MapleCharacter;
 import client.messages.CommandProcessor;
 import constants.ServerConstants.CommandType;
 import handling.channel.ChannelServer;
+import handling.world.Alliance;
+import handling.world.Buddy;
+import handling.world.Find;
+import handling.world.Guild;
 import handling.world.MapleMessenger;
 import handling.world.MapleMessengerCharacter;
+import handling.world.Messenger;
+import handling.world.Party;
 import handling.world.World;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.packet.ChatPacket;
@@ -75,25 +81,25 @@ public class ChatHandler {
         chr.getCheatTracker().checkMsg();
         switch (type) {
             case 0:
-                World.Buddy.buddyChat(recipients, chr.getId(), chr.getName(), chattext);
+                Buddy.buddyChat(recipients, chr.getId(), chr.getName(), chattext);
                 break;
             case 1:
                 if (chr.getParty() == null) {
                     break;
                 }
-                World.Party.partyChat(chr.getParty().getId(), chattext, chr.getName());
+                Party.partyChat(chr.getParty().getId(), chattext, chr.getName());
                 break;
             case 2:
                 if (chr.getGuildId() <= 0) {
                     break;
                 }
-                World.Guild.guildChat(chr.getGuildId(), chr.getName(), chr.getId(), chattext);
+                Guild.guildChat(chr.getGuildId(), chr.getName(), chr.getId(), chattext);
                 break;
             case 3:
                 if (chr.getGuildId() <= 0) {
                     break;
                 }
-                World.Alliance.allianceChat(chr.getGuildId(), chr.getName(), chr.getId(), chattext);
+                Alliance.allianceChat(chr.getGuildId(), chr.getName(), chr.getId(), chattext);
                 break;
         }
     }
@@ -107,14 +113,14 @@ public class ChatHandler {
                 if (messenger == null) {
                     int messengerid = slea.readInt();
                     if (messengerid == 0) { // create
-                        c.getPlayer().setMessenger(World.Messenger.createMessenger(new MapleMessengerCharacter(c.getPlayer())));
+                        c.getPlayer().setMessenger(Messenger.createMessenger(new MapleMessengerCharacter(c.getPlayer())));
                     } else { // join
-                        messenger = World.Messenger.getMessenger(messengerid);
+                        messenger = Messenger.getMessenger(messengerid);
                         if (messenger != null) {
                             final int position = messenger.getLowestPosition();
                             if (position > -1 && position < 4) {
                                 c.getPlayer().setMessenger(messenger);
-                                World.Messenger.joinMessenger(messenger.getId(), new MapleMessengerCharacter(c.getPlayer()), c.getPlayer().getName(), c.getChannel());
+                                Messenger.joinMessenger(messenger.getId(), new MapleMessengerCharacter(c.getPlayer()), c.getPlayer().getName(), c.getChannel());
                             }
                         }
                     }
@@ -123,7 +129,7 @@ public class ChatHandler {
             case 0x02: // exit
                 if (messenger != null) {
                     final MapleMessengerCharacter messengerplayer = new MapleMessengerCharacter(c.getPlayer());
-                    World.Messenger.leaveMessenger(messenger.getId(), messengerplayer);
+                    Messenger.leaveMessenger(messenger.getId(), messengerplayer);
                     c.getPlayer().setMessenger(null);
                 }
                 break;
@@ -150,7 +156,7 @@ public class ChatHandler {
                         }
                     } else {
                         if (World.isConnected(input)) {
-                            World.Messenger.messengerInvite(c.getPlayer().getName(), messenger.getId(), input, c.getChannel(), c.getPlayer().isGM());
+                            Messenger.messengerInvite(c.getPlayer().getName(), messenger.getId(), input, c.getChannel(), c.getPlayer().isGM());
                         } else {
                             c.send(MessengerPacket.messengerNote(input, 4, 0));
                         }
@@ -166,13 +172,13 @@ public class ChatHandler {
                     }
                 } else { // Other channel
                     if (!c.getPlayer().isGM()) {
-                        World.Messenger.declineChat(targeted, c.getPlayer().getName());
+                        Messenger.declineChat(targeted, c.getPlayer().getName());
                     }
                 }
                 break;
             case 0x06: // message
                 if (messenger != null) {
-                    World.Messenger.messengerChat(messenger.getId(), slea.readMapleAsciiString(), c.getPlayer().getName());
+                    Messenger.messengerChat(messenger.getId(), slea.readMapleAsciiString(), c.getPlayer().getName());
 
                 }
                 break;
@@ -196,7 +202,7 @@ public class ChatHandler {
                         c.send(ChatPacket.getWhisperReply(recipient, (byte) 0));
                     }
                 } else { // Not found
-                    int ch = World.Find.findChannel(recipient);
+                    int ch = Find.findChannel(recipient);
                     if (ch > 0) {
                         player = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(recipient);
                         if (player == null) {
@@ -229,7 +235,7 @@ public class ChatHandler {
                 c.getPlayer().getCheatTracker().checkMsg();
                 final String recipient = slea.readMapleAsciiString();
                 final String text = slea.readMapleAsciiString();
-                final int ch = World.Find.findChannel(recipient);
+                final int ch = Find.findChannel(recipient);
                 if (ch > 0) {
                     MapleCharacter player = ChannelServer.getInstance(ch).getPlayerStorage().getCharacterByName(recipient);
                     if (player == null) {

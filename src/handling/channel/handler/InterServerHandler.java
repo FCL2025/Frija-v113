@@ -38,6 +38,13 @@ import handling.world.CharacterIdChannelPair;
 import handling.world.MaplePartyCharacter;
 import handling.world.PartyOperation;
 import handling.world.PlayerBuffStorage;
+import handling.world.Alliance;
+import handling.world.Buddy;
+import handling.world.Family;
+import handling.world.Find;
+import handling.world.Guild;
+import handling.world.Messenger;
+import handling.world.Party;
 import handling.world.World;
 import handling.world.guild.MapleGuild;
 import server.maps.FieldLimitType;
@@ -64,7 +71,7 @@ public class InterServerHandler {
 
         if (chr.getMessenger() != null) {
             MapleMessengerCharacter messengerplayer = new MapleMessengerCharacter(chr);
-            World.Messenger.leaveMessenger(chr.getMessenger().getId(), messengerplayer);
+            Messenger.leaveMessenger(chr.getMessenger().getId(), messengerplayer);
         }
         PlayerBuffStorage.addBuffsToStorage(chr.getId(), chr.getAllBuffs());
         PlayerBuffStorage.addCooldownsToStorage(chr.getId(), chr.getCooldowns());
@@ -128,11 +135,11 @@ public class InterServerHandler {
 
             // Start of buddylist
             final int buddyIds[] = player.getBuddylist().getBuddyIds();
-            World.Buddy.loggedOn(player.getName(), player.getId(), c.getChannel(), buddyIds, player.getGMLevel(), player.isHidden());
+            Buddy.loggedOn(player.getName(), player.getId(), c.getChannel(), buddyIds, player.getGMLevel(), player.isHidden());
             if (player.getParty() != null) {
-                World.Party.updateParty(player.getParty().getId(), PartyOperation.LOG_ONOFF, new MaplePartyCharacter(player));
+                Party.updateParty(player.getParty().getId(), PartyOperation.LOG_ONOFF, new MaplePartyCharacter(player));
             }
-            final CharacterIdChannelPair[] onlineBuddies = World.Find.multiBuddyFind(player.getId(), buddyIds);
+            final CharacterIdChannelPair[] onlineBuddies = Find.multiBuddyFind(player.getId(), buddyIds);
             for (CharacterIdChannelPair onlineBuddy : onlineBuddies) {
                 final BuddylistEntry ble = player.getBuddylist().get(onlineBuddy.getCharacterId());
                 ble.setChannel(onlineBuddy.getChannel());
@@ -143,8 +150,8 @@ public class InterServerHandler {
             // Start of Messenger
             final MapleMessenger messenger = player.getMessenger();
             if (messenger != null) {
-                World.Messenger.silentJoinMessenger(messenger.getId(), new MapleMessengerCharacter(c.getPlayer()));
-                World.Messenger.updateMessenger(messenger.getId(), c.getPlayer().getName(), c.getChannel());
+                Messenger.silentJoinMessenger(messenger.getId(), new MapleMessengerCharacter(c.getPlayer()));
+                Messenger.updateMessenger(messenger.getId(), c.getPlayer().getName(), c.getChannel());
             }
 
             // Start of Guild and alliance
@@ -152,11 +159,11 @@ public class InterServerHandler {
                 c.send(GuildPacket.fuckGuildInfo(player));
             }/* else */
             if (player.getGuildId() > 0) {
-                World.Guild.setGuildMemberOnline(player.getMGC(), true, c.getChannel());
+                Guild.setGuildMemberOnline(player.getMGC(), true, c.getChannel());
                 c.send(GuildPacket.showGuildInfo(player));
-                final MapleGuild gs = World.Guild.getGuild(player.getGuildId());
+                final MapleGuild gs = Guild.getGuild(player.getGuildId());
                 if (gs != null) {
-                    final List<MaplePacket> packetList = World.Alliance.getAllianceInfo(gs.getAllianceId(), true);
+                    final List<MaplePacket> packetList = Alliance.getAllianceInfo(gs.getAllianceId(), true);
                     if (packetList != null) {
                         for (MaplePacket pack : packetList) {
                             if (pack != null) {
@@ -172,7 +179,7 @@ public class InterServerHandler {
                 }
             }
             if (player.getFamilyId() > 0) {
-                World.Family.setFamilyMemberOnline(player.getMFC(), true, c.getChannel());
+                Family.setFamilyMemberOnline(player.getMFC(), true, c.getChannel());
             }
             c.send(FamilyPacket.getFamilyInfo(player));
         } catch (Exception e) {

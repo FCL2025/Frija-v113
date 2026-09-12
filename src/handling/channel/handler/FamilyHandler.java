@@ -23,6 +23,8 @@ package handling.channel.handler;
 import client.MapleCharacterUtil;
 import client.MapleCharacter;
 import client.MapleClient;
+import handling.world.Family;
+import handling.world.Find;
 import handling.world.MaplePartyCharacter;
 import handling.world.World;
 import handling.world.family.MapleFamily;
@@ -91,13 +93,13 @@ public class FamilyHandler {
                 }
                 return; //RETURN not break
             case 4: // 6 family members in pedigree online Drop Rate & Exp Rate + 100% 30 minutes
-                final MapleFamily fam = World.Family.getFamily(c.getPlayer().getFamilyId());
+                final MapleFamily fam = Family.getFamily(c.getPlayer().getFamilyId());
                 List<MapleFamilyCharacter> chrs = fam.getMFC(c.getPlayer().getId()).getOnlineJuniors(fam);
                 if (chrs.size() < 7) {
                     success = false;
                 } else {
                     for (MapleFamilyCharacter chrz : chrs) {
-                        int chr = World.Find.findChannel(chrz.getId());
+                        int chr = Find.findChannel(chrz.getId());
                         if (chr == -1) {
                             continue; //STOP WTF?! take reps though..
                         }
@@ -167,7 +169,7 @@ public class FamilyHandler {
     }
 
     public static final void FamilyPrecept(final SeekableLittleEndianAccessor slea, MapleClient c) {
-        MapleFamily fam = World.Family.getFamily(c.getPlayer().getFamilyId());
+        MapleFamily fam = Family.getFamily(c.getPlayer().getFamilyId());
         if (fam == null || fam.getLeaderId() != c.getPlayer().getId()) {
             return;
         }
@@ -204,7 +206,7 @@ public class FamilyHandler {
             return;
         }
         //junior is not required to be online.
-        final MapleFamily fam = World.Family.getFamily(c.getPlayer().getFamilyId());
+        final MapleFamily fam = Family.getFamily(c.getPlayer().getFamilyId());
         final MapleFamilyCharacter other = fam.getMFC(juniorid);
         if (other == null) {
             return;
@@ -235,7 +237,7 @@ public class FamilyHandler {
             return;
         }
         //not required to be online
-        final MapleFamily fam = World.Family.getFamily(c.getPlayer().getFamilyId()); //this is old family
+        final MapleFamily fam = Family.getFamily(c.getPlayer().getFamilyId()); //this is old family
         final MapleFamilyCharacter mgc = fam.getMFC(c.getPlayer().getSeniorId());
         final MapleFamilyCharacter mgc_ = c.getPlayer().getMFC();
         mgc_.setSeniorId(0);
@@ -268,8 +270,8 @@ public class FamilyHandler {
                 int old = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getFamilyId();
                 int oldj1 = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getJunior1();
                 int oldj2 = c.getPlayer().getMFC() == null ? 0 : c.getPlayer().getMFC().getJunior2();
-                if (inviter.getFamilyId() > 0 && World.Family.getFamily(inviter.getFamilyId()) != null) {
-                    MapleFamily fam = World.Family.getFamily(inviter.getFamilyId());
+                if (inviter.getFamilyId() > 0 && Family.getFamily(inviter.getFamilyId()) != null) {
+                    MapleFamily fam = Family.getFamily(inviter.getFamilyId());
                     //if old isn't null, don't set the familyid yet, mergeFamily will take care of it
                     c.getPlayer().setFamily(old <= 0 ? inviter.getFamilyId() : old, inviter.getId(), oldj1 <= 0 ? 0 : oldj1, oldj2 <= 0 ? 0 : oldj2);
                     MapleFamilyCharacter mf = inviter.getMFC();
@@ -279,8 +281,8 @@ public class FamilyHandler {
                         mf.setJunior1(c.getPlayer().getId());
                     }
                     inviter.saveFamilyStatus();
-                    if (old > 0 && World.Family.getFamily(old) != null) { //has junior
-                        MapleFamily.mergeFamily(fam, World.Family.getFamily(old));
+                    if (old > 0 && Family.getFamily(old) != null) { //has junior
+                        MapleFamily.mergeFamily(fam, Family.getFamily(old));
                     } else {
                         c.getPlayer().setFamily(inviter.getFamilyId(), inviter.getId(), oldj1 <= 0 ? 0 : oldj1, oldj2 <= 0 ? 0 : oldj2);
                         fam.setOnline(c.getPlayer().getId(), true, c.getChannel());
@@ -300,10 +302,10 @@ public class FamilyHandler {
                         MapleFamily.setOfflineFamilyStatus(id, inviter.getId(), oldj1 <= 0 ? 0 : oldj1, oldj2 <= 0 ? 0 : oldj2, c.getPlayer().getCurrentRep(), c.getPlayer().getTotalRep(), c.getPlayer().getId());
                         inviter.setFamily(id, 0, c.getPlayer().getId(), 0); //load the family
                         c.getPlayer().setFamily(id, inviter.getId(), oldj1 <= 0 ? 0 : oldj1, oldj2 <= 0 ? 0 : oldj2);
-                        MapleFamily fam = World.Family.getFamily(id);
+                        MapleFamily fam = Family.getFamily(id);
                         fam.setOnline(inviter.getId(), true, inviter.getClient().getChannel());
-                        if (old > 0 && World.Family.getFamily(old) != null) { //has junior
-                            MapleFamily.mergeFamily(fam, World.Family.getFamily(old));
+                        if (old > 0 && Family.getFamily(old) != null) { //has junior
+                            MapleFamily.mergeFamily(fam, Family.getFamily(old));
                         } else {
                             fam.setOnline(c.getPlayer().getId(), true, c.getChannel());
                         }

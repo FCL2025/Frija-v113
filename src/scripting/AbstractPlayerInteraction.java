@@ -57,7 +57,8 @@ import tools.packet.PetPacket;
 import tools.packet.QuestPacket;
 import tools.packet.UIPacket;
 import client.inventory.MapleInventoryIdentifier;
-import handling.world.World;
+import handling.world.Broadcast;
+import handling.world.Guild;
 import server.events.MapleEvent;
 import server.events.MapleEventType;
 
@@ -473,7 +474,7 @@ public abstract class AbstractPlayerInteraction {
     }
 
     public final void worldMessage(final int type, final String message) {
-        World.Broadcast.broadcastMessage(ChatPacket.serverNotice(type, message).getBytes());
+        Broadcast.broadcastMessage(ChatPacket.serverNotice(type, message).getBytes());
     }
 
     // default playerMessage and mapMessage to use type 5
@@ -499,7 +500,7 @@ public abstract class AbstractPlayerInteraction {
 
     public final void guildMessage(final int type, final String message) {
         if (getPlayer().getGuildId() > 0) {
-            World.Guild.guildPacket(getPlayer().getGuildId(), ChatPacket.serverNotice(type, message));
+            Guild.guildPacket(getPlayer().getGuildId(), ChatPacket.serverNotice(type, message));
         }
     }
 
@@ -508,7 +509,7 @@ public abstract class AbstractPlayerInteraction {
     }
 
     public final MapleGuild getGuild(int guildid) {
-        return World.Guild.getGuild(guildid);
+        return Guild.getGuild(guildid);
     }
 
     public final MapleParty getParty() {
@@ -962,14 +963,14 @@ public abstract class AbstractPlayerInteraction {
         if (getPlayer().getGuildId() <= 0) {
             return;
         }
-        World.Guild.gainGP(getPlayer().getGuildId(), gp); //1 for
+        Guild.gainGP(getPlayer().getGuildId(), gp); //1 for
     }
 
     public int getGP() {
         if (getPlayer().getGuildId() <= 0) {
             return 0;
         }
-        return World.Guild.getGP(getPlayer().getGuildId()); //1 for
+        return Guild.getGP(getPlayer().getGuildId()); //1 for
     }
 
     public void showMapEffect(String path) {

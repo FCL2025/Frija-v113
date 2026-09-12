@@ -64,9 +64,12 @@ import server.MapleItemInformationProvider;
 import handling.channel.ChannelServer;
 import handling.channel.MapleGuildRanking;
 import database.DatabaseConnection;
+import handling.world.Alliance;
+import handling.world.Broadcast;
+import handling.world.Family;
+import handling.world.Guild;
 import handling.world.MapleParty;
 import handling.world.MaplePartyCharacter;
-import handling.world.World;
 import handling.world.guild.MapleGuild;
 import server.MapleCarnivalChallenge;
 import java.util.HashMap;
@@ -453,7 +456,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             }
             final byte rareness = GameConstants.gachaponRareItem(item.getItemId());
             if (rareness > 0) {
-                World.Broadcast.broadcastMessage(ChatPacket.getGachaponMega("[" + msg + "] " + c.getPlayer().getName(), " : 從轉蛋機轉到了!", item, rareness,c.getChannel()-1).getBytes());
+                Broadcast.broadcastMessage(ChatPacket.getGachaponMega("[" + msg + "] " + c.getPlayer().getName(), " : 從轉蛋機轉到了!", item, rareness,c.getChannel()-1).getBytes());
             }
             return item.getItemId();
         } catch (Exception e) {
@@ -755,7 +758,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         if (gid <= 0 || c.getPlayer().getGuildRank() != 1) {
             return;
         }
-        World.Guild.disbandGuild(gid);
+        Guild.disbandGuild(gid);
     }
 
     public void increaseGuildCapacity(boolean UseGP) {
@@ -772,7 +775,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             if (gid <= 0) {
                 return;
             }
-            World.Guild.increaseGuildCapacity(gid);
+            Guild.increaseGuildCapacity(gid);
             c.getPlayer().gainMeso(-250000, true, false, true);
         }else{
             if (c.getPlayer().getGuild().getGP() < 2500) {
@@ -783,7 +786,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             if (gid <= 0) {
                 return;
             }
-            World.Guild.increaseGuildCapacity(gid);
+            Guild.increaseGuildCapacity(gid);
             c.getPlayer().getGuild().gainGP(-2500);
         }
     }
@@ -1212,7 +1215,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             return false;
         }
         try {
-            return World.Alliance.createAlliance(alliancename, c.getPlayer().getId(), otherChar.getId(), c.getPlayer().getGuildId(), otherChar.getGuildId());
+            return Alliance.createAlliance(alliancename, c.getPlayer().getId(), otherChar.getId(), c.getPlayer().getGuildId(), otherChar.getGuildId());
         } catch (Exception re) {
             re.printStackTrace();
             return false;
@@ -1221,9 +1224,9 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
 
     public boolean addCapacityToAlliance() {
         try {
-            final MapleGuild gs = World.Guild.getGuild(c.getPlayer().getGuildId());
+            final MapleGuild gs = Guild.getGuild(c.getPlayer().getGuildId());
             if (gs != null && c.getPlayer().getGuildRank() == 1 && c.getPlayer().getAllianceRank() == 1) {
-                if (World.Alliance.getAllianceLeader(gs.getAllianceId()) == c.getPlayer().getId() && World.Alliance.changeAllianceCapacity(gs.getAllianceId())) {
+                if (Alliance.getAllianceLeader(gs.getAllianceId()) == c.getPlayer().getId() && Alliance.changeAllianceCapacity(gs.getAllianceId())) {
                     gainMeso(-MapleGuildAlliance.CHANGE_CAPACITY_COST);
                     return true;
                 }
@@ -1236,9 +1239,9 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
 
     public boolean disbandAlliance() {
         try {
-            final MapleGuild gs = World.Guild.getGuild(c.getPlayer().getGuildId());
+            final MapleGuild gs = Guild.getGuild(c.getPlayer().getGuildId());
             if (gs != null && c.getPlayer().getGuildRank() == 1 && c.getPlayer().getAllianceRank() == 1) {
-                if (World.Alliance.getAllianceLeader(gs.getAllianceId()) == c.getPlayer().getId() && World.Alliance.disbandAlliance(gs.getAllianceId())) {
+                if (Alliance.getAllianceLeader(gs.getAllianceId()) == c.getPlayer().getId() && Alliance.disbandAlliance(gs.getAllianceId())) {
                     return true;
                 }
             }
@@ -1341,16 +1344,16 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 sendNPCText(getPlayer().getName() + " 和 " + chr.getName() + ", 祝福你們在未來的路上永恆不變、幸福美滿!", 9201002);
                 getMap().startExtendedMapEffect("親吻你的新娘， " + getPlayer().getName() + " !", 5120006);
                 if (chr.getGuildId() > 0) {
-                    World.Guild.guildPacket(chr.getGuildId(), FamilyPacket.sendMarriage(false, chr.getName()));
+                    Guild.guildPacket(chr.getGuildId(), FamilyPacket.sendMarriage(false, chr.getName()));
                 }
                 if (chr.getFamilyId() > 0) {
-                    World.Family.familyPacket(chr.getFamilyId(), FamilyPacket.sendMarriage(true, chr.getName()), chr.getId());
+                    Family.familyPacket(chr.getFamilyId(), FamilyPacket.sendMarriage(true, chr.getName()), chr.getId());
                 }
                 if (getPlayer().getGuildId() > 0) {
-                    World.Guild.guildPacket(getPlayer().getGuildId(), FamilyPacket.sendMarriage(false, getPlayer().getName()));
+                    Guild.guildPacket(getPlayer().getGuildId(), FamilyPacket.sendMarriage(false, getPlayer().getName()));
                 }
                 if (getPlayer().getFamilyId() > 0) {
-                    World.Family.familyPacket(getPlayer().getFamilyId(), FamilyPacket.sendMarriage(true, chr.getName()), getPlayer().getId());
+                    Family.familyPacket(getPlayer().getFamilyId(), FamilyPacket.sendMarriage(true, chr.getName()), getPlayer().getId());
                 }
             }
         }, 20000); //10 sec 10 sec
@@ -1361,7 +1364,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         c.send(EventPacket.openBeans(getPlayer().getBeans(), type));
     }
     public void worldMessage(String text) {
-              World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, text).getBytes());
+              Broadcast.broadcastMessage(ChatPacket.serverNotice(6, text).getBytes());
             }
 
     public int getBeans() {

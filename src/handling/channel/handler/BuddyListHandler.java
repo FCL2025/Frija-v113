@@ -37,7 +37,8 @@ import client.BuddyList.BuddyAddResult;
 import client.BuddyList.BuddyOperation;
 import database.DatabaseConnection;
 import handling.channel.ChannelServer;
-import handling.world.World;
+import handling.world.Buddy;
+import handling.world.Find;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.packet.BuddyPacket;
 
@@ -102,7 +103,7 @@ public class BuddyListHandler {
             } else {
                 try {
                     CharacterIdNameBuddyCapacity charWithId = null;
-                    int channel = World.Find.findChannel(addName);
+                    int channel = Find.findChannel(addName);
                     MapleCharacter otherChar = null;
                     if (channel > 0) {
                         otherChar = ChannelServer.getInstance(channel).getPlayerStorage().getCharacterByName(addName);
@@ -116,7 +117,7 @@ public class BuddyListHandler {
                     if (charWithId != null) {
                         BuddyAddResult buddyAddResult = null;
                         if (channel > 0) {
-                            buddyAddResult = World.Buddy.requestBuddyAdd(addName, c.getChannel(), c.getPlayer().getId(), c.getPlayer().getName(), c.getPlayer().getLevel(), c.getPlayer().getJob());
+                            buddyAddResult = Buddy.requestBuddyAdd(addName, c.getChannel(), c.getPlayer().getId(), c.getPlayer().getName(), c.getPlayer().getLevel(), c.getPlayer().getJob());
                         } else {
                             try (Connection con = DatabaseConnection.getConnection()) {
                                 try (PreparedStatement ps = con.prepareStatement("SELECT COUNT(*) as buddyCount FROM buddies WHERE characterid = ? AND pending = 0")) {
@@ -176,7 +177,7 @@ public class BuddyListHandler {
             int otherCid = slea.readInt();
             if (!buddylist.isFull()) {
                 try {
-                    final int channel = World.Find.findChannel(otherCid);
+                    final int channel = Find.findChannel(otherCid);
                     String otherName = null;
                     int otherLevel = 0, otherJob = 0;
                     if (channel < 0) {
@@ -219,7 +220,7 @@ public class BuddyListHandler {
             final int otherCid = slea.readInt();
             final BuddylistEntry blz = buddylist.get(otherCid);
             if (blz != null && blz.isVisible()) {
-                notifyRemoteChannel(c, World.Find.findChannel(otherCid), otherCid, blz.getGroup(), DELETED);
+                notifyRemoteChannel(c, Find.findChannel(otherCid), otherCid, blz.getGroup(), DELETED);
             }
             buddylist.remove(otherCid);
             c.send(BuddyPacket.updateBuddylist(c.getPlayer().getBuddylist().getBuddies()));
@@ -233,7 +234,7 @@ public class BuddyListHandler {
         final MapleCharacter player = c.getPlayer();
 
         if (remoteChannel > 0) {
-            World.Buddy.buddyChanged(otherCid, player.getId(), player.getName(), c.getChannel(), operation, player.getLevel(), player.getJob(), group);
+            Buddy.buddyChanged(otherCid, player.getId(), player.getName(), c.getChannel(), operation, player.getLevel(), player.getJob(), group);
         }
     }
 }

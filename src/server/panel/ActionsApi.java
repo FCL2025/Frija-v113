@@ -4,6 +4,7 @@ import handling.RecvPacketOpcode;
 import handling.SendPacketOpcode;
 import handling.MapleServerHandler;
 import handling.channel.ChannelServer;
+import handling.world.Broadcast;
 import handling.world.World;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,7 +68,7 @@ final class ActionsApi {
         if (type == null) {
             throw new Router.HttpError(400, "type 必須是 " + String.join(" / ", NOTICE_TYPES.keySet()));
         }
-        World.Broadcast.broadcastMessage(ChatPacket.serverNotice(type, message).getBytes());
+        Broadcast.broadcastMessage(ChatPacket.serverNotice(type, message).getBytes());
         return Json.obj("ok", true, "type", typeName, "recipients", World.getConnected().getOrDefault(0, 0));
     }
 

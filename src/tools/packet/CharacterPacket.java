@@ -39,7 +39,8 @@ import client.SkillMacro;
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
 import handling.world.guild.MapleGuild;
-import handling.world.World;
+import handling.world.Alliance;
+import handling.world.Guild;
 import handling.world.guild.MapleGuildAlliance;
 import server.MapleItemInformationProvider;
 import server.Randomizer;
@@ -268,7 +269,7 @@ public class CharacterPacket {
         }
 
         if (chr.getGuildId() <= 0) {
-            final MapleGuild gs = World.Guild.getGuild(chr.getGuildId());
+            final MapleGuild gs = Guild.getGuild(chr.getGuildId());
             if(Prefix != null){
                 mplew.writeMapleAsciiString(Prefix);
               } else {
@@ -280,7 +281,7 @@ public class CharacterPacket {
             mplew.writeShort(0);
             mplew.write(0);
         } else {
-            final MapleGuild gs = World.Guild.getGuild(chr.getGuildId());
+            final MapleGuild gs = Guild.getGuild(chr.getGuildId());
             if (gs != null) {
                 mplew.writeMapleAsciiString(Prefix + gs.getName());
                 mplew.writeShort(gs.getLogoBG());
@@ -700,11 +701,11 @@ public class CharacterPacket {
             mplew.writeMapleAsciiString("尚未加入聯盟");
             }
         } else {
-            final MapleGuild gs = World.Guild.getGuild(chr.getGuildId());
+            final MapleGuild gs = Guild.getGuild(chr.getGuildId());
             if (gs != null) {
                 mplew.writeMapleAsciiString(gs.getName());
                 if (gs.getAllianceId() > 0) {
-                    final MapleGuildAlliance allianceName = World.Alliance.getAlliance(gs.getAllianceId());
+                    final MapleGuildAlliance allianceName = Alliance.getAlliance(gs.getAllianceId());
                     if (allianceName != null) {
                         mplew.writeMapleAsciiString(allianceName.getName());
                     } else {

@@ -29,7 +29,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import client.MapleClient;
-import handling.world.World;
+import handling.world.Client;
 import handling.cashshop.CashShopServer;
 import handling.channel.ChannelServer;
 import handling.cashshop.handler.CashShopOperation;
@@ -426,7 +426,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         }
         sb.append("IoSession opened ").append(address);
         System.out.println(sb.toString());
-        World.Client.addClient(client);
+        Client.addClient(client);
 
         FileWriter fw = isLoggedIP(session);
         if (fw != null) {
@@ -452,7 +452,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 }
                 client.disconnect(true, cs);
             } finally {
-                World.Client.removeClient(client);
+                Client.removeClient(client);
                 session.close();
                 session.removeAttribute(MapleClient.CLIENT_KEY);
             }

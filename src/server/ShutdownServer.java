@@ -6,6 +6,9 @@ import java.util.List;
 import database.DatabaseConnection;
 import handling.channel.ChannelServer;
 import handling.login.LoginServer;
+import handling.world.Alliance;
+import handling.world.Family;
+import handling.world.Guild;
 import handling.world.World;
 import server.panel.PanelServer;
 
@@ -69,9 +72,9 @@ public class ShutdownServer implements Runnable {
 
         // 3. Flush the cross-channel state that only lives in memory.
         try {
-            World.Guild.save();
-            World.Alliance.save();
-            World.Family.save();
+            Guild.save();
+            Alliance.save();
+            Family.save();
         } catch (final Exception e) {
             System.err.println("THROW" + e);
         }

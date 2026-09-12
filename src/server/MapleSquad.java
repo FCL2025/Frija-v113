@@ -6,7 +6,7 @@ import java.util.List;
 import client.MapleClient;
 import client.MapleCharacter;
 import handling.channel.ChannelServer;
-import handling.world.World;
+import handling.world.Find;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,7 +76,7 @@ public class MapleSquad {
                 }
             }
             final String nextPlayerId = type.queue.get(ch).remove(index).left;
-            final int theirCh = World.Find.findChannel(nextPlayerId);
+            final int theirCh = Find.findChannel(nextPlayerId);
             if (theirCh > 0) {
                 final MapleCharacter lead = ChannelServer.getInstance(theirCh).getPlayerStorage().getCharacterByName(nextPlayerId);
                 if (lead != null && lead.getMapId() == beginMapId && lead.getClient().getChannel() == ch) {

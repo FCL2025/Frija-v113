@@ -24,8 +24,8 @@ import client.MapleCharacter;
 import client.MapleClient;
 import handling.world.MapleParty;
 import handling.world.MaplePartyCharacter;
+import handling.world.Party;
 import handling.world.PartyOperation;
-import handling.world.World;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.packet.ChatPacket;
 import tools.packet.PartyPacket;
@@ -36,11 +36,11 @@ public class PartyHandler {
         final int action = slea.readByte();
         final int partyid = slea.readInt();
         if (c.getPlayer().getParty() == null) {
-            MapleParty party = World.Party.getParty(partyid);
+            MapleParty party = Party.getParty(partyid);
             if (party != null) {
                 if (action == 0x1B) { //accept
                     if (party.getMembers().size() < 6) {
-                        World.Party.updateParty(partyid, PartyOperation.JOIN, new MaplePartyCharacter(c.getPlayer()));
+                        Party.updateParty(partyid, PartyOperation.JOIN, new MaplePartyCharacter(c.getPlayer()));
                         c.getPlayer().receivePartyMemberHP();
                         c.getPlayer().updatePartyMemberHP();
                     } else {
@@ -69,7 +69,7 @@ public class PartyHandler {
         switch (operation) {
             case 1: // create
                 if (c.getPlayer().getParty() == null) {
-                    party = World.Party.createParty(partyplayer);
+                    party = Party.createParty(partyplayer);
                     c.getPlayer().setParty(party);
                     c.send(PartyPacket.partyCreated(party.getId()));
 
@@ -84,7 +84,7 @@ public class PartyHandler {
             case 2: // leave
                 if (party != null) { //are we in a party? o.O"
                     if (partyplayer.equals(party.getLeader())) { // disband
-                        World.Party.updateParty(party.getId(), PartyOperation.DISBAND, partyplayer);
+                        Party.updateParty(party.getId(), PartyOperation.DISBAND, partyplayer);
                         if (c.getPlayer().getEventInstance() != null) {
                             c.getPlayer().getEventInstance().disbandParty();
                         }
@@ -92,7 +92,7 @@ public class PartyHandler {
                             c.getPlayer().getPyramidSubway().fail(c.getPlayer());
                         }
                     } else {
-                        World.Party.updateParty(party.getId(), PartyOperation.LEAVE, partyplayer);
+                        Party.updateParty(party.getId(), PartyOperation.LEAVE, partyplayer);
                         if (c.getPlayer().getEventInstance() != null) {
                             c.getPlayer().getEventInstance().leftParty(c.getPlayer());
                         }
@@ -106,10 +106,10 @@ public class PartyHandler {
             case 3: // accept invitation
                 final int partyid = slea.readInt();
                 if (c.getPlayer().getParty() == null) {
-                    party = World.Party.getParty(partyid);
+                    party = Party.getParty(partyid);
                     if (party != null) {
                         if (party.getMembers().size() < 6) {
-                            World.Party.updateParty(party.getId(), PartyOperation.JOIN, partyplayer);
+                            Party.updateParty(party.getId(), PartyOperation.JOIN, partyplayer);
                             c.getPlayer().receivePartyMemberHP();
                             c.getPlayer().updatePartyMemberHP();
                         } else {
@@ -145,7 +145,7 @@ public class PartyHandler {
                 if (partyplayer.equals(party.getLeader())) {
                     final MaplePartyCharacter expelled = party.getMemberById(slea.readInt());
                     if (expelled != null) {
-                        World.Party.updateParty(party.getId(), PartyOperation.EXPEL, expelled);
+                        Party.updateParty(party.getId(), PartyOperation.EXPEL, expelled);
                         if (c.getPlayer().getEventInstance() != null) {
                             /*if leader wants to boot someone, then the whole party gets expelled
                              TODO: Find an easier way to get the character behind a MaplePartyCharacter
@@ -164,7 +164,7 @@ public class PartyHandler {
                 if (party != null) {
                     final MaplePartyCharacter newleader = party.getMemberById(slea.readInt());
                     if (newleader != null && partyplayer.equals(party.getLeader())) {
-                        World.Party.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, newleader);
+                        Party.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, newleader);
                     }
                 }
                 break;

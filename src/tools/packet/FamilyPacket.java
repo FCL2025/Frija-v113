@@ -23,7 +23,7 @@ package tools.packet;
 import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
-import handling.world.World;
+import handling.world.Family;
 import handling.world.family.MapleFamily;
 import handling.world.family.MapleFamilyBuff;
 import handling.world.family.MapleFamilyBuff.MapleFamilyBuffEntry;
@@ -68,7 +68,7 @@ public class FamilyPacket {
         mplew.writeShort(chr.getNoJuniors());
         mplew.writeShort(2);
         mplew.writeShort(chr.getNoJuniors());
-        MapleFamily family = World.Family.getFamily(chr.getFamilyId());
+        MapleFamily family = Family.getFamily(chr.getFamilyId());
         if (family != null) {
             mplew.writeInt(family.getLeaderId()); //??? 9D 60 03 00
             mplew.writeMapleAsciiString(family.getLeaderName());
@@ -103,7 +103,7 @@ public class FamilyPacket {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         mplew.writeShort(SendPacketOpcode.SEND_PEDIGREE.getValue());
         mplew.writeInt(chr.getId());
-        MapleFamily family = World.Family.getFamily(chr.getFamilyId());
+        MapleFamily family = Family.getFamily(chr.getFamilyId());
         int descendants = 2, gens = 0, generations = 0;
         if (family == null) {
             mplew.writeInt(2);

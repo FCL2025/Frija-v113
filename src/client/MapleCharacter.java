@@ -59,11 +59,16 @@ import database.DatabaseConnection;
 import database.DatabaseException;
 import handling.MaplePacket;
 import handling.channel.ChannelServer;
+import handling.world.Broadcast;
 import handling.world.CharacterTransfer;
+import handling.world.Family;
+import handling.world.Guild;
 import handling.world.MapleMessenger;
 import handling.world.MapleMessengerCharacter;
 import handling.world.MapleParty;
 import handling.world.MaplePartyCharacter;
+import handling.world.Messenger;
+import handling.world.Party;
 import handling.world.PartyOperation;
 import handling.world.PlayerBuffStorage;
 import handling.world.PlayerBuffValueHolder;
@@ -384,7 +389,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
             final int messengerid = ct.messengerid;
             if (messengerid > 0) {
-                ret.messenger = World.Messenger.getMessenger(messengerid);
+                ret.messenger = Messenger.getMessenger(messengerid);
             }
         } else {
 
@@ -392,7 +397,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         int partyid = ct.partyid;
         if (partyid >= 0) {
-            MapleParty party = World.Party.getParty(partyid);
+            MapleParty party = Party.getParty(partyid);
             if (party != null && party.getMemberById(ret.id) != null) {
                 ret.party = party;
             }
@@ -541,7 +546,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
                 int partyid = rs.getInt("party");
                 if (partyid >= 0) {
-                    MapleParty party = World.Party.getParty(partyid);
+                    MapleParty party = Party.getParty(partyid);
                     if (party != null && party.getMemberById(ret.id) != null) {
                         ret.party = party;
                     }
@@ -2796,9 +2801,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 percentrep = 100 - percentrep + (level / 2);
             }
             if (percentrep > 0) {
-                int sensen = World.Family.setRep(mfc.getFamilyId(), mfc.getSeniorId(), percentrep, level);
+                int sensen = Family.setRep(mfc.getFamilyId(), mfc.getSeniorId(), percentrep, level);
                 if (sensen > 0) {
-                    World.Family.setRep(mfc.getFamilyId(), sensen, percentrep / 2, level); //and we stop here
+                    Family.setRep(mfc.getFamilyId(), sensen, percentrep / 2, level); //and we stop here
                 }
             }
         }
@@ -2877,7 +2882,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void silentPartyUpdate() {
         if (party != null) {
-            World.Party.updateParty(party.getId(), PartyOperation.SILENT_UPDATE, new MaplePartyCharacter(this));
+            Party.updateParty(party.getId(), PartyOperation.SILENT_UPDATE, new MaplePartyCharacter(this));
         }
     }
 
@@ -3234,7 +3239,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             }
             sb.append(getName());
             sb.append(" 達到了 200 等 是我們的英雄!");
-            World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, sb.toString()).getBytes());
+            Broadcast.broadcastMessage(ChatPacket.serverNotice(6, sb.toString()).getBytes());
         }
         maxhp = (short) Math.min(30000, Math.abs(maxhp));
         maxmp = (short) Math.min(30000, Math.abs(maxmp));
@@ -3572,7 +3577,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         map.broadcastMessage(this, CharacterPacket.updateCharLook(this), false);
         stats.recalcLocalStats();
         if (getMessenger() != null) {
-            World.Messenger.updateMessenger(getMessenger().getId(), getName(), client.getChannel());
+            Messenger.updateMessenger(getMessenger().getId(), getName(), client.getChannel());
         }
     }
 
@@ -3908,7 +3913,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (getGuildId() <= 0) {
             return null;
         }
-        return World.Guild.getGuild(getGuildId());
+        return Guild.getGuild(getGuildId());
     }
 
     public void guildUpdate() {
@@ -3917,7 +3922,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         mgc.setLevel(level);
         mgc.setJobId(job);
-        World.Guild.memberLevelJobUpdate(mgc);
+        Guild.memberLevelJobUpdate(mgc);
     }
 
     public void saveGuildStatus() {
@@ -3928,7 +3933,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (mfc == null) {
             return;
         }
-        World.Family.memberFamilyUpdate(mfc, this);
+        Family.memberFamilyUpdate(mfc, this);
     }
 
     public void saveFamilyStatus() {
@@ -5129,7 +5134,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
         final ChannelServer ch = ChannelServer.getInstance(client.getChannel());
         if (getMessenger() != null) {
-            World.Messenger.silentLeaveMessenger(getMessenger().getId(), new MapleMessengerCharacter(this));
+            Messenger.silentLeaveMessenger(getMessenger().getId(), new MapleMessengerCharacter(this));
         }
         PlayerBuffStorage.addBuffsToStorage(getId(), getAllBuffs());
         PlayerBuffStorage.addCooldownsToStorage(getId(), getCooldowns());
@@ -5533,7 +5538,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void makeMFC(final int familyid, final int seniorid, final int junior1, final int junior2) {
         if (familyid > 0) {
-            MapleFamily f = World.Family.getFamily(familyid);
+            MapleFamily f = Family.getFamily(familyid);
             if (f == null) {
                 mfc = null;
             } else {

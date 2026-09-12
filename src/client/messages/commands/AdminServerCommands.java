@@ -8,6 +8,7 @@ import handling.MapleServerHandler;
 import handling.RecvPacketOpcode;
 import handling.SendPacketOpcode;
 import handling.channel.ChannelServer;
+import handling.world.Broadcast;
 import handling.world.World;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -87,7 +88,7 @@ public class AdminServerCommands {
                         ts.cancel(false);
         return;
                     }
-                    World.Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
+                    Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
                     System.out.println("伺服器即將在 " + minutesLeft + "分鐘後關閉.");
                     minutesLeft--;
                 }, 60000);
@@ -132,7 +133,7 @@ public class AdminServerCommands {
                 sb.append(c.getPlayer().getName());
                 sb.append("] ");
                 sb.append(StringUtil.joinStringFrom(splitted, 1));
-                World.Broadcast.broadcastMessage(ChatPacket.serverNotice(6, sb.toString()).getBytes());
+                Broadcast.broadcastMessage(ChatPacket.serverNotice(6, sb.toString()).getBytes());
             } else {
                 c.getPlayer().dropMessage(6, "指令規則: !say <message>");
                 return 0;
@@ -203,7 +204,7 @@ public class AdminServerCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(splitted[1]);
-            World.Broadcast.broadcastSmega(ChatPacket.serverNotice(3, victim == null ? c.getChannel() : victim.getClient().getChannel(), victim == null ? splitted[1] : victim.getName() + " : " + StringUtil.joinStringFrom(splitted, 2), true).getBytes());
+            Broadcast.broadcastSmega(ChatPacket.serverNotice(3, victim == null ? c.getChannel() : victim.getClient().getChannel(), victim == null ? splitted[1] : victim.getName() + " : " + StringUtil.joinStringFrom(splitted, 2), true).getBytes());
             return 1;
         }
     }
@@ -551,7 +552,7 @@ public class AdminServerCommands {
             } else if (range == 1) {
                 ChannelServer.getInstance(c.getChannel()).broadcastPacket(packet);
             } else if (range == 2) {
-                World.Broadcast.broadcastMessage(packet.getBytes());
+                Broadcast.broadcastMessage(packet.getBytes());
             }
             return 1;
         }
@@ -578,7 +579,7 @@ public class AdminServerCommands {
             } else if (range == 1) {
                 ChannelServer.getInstance(c.getChannel()).broadcastPacket(packet);
             } else if (range == 2) {
-                World.Broadcast.broadcastMessage(packet.getBytes());
+                Broadcast.broadcastMessage(packet.getBytes());
             }
             return 1;
         }

@@ -45,8 +45,8 @@ import constants.GameConstants;
 import client.SkillFactory;
 import client.anticheat.CheatingOffense;
 import handling.channel.ChannelServer;
+import handling.world.Broadcast;
 import handling.world.MaplePartyCharacter;
-import handling.world.World;
 import java.awt.Rectangle;
 import java.util.Collections;
 import java.util.concurrent.locks.Lock;
@@ -900,7 +900,7 @@ public class InventoryHandler {
             c.send(InventoryPacket.getShowItemGain(reward, (short) amount, true));
 
             if (GameConstants.gachaponRareItem(item.getItemId()) > 0) {
-                World.Broadcast.broadcastMessage(ChatPacket.getGachaponMega("[" + box + "] " + c.getPlayer().getName(), " : 從金寶箱中獲得", item, (byte) 2).getBytes());
+                Broadcast.broadcastMessage(ChatPacket.getGachaponMega("[" + box + "] " + c.getPlayer().getName(), " : 從金寶箱中獲得", item, (byte) 2).getBytes());
             }
         } else {
             chr.dropMessage(5, "請確認是否有銀鑰匙或者你身上的空間滿了.");
@@ -1658,7 +1658,7 @@ public class InventoryHandler {
                     }
                     final boolean ear = slea.readByte() > 0;
 
-                    World.Broadcast.broadcastSmega(ChatPacket.tripleSmega(messages, ear, c.getChannel()).getBytes());
+                    Broadcast.broadcastSmega(ChatPacket.tripleSmega(messages, ear, c.getChannel()).getBytes());
 
                     used = true;
                 } else {
@@ -1689,7 +1689,7 @@ public class InventoryHandler {
 
                     final boolean ear = slea.readByte() != 0;
 
-                    World.Broadcast.broadcastSmega(ChatPacket.serverNotice(11, c.getChannel(), sb.toString(), ear).getBytes());
+                    Broadcast.broadcastSmega(ChatPacket.serverNotice(11, c.getChannel(), sb.toString(), ear).getBytes());
                         
                     used = true;
                 } else {
@@ -1724,7 +1724,7 @@ public class InventoryHandler {
                              c.send(CharacterPacket.enableActions());
                              return;
                          }
-                    World.Broadcast.broadcastSmega(ChatPacket.serverNotice(12, c.getChannel(), sb.toString(), ear).getBytes());
+                    Broadcast.broadcastSmega(ChatPacket.serverNotice(12, c.getChannel(), sb.toString(), ear).getBytes());
 
                     used = true;
                 } else {
@@ -1755,7 +1755,7 @@ public class InventoryHandler {
 
                     final boolean ear = slea.readByte() != 0;
 
-                    World.Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), sb.toString(), ear).getBytes());
+                    Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), sb.toString(), ear).getBytes());
              
                     used = true;
                 } else {
@@ -1792,7 +1792,7 @@ public class InventoryHandler {
                         byte pos = (byte) slea.readInt();
                         item = c.getPlayer().getInventory(MapleInventoryType.getByType(invType)).getItem(pos);
                     }
-                    World.Broadcast.broadcastSmega(ChatPacket.itemMegaphone(sb.toString(), ear, c.getChannel(), item).getBytes());
+                    Broadcast.broadcastSmega(ChatPacket.itemMegaphone(sb.toString(), ear, c.getChannel(), item).getBytes());
                     used = true;
                 } else {
                     c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
@@ -1825,7 +1825,7 @@ public class InventoryHandler {
                     break;
                 }
                 String message = slea.readMapleAsciiString();
-                World.Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), c.getPlayer().getName() + " : " + message, ear).getBytes());
+                Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), c.getPlayer().getName() + " : " + message, ear).getBytes());
                 break;
             }
             case 5090100: // Wedding Invitation Card
@@ -2071,7 +2071,7 @@ public class InventoryHandler {
                         break;
                     }
                     final boolean ear = slea.readByte() != 0;
-                    World.Broadcast.broadcastSmega(ChatPacket.getAvatarMega(c.getPlayer(), c.getChannel(), itemId, text, ear).getBytes());
+                    Broadcast.broadcastSmega(ChatPacket.getAvatarMega(c.getPlayer(), c.getChannel(), itemId, text, ear).getBytes());
                     used = true;
                 }
                 break;

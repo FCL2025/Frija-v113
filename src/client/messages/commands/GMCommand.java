@@ -10,7 +10,8 @@ import client.inventory.MapleInventoryType;
 import client.messages.CommandProcessorUtil;
 import constants.GameConstants;
 import handling.channel.ChannelServer;
-import handling.world.World;
+import handling.world.Broadcast;
+import handling.world.Find;
 import java.util.Map.Entry;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
@@ -307,7 +308,7 @@ public class GMCommand {
             } else {
                 try {
                     victim = c.getPlayer();
-                    int ch = World.Find.findChannel(splitted[1]);
+                    int ch = Find.findChannel(splitted[1]);
                     if (ch < 0) {
                         MapleMap target = c.getChannelServer().getMapFactory().getMap(Integer.parseInt(splitted[1]));
                         c.getPlayer().changeMap(target, target.getPortal(0));
@@ -333,7 +334,7 @@ public class GMCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
 
-                World.Broadcast.broadcastGMMessage(ChatPacket.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                Broadcast.broadcastGMMessage(ChatPacket.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
             
             return 1;
         }

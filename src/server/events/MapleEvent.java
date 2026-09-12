@@ -24,7 +24,7 @@ package server.events;
 import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.channel.ChannelServer;
-import handling.world.World;
+import handling.world.Broadcast;
 import server.MapleInventoryManipulator;
 import server.RandomRewards;
 import server.Randomizer;
@@ -201,7 +201,7 @@ public abstract class MapleEvent {
         }
         cserv.setEvent(cserv.getEvent(event).mapid[0]);
         cserv.getEvent(event).reset();
-        World.Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "活動 " + String.valueOf(event) + " 即將在頻道 " + cserv.getChannel() + " 舉行 , 要參加的玩家請到頻道 " + cserv.getChannel()).getBytes());
+        Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "活動 " + String.valueOf(event) + " 即將在頻道 " + cserv.getChannel() + " 舉行 , 要參加的玩家請到頻道 " + cserv.getChannel()).getBytes());
         return "";
     }
 }

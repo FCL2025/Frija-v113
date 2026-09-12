@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import client.MapleClient;
-import handling.world.World;
+import handling.world.Broadcast;
 import java.util.concurrent.locks.ReentrantLock;
 import tools.packet.ChatPacket;
 
@@ -110,7 +110,7 @@ public class AutobanManager implements Runnable {
                     sb.append(s);
                     sb.append(", ");
                 }
-                World.Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "'" + c.getPlayer().getName() + "'使用外掛程式遭到系統封鎖").getBytes());
+                Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "'" + c.getPlayer().getName() + "'使用外掛程式遭到系統封鎖").getBytes());
                 c.getPlayer().ban(sb.toString(), false, true, false);
                 c.disconnect(true, false);
             } else {

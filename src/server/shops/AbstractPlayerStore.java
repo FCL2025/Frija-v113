@@ -29,7 +29,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.lang.ref.WeakReference;
-import handling.world.World;
+import handling.world.Find;
 import client.inventory.IItem;
 import client.inventory.ItemLoader;
 import client.MapleCharacter;
@@ -356,7 +356,7 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
     }
 
     public MapleCharacter getMCOwnerWorld() {
-        int ourChannel = World.Find.findChannel(ownerId);
+        int ourChannel = Find.findChannel(ownerId);
         if (ourChannel <= 0) {
             return null;
         }

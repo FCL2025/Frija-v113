@@ -9,7 +9,7 @@ import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import java.util.Arrays;
 import tools.StringUtil;
-import handling.world.World;
+import handling.world.Broadcast;
 import tools.FileoutputUtil;
 import tools.packet.CharacterPacket;
 import tools.packet.ChatPacket;
@@ -114,7 +114,7 @@ public class PlayerCommand {
                 return 1;
             }
             if (!c.getPlayer().getCheatTracker().GMSpam(100000, 1)) { // 5 minutes.
-                World.Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
                 c.getPlayer().dropMessage(6, "訊息已經寄送給GM了!");
             } else {
                 c.getPlayer().dropMessage(6, "為了防止對GM刷屏所以每1分鐘只能發一次.");

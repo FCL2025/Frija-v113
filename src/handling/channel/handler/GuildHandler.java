@@ -25,7 +25,8 @@ import java.util.Iterator;
 import client.MapleCharacter;
 import client.MapleClient;
 import handling.MaplePacket;
-import handling.world.World;
+import handling.world.Alliance;
+import handling.world.Guild;
 import handling.world.guild.MapleGuild;
 import handling.world.guild.MapleGuildResponse;
 import tools.data.input.SeekableLittleEndianAccessor;
@@ -116,7 +117,7 @@ public class GuildHandler {
                     c.getPlayer().dropMessage(1, "這個公會名稱是不被准許的.");
                     return;
                 }
-                int guildId = World.Guild.createGuild(c.getPlayer().getId(), guildName);
+                int guildId = Guild.createGuild(c.getPlayer().getId(), guildName);
                 if (guildId == 0) {
                     c.send(GuildPacket.genericGuildMessage((byte) 0x1c));
                     return;
@@ -126,7 +127,7 @@ public class GuildHandler {
                 c.getPlayer().setGuildRank((byte) 1);
                 c.getPlayer().saveGuildStatus();
                 c.send(GuildPacket.showGuildInfo(c.getPlayer()));
-                World.Guild.setGuildMemberOnline(c.getPlayer().getMGC(), true, c.getChannel());
+                Guild.setGuildMemberOnline(c.getPlayer().getMGC(), true, c.getChannel());
                 c.getPlayer().dropMessage(1, "恭喜你成功創建一個公會.");
                 respawnPlayer(c.getPlayer());
                 break;
@@ -166,15 +167,15 @@ public class GuildHandler {
                         c.getPlayer().setGuildRank((byte) 5);
                         itr.remove();
 
-                        int s = World.Guild.addGuildMember(c.getPlayer().getMGC());
+                        int s = Guild.addGuildMember(c.getPlayer().getMGC());
                         if (s == 0) {
                             c.getPlayer().dropMessage(1, "你想要加入的公會已經滿了.");
                             c.getPlayer().setGuildId(0);
                             return;
                         }
                         c.send(GuildPacket.showGuildInfo(c.getPlayer()));
-                        final MapleGuild gs = World.Guild.getGuild(guildId);
-                        for (MaplePacket pack : World.Alliance.getAllianceInfo(gs.getAllianceId(), true)) {
+                        final MapleGuild gs = Guild.getGuild(guildId);
+                        for (MaplePacket pack : Alliance.getAllianceInfo(gs.getAllianceId(), true)) {
                             if (pack != null) {
                                 c.send(pack);
                             }
@@ -193,7 +194,7 @@ public class GuildHandler {
                 if (cid != c.getPlayer().getId() || !name.equals(c.getPlayer().getName()) || c.getPlayer().getGuildId() <= 0) {
                     return;
                 }
-                World.Guild.leaveGuild(c.getPlayer().getMGC());
+                Guild.leaveGuild(c.getPlayer().getMGC());
                 c.send(GuildPacket.showGuildInfo(null));
                 c.send(GuildPacket.fuckGuildInfo(c.getPlayer()));
                 break;
@@ -204,7 +205,7 @@ public class GuildHandler {
                 if (c.getPlayer().getGuildRank() > 2 || c.getPlayer().getGuildId() <= 0) {
                     return;
                 }
-                World.Guild.expelMember(c.getPlayer().getMGC(), name, cid);
+                Guild.expelMember(c.getPlayer().getMGC(), name, cid);
                 break;
             case 0x0d: // Guild rank titles change
                 if (c.getPlayer().getGuildId() <= 0 || c.getPlayer().getGuildRank() != 1) {
@@ -215,7 +216,7 @@ public class GuildHandler {
                     ranks[i] = slea.readMapleAsciiString();
                 }
 
-                World.Guild.changeRankTitle(c.getPlayer().getGuildId(), ranks);
+                Guild.changeRankTitle(c.getPlayer().getGuildId(), ranks);
                 break;
             case 0x0e: // Rank change
                 cid = slea.readInt();
@@ -225,7 +226,7 @@ public class GuildHandler {
                     return;
                 }
 
-                World.Guild.changeRank(c.getPlayer().getGuildId(), cid, newRank);
+                Guild.changeRank(c.getPlayer().getGuildId(), cid, newRank);
                 break;
             case 0x0f: // guild emblem change
                 if (c.getPlayer().getGuildId() <= 0 || c.getPlayer().getGuildRank() != 1 || c.getPlayer().getMapId() != 200000301) {
@@ -241,7 +242,7 @@ public class GuildHandler {
                 final short logo = slea.readShort();
                 final byte logocolor = slea.readByte();
 
-                World.Guild.setGuildEmblem(c.getPlayer().getGuildId(), bg, bgcolor, logo, logocolor);
+                Guild.setGuildEmblem(c.getPlayer().getGuildId(), bg, bgcolor, logo, logocolor);
 
                 c.getPlayer().gainMeso(-1000000, true, false, true);
                 respawnPlayer(c.getPlayer());
@@ -251,7 +252,7 @@ public class GuildHandler {
                 if (notice.length() > 100 || c.getPlayer().getGuildId() <= 0 || c.getPlayer().getGuildRank() > 2) {
                     return;
                 }
-                World.Guild.setGuildNotice(c.getPlayer().getGuildId(), notice);
+                Guild.setGuildNotice(c.getPlayer().getGuildId(), notice);
                 break;
         }
     }

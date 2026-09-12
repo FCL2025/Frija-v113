@@ -28,7 +28,7 @@ import handling.SendPacketOpcode;
 import handling.world.guild.MapleGuild;
 import handling.world.guild.MapleGuildCharacter;
 import handling.channel.MapleGuildRanking.GuildRankingInfo;
-import handling.world.World;
+import handling.world.Guild;
 import handling.world.guild.MapleBBSThread;
 import handling.world.guild.MapleBBSThread.MapleBBSReply;
 import handling.world.guild.MapleGuildAlliance;
@@ -90,7 +90,7 @@ public class GuildPacket {
             mplew.write(0);
             return mplew.getPacket();
         }
-        MapleGuild g = World.Guild.getGuild(c.getGuildId());
+        MapleGuild g = Guild.getGuild(c.getGuildId());
         if (g == null) { //failed to read from DB - don't show a guild
             mplew.write(0);
             return mplew.getPacket();
@@ -335,7 +335,7 @@ public class GuildPacket {
         final int noGuilds = alliance.getNoGuilds();
         MapleGuild[] g = new MapleGuild[noGuilds];
         for (int i = 0; i < noGuilds; i++) {
-            g[i] = World.Guild.getGuild(alliance.getGuildId(i));
+            g[i] = Guild.getGuild(alliance.getGuildId(i));
             if (g[i] == null) {
                 return CharacterPacket.enableActions();
             }
@@ -424,7 +424,7 @@ public class GuildPacket {
         final int noGuilds = alliance.getNoGuilds();
         MapleGuild[] g = new MapleGuild[noGuilds];
         for (int i = 0; i < alliance.getNoGuilds(); i++) {
-            g[i] = World.Guild.getGuild(alliance.getGuildId(i));
+            g[i] = Guild.getGuild(alliance.getGuildId(i));
             if (g[i] == null) {
                 return CharacterPacket.enableActions();
             }
@@ -468,7 +468,7 @@ public class GuildPacket {
         final int noGuilds = alliance.getNoGuilds();
         MapleGuild[] g = new MapleGuild[noGuilds];
         for (int i = 0; i < alliance.getNoGuilds(); i++) {
-            g[i] = World.Guild.getGuild(alliance.getGuildId(i));
+            g[i] = Guild.getGuild(alliance.getGuildId(i));
             if (g[i] == null) {
                 return CharacterPacket.enableActions();
             }

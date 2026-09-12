@@ -32,7 +32,7 @@ import java.util.concurrent.ScheduledFuture;
 import constants.GameConstants;
 import client.MapleCharacter;
 import client.MapleCharacterUtil;
-import handling.world.World;
+import handling.world.Broadcast;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import server.AutobanManager;
@@ -290,7 +290,7 @@ public class CheatTracker {
                 gm_message--;
                 if (gm_message == 0) {
                     System.out.println(MapleCharacterUtil.makeMapleReadable(chrhardref.getName()) + "疑似使用外掛");
-                    World.Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "[管理員訊息] " + MapleCharacterUtil.makeMapleReadable(chrhardref.getName()) + " suspected of hacking! " + StringUtil.makeEnumHumanReadable(offense.name()) + (param == null ? "" : (" - " + param))).getBytes());
+                    Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "[管理員訊息] " + MapleCharacterUtil.makeMapleReadable(chrhardref.getName()) + " suspected of hacking! " + StringUtil.makeEnumHumanReadable(offense.name()) + (param == null ? "" : (" - " + param))).getBytes());
                     AutobanManager.getInstance().autoban(chrhardref.getClient(), StringUtil.makeEnumHumanReadable(offense.name()));
                     gm_message = 100;
                 }

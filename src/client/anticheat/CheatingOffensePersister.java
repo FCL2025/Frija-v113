@@ -27,6 +27,14 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import server.Timer.CheatTimer;
 
+/**
+ * Inert: {@link PersistingTask#run()} only clears {@code toPersist} now - the
+ * actual {@code cheatlog} INSERT/UPDATE below it has been commented out since
+ * before this fork existed. Kept rather than deleted because
+ * {@code CheatTracker.persistEntry} (a file this cleanup does not own) still
+ * calls {@link #persistEntry(CheatingOffenseEntry)} on every offense; removing
+ * this class means editing that call site too, which is out of scope here.
+ */
 public class CheatingOffensePersister {
 
     private final static CheatingOffensePersister instance = new CheatingOffensePersister();

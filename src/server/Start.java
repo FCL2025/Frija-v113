@@ -124,7 +124,6 @@ public class Start {
         LoginInformationProvider.getInstance();
         MapleQuest.initQuests();
         MapleLifeFactory.loadQuestCounts();
-//        ItemMakerFactory.getInstance();
         MapleItemInformationProvider.getInstance().load();
         RandomRewards.getInstance();
         SkillFactory.getSkill(99999999);
@@ -139,7 +138,6 @@ public class Start {
         MapleFamilyBuff.getBuffEntry();
         MapleServerHandler.registerMBean();
         RankingWorker.getInstance().run();
-        // MTSStorage.load();
         phase("排行榜與家族");
 
         CashItemFactory.getInstance().initialize();

@@ -28,11 +28,8 @@ tms.WFlags        = 0
 tms.Admin         = false
 tms.UserLimit     = 600
 tms.MaxCharacters = 3
-tms.Port          = 8585
-tms.LPort         = 8484
 tms.IP            = 127.0.0.1
-tms.Packet        = false
-tms.Debug = 
+tms.Debug =
 
 #Threading / Performance Setting
 #封包處理執行緒數。MINA 以前偷偷用固定 16 條執行緒，現在改成明確設定，

@@ -20,21 +20,10 @@
  */
 package handling.world;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-
-public class CharacterIdChannelPair implements Externalizable, Comparable<CharacterIdChannelPair> {
+public class CharacterIdChannelPair implements Comparable<CharacterIdChannelPair> {
 
     private int charid = 0;
     private int channel = 1;
-
-    /**
-     * only for externalisation
-     */
-    public CharacterIdChannelPair() {
-    }
 
     public CharacterIdChannelPair(int charid, int channel) {
         super();
@@ -48,18 +37,6 @@ public class CharacterIdChannelPair implements Externalizable, Comparable<Charac
 
     public int getChannel() {
         return channel;
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        charid = in.readInt();
-        channel = in.readByte();
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeInt(charid);
-        out.writeByte(channel);
     }
 
     @Override

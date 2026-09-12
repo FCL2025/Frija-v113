@@ -83,3 +83,6 @@ CLAUDE.md
 /panel/dist
 /panel/tools/shots
 /panel/tools/.chrome-profile
+
+# Claude Code 的暫時 git worktree（平行重構時建立，用完即棄）
+/.claude/worktrees

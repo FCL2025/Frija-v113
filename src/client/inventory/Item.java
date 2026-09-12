@@ -199,6 +199,16 @@ public class Item implements IItem, Serializable {
     }
 
     @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + uniqueid;
+        result = 31 * result + id;
+        result = 31 * result + quantity;
+        result = 31 * result + Math.abs(position);
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "Item: " + id + " quantity: " + quantity;
     }

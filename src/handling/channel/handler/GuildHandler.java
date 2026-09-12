@@ -74,6 +74,14 @@ public class GuildHandler {
             Invited oth = (Invited) other;
             return (gid == oth.gid && name.equals(oth.name));
         }
+
+        @Override
+        public final int hashCode() {
+            int result = 17;
+            result = 31 * result + gid;
+            result = 31 * result + (name == null ? 0 : name.hashCode());
+            return result;
+        }
     }
     private static final java.util.List<Invited> invited = new java.util.LinkedList<Invited>();
     private static long nextPruneTime = System.currentTimeMillis() + 20 * 60 * 1000;

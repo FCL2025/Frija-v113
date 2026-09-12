@@ -164,6 +164,14 @@ public class MapleFamilyCharacter implements java.io.Serializable {
         return (o.getId() == id && o.getName().equals(name));
     }
 
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + id;
+        result = 31 * result + (name == null ? 0 : name.hashCode());
+        return result;
+    }
+
     public void setOnline(boolean f) {
         online = f;
     }

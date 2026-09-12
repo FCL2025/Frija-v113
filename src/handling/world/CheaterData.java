@@ -55,4 +55,12 @@ public class CheaterData implements Serializable, Comparable<CheaterData> {
         final CheaterData obj = (CheaterData) oth;
         return obj.points == this.points && obj.info.equals(this.info);
     }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + points;
+        result = 31 * result + (info == null ? 0 : info.hashCode());
+        return result;
+    }
 }

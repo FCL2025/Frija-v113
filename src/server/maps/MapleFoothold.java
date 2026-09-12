@@ -75,6 +75,17 @@ public class MapleFoothold implements Comparable<MapleFoothold> {
         return oth.getY1() == p1.y && oth.getY2() == p2.y && oth.getX1() == p1.x && oth.getX2() == p2.x && id == oth.getId();
     }
 
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + p1.x;
+        result = 31 * result + p1.y;
+        result = 31 * result + p2.x;
+        result = 31 * result + p2.y;
+        result = 31 * result + id;
+        return result;
+    }
+
     public int getId() {
         return id;
     }

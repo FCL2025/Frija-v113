@@ -290,6 +290,11 @@ public class CPUSampler {
         }
 
         @Override
+        public int hashCode() {
+            return count;
+        }
+
+        @Override
         public String toString() {
             return count + " Sampled Invocations\n" + trace.toString();
         }

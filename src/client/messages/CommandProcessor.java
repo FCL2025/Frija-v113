@@ -25,7 +25,11 @@ import client.MapleCharacter;
 import client.MapleClient;
 import client.messages.commands.CommandExecute;
 import client.messages.commands.CommandObject;
-import client.messages.commands.AdminCommand;
+import client.messages.commands.AdminDebugCommands;
+import client.messages.commands.AdminItemCommands;
+import client.messages.commands.AdminMapCommands;
+import client.messages.commands.AdminPlayerCommands;
+import client.messages.commands.AdminServerCommands;
 import client.messages.commands.PlayerCommand;
 import client.messages.commands.GMCommand;
 import client.messages.commands.InternCommand;
@@ -48,7 +52,10 @@ public class CommandProcessor {
     static {
 
         Class<?>[] CommandFiles = {
-            PlayerCommand.class, AdminCommand.class, GMCommand.class, InternCommand.class
+            PlayerCommand.class,
+            AdminItemCommands.class, AdminMapCommands.class, AdminPlayerCommands.class,
+            AdminServerCommands.class, AdminDebugCommands.class,
+            GMCommand.class, InternCommand.class
         };
 
         for (Class<?> clasz : CommandFiles) {
@@ -76,8 +83,16 @@ public class CommandProcessor {
                         FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
                     }
                 }
-                Collections.sort(cL);
-                commandList.put(rankNeeded.getLevel(), cL);
+                // 一個權限等級可以由多個檔案提供指令（ADMIN 就分成五個檔），所以這裡
+                // 必須把 cL 併進該等級既有的清單，不能整份覆寫：舊寫法會讓後面的檔案
+                // 蓋掉前面檔案已經登記好的指令名稱，commandList 只剩最後一個檔案的。
+                ArrayList<String> rankList = commandList.get(rankNeeded.getLevel());
+                if (rankList == null) {
+                    rankList = new ArrayList<>();
+                    commandList.put(rankNeeded.getLevel(), rankList);
+                }
+                rankList.addAll(cL);
+                Collections.sort(rankList);
             } catch (Exception ex) {
                 ex.printStackTrace();
                 FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);

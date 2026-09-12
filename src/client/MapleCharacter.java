@@ -823,6 +823,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
                     rs.close();
                 }
             } catch (SQLException ignore) {
+                // closing the statement/result set on the way out; nothing to do if that fails
             }
         }
         return ret;
@@ -4566,7 +4567,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
             ps.setString(2, bossid);
             ps.executeUpdate();
         } catch (Exception Ex) {
-         //   log.error("Error while insert bosslog.", Ex);
+            System.err.println("Error while insert bosslog for char " + getName() + ": " + Ex);
         }
     }
     public void dropMessage(int type, String message) {

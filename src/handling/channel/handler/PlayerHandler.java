@@ -55,6 +55,7 @@ import server.life.MobSkillFactory;
 import server.maps.MapleMap;
 import server.maps.FieldLimitType;
 import server.movement.LifeMovementFragment;
+import tools.FileoutputUtil;
 import tools.MaplePacketCreator;
 import tools.packet.MobPacket;
 import tools.packet.MTSCSPacket;
@@ -1021,7 +1022,7 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
                                     map.movePlayer(clone, pos);
                                 }
                             } catch (Exception e) {
-                                //very rarely swallowed
+                                FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
                             }
                         }
                     }, 500 * i + 500);

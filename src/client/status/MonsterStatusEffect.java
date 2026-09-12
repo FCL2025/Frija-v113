@@ -93,6 +93,7 @@ public class MonsterStatusEffect {
             try {
                 this.poisonSchedule.cancel(false);
             } catch (NullPointerException e) {
+                // cancel() failing does not matter - the field is nulled out regardless.
             } //set to null anyway.
         }
         this.poisonSchedule = null;
@@ -101,6 +102,7 @@ public class MonsterStatusEffect {
 	    try {
             	this.poisonStatusSchedule.cancel(false);
 	    } catch(NullPointerException e) {
+	        // cancel() failing does not matter - the field is nulled out regardless.
 	    } //set to null anyway.
         }
         this.poisonStatusSchedule = null;

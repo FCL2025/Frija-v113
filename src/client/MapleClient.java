@@ -495,6 +495,7 @@ public class MapleClient implements Serializable {
 				ps.setString(1, accountName);
 				ps.executeUpdate();
 			} catch (SQLException se) {
+				System.err.println("ERROR unlockAcc" + se);
 			}
 		}
     }

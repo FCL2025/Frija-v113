@@ -104,6 +104,7 @@ public class MapleCharacterUtil {
                 prompt = rs.next() ? false : true;
             }
         } catch (SQLException e) {
+            System.err.println("error 'PromptPoll' " + e);
         }
         return prompt;
     }
@@ -120,6 +121,7 @@ public class MapleCharacterUtil {
 
             ps.execute();
         } catch (SQLException e) {
+            System.err.println("error 'SetPoll' " + e);
         }
         return true;
     }

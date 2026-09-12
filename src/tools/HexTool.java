@@ -111,6 +111,7 @@ public class HexTool {
             String str = new String(ret, encode);
             return str;
         } catch (Exception e) {
+            // BIG5 decode failed - this is only a debug hex-dump helper, fall back to empty.
         }
         return "";
     }

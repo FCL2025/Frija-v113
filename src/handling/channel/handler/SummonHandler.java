@@ -47,6 +47,7 @@ import server.maps.MapleSummon;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import server.maps.SummonMovementType;
+import tools.FileoutputUtil;
 import tools.MaplePacketCreator;
 import tools.packet.MobPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
@@ -83,7 +84,7 @@ public class SummonHandler {
 
                                 }
                             } catch (Exception e) {
-                                //very rarely swallowed
+                                FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
                             }
                         }
                     }, 500 * i + 500);

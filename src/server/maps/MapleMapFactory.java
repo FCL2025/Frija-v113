@@ -47,6 +47,7 @@ import server.life.MapleMonster;
 import server.life.MapleNPC;
 import server.maps.MapleNodes.MapleNodeInfo;
 import server.maps.MapleNodes.MaplePlatform;
+import tools.FileoutputUtil;
 import tools.StringUtil;
 
 public class MapleMapFactory {
@@ -169,6 +170,7 @@ public class MapleMapFactory {
 						}
 					}
 				} catch(SQLException e) {
+					FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
 				}
                 // load life data (npc, monsters)
                 String type;
@@ -760,6 +762,7 @@ public class MapleMapFactory {
                                 MapleDataTool.getIntConvert("attr", node, 0), edges);
                         nodeInfo.addNode(mni);
                     } catch (NumberFormatException e) {
+                        // node name is not numeric (start/end/edgeInfo) - skip it, we don't need it
                     } //start, end, edgeInfo = we dont need it
                 }
                 nodeInfo.sortNodes();

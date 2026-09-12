@@ -29,8 +29,18 @@
 Launcher.bat            需要的話先建置，然後啟動伺服器
 Launcher.bat run        不建置，直接啟動
 Launcher.bat build      強制重新建置，建置完就結束（不啟動伺服器）
+Launcher.bat lint       只編譯，依類別印出 -Xlint:all 的警告統計後結束
+Launcher.bat test       編譯 src\ 與 test\，跑 JUnit 5 測試
 Launcher.bat cashshop   改跑 tools.wztosql.CashShopDumper
 ```
+
+建置結束會印一行 `[build] N warnings`。`test` 用的是 `JarLib\test\` 底下的
+`junit-platform-console-standalone` 單一 jar —— 它只在測試 classpath 上，
+不在 `manifest.mf`、也不在 `dist\lib\`，伺服器執行時碰不到它。測試原始碼在
+`test\`，目前是 158 個測試（3 個 `@Disabled`，用來釘住已知但刻意不修的缺陷），
+全部是零 I/O 的純函式：加解密往返、little-endian 讀寫往返、`StringUtil` 的
+BIG5 位元組寬度補位、`LoginCrypto`、面板的 `IniFile` 與 `Json`、opcode 載入、
+`GameConstants` 的 id 運算、`KoreanDateUtil`。
 
 專案裡沒有 ant 或 IDE 的專案檔：NetBeans 留下的 `build.xml` 只是個殼，它 `<import>` 的
 `nbproject\build-impl.xml` 從未納入版控、從來跑不起來，已經移除。建置流程就是 `Launcher.bat` 本身。

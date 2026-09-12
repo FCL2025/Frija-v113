@@ -28,7 +28,6 @@ import tools.MaplePacketCreator;
 
 public class MapleFitness extends MapleEvent {
 
-    private static final long serialVersionUID = 845748950824L;
     private long time = 600000; //change
     private long timeStarted = 0;
     private ScheduledFuture<?> fitnessSchedule, msgSchedule;

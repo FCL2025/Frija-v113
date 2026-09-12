@@ -1,6 +1,5 @@
 package tools;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
@@ -9,7 +8,13 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public final class ConcurrentEnumMap<K extends Enum<K>, V> extends EnumMap<K, V> implements Serializable { //TODO: Implement Externalizable.
+// java.util.EnumMap is itself Serializable, so this class cannot opt out of serialization the
+// way the rest of the tree did when RMI was removed - and nothing here ever serialises one.
+// The two locks are declared as the Lock interface, which is all javac's [serial] check looks
+// at; the ReentrantReadWriteLock.ReadLock/WriteLock objects actually stored in them are
+// serialisable, so they must NOT be made transient.
+@SuppressWarnings("serial")
+public final class ConcurrentEnumMap<K extends Enum<K>, V> extends EnumMap<K, V> {
 
     private static final long serialVersionUID = 11920818021L;
     private ReentrantReadWriteLock reentlock = new ReentrantReadWriteLock();

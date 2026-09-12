@@ -25,7 +25,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -44,7 +43,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import tools.FileoutputUtil;
 
-public class XMLDomMapleData implements MapleData, Serializable {
+public class XMLDomMapleData implements MapleData {
 
     /**
      * One factory for the whole server, and one builder per thread.

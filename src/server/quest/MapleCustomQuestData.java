@@ -30,6 +30,14 @@ import provider.MapleData;
 import provider.MapleDataEntity;
 import provider.WzXML.MapleDataType;
 
+// The one class in this tree that is really deserialised: MapleCustomQuest reads
+// questrequirements.data / questactions.data as ObjectInputStream blobs written by a tool
+// outside this tree, behind an ObjectInputFilter allow-list that names this class. So it
+// keeps `implements Serializable`, and serialVersionUID must keep its historical value or
+// every blob already in the database stops loading. children/data/parent are declared as
+// interfaces (List, Object, MapleDataEntity), which javac's [serial] check always flags;
+// what the blobs actually hold is LinkedList/String/boxed primitives, which the filter enforces.
+@SuppressWarnings("serial")
 public class MapleCustomQuestData implements MapleData, Serializable {
 
     private static final long serialVersionUID = -8600005891655365066L;

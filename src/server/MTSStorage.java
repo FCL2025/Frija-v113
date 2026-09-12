@@ -46,7 +46,6 @@ import tools.packet.MTSCSPacket;
 public class MTSStorage {
     //stores all carts all mts items, updates every hour
 
-    private static final long serialVersionUID = 231541893513228L;
     private long lastUpdate = System.currentTimeMillis();
     private final Map<Integer, MTSCart> idToCart;
     private final AtomicInteger packageId;

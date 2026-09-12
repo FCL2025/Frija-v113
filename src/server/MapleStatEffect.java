@@ -2,7 +2,6 @@ package server;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,9 +41,8 @@ import server.Timer.BuffTimer;
 import tools.MaplePacketCreator;
 import tools.Pair;
 
-public class MapleStatEffect implements Serializable {
+public class MapleStatEffect {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private byte mastery, mhpR, mmpR, mobCount, attackCount, bulletCount;
     private short hp, mp, watk, matk, wdef, mdef, acc, avoid, hands, speed, jump, mpCon, hpCon, damage, prop, ehp, emp, ewatk, ewdef, emdef;
     private double hpR, mpR;

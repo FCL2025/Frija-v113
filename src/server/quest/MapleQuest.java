@@ -2,7 +2,6 @@ package server.quest;
 
 import constants.GameConstants;
 import java.io.File;
-import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,9 +20,8 @@ import tools.FileoutputUtil;
 import tools.MaplePacketCreator;
 import tools.Pair;
 
-public class MapleQuest implements Serializable {
+public class MapleQuest {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     // Was a LinkedHashMap, but nothing in this class ever iterates `quests`
     // in insertion order (only get/put by id), so ConcurrentHashMap is a
     // drop-in, race-free replacement.

@@ -28,7 +28,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import database.DatabaseConnection;
 import server.MapleItemInformationProvider;
@@ -36,9 +35,8 @@ import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
 import tools.packet.MonsterBookPacket;
 
-public class MonsterBook implements Serializable {
+public class MonsterBook {
 
-    private static final long serialVersionUID = 7179541993413738569L;
     private boolean changed = false;
     private int SpecialCard = 0, NormalCard = 0, BookLevel = 1;
     private Map<Integer, Integer> cards;

@@ -22,12 +22,11 @@ package handling.world;
 
 import client.MapleCoolDownValueHolder;
 import client.MapleDiseaseValueHolder;
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlayerBuffStorage implements Serializable {
+public class PlayerBuffStorage {
 
     private static final Map<Integer, List<PlayerBuffValueHolder>> buffs = new ConcurrentHashMap<>();
     private static final Map<Integer, List<MapleCoolDownValueHolder>> coolDowns = new ConcurrentHashMap<>();

@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
-import java.io.Serializable;
 
 import javax.script.ScriptEngine;
 
@@ -66,10 +65,9 @@ import server.Timer.PingTimer;
 import server.quest.MapleQuest;
 import tools.MaplePacketCreator;
 
-public class MapleClient implements Serializable {
+public class MapleClient {
 
-    private static final long serialVersionUID = 9179541993413738569L;
-    public static final transient byte LOGIN_NOTLOGGEDIN = 0,
+    public static final byte LOGIN_NOTLOGGEDIN = 0,
             LOGIN_SERVER_TRANSITION = 1,
             LOGIN_LOGGEDIN = 2,
             LOGIN_WAITING = 3,
@@ -78,26 +76,26 @@ public class MapleClient implements Serializable {
             CHANGE_CHANNEL = 6;
     public static final int DEFAULT_CHARSLOT = 6;
     public static final String CLIENT_KEY = "CLIENT";
-    private transient MapleAESOFB send, receive;
-    private transient IoSession session;
+    private MapleAESOFB send, receive;
+    private IoSession session;
     private MapleCharacter player;
     private int channel = 1, accId = 1, world, birthday;
     private int charslots = DEFAULT_CHARSLOT;
     private boolean loggedIn = false, serverTransition = false;
-    private transient Calendar tempban = null;
+    private Calendar tempban = null;
     private String accountName;
-    private transient long lastPong = 0, lastPing = 0;
+    private long lastPong = 0, lastPing = 0;
     private boolean monitored = false, receiving = true;
     private boolean gm;
     private byte greason = 1, gender = -1;
-    public transient short loginAttempt = 0;
-    private transient List<Integer> allowedChar = new LinkedList<>();
-    private transient Set<String> macs = new HashSet<>();
-    private transient Map<String, ScriptEngine> engines = new HashMap<>();
-    private transient ScheduledFuture<?> idleTask = null;
-    private transient String secondPassword, salt2; // To be used only on login
-    private final transient Lock mutex = new ReentrantLock(true);
-    private final transient Lock npc_mutex = new ReentrantLock();
+    public short loginAttempt = 0;
+    private List<Integer> allowedChar = new LinkedList<>();
+    private Set<String> macs = new HashSet<>();
+    private Map<String, ScriptEngine> engines = new HashMap<>();
+    private ScheduledFuture<?> idleTask = null;
+    private String secondPassword, salt2; // To be used only on login
+    private final Lock mutex = new ReentrantLock(true);
+    private final Lock npc_mutex = new ReentrantLock();
     private final static Lock login_mutex = new ReentrantLock(true);
 
     public MapleClient(MapleAESOFB send, MapleAESOFB receive, IoSession session) {

@@ -23,17 +23,15 @@ package client;
 import constants.GameConstants;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.io.Serializable;
 import java.util.Map.Entry;
 
 import java.util.Map.Entry;
 import server.life.MapleLifeFactory;
 import server.quest.MapleQuest;
 
-public class MapleQuestStatus implements Serializable {
+public class MapleQuestStatus {
 
-    private static final long serialVersionUID = 91795419934134L;
-    private transient MapleQuest quest;
+    private MapleQuest quest;
     private byte status;
     private Map<Integer, Integer> killedMobs = null;
     private int npc;

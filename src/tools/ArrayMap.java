@@ -20,7 +20,6 @@
  */
 package tools;
 
-import java.io.Serializable;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -38,9 +37,7 @@ import java.util.Set;
  * @param <K> The type of the keys.
  * @param <V> The type of the values.
  */
-public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
-
-    public static final long serialVersionUID = 9179541993413738569L;
+public class ArrayMap<K, V> extends AbstractMap<K, V> {
 
     /**
      * Provides a strongly typed mapping of a key to a value.
@@ -52,9 +49,8 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * @param <K> The type of the key.
      * @param <V> The type of the value.
      */
-    public static class Entry<K, V> implements Map.Entry<K, V>, Serializable {
+    public static class Entry<K, V> implements Map.Entry<K, V> {
 
-        public static final long serialVersionUID = 9179541993413738569L;
         protected K key;
         protected V value;
 
@@ -132,7 +128,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
             return key + "=" + value;
         }
     }
-    private transient Set<? extends java.util.Map.Entry<K, V>> entries = null;
+    private Set<? extends java.util.Map.Entry<K, V>> entries = null;
     private ArrayList<Entry<K, V>> list;
 
     /**

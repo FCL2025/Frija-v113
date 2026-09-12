@@ -26,16 +26,14 @@ import java.util.HashMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import tools.data.output.MaplePacketLittleEndianWriter;
 
 import database.DatabaseConnection;
 import tools.Pair;
 
-public class MapleKeyLayout implements Serializable {
+public class MapleKeyLayout {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private boolean changed = false;
     private Map<Integer, Pair<Byte, Integer>> keymap;
 

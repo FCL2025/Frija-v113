@@ -47,13 +47,12 @@ import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
 import tools.packet.UIPacket;
 
-public class MapleGuild implements java.io.Serializable {
+public class MapleGuild {
 
     private static enum BCOp {
 
         NONE, DISBAND, EMBELMCHANGE
     }
-    public static final long serialVersionUID = 6322150443228168192L;
     private final List<MapleGuildCharacter> members = new CopyOnWriteArrayList<>();
     private final String rankTitles[] = new String[5]; // 1 = master, 2 = jr, 5 = lowest member
     private String name, notice;

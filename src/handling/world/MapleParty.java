@@ -20,16 +20,14 @@
  */
 package handling.world;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class MapleParty implements Serializable {
+public class MapleParty {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     // World.Party serializes every mutator call (addMember/removeMember/
     // updateMember/setLeader) under its own lock, but getMembers() is read from
     // many other threads (handlers, scripts, MapleCharacter, MapleMonster, ...)

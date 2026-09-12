@@ -22,9 +22,8 @@ package handling.world.guild;
 
 import client.MapleCharacter;
 
-public class MapleGuildCharacter implements java.io.Serializable { // alias for a character
+public class MapleGuildCharacter { // alias for a character
 
-    public static final long serialVersionUID = 2058609046116597760L;
     private byte channel = -1, guildrank, allianceRank;
     private short level;
     private int id, jobid, guildid;

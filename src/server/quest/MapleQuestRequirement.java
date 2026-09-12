@@ -4,7 +4,6 @@ import client.ISkill;
 import java.util.Calendar;
 import java.util.List;
 import java.util.LinkedList;
-import java.io.Serializable;
 
 import client.inventory.IItem;
 import client.SkillFactory;
@@ -18,9 +17,8 @@ import provider.MapleDataTool;
 
 import tools.Pair;
 
-public class MapleQuestRequirement implements Serializable {
+public class MapleQuestRequirement {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private MapleQuest quest;
     private MapleQuestRequirementType type;
     private int intStore;

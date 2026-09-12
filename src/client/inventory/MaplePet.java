@@ -25,7 +25,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import java.util.List;
 import java.util.logging.Level;
@@ -36,7 +35,7 @@ import server.movement.StaticLifeMovement;
 import server.movement.LifeMovement;
 import server.movement.LifeMovementFragment;
 
-public class MaplePet implements Serializable {
+public class MaplePet {
 
     public static enum PetFlag {
 
@@ -86,7 +85,6 @@ public class MaplePet implements Serializable {
         }
     }
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private String name;
     private int Fh = 0, stance = 0, uniqueid, petitemid, secondsLeft = 0;
     private Point pos;

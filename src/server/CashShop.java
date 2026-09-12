@@ -21,7 +21,6 @@
  */
 package server;
 
-import java.io.Serializable;
 import client.inventory.Equip;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -42,9 +41,8 @@ import database.DatabaseConnection;
 import tools.packet.MTSCSPacket;
 import tools.Pair;
 
-public class CashShop implements Serializable {
+public class CashShop {
 
-    private static final long serialVersionUID = 231541893513373579L;
     private int accountId, characterId;
     private ItemLoader factory;
     private List<IItem> inventory = new ArrayList<>();

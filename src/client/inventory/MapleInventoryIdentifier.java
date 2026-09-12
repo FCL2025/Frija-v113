@@ -28,11 +28,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import database.DatabaseConnection;
-import java.io.Serializable;
 
-public class MapleInventoryIdentifier implements Serializable {
+public class MapleInventoryIdentifier {
 
-    private static final long serialVersionUID = 21830921831301L;
     private AtomicInteger runningUID;
     private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     private Lock readLock = rwl.readLock(), writeLock = rwl.writeLock();

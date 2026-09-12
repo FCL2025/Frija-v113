@@ -26,7 +26,6 @@ import java.lang.ref.WeakReference;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.io.Serializable;
 import java.util.concurrent.ScheduledFuture;
 
 import server.Timer.BuffTimer;
@@ -34,15 +33,14 @@ import database.DatabaseConnection;
 import server.Randomizer;
 import tools.MaplePacketCreator;
 
-public class MapleMount implements Serializable {
+public class MapleMount {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private int itemid, skillid, exp;
     private byte fatigue, level;
-    private transient boolean changed = false;
+    private boolean changed = false;
     private long lastFatigue = 0;
-    private transient ScheduledFuture<?> tirednessSchedule = null;
-    private transient WeakReference<MapleCharacter> owner;
+    private ScheduledFuture<?> tirednessSchedule = null;
+    private WeakReference<MapleCharacter> owner;
 
     public MapleMount(MapleCharacter owner, int id, int skillid, byte fatigue, byte level, int exp) {
         this.itemid = id;

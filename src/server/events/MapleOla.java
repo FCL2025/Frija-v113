@@ -29,10 +29,9 @@ import tools.MaplePacketCreator;
 
 public class MapleOla extends MapleEvent {
 
-    private static final long serialVersionUID = 845748150824L;
     private long time = 600000; //reduce for less time
     private long timeStarted = 0;
-    private transient ScheduledFuture<?> olaSchedule;
+    private ScheduledFuture<?> olaSchedule;
     private int[] stages = new int[3];
     //stg1 = ch00-ch04 = 5 ports
     //stg2 = ch00-ch07 = 8 ports

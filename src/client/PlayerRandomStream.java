@@ -25,10 +25,10 @@ import tools.data.output.MaplePacketLittleEndianWriter;
 
 public class PlayerRandomStream {
 
-    private transient long seed1, seed2, seed3;
-    private transient long seed1_, seed2_, seed3_;
-    private transient long seed1__, seed2__, seed3__;
-    private transient long seed1___, seed2___, seed3___;
+    private long seed1, seed2, seed3;
+    private long seed1_, seed2_, seed3_;
+    private long seed1__, seed2__, seed3__;
+    private long seed1___, seed2___, seed3___;
 
     public PlayerRandomStream() {
         final int v4 = 5;

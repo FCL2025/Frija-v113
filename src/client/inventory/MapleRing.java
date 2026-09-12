@@ -26,15 +26,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import database.DatabaseConnection;
 import java.util.Comparator;
 import server.MapleInventoryManipulator;
 
-public class MapleRing implements Serializable {
+public class MapleRing {
 
-    private static final long serialVersionUID = 9179541993413738579L;
     private int ringId;
     private int ringId2;
     private int partnerId;
@@ -194,7 +192,7 @@ public class MapleRing implements Serializable {
         }
     }
 
-    public static class RingComparator implements Comparator<MapleRing>, Serializable {
+    public static class RingComparator implements Comparator<MapleRing> {
 
         @Override
         public int compare(MapleRing o1, MapleRing o2) {

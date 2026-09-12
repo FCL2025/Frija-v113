@@ -27,7 +27,6 @@ import client.inventory.ItemLoader;
 import client.inventory.MapleInventoryType;
 import java.sql.Connection;
 import database.DatabaseConnection;
-import java.io.Serializable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,9 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 import tools.Pair;
 
-public class MTSCart implements Serializable {
+public class MTSCart {
 
-    private static final long serialVersionUID = 231541893513373578L;
     private int characterId, tab = 1, type = 0, page = 0;
     //tab; 1 = buy now, 2 = wanted, 3 = auction, 4 = cart
     //type = inventorytype; 0 = anything

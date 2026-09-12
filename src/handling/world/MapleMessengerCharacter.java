@@ -20,13 +20,10 @@
  */
 package handling.world;
 
-import java.io.Serializable;
-
 import client.MapleCharacter;
 
-public class MapleMessengerCharacter implements Serializable {
+public class MapleMessengerCharacter {
 
-    private static final long serialVersionUID = 6215463252132450750L;
     private String name = "";
     private int id = -1;
     private int channel = -1;

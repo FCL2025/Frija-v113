@@ -22,7 +22,6 @@ package server.quest;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.io.Serializable;
 
 import client.ISkill;
 import constants.GameConstants;
@@ -41,9 +40,8 @@ import server.MapleItemInformationProvider;
 import server.Randomizer;
 import tools.MaplePacketCreator;
 
-public class MapleQuestAction implements Serializable {
+public class MapleQuestAction {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private MapleQuestActionType type;
     private MapleData data;
     private MapleQuest quest;

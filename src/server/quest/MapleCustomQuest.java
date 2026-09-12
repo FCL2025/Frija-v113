@@ -23,16 +23,13 @@ package server.quest;
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
-import java.io.Serializable;
 import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import database.DatabaseConnection;
 
-public class MapleCustomQuest extends MapleQuest implements Serializable {
-
-    private static final long serialVersionUID = 9179541993413738569L;
+public class MapleCustomQuest extends MapleQuest {
 
     // questrequirements/questactions.data are ObjectOutputStream blobs holding a
     // MapleCustomQuestData tree (its own class, the java.util.LinkedList it keeps

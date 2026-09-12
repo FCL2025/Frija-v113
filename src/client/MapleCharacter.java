@@ -52,7 +52,6 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.io.Serializable;
 
 import client.anticheat.CheatTracker;
 import constants.ServerConstants;
@@ -126,9 +125,8 @@ import tools.ConcurrentEnumMap;
 import tools.FileoutputUtil;
 import tools.packet.PlayerShopPacket;
 
-public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Serializable {
+public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
-    private static final long serialVersionUID = 845748950829L;
     private String name, chalktext, BlessOfFairy_Origin, charmessage;
     private long lastCombo, lastfametime, keydown_skill;
     private byte dojoRecord, gmLevel, gender, initialSpawnPoint, skinColor, guildrank = 5, allianceRank = 5, world, fairyExp = 10, numClones, subcategory; // Make this a quest record, TODO : Transfer it somehow with the current data
@@ -143,56 +141,56 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject implements Se
     private Point old = new Point(0, 0);
     private boolean smega, hidden, hasSummon = false;
     private int[] wishlist, rocks, savedLocations, regrocks, remainingSp = new int[10];
-    private transient AtomicInteger inst;
-    private transient List<LifeMovementFragment> lastres;
+    private AtomicInteger inst;
+    private List<LifeMovementFragment> lastres;
     private List<Integer> lastmonthfameids;
     private List<MapleDoor> doors;
     private List<MaplePet> pets;
-    private transient WeakReference<MapleCharacter>[] clones;
-    private transient Set<MapleMonster> controlled;
-    private transient Set<MapleMapObject> visibleMapObjects;
-    private transient ReentrantReadWriteLock visibleMapObjectsLock;
+    private WeakReference<MapleCharacter>[] clones;
+    private Set<MapleMonster> controlled;
+    private Set<MapleMapObject> visibleMapObjects;
+    private ReentrantReadWriteLock visibleMapObjectsLock;
     private Map<MapleQuest, MapleQuestStatus> quests;
     private Map<Integer, String> questinfo;
     private Map<ISkill, SkillEntry> skills = new LinkedHashMap<>();
-    private transient Map<MapleBuffStat, MapleBuffStatValueHolder> effects = new ConcurrentEnumMap<>(MapleBuffStat.class);
-    private transient Map<Integer, MapleSummon> summons;
-    private transient Map<Integer, MapleCoolDownValueHolder> coolDowns = new LinkedHashMap<>();
-    private transient Map<MapleDisease, MapleDiseaseValueHolder> diseases = new ConcurrentEnumMap<>(MapleDisease.class);
+    private Map<MapleBuffStat, MapleBuffStatValueHolder> effects = new ConcurrentEnumMap<>(MapleBuffStat.class);
+    private Map<Integer, MapleSummon> summons;
+    private Map<Integer, MapleCoolDownValueHolder> coolDowns = new LinkedHashMap<>();
+    private Map<MapleDisease, MapleDiseaseValueHolder> diseases = new ConcurrentEnumMap<>(MapleDisease.class);
     private CashShop cs;
-    private transient Deque<MapleCarnivalChallenge> pendingCarnivalRequests;
-    private transient MapleCarnivalParty carnivalParty;
+    private Deque<MapleCarnivalChallenge> pendingCarnivalRequests;
+    private MapleCarnivalParty carnivalParty;
     private BuddyList buddylist;
     private MonsterBook monsterbook;
-    private transient CheatTracker anticheat;
+    private CheatTracker anticheat;
     private MapleClient client;
     private PlayerStats stats;
-    private transient PlayerRandomStream CRand;
-    private transient MapleMap map;
-    private transient MapleShop shop;
-    private transient MapleDragon dragon;
-    private transient RockPaperScissors rps;
+    private PlayerRandomStream CRand;
+    private MapleMap map;
+    private MapleShop shop;
+    private MapleDragon dragon;
+    private RockPaperScissors rps;
     private MapleStorage storage;
-    private transient MapleTrade trade;
+    private MapleTrade trade;
     private MapleMount mount;
     private List<Integer> finishedAchievements = new ArrayList<>();
     private MapleMessenger messenger;
     private byte[] petStore;
-    private transient IMaplePlayerShop playerShop;
+    private IMaplePlayerShop playerShop;
     private MapleParty party;
     private boolean invincible = false, canTalk = true, clone = false, followinitiator = false, followon = false;
     private MapleGuildCharacter mgc;
     private MapleFamilyCharacter mfc;
-    private transient EventInstanceManager eventInstance;
+    private EventInstanceManager eventInstance;
     private MapleInventory[] inventory;
     private SkillMacro[] skillMacros = new SkillMacro[5];
     private MapleKeyLayout keylayout;
-    private transient ScheduledFuture<?> beholderHealingSchedule, beholderBuffSchedule, BerserkSchedule,
+    private ScheduledFuture<?> beholderHealingSchedule, beholderBuffSchedule, BerserkSchedule,
             dragonBloodSchedule, fairySchedule, mapTimeLimitTask, fishing;
     private long nextConsume = 0, pqStartTime = 0;
-    private transient Event_PyramidSubway pyramidSubway = null;
-    private transient List<Integer> pendingExpiration = null, pendingSkills = null;
-    private transient Map<Integer, Integer> movedMobs = new HashMap<>();
+    private Event_PyramidSubway pyramidSubway = null;
+    private List<Integer> pendingExpiration = null, pendingSkills = null;
+    private Map<Integer, Integer> movedMobs = new HashMap<>();
     private String teleportname = "";
 
     private MapleCharacter(final boolean ChannelServer) {

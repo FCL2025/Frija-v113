@@ -20,11 +20,8 @@
  */
 package handling.world;
 
-import java.io.Serializable;
+public class CheaterData implements Comparable<CheaterData> {
 
-public class CheaterData implements Serializable, Comparable<CheaterData> {
-
-    private static final long serialVersionUID = -8733673311051249885L;
     private int points;
     private String info;
 

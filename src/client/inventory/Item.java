@@ -21,9 +21,8 @@
 package client.inventory;
 
 import constants.GameConstants;
-import java.io.Serializable;
 
-public class Item implements IItem, Serializable {
+public class Item implements IItem {
 
     private final int id;
     private short position;

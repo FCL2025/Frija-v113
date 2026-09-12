@@ -9,7 +9,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.io.Serializable;
 
 import constants.GameConstants;
 import client.inventory.ItemLoader;
@@ -22,9 +21,8 @@ import java.util.EnumMap;
 import tools.MaplePacketCreator;
 import tools.Pair;
 
-public class MapleStorage implements Serializable {
+public class MapleStorage {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private int id;
     private int accountId;
     private List<IItem> items;

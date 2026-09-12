@@ -46,7 +46,6 @@ import server.maps.MapleMapFactory;
 import server.shops.HiredMerchant;
 import tools.MaplePacketCreator;
 import server.life.PlayerNPC;
-import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -61,7 +60,7 @@ import server.events.MapleSnowball;
 import tools.CollectionUtil;
 import tools.ConcurrentEnumMap;
 
-public class ChannelServer implements Serializable {
+public class ChannelServer {
 
     public static long serverStartTime;
     private int expRate, mesoRate, dropRate, cashRate;

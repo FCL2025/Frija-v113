@@ -20,11 +20,8 @@
  */
 package client;
 
-import java.io.Serializable;
+public class SkillMacro {
 
-public class SkillMacro implements Serializable {
-
-    private static final long serialVersionUID = -63413738569L;
     private int macroId;
     private int skill1;
     private int skill2;

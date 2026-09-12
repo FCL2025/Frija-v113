@@ -20,13 +20,11 @@
  */
 package handling.world;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 
-public class MapleMessenger implements Serializable {
+public class MapleMessenger {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private final MapleMessengerCharacter[] members = new MapleMessengerCharacter[3];
     private final String[] silentLink = new String[3];
     private int id;

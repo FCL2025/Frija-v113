@@ -29,12 +29,11 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.io.Serializable;
 
 import database.DatabaseConnection;
 import tools.MaplePacketCreator;
 
-public class BuddyList implements Serializable {
+public class BuddyList {
 
     public static enum BuddyOperation {
 
@@ -45,7 +44,6 @@ public class BuddyList implements Serializable {
 
         BUDDYLIST_FULL, ALREADY_ON_LIST, OK
     }
-    private static final long serialVersionUID = 1413738569L;
     private Map<Integer, BuddylistEntry> buddies = new LinkedHashMap<>();
     private byte capacity;
     private Deque<CharacterNameAndId> pendingRequests = new LinkedList<>();

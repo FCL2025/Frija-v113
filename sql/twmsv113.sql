@@ -19,6 +19,25 @@
 --   * dueyitems / dueyequipment / regrocklocations - 另一台伺服器殘留的玩家資料，
 --     characterid 不是 NULL 就是指向一個不存在的角色（4751）
 --
+-- 2026-09（I1）移除了 11 張「全樹零引用」的資料表（src、Libs/scripts、panel 都查過）：
+--   * auth_server_channel / auth_server_cs / auth_server_login / auth_server_mts
+--     - RMI 時代的伺服器金鑰表，對應早已刪除的 ServerConstants.Channel_Key 等常數。
+--       注意 auth_server_channel_ip 不是同一回事：ServerProperties 開機就查它，
+--       查不到會 System.exit(0)，那張表務必保留。
+--   * cashshop_limit_sell - 商城限量販售計數，程式裡從來沒有對應邏輯。
+--   * eventstats - OdinMS 時代的活動統計。
+--   * htsquads / zaksquads - 混沌／炎魔遠征隊狀態；本分支的 MapleSquad 是純記憶體實作。
+--   * inventorylog - 道具異動稽核表（連同它指向 inventoryitems 的外鍵一併移除）。
+--   * mulungdojo - 武陵道場進度；實際資料存在 characters 的 dojo_pts / dojoRecord。
+--   * reports - 玩家檢舉；程式裡沒有任何檢舉處理程式。
+--
+-- 另有 8 個名字同樣零引用，但「刻意保留」，各自的 CREATE TABLE 上方都有一行說明：
+--   * blocklogin / blockuse / loginlog / uselog / invitecodedata / ipvotelog
+--     - 外部網頁會員後台與註冊頁在用（欄位是 varchar(255)+active 那一套風格，
+--       loginlog 帶 password、uselog 帶 oldpassword/newpassword），遊戲端從不讀寫。
+--   * readable_cheatlog / readable_last_hour_cheatlog
+--     - 是檢視表（VIEW），底層 cheatlog／characters／accounts 都還是活表。
+--
 -- 匯入方式（檔案自己會建立並選用資料庫，不必先手動 CREATE DATABASE）：
 --   mysql -u root -p < sql/twmsv113.sql
 --
@@ -121,45 +140,6 @@ CREATE TABLE `alliances` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `auth_server_channel`
---
-
-CREATE TABLE `auth_server_channel` (
-  `channelid` int(10) UNSIGNED NOT NULL,
-  `world` int(11) NOT NULL DEFAULT '0',
-  `number` int(11) DEFAULT NULL,
-  `key` varchar(40) NOT NULL DEFAULT ''
-) ENGINE=MyISAM DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
-
---
--- 資料表的匯出資料 `auth_server_channel`
---
-
-INSERT INTO `auth_server_channel` (`channelid`, `world`, `number`, `key`) VALUES
-(1, 0, 1, '64cc5ec141f3d07fb076ba87c5c46825c44a997c'),
-(2, 0, 2, '71278272bd03d969454d32211592f6660a11b8ee'),
-(3, 0, 3, 'ce1a2a86d8f4f5bab9e600dcac20388d54403915'),
-(4, 0, 4, '0c508d5b595790b9af143d5ea98973c58d34a0b8'),
-(5, 0, 5, 'afe0f764a60b96c0265966b45091680c520b791b'),
-(6, 0, 6, 'a63c74dfb6dd62c2caef06184c1f41fa75eed514'),
-(7, 0, 7, 'e05a1b16f8b24d43cdf50a242b5641e33f275a21'),
-(8, 0, 8, '4183d0b0ef17d9130433523b6d7c845755782e87'),
-(9, 0, 9, '05a7864614180db4d3374e680039d55279ebdb8c'),
-(10, 0, 10, '7ce024fdb03cf3ef03171828bff527269d01f08f'),
-(11, 0, 11, '7e1994fe975472f827ecc71188cb5d64bdc24c1d'),
-(12, 0, 12, '462538d6ee0a15c0ff52f4bf09da6d60bc3a657d'),
-(13, 0, 13, 'd82cfcb1edcb2e31b751b3ccfeb7464500bb30dc'),
-(14, 0, 14, '2f32eeea3628e70980dab4e6ec2f9d27a3313b96'),
-(15, 0, 15, 'f5bf68e8d67b5e5f3f2ebe684a85fe72166db8f2'),
-(16, 0, 16, 'cf97404e96937aa89557a3af5c0d252b654e1b3a'),
-(17, 0, 17, '00edfe19b7f9c1b5303ce7a679452b3b6d3fe381'),
-(18, 0, 18, 'a9e267e5bdad70925db1729acd38f93b6edff9d4'),
-(19, 0, 19, '518fa6b3a88ce3ab6d688d2ac1e42a0754720664'),
-(20, 0, 20, '923dcc504ed557f563fe52c82517a2b1feceeba1');
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `auth_server_channel_ip`
 --
 
@@ -194,63 +174,6 @@ INSERT INTO `auth_server_channel_ip` (`channelconfigid`, `channelid`, `name`, `v
 (17, 18, 'net.sf.odinms.channel.net.port', '7592'),
 (18, 19, 'net.sf.odinms.channel.net.port', '7593'),
 (19, 20, 'net.sf.odinms.channel.net.port', '7594');
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `auth_server_cs`
---
-
-CREATE TABLE `auth_server_cs` (
-  `CashShopServerId` int(10) UNSIGNED NOT NULL,
-  `key` varchar(40) NOT NULL,
-  `world` int(11) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
-
---
--- 資料表的匯出資料 `auth_server_cs`
---
-
-INSERT INTO `auth_server_cs` (`CashShopServerId`, `key`, `world`) VALUES
-(1, '9eafbf39c3d7a53f7dab1f1dc4d380ce9314f7a4', 0);
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `auth_server_login`
---
-
-CREATE TABLE `auth_server_login` (
-  `loginserverid` int(10) UNSIGNED NOT NULL,
-  `key` varchar(40) NOT NULL DEFAULT '',
-  `world` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
-
---
--- 資料表的匯出資料 `auth_server_login`
---
-
-INSERT INTO `auth_server_login` (`loginserverid`, `key`, `world`) VALUES
-(1, 'e709b6bfc9eda84c166514ec9784739c6cc201bd', 0);
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `auth_server_mts`
---
-
-CREATE TABLE `auth_server_mts` (
-  `MTSServerId` int(10) UNSIGNED NOT NULL,
-  `key` varchar(40) NOT NULL,
-  `world` int(11) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
-
---
--- 資料表的匯出資料 `auth_server_mts`
---
-
-INSERT INTO `auth_server_mts` (`MTSServerId`, `key`, `world`) VALUES
-(1, '9eafbf39c3d7a53f7dab1f1dc4d380ce9314f7a4', 0);
 
 -- --------------------------------------------------------
 
@@ -290,6 +213,7 @@ CREATE TABLE `bbs_threads` (
 -- 資料表結構 `blocklogin`
 --
 
+-- 程式碼零引用；保留原因：外部網頁會員後台使用（封鎖登入紀錄），與 blockuse／loginlog／uselog／invitecodedata 同一套 varchar(255)+active 欄位風格，遊戲端從不讀寫。
 CREATE TABLE `blocklogin` (
   `account` varchar(255) DEFAULT NULL,
   `blocktime` varchar(255) DEFAULT NULL,
@@ -304,6 +228,7 @@ CREATE TABLE `blocklogin` (
 -- 資料表結構 `blockuse`
 --
 
+-- 程式碼零引用；保留原因：外部網頁會員後台使用（封鎖功能使用紀錄），同 blocklogin 一族，遊戲端從不讀寫。
 CREATE TABLE `blockuse` (
   `account` varchar(255) DEFAULT NULL,
   `blocktime` varchar(255) DEFAULT NULL,
@@ -344,17 +269,6 @@ CREATE TABLE `buddies` (
 -- 資料表的匯出資料 `buddies`
 --
 
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `cashshop_limit_sell`
---
-
-CREATE TABLE `cashshop_limit_sell` (
-  `serial` int(11) NOT NULL,
-  `amount` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24494,21 +24408,6 @@ CREATE TABLE `dueypackages` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `eventstats`
---
-
-CREATE TABLE `eventstats` (
-  `eventstatid` int(10) UNSIGNED NOT NULL,
-  `event` varchar(30) NOT NULL,
-  `instance` varchar(30) NOT NULL,
-  `characterid` int(11) NOT NULL,
-  `channel` int(11) NOT NULL,
-  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `famelog`
 --
 
@@ -24675,20 +24574,6 @@ CREATE TABLE `hiredmerchitems` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `htsquads`
---
-
-CREATE TABLE `htsquads` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `channel` int(10) UNSIGNED NOT NULL,
-  `leaderid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `status` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `members` int(10) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `inventoryequipment`
 --
 
@@ -24750,18 +24635,6 @@ CREATE TABLE `inventoryitems` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `inventorylog`
---
-
-CREATE TABLE `inventorylog` (
-  `inventorylogid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `msg` tinytext NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `inventoryslot`
 --
 
@@ -24781,6 +24654,7 @@ CREATE TABLE `inventoryslot` (
 -- 資料表結構 `invitecodedata`
 --
 
+-- 程式碼零引用；保留原因：外部網頁註冊頁使用（邀請碼），遊戲端從不讀寫。
 CREATE TABLE `invitecodedata` (
   `id` int(11) NOT NULL,
   `code` varchar(255) NOT NULL,
@@ -24807,6 +24681,7 @@ CREATE TABLE `ipbans` (
 -- 資料表結構 `ipvotelog`
 --
 
+-- 程式碼零引用；保留原因：外部投票獎勵網頁使用（投票紀錄），遊戲端從不讀寫。
 CREATE TABLE `ipvotelog` (
   `vid` int(10) UNSIGNED NOT NULL,
   `accid` varchar(45) NOT NULL DEFAULT '0',
@@ -24835,6 +24710,7 @@ CREATE TABLE `keymap` (
 -- 資料表結構 `loginlog`
 --
 
+-- 程式碼零引用；保留原因：外部網頁會員後台使用（登入稽核，含 password 欄位），遊戲端從不讀寫。
 CREATE TABLE `loginlog` (
   `account` varchar(255) DEFAULT NULL,
   `password` varchar(255) DEFAULT NULL,
@@ -25041,18 +24917,6 @@ CREATE TABLE `mts_items` (
   `seller` varchar(15) NOT NULL DEFAULT '',
   `expiration` bigint(20) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `mulungdojo`
---
-
-CREATE TABLE `mulungdojo` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `charid` int(11) NOT NULL DEFAULT '0',
-  `stage` tinyint(3) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -26105,6 +25969,7 @@ INSERT INTO `reactordrops` (`reactordropid`, `reactorid`, `itemid`, `chance`, `q
 -- 替換檢視表以便查看 `readable_cheatlog`
 -- (請參考以下實際畫面)
 --
+-- 程式碼零引用；保留原因：這是檢視表（VIEW，實際定義在本檔後段），底層 cheatlog／characters／accounts 均為活表，供 DBA／後台查詢。
 CREATE TABLE `readable_cheatlog` (
 `accountname` varchar(30)
 ,`accountid` int(11)
@@ -26122,6 +25987,7 @@ CREATE TABLE `readable_cheatlog` (
 -- 替換檢視表以便查看 `readable_last_hour_cheatlog`
 -- (請參考以下實際畫面)
 --
+-- 程式碼零引用；保留原因：這是檢視表（VIEW，實際定義在本檔後段），底層 cheatlog／characters／accounts 均為活表，供 DBA／後台查詢。
 CREATE TABLE `readable_last_hour_cheatlog` (
 `accountname` varchar(30)
 ,`accountid` int(11)
@@ -26145,22 +26011,6 @@ CREATE TABLE `regrocklocations` (
 --
 -- 資料表的匯出資料 `regrocklocations`
 --
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `reports`
---
-
-CREATE TABLE `reports` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `reporttime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `reporterid` int(11) NOT NULL,
-  `victimid` int(11) NOT NULL,
-  `reason` tinyint(4) NOT NULL,
-  `chatlog` text NOT NULL,
-  `status` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
 
@@ -29440,6 +29290,7 @@ CREATE TABLE `trocklocations` (
 -- 資料表結構 `uselog`
 --
 
+-- 程式碼零引用；保留原因：外部網頁會員後台使用（改密碼稽核，含 oldpassword／newpassword 欄位），遊戲端從不讀寫。
 CREATE TABLE `uselog` (
   `account` varchar(255) DEFAULT NULL,
   `ip` varchar(255) DEFAULT NULL,
@@ -30498,20 +30349,6 @@ INSERT INTO `wz_oxdata` (`questionset`, `questionid`, `question`, `display`, `an
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `zaksquads`
---
-
-CREATE TABLE `zaksquads` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `channel` int(10) UNSIGNED NOT NULL,
-  `leaderid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `status` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `members` int(10) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
 -- 檢視表結構 `readable_cheatlog`
 --
 DROP TABLE IF EXISTS `readable_cheatlog`;
@@ -30552,35 +30389,11 @@ ALTER TABLE `alliances`
   ADD PRIMARY KEY (`id`);
 
 --
--- 資料表索引 `auth_server_channel`
---
-ALTER TABLE `auth_server_channel`
-  ADD PRIMARY KEY (`channelid`);
-
---
 -- 資料表索引 `auth_server_channel_ip`
 --
 ALTER TABLE `auth_server_channel_ip`
   ADD PRIMARY KEY (`channelconfigid`),
   ADD KEY `channelid` (`channelid`);
-
---
--- 資料表索引 `auth_server_cs`
---
-ALTER TABLE `auth_server_cs`
-  ADD PRIMARY KEY (`CashShopServerId`);
-
---
--- 資料表索引 `auth_server_login`
---
-ALTER TABLE `auth_server_login`
-  ADD PRIMARY KEY (`loginserverid`);
-
---
--- 資料表索引 `auth_server_mts`
---
-ALTER TABLE `auth_server_mts`
-  ADD PRIMARY KEY (`MTSServerId`);
 
 --
 -- 資料表索引 `bbs_replies`
@@ -30606,12 +30419,6 @@ ALTER TABLE `bosslog`
 ALTER TABLE `buddies`
   ADD PRIMARY KEY (`id`),
   ADD KEY `buddies_ibfk_1` (`characterid`);
-
---
--- 資料表索引 `cashshop_limit_sell`
---
-ALTER TABLE `cashshop_limit_sell`
-  ADD PRIMARY KEY (`serial`);
 
 --
 -- 資料表索引 `cashshop_modified_items`
@@ -30701,12 +30508,6 @@ ALTER TABLE `dueypackages`
   ADD PRIMARY KEY (`PackageId`);
 
 --
--- 資料表索引 `eventstats`
---
-ALTER TABLE `eventstats`
-  ADD PRIMARY KEY (`eventstatid`);
-
---
 -- 資料表索引 `famelog`
 --
 ALTER TABLE `famelog`
@@ -30769,12 +30570,6 @@ ALTER TABLE `hiredmerchitems`
   ADD KEY `characterid_2` (`characterid`,`inventorytype`);
 
 --
--- 資料表索引 `htsquads`
---
-ALTER TABLE `htsquads`
-  ADD PRIMARY KEY (`id`);
-
---
 -- 資料表索引 `inventoryequipment`
 --
 ALTER TABLE `inventoryequipment`
@@ -30790,13 +30585,6 @@ ALTER TABLE `inventoryitems`
   ADD KEY `accountid` (`accountid`),
   ADD KEY `packageid` (`packageid`),
   ADD KEY `characterid_2` (`characterid`,`inventorytype`);
-
---
--- 資料表索引 `inventorylog`
---
-ALTER TABLE `inventorylog`
-  ADD PRIMARY KEY (`inventorylogid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
 
 --
 -- 資料表索引 `inventoryslot`
@@ -30905,12 +30693,6 @@ ALTER TABLE `mts_items`
   ADD PRIMARY KEY (`id`);
 
 --
--- 資料表索引 `mulungdojo`
---
-ALTER TABLE `mulungdojo`
-  ADD PRIMARY KEY (`id`);
-
---
 -- 資料表索引 `notes`
 --
 ALTER TABLE `notes`
@@ -30991,12 +30773,6 @@ ALTER TABLE `regrocklocations`
   ADD PRIMARY KEY (`trockid`);
 
 --
--- 資料表索引 `reports`
---
-ALTER TABLE `reports`
-  ADD PRIMARY KEY (`id`);
-
---
 -- 資料表索引 `rings`
 --
 ALTER TABLE `rings`
@@ -31072,12 +30848,6 @@ ALTER TABLE `wz_oxdata`
   ADD PRIMARY KEY (`questionset`,`questionid`);
 
 --
--- 資料表索引 `zaksquads`
---
-ALTER TABLE `zaksquads`
-  ADD PRIMARY KEY (`id`);
-
---
 -- 在匯出的資料表使用 AUTO_INCREMENT
 --
 
@@ -31092,30 +30862,10 @@ ALTER TABLE `accounts`
 ALTER TABLE `alliances`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 --
--- 使用資料表 AUTO_INCREMENT `auth_server_channel`
---
-ALTER TABLE `auth_server_channel`
-  MODIFY `channelid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
---
 -- 使用資料表 AUTO_INCREMENT `auth_server_channel_ip`
 --
 ALTER TABLE `auth_server_channel_ip`
   MODIFY `channelconfigid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
---
--- 使用資料表 AUTO_INCREMENT `auth_server_cs`
---
-ALTER TABLE `auth_server_cs`
-  MODIFY `CashShopServerId` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
---
--- 使用資料表 AUTO_INCREMENT `auth_server_login`
---
-ALTER TABLE `auth_server_login`
-  MODIFY `loginserverid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
---
--- 使用資料表 AUTO_INCREMENT `auth_server_mts`
---
-ALTER TABLE `auth_server_mts`
-  MODIFY `MTSServerId` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 --
 -- 使用資料表 AUTO_INCREMENT `bbs_replies`
 --
@@ -31187,11 +30937,6 @@ ALTER TABLE `dueyitems`
 ALTER TABLE `dueypackages`
   MODIFY `PackageId` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 --
--- 使用資料表 AUTO_INCREMENT `eventstats`
---
-ALTER TABLE `eventstats`
-  MODIFY `eventstatid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
 -- 使用資料表 AUTO_INCREMENT `famelog`
 --
 ALTER TABLE `famelog`
@@ -31237,11 +30982,6 @@ ALTER TABLE `hiredmerchequipment`
 ALTER TABLE `hiredmerchitems`
   MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 --
--- 使用資料表 AUTO_INCREMENT `htsquads`
---
-ALTER TABLE `htsquads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
 -- 使用資料表 AUTO_INCREMENT `inventoryequipment`
 --
 ALTER TABLE `inventoryequipment`
@@ -31251,11 +30991,6 @@ ALTER TABLE `inventoryequipment`
 --
 ALTER TABLE `inventoryitems`
   MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `inventorylog`
---
-ALTER TABLE `inventorylog`
-  MODIFY `inventorylogid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 --
 -- 使用資料表 AUTO_INCREMENT `inventoryslot`
 --
@@ -31327,11 +31062,6 @@ ALTER TABLE `mtstransferequipment`
 ALTER TABLE `mts_cart`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 --
--- 使用資料表 AUTO_INCREMENT `mulungdojo`
---
-ALTER TABLE `mulungdojo`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
 -- 使用資料表 AUTO_INCREMENT `notes`
 --
 ALTER TABLE `notes`
@@ -31386,11 +31116,6 @@ ALTER TABLE `reactordrops`
 --
 ALTER TABLE `regrocklocations`
   MODIFY `trockid` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61587;
---
--- 使用資料表 AUTO_INCREMENT `reports`
---
-ALTER TABLE `reports`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 --
 -- 使用資料表 AUTO_INCREMENT `rings`
 --
@@ -31447,11 +31172,6 @@ ALTER TABLE `trocklocations`
 ALTER TABLE `wz_mobskilldata`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4762;
 --
--- 使用資料表 AUTO_INCREMENT `zaksquads`
---
-ALTER TABLE `zaksquads`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
 -- 已匯出資料表的限制(Constraint)
 --
 
@@ -31490,12 +31210,6 @@ ALTER TABLE `hiredmerchequipment`
 --
 ALTER TABLE `inventoryequipment`
   ADD CONSTRAINT `inventoryequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `inventoryitems` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `inventorylog`
---
-ALTER TABLE `inventorylog`
-  ADD CONSTRAINT `inventorylog_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `inventoryitems` (`inventoryitemid`) ON DELETE CASCADE;
 
 --
 -- 資料表的 Constraints `keymap`

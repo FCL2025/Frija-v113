@@ -70,7 +70,7 @@ public class Start {
              PreparedStatement ps = con.prepareStatement("UPDATE accounts SET loggedin = 0")) {
             ps.executeUpdate();
         } catch (SQLException ex) {
-            throw new RuntimeException("[EXCEPTION] Please check if the SQL server is active.");
+            throw new RuntimeException("[EXCEPTION] Please check if the SQL server is active.", ex);
         }
         phase("資料庫連線");
 

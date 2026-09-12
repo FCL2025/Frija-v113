@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import scripting.ScriptEncodingCheck;
 import server.Timer.*;
 import server.events.MapleOxQuizFactory;
 import server.life.MapleLifeFactory;
@@ -31,6 +32,9 @@ import tools.Encodings;
 import tools.FileoutputUtil;
 
 public class Start {
+
+    /** How many bad scripts the startup scan lists before it summarises the rest. */
+    private static final int MAX_BAD_SCRIPTS_PRINTED = 30;
 
     /** When the phase currently being timed began. */
     private static long phaseStart = System.nanoTime();
@@ -56,6 +60,39 @@ public class Start {
         }
         System.out.println("[啟動] " + name + pad + String.format("%6d", (now - phaseStart) / 1000000L) + " ms");
         phaseStart = now;
+    }
+
+    /**
+     * Names the scripts that are not BIG5, because nothing else will.
+     *
+     * <p>A script saved as UTF-8 is read as an empty file and the NPC it
+     * belongs to simply stops answering - no exception the player or the
+     * administrator ever sees. Two batches of them (nine portal scripts, eight
+     * NPC scripts) lived in this tree for years that way. The scan costs about
+     * 100 ms for ~2,450 files, so it runs on every start; it never blocks or
+     * fails one, and it says nothing at all when every script is fine.
+     */
+    private static void checkScriptEncoding() {
+        try {
+            final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scan();
+            if (result.ok()) {
+                return;
+            }
+            System.out.println("[腳本] " + result.total() + " 支腳本中有 " + result.badCount()
+                    + " 支不是 BIG5，將不會生效：");
+            int shown = 0;
+            for (final String path : result.bad()) {
+                if (shown >= MAX_BAD_SCRIPTS_PRINTED) {
+                    System.out.println("      …以及其他 " + (result.badCount() - shown)
+                            + " 支（完整清單請用 !checkscripts 或管理面板 /api/scripts/encoding）");
+                    break;
+                }
+                System.out.println("      " + path);
+                shown++;
+            }
+        } catch (final Exception e) {
+            System.out.println("[腳本] 編碼檢查失敗（不影響啟動）：" + e);
+        }
     }
 
     public final static void main(final String args[]) {
@@ -94,6 +131,9 @@ public class Start {
         MapleOxQuizFactory.getInstance().initialize();
         MapleCarnivalFactory.getInstance();
         phase("遊戲資料檔");
+
+        checkScriptEncoding();
+        phase("腳本編碼檢查");
 
         MapleGuildRanking.getInstance().getRank();
         MapleFamilyBuff.getBuffEntry();

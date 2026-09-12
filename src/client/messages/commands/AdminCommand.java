@@ -50,6 +50,7 @@ import scripting.EventInstanceManager;
 import scripting.EventManager;
 import scripting.PortalScriptManager;
 import scripting.ReactorScriptManager;
+import scripting.ScriptEncodingCheck;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
 import server.MaplePortal;
@@ -2751,6 +2752,36 @@ public class AdminCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             MapleQuest.clearQuests();
+            return 1;
+        }
+    }
+
+    /**
+     * Re-runs the BIG5 scan the server does at startup. A script that is not
+     * BIG5 is read as an empty file, so the NPC just stops answering; this is
+     * the way to find out that is what happened.
+     */
+    public static class CheckScripts extends CommandExecute {
+
+        private static final int MAX_LISTED = 15;
+
+        @Override
+        public int execute(MapleClient c, String[] splitted) {
+            final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scan();
+            if (result.ok()) {
+                c.getPlayer().dropMessage(6, "[腳本] " + result.total() + " 支腳本的編碼都是 BIG5，沒有問題。");
+                return 1;
+            }
+            c.getPlayer().dropMessage(6, "[腳本] " + result.total() + " 支腳本中有 " + result.badCount() + " 支不是 BIG5，將不會生效：");
+            int shown = 0;
+            for (String path : result.bad()) {
+                if (shown >= MAX_LISTED) {
+                    c.getPlayer().dropMessage(6, "…以及其他 " + (result.badCount() - shown) + " 支（完整清單見伺服器 console 或管理面板）");
+                    break;
+                }
+                c.getPlayer().dropMessage(6, path);
+                shown++;
+            }
             return 1;
         }
     }

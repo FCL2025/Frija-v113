@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import scripting.PortalScriptManager;
+import scripting.ScriptEncodingCheck;
 import tools.Encodings;
 
 /**
@@ -62,6 +63,7 @@ final class ScriptsApi {
         r.get("/api/scripts/kinds", req -> kinds());
         r.get("/api/scripts/list/{kind}", req -> list(kind(req.param("kind"))));
         r.get("/api/scripts/search", req -> search(req.query("q", ""), req.query("kind", "")));
+        r.get("/api/scripts/encoding", req -> encoding());
         r.get("/api/scripts/file/{kind}/{name}", req -> read(kind(req.param("kind")), name(req.param("name"))));
         r.put("/api/scripts/file/{kind}/{name}", req -> write(kind(req.param("kind")), name(req.param("name")),
                 req.bodyObject()));
@@ -187,6 +189,18 @@ final class ScriptsApi {
             }
         }
         return Json.obj("q", q, "hits", hits, "filesMatched", filesMatched, "capped", capped);
+    }
+
+    /**
+     * The same scan the server runs at startup and {@code !checkscripts} runs
+     * in game: every {@code *.js} under {@code Libs/scripts} strictly decoded
+     * as BIG5, and the ones that fail named. Read-only and uncached, so it
+     * answers for the files as they are on disk right now - including a script
+     * repaired through {@link #write} a moment ago.
+     */
+    private static Map<String, Object> encoding() {
+        final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scan();
+        return Json.obj("total", result.total(), "bad", result.bad());
     }
 
     private static Map<String, Object> read(final String kind, final String name) throws IOException {

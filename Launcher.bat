@@ -13,6 +13,8 @@ rem      Launcher.bat build      force a full rebuild and stop (no server)
 rem      Launcher.bat cashshop   run tools.wztosql.CashShopDumper instead
 rem      Launcher.bat lint       compile only with -Xlint:all, print the
 rem                              warning count by category, and stop
+rem      Launcher.bat test       compile src\ and test\, run the JUnit suite
+rem                              and stop; non-zero exit if anything fails
 rem
 rem  The management panel's frontend lives in panel\ (a Vite project) and is
 rem  served out of the jar. It is two separate steps, on purpose:
@@ -42,7 +44,8 @@ if /i "%MODE%"=="cashshop" goto check
 if /i "%MODE%"=="build"    goto check
 if /i "%MODE%"=="run"      goto run
 if /i "%MODE%"=="lint"     goto lint
-echo Usage: Launcher.bat [run^|build^|cashshop^|lint]
+if /i "%MODE%"=="test"     goto test
+echo Usage: Launcher.bat [run^|build^|cashshop^|lint^|test]
 endlocal
 exit /b 1
 
@@ -221,6 +224,78 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "Select-String -Path 'bui
 
 endlocal
 exit /b 0
+
+rem --- Test mode: compile src\, compile test\ against it, and hand the result
+rem     to JUnit's console launcher. No panel, no dist\lib, no jar - the tests
+rem     run straight off build\classes, so this mode needs none of the things
+rem     the server needs at run time (Settings.ini, a database, wz\).
+rem
+rem     JUnit ships as a single standalone jar in JarLib\test\ and is
+rem     deliberately NOT in manifest.mf, dist\lib\ or the server's classpath;
+rem     nothing under src\ may ever import it.
+rem
+rem     The launcher is started as a class on -cp rather than with -jar,
+rem     because its own --class-path option takes literal paths and will not
+rem     expand the "JarLib\*" wildcard that java itself understands.
+:test
+title Test TMS113
+
+echo [1/4] Locating the JDK...
+rem PATH may hold only the Oracle javapath shim, which has java.exe and
+rem javac.exe but no jar.exe - so ask the JVM where it actually lives.
+if not exist "%JAVA_HOME%\bin\javac.exe" (
+    for /f "tokens=1,* delims==" %%a in ('java -XshowSettings:properties -version 2^>^&1 ^| findstr /c:"java.home"') do set "JAVA_HOME=%%b"
+    for /f "tokens=* delims= " %%a in ("!JAVA_HOME!") do set "JAVA_HOME=%%a"
+)
+if not exist "%JAVA_HOME%\bin\javac.exe" (
+    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 26 installation.
+    goto testfail
+)
+echo       JAVA_HOME=%JAVA_HOME%
+set "JUNIT="
+for %%f in (JarLib\test\junit-platform-console-standalone-*.jar) do set "JUNIT=%%f"
+if not defined JUNIT (
+    echo ERROR: no JarLib\test\junit-platform-console-standalone-*.jar - the test runner is missing.
+    goto testfail
+)
+echo       JUNIT=!JUNIT!
+
+echo [2/4] Compiling src\...
+if exist build\classes rmdir /s /q build\classes
+mkdir build\classes
+dir /s /b src\*.java > build\sources.txt
+"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -nowarn -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
+if errorlevel 1 (
+    type build\javac.log
+    goto testfail
+)
+
+echo [3/4] Compiling test\...
+if exist build\test-classes rmdir /s /q build\test-classes
+mkdir build\test-classes
+dir /s /b test\*.java > build\test-sources.txt
+"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -nowarn -cp "build\classes;JarLib/*;JarLib/test/*" -d build\test-classes "@build\test-sources.txt" 2> build\javac-test.log
+if errorlevel 1 (
+    type build\javac-test.log
+    goto testfail
+)
+
+rem The working directory is the repo root (set at the top of this file), which
+rem RecvPacketOpcodeTest needs: it loads Libs\opcode\recv.ini by relative path.
+echo [4/4] Running the tests...
+"%JAVA_HOME%\bin\java.exe" -cp "!JUNIT!;build\classes;build\test-classes;JarLib\*" org.junit.platform.console.ConsoleLauncher execute --scan-classpath=build\test-classes --details=summary --disable-banner --fail-if-no-tests
+if errorlevel 1 goto testfail
+
+echo Tests OK
+endlocal
+exit /b 0
+
+:testfail
+echo.
+echo TESTS FAILED
+pause
+endlocal
+exit /b 1
 
 :fail
 echo.

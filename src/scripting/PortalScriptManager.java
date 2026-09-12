@@ -21,8 +21,6 @@
 package scripting;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,8 +33,6 @@ import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 
 import client.MapleClient;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import server.MaplePortal;
 import tools.FileoutputUtil;
 import tools.StringUtil;

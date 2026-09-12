@@ -20,7 +20,6 @@
  */
 package constants;
 
-import client.MapleCharacter;
 import client.inventory.MapleInventoryType;
 import client.inventory.MapleWeaponType;
 import client.status.MonsterStatus;

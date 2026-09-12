@@ -36,9 +36,7 @@ import client.inventory.MaplePet;
 import client.inventory.MaplePet.PetFlag;
 import client.inventory.MapleMount;
 import client.MapleCharacter;
-import client.MapleCharacterUtil;
 import client.MapleClient;
-import client.MapleDisease;
 import client.inventory.MapleInventoryType;
 import client.inventory.MapleInventory;
 import client.MapleStat;
@@ -73,14 +71,11 @@ import server.StructPotentialItem;
 import server.maps.MapleMist;
 import server.shops.HiredMerchant;
 import server.shops.IMaplePlayerShop;
-import tools.HexTool;
 import tools.Pair;
 import tools.packet.MTSCSPacket;
 import tools.packet.PetPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.MaplePacketCreator;
-import tools.data.input.ByteArrayByteStream;
-import tools.data.input.GenericSeekableLittleEndianAccessor;
 import tools.packet.PlayerShopPacket;
 
 public class InventoryHandler {

@@ -25,7 +25,6 @@ import java.util.Calendar;
 
 import client.inventory.IItem;
 import client.inventory.Item;
-import client.LoginCrypto;
 import client.MapleClient;
 import client.MapleCharacter;
 import client.MapleCharacterUtil;

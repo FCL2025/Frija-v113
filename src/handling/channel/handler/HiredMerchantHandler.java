@@ -38,9 +38,7 @@ import handling.world.World;
 import java.util.Map;
 import server.MapleInventoryManipulator;
 import server.MerchItemPackage;
-import server.MapleItemInformationProvider;
 import tools.Pair;
-import tools.StringUtil;
 import tools.packet.PlayerShopPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 

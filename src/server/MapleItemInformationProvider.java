@@ -16,7 +16,6 @@ import constants.GameConstants;
 import client.MapleCharacter;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
-import java.util.LinkedList;
 import provider.MapleData;
 import provider.MapleDataDirectoryEntry;
 import provider.MapleDataFileEntry;

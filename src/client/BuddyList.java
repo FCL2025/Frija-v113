@@ -33,7 +33,6 @@ import java.io.Serializable;
 
 import database.DatabaseConnection;
 import tools.MaplePacketCreator;
-import tools.Pair;
 
 public class BuddyList implements Serializable {
 

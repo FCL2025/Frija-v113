@@ -23,7 +23,6 @@ package handling.channel.handler;
 import java.awt.Point;
 import java.util.List;
 
-import scripting.AbstractPlayerInteraction;
 import client.inventory.IItem;
 import client.ISkill;
 import client.SkillFactory;

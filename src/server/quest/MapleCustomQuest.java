@@ -28,7 +28,6 @@ import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.LinkedList;
 import database.DatabaseConnection;
 
 public class MapleCustomQuest extends MapleQuest implements Serializable {

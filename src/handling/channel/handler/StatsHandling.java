@@ -30,7 +30,6 @@ import client.MapleCharacter;
 import client.MapleStat;
 import client.PlayerStats;
 import client.SkillFactory;
-import server.AutobanManager;
 import server.Randomizer;
 import tools.FileoutputUtil;
 import tools.MaplePacketCreator;

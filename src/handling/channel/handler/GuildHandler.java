@@ -26,7 +26,8 @@ import client.MapleCharacter;
 import client.MapleClient;
 import handling.MaplePacket;
 import handling.world.World;
-import handling.world.guild.*;
+import handling.world.guild.MapleGuild;
+import handling.world.guild.MapleGuildResponse;
 import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
 

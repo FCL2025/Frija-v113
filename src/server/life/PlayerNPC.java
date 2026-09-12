@@ -38,7 +38,7 @@ import database.DatabaseConnection;
 import handling.channel.ChannelServer;
 import handling.world.World;
 import java.util.ArrayList;
-import server.maps.*;
+import server.maps.MapleMap;
 import tools.MaplePacketCreator;
 
 public class PlayerNPC extends MapleNPC {

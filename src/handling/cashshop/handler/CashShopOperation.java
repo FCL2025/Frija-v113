@@ -19,7 +19,6 @@ import handling.world.World;
 import java.util.List;
 import server.CashItemFactory;
 import server.CashItemInfo;
-import server.MTSStorage;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
 import tools.MaplePacketCreator;

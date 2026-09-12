@@ -20,9 +20,6 @@
  */
 package server;
 
-import client.MapleCharacter;
-import handling.world.World;
-import tools.MaplePacketCreator;
 
 /**
  *

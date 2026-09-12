@@ -21,16 +21,12 @@
 package scripting;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 
 import client.MapleClient;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import tools.FileoutputUtil;
 import tools.StringUtil;
 

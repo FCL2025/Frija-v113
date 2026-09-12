@@ -3,7 +3,6 @@ package client.messages.commands;
 import constants.GameConstants;
 import constants.ServerConstants.PlayerGMRank;
 import client.MapleClient;
-import client.MapleStat;
 import scripting.NPCScriptManager;
 import tools.MaplePacketCreator;
 import server.life.MapleMonster;
@@ -12,9 +11,6 @@ import server.maps.MapleMapObjectType;
 import java.util.Arrays;
 import tools.StringUtil;
 import handling.world.World;
-import client.MapleCharacter;
-import client.inventory.MapleInventoryIdentifier;
-import java.sql.SQLException;
 import tools.FileoutputUtil;
 
 

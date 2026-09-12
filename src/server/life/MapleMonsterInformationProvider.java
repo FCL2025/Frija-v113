@@ -20,7 +20,6 @@
  */
 package server.life;
 
-import constants.GameConstants;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -31,8 +30,6 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import client.MapleCharacter;
-import client.inventory.MapleInventoryType;
 import database.DatabaseConnection;
 
 public class MapleMonsterInformationProvider {

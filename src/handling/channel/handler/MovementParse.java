@@ -25,9 +25,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import server.maps.AnimatedMapleMapObject;
-import server.movement.*;
+import server.movement.LifeMovement;
+import server.movement.LifeMovementFragment;
+import server.movement.StaticLifeMovement;
 import tools.data.input.SeekableLittleEndianAccessor;
-import tools.data.input.LittleEndianAccessor;
 
 public class MovementParse {
 

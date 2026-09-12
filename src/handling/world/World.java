@@ -51,9 +51,9 @@ public class World {
     //Touch everything...
     public static void init() {
         World.Find.findChannel(0);
-        World.Guild.lock.toString();
-        World.Alliance.lock.toString();
-        World.Family.lock.toString();
+        World.Guild.init();
+        World.Alliance.init();
+        World.Family.init();
         World.Messenger.getMessenger(0);
         World.Party.getParty(0);
     }
@@ -578,6 +578,12 @@ public class World {
             }
         }
 
+        // Forces the JVM to run this class's static initializer (the DB load
+        // above) right now, from World.init(), instead of lazily whenever
+        // something first calls into Guild.
+        public static void init() {
+        }
+
         public static int createGuild(int leaderId, String name) {
             return MapleGuild.createGuild(leaderId, name);
         }
@@ -1046,6 +1052,12 @@ public class World {
             }
         }
 
+        // Forces the JVM to run this class's static initializer (the DB load
+        // above) right now, from World.init(), instead of lazily whenever
+        // something first calls into Alliance.
+        public static void init() {
+        }
+
         public static MapleGuildAlliance getAlliance(final int allianceid) {
             lock.readLock().lock();
             try {
@@ -1329,6 +1341,12 @@ public class World {
                     families.put(g.getId(), g);
                 }
             }
+        }
+
+        // Forces the JVM to run this class's static initializer (the DB load
+        // above) right now, from World.init(), instead of lazily whenever
+        // something first calls into Family.
+        public static void init() {
         }
 
         public static MapleFamily getFamily(int id) {

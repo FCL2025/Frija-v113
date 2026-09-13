@@ -110,8 +110,11 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
         final int byte7 = bs.readByte();
         final int byte8 = bs.readByte();
 
-        return (long) ((byte8 << 56) + (byte7 << 48) + (byte6 << 40) + (byte5 << 32) + (byte4 << 24) + (byte3 << 16)
-                + (byte2 << 8) + byte1);
+        // The arithmetic has to be done in long: Java masks an int shift distance
+        // to five bits, so an int-width `byte8 << 56` would really be `<< 24` and
+        // the top four bytes would fold onto the bottom four.
+        return ((byte8 & 0xFFL) << 56) + ((byte7 & 0xFFL) << 48) + ((byte6 & 0xFFL) << 40) + ((byte5 & 0xFFL) << 32)
+                + ((byte4 & 0xFFL) << 24) + ((byte3 & 0xFFL) << 16) + ((byte2 & 0xFFL) << 8) + (byte1 & 0xFFL);
     }
 
     /**

@@ -2,13 +2,11 @@ package tools.data;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Point;
 import java.io.ByteArrayOutputStream;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -179,7 +177,11 @@ class LittleEndianRoundTripTest {
     }
 
     // ---------------------------------------------------------------------
-    // readLong. See the comment on the disabled test.
+    // readLong and readDouble. readLong has to do its shifts in long: Java
+    // masks an int shift distance to five bits, so an int-width `byte8 << 56`
+    // is really `byte8 << 24`, which used to fold the high four bytes onto the
+    // low four and left readDouble - which is built on readLong - unable to
+    // reproduce a double at all.
     // ---------------------------------------------------------------------
 
     @ParameterizedTest(name = "{0}")
@@ -191,40 +193,39 @@ class LittleEndianRoundTripTest {
     }
 
     @Test
-    @DisplayName("readLong loses the top four bytes - this is the current behaviour")
-    void readLongFoldsTheTopFourBytesOntoTheBottomFour() {
-        // GenericLittleEndianAccessor.readLong builds its result out of eight
-        // *int* locals:
-        //
-        //     return (long) ((byte8 << 56) + (byte7 << 48) + ... + byte1);
-        //
-        // Java masks an int shift distance to five bits, so `byte8 << 56` is
-        // `byte8 << 24`, `byte7 << 48` is `byte7 << 16`, and so on: the high four
-        // bytes land on top of the low four and are *added* to them, in int
-        // arithmetic, before the widening cast. Only a value in [0, 2^31) whose
-        // top four bytes are zero survives.
-        //
-        // Every in-tree caller writes `(int) slea.readLong()` on a cash-item id,
-        // which is why this has never been noticed: those ids fit in 32 bits, so
-        // the folded-in high bytes are zero. readDouble(), which is built on
-        // readLong(), cannot work at all.
-        //
-        // Pinned rather than fixed, because fixing it changes how every packet
-        // carrying a 64-bit field is parsed and that needs a client to verify.
-        // When this test fails, the bug has been fixed: delete it and enable
-        // longRoundTripsForAllValues() below.
+    @DisplayName("readLong keeps the top four bytes")
+    void readLongKeepsTheTopFourBytes() {
+        // The eight bytes go out low-first, so the *last* byte on the wire is the
+        // most significant one and has to be shifted 56 places. Doing that in int
+        // arithmetic used to add it onto the low four bytes instead, so
+        // 0x0102030405060708 read back as 0x0000000006080A0C and -1L as -2.
         writer().writeLong(0x0102030405060708L);
-        assertEquals(0x0000000006080A0CL, reader().readLong());
+        assertArrayEquals(new byte[]{0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01}, sink.toByteArray());
+        assertEquals(0x0102030405060708L, reader().readLong());
 
         writer().writeLong(-1L);
-        assertEquals(-2L, reader().readLong());
+        assertEquals(-1L, reader().readLong());
 
         writer().writeLong(Long.MAX_VALUE);
-        assertEquals(2147483646L, reader().readLong());
+        assertEquals(Long.MAX_VALUE, reader().readLong());
     }
 
     @Test
-    @Disabled("GenericLittleEndianAccessor.readLong does int-width shifts - see readLongFoldsTheTopFourBytesOntoTheBottomFour()")
+    @DisplayName("(int) readLong() is the low four bytes, which is all any caller in the tree wants")
+    void castingReadLongToIntKeepsTheLowFourBytes() {
+        // Every in-tree caller writes `(int) slea.readLong()` on a cash-item id.
+        // Those ids fit in 32 bits, so the client sends them with the high four
+        // bytes zero and the cast reads exactly the same as it did before readLong
+        // was fixed; when the high bytes are *not* zero the cast still truncates
+        // to the low four, where the folding used to corrupt them.
+        writer().writeLong(0x00000000_1234ABCDL);
+        assertEquals(0x1234ABCD, (int) reader().readLong());
+
+        writer().writeLong(0x7EDCBA98_1234ABCDL);
+        assertEquals(0x1234ABCD, (int) reader().readLong());
+    }
+
+    @Test
     @DisplayName("writeLong/readLong round trip for every long")
     void longRoundTripsForAllValues() {
         for (final long value : new long[]{Long.MIN_VALUE, -1L, 0x0102030405060708L, Long.MAX_VALUE}) {
@@ -234,18 +235,21 @@ class LittleEndianRoundTripTest {
     }
 
     @Test
-    @Disabled("readDouble is built on the broken readLong - see readLongFoldsTheTopFourBytesOntoTheBottomFour()")
     @DisplayName("a double round trips through writeLong/readDouble")
     void doubleRoundTrips() {
         writer().writeLong(Double.doubleToLongBits(3.5d));
         assertEquals(3.5d, reader().readDouble());
     }
 
-    @Test
-    @DisplayName("readDouble currently cannot reproduce a double")
-    void readDoubleIsCollateralDamage() {
-        writer().writeLong(Double.doubleToLongBits(3.5d));
-        assertNotEquals(3.5d, reader().readDouble());
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(doubles = {0.0d, -0.5d, -1234.5678d, Double.MIN_VALUE, Double.MAX_VALUE,
+        Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    @DisplayName("readDouble reproduces the awkward doubles too")
+    void doubleRoundTripsForTheAwkwardValues(final double value) {
+        // A negative double has bit 63 set and Double.MIN_VALUE is nothing *but*
+        // its lowest bit, so between them these cover both ends of the 64 bits.
+        writer().writeLong(Double.doubleToLongBits(value));
+        assertEquals(value, reader().readDouble());
     }
 
     @Test

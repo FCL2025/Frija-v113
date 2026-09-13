@@ -38,6 +38,8 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public class MapleAESOFB {
 
+    private static final System.Logger LOG = System.getLogger(MapleAESOFB.class.getName());
+
     private byte iv[];
     private Cipher cipher;
     private short mapleVersion;
@@ -114,15 +116,18 @@ public class MapleAESOFB {
      * @param iv The 4-byte IV to use.
      */
     public MapleAESOFB(byte iv[], short mapleVersion) {
+        // The three catches stay terse - two of them printed only the
+        // exception's own toString and the third printed neither it nor a
+        // trace, so no Throwable is attached. Once per session, not per packet.
         try {
             cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.ENCRYPT_MODE, skey);
         } catch (NoSuchAlgorithmException e) {
-            System.err.println("ERROR" + e);
+            LOG.log(System.Logger.Level.ERROR, "ERROR" + e);
         } catch (NoSuchPaddingException e) {
-            System.err.println("ERROR" + e);
+            LOG.log(System.Logger.Level.ERROR, "ERROR" + e);
         } catch (InvalidKeyException e) {
-            System.err.println("Error initalizing the encryption cipher.  Make sure you're using the Unlimited Strength cryptography jar files.");
+            LOG.log(System.Logger.Level.ERROR, "Error initalizing the encryption cipher.  Make sure you're using the Unlimited Strength cryptography jar files.");
         }
 
         this.setIv(iv);
@@ -177,9 +182,11 @@ public class MapleAESOFB {
             }
             updateIv();
         } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
+            // Only reached when the cipher itself fails, never on the packet
+            // path that succeeds - so this costs nothing per packet.
+            LOG.log(System.Logger.Level.ERROR, "Packet cipher failed; this session's stream is now out of step", e);
         } catch (BadPaddingException e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Packet cipher failed; this session's stream is now out of step", e);
         }
         return data;
     }

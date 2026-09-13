@@ -97,6 +97,11 @@ import tools.StringUtil;
  */
 public final class ScriptCache {
 
+    // Declared first: ENGINE and COMPAT below are initialised by static
+    // methods that log, and a static field is only assigned when its
+    // declaration is reached.
+    private static final System.Logger LOG = System.getLogger(ScriptCache.class.getName());
+
     /** Where {@link #clearKind} and the panel build their keys from. */
     public static final String ROOT = "Libs/scripts/";
 
@@ -132,7 +137,7 @@ public final class ScriptCache {
         try {
             return new ScriptEngineManager().getEngineByName("nashorn");
         } catch (final Throwable t) {
-            System.err.println("Could not create the 'nashorn' script engine: " + t);
+            LOG.log(System.Logger.Level.ERROR, "Could not create the 'nashorn' script engine: " + t);
             return null;
         }
     }
@@ -150,7 +155,7 @@ public final class ScriptCache {
             }
             return compiler.compile(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (final Throwable t) {
-            System.err.println("Could not pre-compile mozilla_compat.js, falling back to load(): " + t);
+            LOG.log(System.Logger.Level.WARNING, "Could not pre-compile mozilla_compat.js, falling back to load(): " + t);
             return null;
         }
     }
@@ -203,7 +208,7 @@ public final class ScriptCache {
         try {
             script = ((Compilable) requireEngine()).compile(PROLOGUE + source);
         } catch (final Throwable t) {
-            System.err.println("Error compiling script. Path: " + path + "\nException " + t);
+            LOG.log(System.Logger.Level.ERROR, "Error compiling script. Path: " + path + "\nException " + t);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error compiling script. Path: " + path + "\nException " + t);
             return null;
         }
@@ -241,7 +246,7 @@ public final class ScriptCache {
             // A script's own top-level code runs here, so this is a script bug,
             // not a cache bug - and Nashorn can raise an Error rather than an
             // Exception while generating its bytecode.
-            System.err.println("Error executing script. Path: " + path + "\nException " + t);
+            LOG.log(System.Logger.Level.ERROR, "Error executing script. Path: " + path + "\nException " + t);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing script. Path: " + path + "\nException " + t);
             return null;
         }

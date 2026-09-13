@@ -34,6 +34,8 @@ import java.util.Map.Entry;
 
 public class CPUSampler {
 
+    private static final System.Logger LOG = System.getLogger(CPUSampler.class.getName());
+
     private List<String> included = new LinkedList<>();
     private static CPUSampler instance = new CPUSampler();
     private long interval = 5;
@@ -239,7 +241,7 @@ public class CPUSampler {
             try {
                 rthread.join();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                LOG.log(System.Logger.Level.ERROR, "Interrupted while waiting for the CPU sampling thread to stop", e);
             }
         }
 

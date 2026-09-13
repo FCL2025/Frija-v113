@@ -29,6 +29,8 @@ import tools.FileoutputUtil;
 
 public class NPCScriptManager extends AbstractScriptManager {
 
+    private static final System.Logger LOG = System.getLogger(NPCScriptManager.class.getName());
+
     private final Map<MapleClient, NPCConversationManager> cms = new WeakHashMap<>();
     private static final NPCScriptManager instance = new NPCScriptManager();
 
@@ -71,7 +73,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             }
 
         } catch (final Exception e) {
-            System.err.println("NPC 腳本錯誤, 它ID為 : " + npc + "." + e);
+            LOG.log(System.Logger.Level.ERROR, "NPC 腳本錯誤, 它ID為 : " + npc + "." + e);
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示] NPC " + npc + "腳本錯誤 " + e + "");
             }
@@ -101,7 +103,7 @@ public class NPCScriptManager extends AbstractScriptManager {
                 if (c.getPlayer().isGM()) {
                     c.getPlayer().dropMessage("[系統提示] NPC " + cm.getNpc() + "腳本錯誤 " + e + "");
                 }
-                System.err.println("NPC 腳本錯誤. 它ID為 : " + cm.getNpc() + ":" + e);
+                LOG.log(System.Logger.Level.ERROR, "NPC 腳本錯誤. 它ID為 : " + cm.getNpc() + ":" + e);
                 dispose(c);
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing NPC script, NPC ID : " + cm.getNpc() + "." + e);
             } finally {
@@ -137,7 +139,7 @@ public class NPCScriptManager extends AbstractScriptManager {
                 // c.getPlayer().dropMessage(-1, "You already are talking to an NPC. Use @ea if this is not intended.");
             }
         } catch (final Exception e) {
-            System.err.println("Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             dispose(c);
         } finally {
@@ -162,7 +164,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示]任務腳本:" + cm.getQuest() + "錯誤...NPC: " + cm.getNpc() + ":" + e);
             }
-            System.err.println("Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + cm.getQuest() + ")..NPCID: " + cm.getNpc() + ":" + e);
             dispose(c);
         } finally {
@@ -198,7 +200,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示]任務腳本:" + quest + "錯誤...NPC: " + quest + ":" + e);
             }
-            System.err.println("Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             dispose(c);
         } finally {
@@ -223,7 +225,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示]任務腳本:" + cm.getQuest() + "錯誤...NPC: " + cm.getNpc() + ":" + e);
             }
-            System.err.println("Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + cm.getQuest() + ")..NPCID: " + cm.getNpc() + ":" + e);
             dispose(c);
         } finally {

@@ -31,6 +31,8 @@ import java.awt.Point;
  */
 public class GenericLittleEndianAccessor implements LittleEndianAccessor {
 
+    private static final System.Logger LOG = System.getLogger(GenericLittleEndianAccessor.class.getName());
+
     private final ByteInputStream bs;
 
     /**
@@ -152,7 +154,10 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
             String str = new String(ret, "BIG5");//勿改
             return str;
         } catch (Exception e) {
-            System.err.println(e);
+            // Terse on purpose: this printed the exception and nothing else.
+            // Only reached when the decode fails, so it costs the read path
+            // nothing.
+            LOG.log(System.Logger.Level.ERROR, String.valueOf(e));
         }
         return null;
     }

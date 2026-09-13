@@ -34,6 +34,8 @@ import java.io.IOException;
  */
 public class StringUtil {
 
+    private static final System.Logger LOG = System.getLogger(StringUtil.class.getName());
+
     /**
      * Gets a string padded from the left to <code>length</code> by
      * <code>padchar</code>.
@@ -227,7 +229,11 @@ public class StringUtil {
             }
             return builder.toString();
         } catch (IOException e) {
-            System.out.println("Error while loading file " + path + " " + e.getMessage());
+            // This is the line a script saved as UTF-8 produces, and the only
+            // sign of it: the read is abandoned, "" goes back, and the NPC
+            // silently stops answering. Terse on purpose - it has always
+            // reported getMessage() and never a trace.
+            LOG.log(System.Logger.Level.ERROR, "Error while loading file " + path + " " + e.getMessage());
         }
         return "";
     }

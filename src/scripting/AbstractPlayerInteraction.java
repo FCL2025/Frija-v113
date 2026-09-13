@@ -64,6 +64,8 @@ import server.events.MapleEventType;
 
 public abstract class AbstractPlayerInteraction {
 
+    private static final System.Logger LOG = System.getLogger(AbstractPlayerInteraction.class.getName());
+
     private MapleClient c;
 
     public AbstractPlayerInteraction(final MapleClient c) {
@@ -951,7 +953,7 @@ public abstract class AbstractPlayerInteraction {
         try {
             MapleInventoryManipulator.addById(c, id, (short) 1, "", MaplePet.createPet(id, name, level, closeness, fullness, MapleInventoryIdentifier.getInstance(), id == 5000054 ? (int) period : 0, flag), 45);
         } catch (NullPointerException ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "gainPet 失敗，寵物道具 " + id, ex);
         }
     }
 

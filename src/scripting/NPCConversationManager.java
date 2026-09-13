@@ -89,6 +89,8 @@ import tools.StringUtil;
 
 public class NPCConversationManager extends AbstractPlayerInteraction {
 
+    private static final System.Logger LOG = System.getLogger(NPCConversationManager.class.getName());
+
     private MapleClient c;
     private int npc, questid;
     private String getText;
@@ -460,7 +462,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             }
             return item.getItemId();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "NPC " + npc + ": gainGachaponItem " + id + " 失敗", e);
         }
         return -1;
     }
@@ -919,7 +921,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 ps.executeUpdate();
             }
         } catch (SQLException ex) {
-            System.err.println("Error gaining mesos in hired merchant" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Error gaining mesos in hired merchant" + ex);
         }
         c.getPlayer().gainMeso((int) mesos, true);
     }
@@ -940,7 +942,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }
         } catch (SQLException ex) {
-            System.err.println("Error gaining mesos in hired merchant" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Error gaining mesos in hired merchant" + ex);
         }
         return mesos;
     }
@@ -1016,7 +1018,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         try {
             AramiaFireWorks.getInstance().giveDecs(c.getPlayer(), kegs);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "NPC " + npc + ": addDecorations " + kegs + " 失敗", e);
         }
     }
 
@@ -1217,7 +1219,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         try {
             return Alliance.createAlliance(alliancename, c.getPlayer().getId(), otherChar.getId(), c.getPlayer().getGuildId(), otherChar.getGuildId());
         } catch (Exception re) {
-            re.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "NPC " + npc + ": createAlliance 失敗", re);
             return false;
         }
     }
@@ -1232,7 +1234,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }
         } catch (Exception re) {
-            re.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "NPC " + npc + ": addCapacityToAlliance 失敗", re);
         }
         return false;
     }
@@ -1246,7 +1248,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }
         } catch (Exception re) {
-            re.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "NPC " + npc + ": disbandAlliance 失敗", re);
         }
         return false;
     }

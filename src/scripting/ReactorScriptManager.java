@@ -37,6 +37,8 @@ import tools.FileoutputUtil;
 
 public class ReactorScriptManager extends AbstractScriptManager {
 
+    private static final System.Logger LOG = System.getLogger(ReactorScriptManager.class.getName());
+
     private static final ReactorScriptManager instance = new ReactorScriptManager();
     /**
      * Any Maple-Handler-N thread that hits a reactor fills this in, and
@@ -62,7 +64,7 @@ public class ReactorScriptManager extends AbstractScriptManager {
             iv.put("rm", rm);
             iv.invokeFunction("act");
         } catch (Exception e) {
-            System.err.println("Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);
         }
     }
@@ -83,7 +85,7 @@ public class ReactorScriptManager extends AbstractScriptManager {
                 }
             }
         } catch (final SQLException e) {
-            System.err.println("Could not retrieve drops for reactor " + rid + e);
+            LOG.log(System.Logger.Level.ERROR, "Could not retrieve drops for reactor " + rid + e);
             return ret;
         }
         // Miss-then-put, not computeIfAbsent: the query above borrows a

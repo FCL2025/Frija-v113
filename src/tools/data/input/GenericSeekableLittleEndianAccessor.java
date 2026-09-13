@@ -33,6 +33,8 @@ import java.io.IOException;
  */
 public class GenericSeekableLittleEndianAccessor extends GenericLittleEndianAccessor implements SeekableLittleEndianAccessor {
 
+    private static final System.Logger LOG = System.getLogger(GenericSeekableLittleEndianAccessor.class.getName());
+
     private final SeekableInputStreamBytestream bs;
 
     /**
@@ -57,7 +59,7 @@ public class GenericSeekableLittleEndianAccessor extends GenericLittleEndianAcce
         try {
             bs.seek(offset);
         } catch (IOException e) {
-            System.err.println("Seek failed" + e);
+            LOG.log(System.Logger.Level.ERROR, "Seek failed" + e);
         }
     }
 
@@ -73,7 +75,7 @@ public class GenericSeekableLittleEndianAccessor extends GenericLittleEndianAcce
         try {
             return bs.getPosition();
         } catch (IOException e) {
-            System.err.println("getPosition failed" + e);
+            LOG.log(System.Logger.Level.ERROR, "getPosition failed" + e);
             return -1;
         }
     }

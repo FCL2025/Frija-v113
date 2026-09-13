@@ -29,6 +29,8 @@ import tools.FileoutputUtil;
  */
 public abstract class AbstractScriptManager {
 
+    private static final System.Logger LOG = System.getLogger(AbstractScriptManager.class.getName());
+
     protected ScriptScope getInvocable(String path, MapleClient c) {
         return getInvocable(path, c, false);
     }
@@ -70,7 +72,7 @@ public abstract class AbstractScriptManager {
             }
             return scope;
         } catch (Exception e) {
-            System.err.println("Error executing script. Path: " + path + "\nException " + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing script. Path: " + path + "\nException " + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing script. Path: " + path + "\nException " + e);
             return null;
         }

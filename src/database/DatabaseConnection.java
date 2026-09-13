@@ -111,6 +111,8 @@ import server.ServerProperties;
  */
 public final class DatabaseConnection {
 
+    private static final System.Logger LOG = System.getLogger(DatabaseConnection.class.getName());
+
     /**
      * Passed to {@code prepareStatement} by the handful of call sites that read
      * an auto-increment id back. Kept here only because that is where they have
@@ -273,7 +275,9 @@ public final class DatabaseConnection {
                     // Not that one - fall through to the older name.
                 }
             }
-            System.err.println("ERROR: no MySQL JDBC driver on the classpath.");
+            // The message keeps its own "ERROR:" - it is the text this has
+            // always printed, and the sweep does not reword what is reported.
+            LOG.log(System.Logger.Level.ERROR, "ERROR: no MySQL JDBC driver on the classpath.");
         }
 
         Connection borrow() throws SQLException {
@@ -337,7 +341,7 @@ public final class DatabaseConnection {
             int reaped = 0;
             for (final Map.Entry<Thread, Handle> entry : owners.entrySet()) {
                 if (!entry.getKey().isAlive() && owners.remove(entry.getKey(), entry.getValue())) {
-                    System.err.println("[db] Reclaiming a connection abandoned by "
+                    LOG.log(System.Logger.Level.WARNING, "[db] Reclaiming a connection abandoned by "
                             + entry.getKey().getName() + "; a call site there is not closing what it borrows.");
                     entry.getValue().abandon();
                     reaped++;

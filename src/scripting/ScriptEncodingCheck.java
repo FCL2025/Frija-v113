@@ -80,6 +80,8 @@ import tools.Encodings;
  */
 public final class ScriptEncodingCheck {
 
+    private static final System.Logger LOG = System.getLogger(ScriptEncodingCheck.class.getName());
+
     /** Where the scripts live, relative to the working directory. */
     private static final Path ROOT = Path.of("Libs", "scripts");
 
@@ -211,7 +213,7 @@ public final class ScriptEncodingCheck {
             // The walk itself gave up. Report what was reached rather than
             // making the caller deal with it; this is a diagnostic, not a
             // precondition.
-            System.out.println("[腳本] 掃描 " + ROOT + " 時中斷：" + e);
+            LOG.log(System.Logger.Level.WARNING, "[腳本] 掃描 " + ROOT + " 時中斷：" + e);
         }
         Collections.sort(notBig5);
         notCompiling.sort((a, b) -> a.path().compareTo(b.path()));
@@ -233,9 +235,9 @@ public final class ScriptEncodingCheck {
             if (engine instanceof Compilable c) {
                 return c;
             }
-            System.out.println("[腳本] 找不到 nashorn 引擎，這次只檢查編碼、不檢查能不能編譯。");
+            LOG.log(System.Logger.Level.WARNING, "[腳本] 找不到 nashorn 引擎，這次只檢查編碼、不檢查能不能編譯。");
         } catch (final Exception e) {
-            System.out.println("[腳本] 建立 nashorn 引擎失敗，這次只檢查編碼：" + e);
+            LOG.log(System.Logger.Level.WARNING, "[腳本] 建立 nashorn 引擎失敗，這次只檢查編碼：" + e);
         }
         return null;
     }

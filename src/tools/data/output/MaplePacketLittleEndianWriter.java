@@ -39,6 +39,8 @@ import tools.HexTool;
 // packet builders instantiate it directly.
 public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWriter {
 
+    private static final System.Logger LOG = System.getLogger(MaplePacketLittleEndianWriter.class.getName());
+
     private final ByteArrayOutputStream baos;
     private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
 
@@ -66,9 +68,14 @@ public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWrit
      * @return A <code>MaplePacket</code> with the bytes in this stream.
      */
     public final MaplePacket getPacket() {
-        if (debugMode) {
+        // Every outbound packet comes through here, so the hex dump is behind
+        // both of its switches: tms.Debug as before, and the logger's own level
+        // - a DEBUG record is dropped unless someone lowers
+        // tools.data.output.MaplePacketLittleEndianWriter.level to FINE in
+        // Libs/logging.properties. Neither one builds the string.
+        if (debugMode && LOG.isLoggable(System.Logger.Level.DEBUG)) {
             MaplePacket packet = new ByteArrayMaplePacket(baos.toByteArray());
-            System.out.println("Packet to be sent:\n" + packet.toString());
+            LOG.log(System.Logger.Level.DEBUG, "Packet to be sent:\n" + packet.toString());
         }
         return new ByteArrayMaplePacket(baos.toByteArray());
     }

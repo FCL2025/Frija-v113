@@ -32,6 +32,8 @@ import tools.FileoutputUtil;
 
 public class PortalScriptManager {
 
+    private static final System.Logger LOG = System.getLogger(PortalScriptManager.class.getName());
+
     private static final PortalScriptManager instance = new PortalScriptManager();
     /**
      * One entry per portal script name, evaluated on demand by whichever
@@ -82,7 +84,7 @@ public class PortalScriptManager {
             scope.run(compiled);
             script = scope.getInterface(PortalScript.class);
         } catch (final Exception e) {
-            System.err.println("Error executing Portalscript: " + scriptName + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Portalscript: " + scriptName + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Portal script. (" + scriptName + ") " + e);
         }
         // Miss-then-put, not computeIfAbsent: evaluating a script under the
@@ -101,10 +103,12 @@ public class PortalScriptManager {
             try {
                 script.enter(new PortalPlayerInteraction(c, portal));
             } catch (Exception e) {
-                System.err.println("Error entering Portalscript: " + portal.getScriptName() + ":" + e);
+                LOG.log(System.Logger.Level.ERROR, "Error entering Portalscript: " + portal.getScriptName() + ":" + e);
             }
         } else {
-            System.out.println("Unhandled portal script " + portal.getScriptName() + " on map " + c.getPlayer().getMapId());
+            // WARNING, not INFO: a portal with no script behind it does nothing
+            // at all when a player steps on it.
+            LOG.log(System.Logger.Level.WARNING, "Unhandled portal script " + portal.getScriptName() + " on map " + c.getPlayer().getMapId());
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Unhandled portal script " + portal.getScriptName() + " on map " + c.getPlayer().getMapId());
         }
     }

@@ -39,6 +39,8 @@ import tools.FileoutputUtil;
 // so no subclass can ever see the half-built object.
 public final class EventScriptManager extends AbstractScriptManager {
 
+    private static final System.Logger LOG = System.getLogger(EventScriptManager.class.getName());
+
     private static class EventEntry {
 
         public EventEntry(final String script, final ScriptScope iv, final EventManager em) {
@@ -104,7 +106,7 @@ public final class EventScriptManager extends AbstractScriptManager {
                 entry.iv.invokeFunction("init", (Object) null);
                
             } catch (final Exception ex) {
-                System.out.println("Error initiating event: " + entry.script + ":" + ex);
+                LOG.log(System.Logger.Level.ERROR, "Error initiating event: " + entry.script + ":" + ex);
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error initiating event: " + entry.script + ":" + ex);
             }
         }

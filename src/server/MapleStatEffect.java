@@ -1449,7 +1449,7 @@ public class MapleStatEffect {
                 if (applyfrom.getBuffedValue(MapleBuffStat.INFINITY) != null) {
                     mpchange = 0;
                 } else {
-                    mpchange -= (mpCon - (mpCon * percent_off / 100)) * mod;
+                    mpchange = (int) (mpchange - (mpCon - (mpCon * percent_off / 100)) * mod); // MP 消耗取整（捨去），與原本 -= 的隱含截斷相同
                 }
             }
         }

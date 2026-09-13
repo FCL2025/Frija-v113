@@ -402,9 +402,9 @@ public class MapleMonster extends AbstractLoadedMapleLife {
             final Integer holySymbol = attacker.getBuffedValue(MapleBuffStat.HOLY_SYMBOL);
             if (holySymbol != null) {
                 if (numExpSharers == 1) {
-                    exp *= 1.0 + (holySymbol.doubleValue() / 500.0);
+                    exp = (int) (exp * (1.0 + (holySymbol.doubleValue() / 500.0))); // 經驗值取整（捨去）；double->int 是飽和轉換，不會環繞
                 } else {
-                    exp *= 1.0 + (holySymbol.doubleValue() / 100.0);
+                    exp = (int) (exp * (1.0 + (holySymbol.doubleValue() / 100.0)));
                 }
             }
             if (attacker.hasDisease(MapleDisease.CURSE)) {

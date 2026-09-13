@@ -52,7 +52,7 @@ public class AramiaFireWorks {
     }
 
     public final void giveKegs(final MapleCharacter c, final int kegs) {
-        this.kegs += kegs;
+        this.kegs = (short) (this.kegs + kegs); // 每次達 MAX_KEGS(10000) 就歸零，加上單次上限（背包容量）仍遠小於 short
         if (this.kegs >= MAX_KEGS) {
             this.kegs = 0;
             broadcastEvent(c);
@@ -92,7 +92,7 @@ public class AramiaFireWorks {
     }
 
     public final void giveSuns(final MapleCharacter c, final int kegs) {
-        this.sunshines += kegs;
+        this.sunshines = (short) (this.sunshines + kegs); // 每次達 MAX_SUN(14000) 就歸零
         //have to broadcast a Reactor?
         final MapleMap map = c.getClient().getChannelServer().getMapFactory().getMap(555000000);
         final MapleReactor reactor = map.getReactorByName("XmasTree");
@@ -153,7 +153,7 @@ public class AramiaFireWorks {
     }
 
     public final void giveDecs(final MapleCharacter c, final int kegs) {
-        this.decorations += kegs;
+        this.decorations = (short) (this.decorations + kegs); // 每次達 MAX_DEC(18000) 就歸零
         //have to broadcast a Reactor?
         final MapleMap map = c.getClient().getChannelServer().getMapFactory().getMap(555000000);
         final MapleReactor reactor = map.getReactorByName("XmasTree");

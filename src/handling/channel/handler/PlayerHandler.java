@@ -281,7 +281,7 @@ public class PlayerHandler {
                     long bouncedamage = (long) (damage * bouncedam_ / 100);
                     bouncedamage = Math.min(bouncedamage, attacker.getMobMaxHp() / 10);
                     attacker.damage(chr, bouncedamage, true);
-                    damage -= bouncedamage;
+                    damage = (int) (damage - bouncedamage); // damage 已被前面的 60000 檢查夾住，bouncedamage <= damage*百分比，差值必在 int 內
                     chr.getMap().broadcastMessage(chr, MobPacket.damageMonster(oid, bouncedamage), chr.getPosition());
                     is_pg = true;
                 }

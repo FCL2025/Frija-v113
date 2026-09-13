@@ -186,7 +186,7 @@ public class MapleShop {
         final int skill = GameConstants.getMasterySkill(c.getPlayer().getJob());
 
         if (skill != 0) {
-            slotMax += c.getPlayer().getSkillLevel(SkillFactory.getSkill(skill)) * 10;
+            slotMax = (short) (slotMax + c.getPlayer().getSkillLevel(SkillFactory.getSkill(skill)) * 10); // 精通技能最高 30 級，加總最多 +300，short 夠用
         }
         if (item.getQuantity() < slotMax) {
             final int price = (int) Math.round(ii.getPrice(item.getItemId()) * (slotMax - item.getQuantity()));

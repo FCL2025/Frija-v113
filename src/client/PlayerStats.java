@@ -524,28 +524,28 @@ public class PlayerStats {
         }
         magic += chra.getSkillLevel(SkillFactory.getSkill(22000000));
         //dam_r += (chra.getJob() >= 430 && chra.getJob() <= 434 ? 70 : 0); //leniency on upper stab
-        this.localstr += (percent_str * localstr) / 100f;
-        this.localdex += (percent_dex * localdex) / 100f;
+        this.localstr = (int) (this.localstr + (percent_str * localstr) / 100f); // 百分比加成：浮點算完後截斷取整，與原本 += 的隱含截斷完全相同
+        this.localdex = (int) (this.localdex + (percent_dex * localdex) / 100f);
         final int before_ = localint_;
-        this.localint_ += (percent_int * localint_) / 100f;
+        this.localint_ = (int) (this.localint_ + (percent_int * localint_) / 100f);
         this.magic += localint_ - before_;
-        this.localluk += (percent_luk * localluk) / 100f;
-        this.accuracy += (percent_acc * accuracy) / 100f;
-        this.watk += (percent_atk * watk) / 100f;
-        this.magic += (percent_matk * magic) / 100f; //or should this go before
-        localmaxhp_ += (percent_hp * localmaxhp_) / 100f;
-        localmaxmp_ += (percent_mp * localmaxmp_) / 100f;
+        this.localluk = (int) (this.localluk + (percent_luk * localluk) / 100f);
+        this.accuracy = (int) (this.accuracy + (percent_acc * accuracy) / 100f);
+        this.watk = (int) (this.watk + (percent_atk * watk) / 100f);
+        this.magic = (int) (this.magic + (percent_matk * magic) / 100f); //or should this go before
+        localmaxhp_ = (int) (localmaxhp_ + (percent_hp * localmaxhp_) / 100f);
+        localmaxmp_ = (int) (localmaxmp_ + (percent_mp * localmaxmp_) / 100f);
         magic = Math.min(magic, 1999); //buffs can make it higher
 
         Integer buff = chra.getBuffedValue(MapleBuffStat.MAPLE_WARRIOR);
         if (buff != null) {
             final double d = buff.doubleValue() / 100.0;
-            localstr += d * str; //base only
-            localdex += d * dex;
-            localluk += d * luk;
+            localstr = (int) (localstr + d * str); //base only
+            localdex = (int) (localdex + d * dex);
+            localluk = (int) (localluk + d * luk);
 
             final int before = localint_;
-            localint_ += d * int_;
+            localint_ = (int) (localint_ + d * int_);
             magic += localint_ - before;
         }
         buff = chra.getBuffedValue(MapleBuffStat.ECHO_OF_HERO);
@@ -560,19 +560,19 @@ public class PlayerStats {
         }
         buff = chra.getBuffedValue(MapleBuffStat.MAXHP);
         if (buff != null) {
-            localmaxhp_ += (buff.doubleValue() / 100.0) * localmaxhp_;
+            localmaxhp_ = (int) (localmaxhp_ + (buff.doubleValue() / 100.0) * localmaxhp_);
         }
         buff = chra.getBuffedValue(MapleBuffStat.CONVERSION);
         if (buff != null) {
-            localmaxhp_ += (buff.doubleValue() / 100.0) * localmaxhp_;
+            localmaxhp_ = (int) (localmaxhp_ + (buff.doubleValue() / 100.0) * localmaxhp_);
         }
         buff = chra.getBuffedValue(MapleBuffStat.MAXMP);
         if (buff != null) {
-            localmaxmp_ += (buff.doubleValue() / 100.0) * localmaxmp_;
+            localmaxmp_ = (int) (localmaxmp_ + (buff.doubleValue() / 100.0) * localmaxmp_);
         }
         buff = chra.getBuffedValue(MapleBuffStat.MP_BUFF);
         if (buff != null) {
-            localmaxmp_ += (buff.doubleValue() / 100.0) * localmaxmp_;
+            localmaxmp_ = (int) (localmaxmp_ + (buff.doubleValue() / 100.0) * localmaxmp_);
         }
         buff = chra.getBuffedValue(MapleBuffStat.ENHANCED_MAXHP);
         if (buff != null) {

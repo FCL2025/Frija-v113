@@ -1093,7 +1093,7 @@ public class InventoryHandler {
                             break;
                         }
                         case 2048: // hp
-                            short maxhp = playerst.getMaxHp();
+                            int maxhp = playerst.getMaxHp(); // 累加期間用 int，最後 clamp 到 30000 才轉回 short
 
                             if (job == 0) { // Beginner
                                 maxhp += Randomizer.rand(8, 12);
@@ -1136,14 +1136,14 @@ public class InventoryHandler {
                             } else { // GameMaster
                                 maxhp += Randomizer.rand(50, 100);
                             }
-                            maxhp = (short) Math.min(30000, Math.abs(maxhp));
+                            maxhp = Math.min(30000, Math.abs(maxhp));
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
-                            playerst.setMaxHp(maxhp);
-                            statupdate.add(new Pair<>(MapleStat.MAXHP, (int) maxhp));
+                            playerst.setMaxHp((short) maxhp); // clamp 過，必定在 0..30000
+                            statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
                             break;
 
                         case 8192: // mp
-                            short maxmp = playerst.getMaxMp();
+                            int maxmp = playerst.getMaxMp(); // 同上
 
                             if (job == 0) { // Beginner
                                 maxmp += Randomizer.rand(6, 8);
@@ -1172,10 +1172,10 @@ public class InventoryHandler {
                             } else { // GameMaster
                                 maxmp += Randomizer.rand(50, 100);
                             }
-                            maxmp = (short) Math.min(30000, Math.abs(maxmp));
+                            maxmp = Math.min(30000, Math.abs(maxmp));
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
-                            playerst.setMaxMp(maxmp);
-                            statupdate.add(new Pair<>(MapleStat.MAXMP, (int) maxmp));
+                            playerst.setMaxMp((short) maxmp); // clamp 過，必定在 0..30000
+                            statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
                             break;
                     }
                     switch (apfrom) { // AP from
@@ -1204,7 +1204,7 @@ public class InventoryHandler {
                             break;
                         }
                         case 2048: // HP
-                            short maxhp = playerst.getMaxHp();
+                            int maxhp = playerst.getMaxHp(); // 扣回 AP：只會往下減，轉回 short 與原本逐步截斷等價
                             if (job == 0) { // Beginner
                                 maxhp -= 12;
                             } else if (job >= 100 && job <= 132) { // Warrior
@@ -1248,11 +1248,11 @@ public class InventoryHandler {
                             }
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
                             playerst.setHp(maxhp);
-                            playerst.setMaxHp(maxhp);
-                            statupdate.add(new Pair<>(MapleStat.MAXHP, (int) maxhp));
+                            playerst.setMaxHp((short) maxhp);
+                            statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
                             break;
                         case 8192: // MP
-                            short maxmp = playerst.getMaxMp();
+                            int maxmp = playerst.getMaxMp(); // 同上
                             if (job == 0) { // Beginner
                                 maxmp -= 8;
                             } else if (job >= 100 && job <= 132) { // Warrior
@@ -1282,8 +1282,8 @@ public class InventoryHandler {
                             }
                             c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
                             playerst.setMp(maxmp);
-                            playerst.setMaxMp(maxmp);
-                            statupdate.add(new Pair<>(MapleStat.MAXMP, (int) maxmp));
+                            playerst.setMaxMp((short) maxmp);
+                            statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
                             break;
                     }
                     c.send(CharacterPacket.updatePlayerStats(statupdate, true, c.getPlayer().getJob()));
@@ -1460,9 +1460,9 @@ public class InventoryHandler {
                     if ((itemId == 5520000 && MapleItemInformationProvider.getInstance().isKarmaEnabled(item.getItemId())) || (itemId == 5520001 && MapleItemInformationProvider.getInstance().isPKarmaEnabled(item.getItemId()))) {
                         byte flag = item.getFlag();
                         if (type == MapleInventoryType.EQUIP) {
-                            flag |= ItemFlag.KARMA_EQ.getValue();
+                            flag = (byte) (flag | ItemFlag.KARMA_EQ.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
                         } else {
-                            flag |= ItemFlag.KARMA_USE.getValue();
+                            flag = (byte) (flag | ItemFlag.KARMA_USE.getValue());
                         }
                         item.setFlag(flag);
 
@@ -1508,7 +1508,7 @@ public class InventoryHandler {
                 // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
                 if (item != null && item.getExpiration() == -1) {
                     byte flag = item.getFlag();
-                    flag |= ItemFlag.LOCK.getValue();
+                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
                     item.setFlag(flag);
 
                     c.getPlayer().forceReAddItem_Flag(item, type);
@@ -1522,7 +1522,7 @@ public class InventoryHandler {
                 // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
                 if (item != null && item.getExpiration() == -1) {
                     byte flag = item.getFlag();
-                    flag |= ItemFlag.LOCK.getValue();
+                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
                     item.setFlag(flag);
                     item.setExpiration(System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000));
 
@@ -1537,7 +1537,7 @@ public class InventoryHandler {
                 // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
                 if (item != null && item.getExpiration() == -1) {
                     byte flag = item.getFlag();
-                    flag |= ItemFlag.LOCK.getValue();
+                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
                     item.setFlag(flag);
 
                     item.setExpiration(System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000));
@@ -1553,7 +1553,7 @@ public class InventoryHandler {
                 // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
                 if (item != null && item.getExpiration() == -1) {
                     byte flag = item.getFlag();
-                    flag |= ItemFlag.LOCK.getValue();
+                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
                     item.setFlag(flag);
 
                     item.setExpiration(System.currentTimeMillis() + (90 * 24 * 60 * 60 * 1000));

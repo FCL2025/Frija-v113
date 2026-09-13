@@ -712,14 +712,14 @@ public class MapleItemInformationProvider {
                     case 2040727: // Spikes on shoe, prevents slip
                     {
                         byte flag = nEquip.getFlag();
-                        flag |= ItemFlag.SPIKES.getValue();
+                        flag = (byte) (flag | ItemFlag.SPIKES.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
                         nEquip.setFlag(flag);
                         break;
                     }
                     case 2041058: // Cape for Cold protection
                     {
                         byte flag = nEquip.getFlag();
-                        flag |= ItemFlag.COLD.getValue();
+                        flag = (byte) (flag | ItemFlag.COLD.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
                         nEquip.setFlag(flag);
                         break;
                     }

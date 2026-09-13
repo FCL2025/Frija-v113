@@ -277,16 +277,16 @@ public class MapleAESOFB {
         in[0] += moritz;
         moritz = in[2];
         moritz ^= funnyBytes[(int) anna & 0xFF];
-        elina -= (int) moritz & 0xFF;
+        elina = (byte) (elina - ((int) moritz & 0xFF)); // IV 洗牌是 8 位元模算術，截斷即本意
         in[1] = elina;
         elina = in[3];
         moritz = elina;
-        elina -= (int) in[0] & 0xFF;
+        elina = (byte) (elina - ((int) in[0] & 0xFF));
         moritz = funnyBytes[(int) moritz & 0xFF];
         moritz += inputByte;
         moritz ^= in[2];
         in[2] = moritz;
-        elina += (int) funnyBytes[(int) anna & 0xFF] & 0xFF;
+        elina = (byte) (elina + ((int) funnyBytes[(int) anna & 0xFF] & 0xFF));
         in[3] = elina;
 
         int merry = ((int) in[0]) & 0xFF;

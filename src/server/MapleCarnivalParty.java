@@ -38,8 +38,8 @@ public class MapleCarnivalParty {
     }
 
     public void addCP(MapleCharacter player, int ammount) {
-        totalCP += ammount;
-        availableCP += ammount;
+        totalCP = (short) (totalCP + ammount); // CP 上線是 writeShort，本來就只有 16 bit
+        availableCP = (short) (availableCP + ammount);
         player.addCP(ammount);
     }
 
@@ -52,7 +52,7 @@ public class MapleCarnivalParty {
     }
 
     public void useCP(MapleCharacter player, int ammount) {
-        availableCP -= ammount;
+        availableCP = (short) (availableCP - ammount);
         player.useCP(ammount);
     }
 

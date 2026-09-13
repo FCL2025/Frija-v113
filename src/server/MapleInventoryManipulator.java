@@ -115,7 +115,7 @@ public class MapleInventoryManipulator {
                             short oldQ = eItem.getQuantity();
                             if (oldQ < slotMax && (eItem.getOwner().equals(owner) || owner == null) && eItem.getExpiration() == -1) {
                                 short newQ = (short) Math.min(oldQ + quantity, slotMax);
-                                quantity -= (newQ - oldQ);
+                                quantity = (short) (quantity - (newQ - oldQ)); // newQ-oldQ 介於 0..quantity，不會溢位
                                 eItem.setQuantity(newQ);
                                 c.send(InventoryPacket.updateInventorySlot(type, eItem, false));
                             }
@@ -232,7 +232,7 @@ public class MapleInventoryManipulator {
                                 recieved = true;
 
                                 short newQ = (short) Math.min(oldQ + quantity, slotMax);
-                                quantity -= (newQ - oldQ);
+                                quantity = (short) (quantity - (newQ - oldQ)); // newQ-oldQ 介於 0..quantity，不會溢位
                                 nItem.setQuantity(newQ);
                                 c.send(InventoryPacket.updateInventorySlot(type, nItem, false));
                             }
@@ -329,7 +329,7 @@ public class MapleInventoryManipulator {
                             final short oldQ = eItem.getQuantity();
                             if (oldQ < slotMax && item.getOwner().equals(eItem.getOwner()) && item.getExpiration() == eItem.getExpiration()) {
                                 final short newQ = (short) Math.min(oldQ + quantity, slotMax);
-                                quantity -= (newQ - oldQ);
+                                quantity = (short) (quantity - (newQ - oldQ)); // newQ-oldQ 介於 0..quantity，不會溢位
                                 eItem.setQuantity(newQ);
                                 c.send(InventoryPacket.updateInventorySlot(type, eItem, true));
                             }
@@ -654,7 +654,7 @@ public class MapleInventoryManipulator {
         if (stats.get("equipTradeBlock") == 1) { // Block trade when equipped.
             byte flag = source.getFlag();
             if (!ItemFlag.UNTRADEABLE.check(flag)) {
-                flag |= ItemFlag.UNTRADEABLE.getValue();
+                flag = (byte) (flag | ItemFlag.UNTRADEABLE.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
                 source.setFlag(flag);
                 c.send(InventoryPacket.updateSpecialItemUse_(source, GameConstants.getInventoryType(source.getItemId()).getType()));
             }

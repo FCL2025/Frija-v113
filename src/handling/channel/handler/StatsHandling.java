@@ -76,7 +76,7 @@ public class StatsHandling {
                     statupdate.add(new Pair<>(MapleStat.LUK, (int) stat.getLuk()));
                     break;
                 case 2048: // HP
-                    short maxhp = stat.getMaxHp();
+                    int maxhp = stat.getMaxHp(); // 累加期間用 int，最後 clamp 到 30000 才轉回 short
                     if (chr.getHpApUsed() >= 10000 || maxhp >= 30000) {
                         return;
                     }
@@ -121,13 +121,13 @@ public class StatsHandling {
                     } else { // GameMaster
                         maxhp += Randomizer.rand(50, 100);
                     }
-                    maxhp = (short) Math.min(30000, Math.abs(maxhp));
+                    maxhp = Math.min(30000, Math.abs(maxhp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
-                    stat.setMaxHp(maxhp);
-                    statupdate.add(new Pair<>(MapleStat.MAXHP, (int) maxhp));
+                    stat.setMaxHp((short) maxhp); // clamp 過，必定在 0..30000
+                    statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
                     break;
                 case 8192: // MP
-                    short maxmp = stat.getMaxMp();
+                    int maxmp = stat.getMaxMp(); // 同上；這裡還多了 getTotalInt()/15 一項，是 short 餘裕最窄的地方
                     if (chr.getHpApUsed() >= 10000 || stat.getMaxMp() >= 30000) {
                         return;
                     }
@@ -159,10 +159,10 @@ public class StatsHandling {
                         maxmp += Randomizer.rand(50, 100);
                     }
                     maxmp += ((stat.getTotalInt()/15) + (stat.getTotalInt()/120));
-                    maxmp = (short) Math.min(30000, Math.abs(maxmp));
+                    maxmp = Math.min(30000, Math.abs(maxmp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
-                    stat.setMaxMp(maxmp);
-                    statupdate.add(new Pair<>(MapleStat.MAXMP, (int) maxmp));
+                    stat.setMaxMp((short) maxmp); // clamp 過，必定在 0..30000
+                    statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
                     break;
                 default:
                     c.send(CharacterPacket.updatePlayerStats(CharacterPacket.EMPTY_STATUPDATE, true, chr.getJob()));

@@ -2317,7 +2317,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void addFame(int famechange) {
-        this.fame += famechange;
+        this.fame = (short) (this.fame + famechange); // 名聲欄位是 16 bit：PlayersHandler 已把 |fame| 夾在 30000 內，封包也是 writeShort
         /*if (this.fame >= 50) {
          finishAchievement(7);
          }*/
@@ -4552,12 +4552,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void addCP(int ammount) {
-        totalCP += ammount;
-        availableCP += ammount;
+        totalCP = (short) (totalCP + ammount); // CP 上線是 writeShort，本來就只有 16 bit
+        availableCP = (short) (availableCP + ammount);
     }
 
     public void useCP(int ammount) {
-        availableCP -= ammount;
+        availableCP = (short) (availableCP - ammount);
     }
 
     public int getAvailableCP() {

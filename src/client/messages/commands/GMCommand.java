@@ -186,7 +186,7 @@ public class GMCommand {
             } else {
                 IItem item;
                 byte flag = 0;
-                flag |= ItemFlag.LOCK.getValue();
+                flag = (byte) (flag | ItemFlag.LOCK.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
 
                 if (GameConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
                     item = ii.randomizeStats((Equip) ii.getEquipById(itemId));

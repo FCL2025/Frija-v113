@@ -139,7 +139,7 @@ public class NPCHandler {
         final byte action = slea.readByte();
         short quest = slea.readShort();
         if (quest < 0) { //questid 50000 and above, WILL cast to negative, this was tested.
-            quest += 65536; //probably not the best fix, but whatever
+            quest += 65536; // 此行其實無效：quest 是 short，(short)(quest + 65536) 就等於 quest 本身。questid >= 32768（本樹有 26 個 50000 系列腳本）因此永遠查不到對應的 MapleQuest。正解是 int quest = slea.readShort() & 0xFFFF，但那會改變行為，故意保留 -Xlint 警告等人決定。
         }
         if (chr == null) {
             return;

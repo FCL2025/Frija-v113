@@ -51,14 +51,17 @@ public class AutoRegister {
                 }
             }
             try (PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, salt, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
-                // A new account is created with the salted SHA-512 straight away.
-                // This used to store an unsalted SHA-1, so every auto-registered
-                // account sat in the weakest of the three schemes until its owner
-                // next logged in.
-                final String salt = LoginCrypto.makeSalt();
+                // A new account is created as PBKDF2 straight away, so it is never
+                // written in a scheme that has to be upgraded later. This used to
+                // store a salted SHA-512, and before that an unsalted SHA-1 - both a
+                // single digest pass, i.e. GPU-speed to brute-force offline.
+                //
+                // `salt` is left NULL on purpose: the PBKDF2 string carries its own
+                // salt and iteration count, and MapleClient.passwordMatches does not
+                // consult the column for a row whose password starts with $pbkdf2$.
                 ps.setString(1, login);
-                ps.setString(2, LoginCrypto.makeSaltedSha512Hash(pwd, salt));
-                ps.setString(3, salt);
+                ps.setString(2, LoginCrypto.makePbkdf2Hash(pwd));
+                ps.setString(3, null);
                 ps.setString(4, "autoregister@mail.com");
                 ps.setString(5, "2008-04-07");
                 ps.setString(6, "00-00-00-00-00-00");

@@ -176,6 +176,269 @@ class LoginCryptoTest {
         assertThrows(StringIndexOutOfBoundsException.class, () -> LoginCrypto.rand_r(LoginCrypto.rand_s("short")));
     }
 
+    // ---------------------------------------------------------------------
+    // Legacy formats, pinned with fixed vectors.
+    //
+    // These are hardcoded on purpose rather than round-tripped through the
+    // current code: a round trip passes even if both halves change together,
+    // which is exactly the regression that would lock out every account that
+    // has not logged in since. Each vector below was produced independently
+    // (MessageDigest directly, or LoginCryptoLegacy.hashPassword) and is the
+    // literal string such a row holds.
+    // ---------------------------------------------------------------------
+
+    /** SHA-1("hunter2"), i.e. the oldest scheme: no salt, one pass. */
+    private static final String SHA1_HUNTER2 = "f3bbbd66a63d4bf1747940578ec3d0103530e21d";
+    /** SHA-512("hunter2" + "0123456789abcdef"), the scheme before PBKDF2. */
+    private static final String SHA512_HUNTER2 =
+            "43b954d21dda034a3e312728835786450019d426608b49703ce2a8e2ac8ccc56"
+            + "ef56718ddc35c5bb9a5ca73925df8bed8ceb1f4e4e351ef6278eb1a7df98a478";
+    private static final String SHA512_SALT = "0123456789abcdef";
+    /** An OdinMS $H$ hash of "hunter2", from LoginCryptoLegacy.hashPassword. */
+    private static final String LEGACY_H_HUNTER2 = "$H$cwKePXRFs2hcKB8xn8yIy1/mFTfFsWAwZY1i=";
+    /**
+     * SHA-1 of the first two UTF-8 bytes of "密碼" - what hashWithDigest actually
+     * produces for it, and, because of the truncation, for "寇碼" as well.
+     */
+    private static final String SHA1_TRUNCATED_CJK = "ec57da331fc3d99cf0be7bf8748391658b18ff0a";
+
+    @Test
+    @DisplayName("legacy: an unsalted SHA-1 row written before PBKDF2 still verifies")
+    void legacySha1VectorStillVerifies() {
+        assertTrue(LoginCrypto.checkSha1Hash(SHA1_HUNTER2, "hunter2"));
+        assertFalse(LoginCrypto.checkSha1Hash(SHA1_HUNTER2, "hunter3"));
+    }
+
+    @Test
+    @DisplayName("legacy: a salted SHA-512 row written before PBKDF2 still verifies")
+    void legacySaltedSha512VectorStillVerifies() {
+        assertTrue(LoginCrypto.checkSaltedSha512Hash(SHA512_HUNTER2, "hunter2", SHA512_SALT));
+        assertFalse(LoginCrypto.checkSaltedSha512Hash(SHA512_HUNTER2, "hunter3", SHA512_SALT));
+        assertFalse(LoginCrypto.checkSaltedSha512Hash(SHA512_HUNTER2, "hunter2", "fedcba9876543210"));
+    }
+
+    @Test
+    @DisplayName("legacy: an OdinMS $H$ row still verifies")
+    void legacyOdinmsHashVectorStillVerifies() {
+        assertTrue(LoginCryptoLegacy.isLegacyPassword(LEGACY_H_HUNTER2));
+        assertTrue(LoginCryptoLegacy.checkPassword("hunter2", LEGACY_H_HUNTER2));
+        assertFalse(LoginCryptoLegacy.checkPassword("hunter3", LEGACY_H_HUNTER2));
+    }
+
+    @Test
+    @DisplayName("legacy: a non-ASCII row still verifies against its truncated hash")
+    void legacyTruncatedNonAsciiVectorStillVerifies() {
+        // The point of A12: this row really is the hash of two bytes, so the
+        // truncating code has to stay to let its owner back in at all.
+        assertTrue(LoginCrypto.checkSha1Hash(SHA1_TRUNCATED_CJK, "密碼"));
+        // ...and, unavoidably, the colliding password gets in too.
+        assertTrue(LoginCrypto.checkSha1Hash(SHA1_TRUNCATED_CJK, "寇碼"));
+    }
+
+    @Test
+    @DisplayName("the four stored formats cannot be mistaken for one another")
+    void theFourFormatsAreMutuallyDistinguishable() {
+        // This is what makes MapleClient.passwordMatches' dispatch correct: it
+        // tries PBKDF2 first and exclusively, then $H$, then the hex schemes.
+        final String pbkdf2 = LoginCrypto.makePbkdf2Hash("hunter2", TEST_ITERATIONS);
+
+        assertTrue(LoginCrypto.isPbkdf2Hash(pbkdf2));
+        assertFalse(LoginCrypto.isPbkdf2Hash(SHA1_HUNTER2));
+        assertFalse(LoginCrypto.isPbkdf2Hash(SHA512_HUNTER2));
+        assertFalse(LoginCrypto.isPbkdf2Hash(LEGACY_H_HUNTER2));
+        assertFalse(LoginCrypto.isPbkdf2Hash(null));
+
+        // "$pb" is not "$H$", so the legacy branch never claims a PBKDF2 row.
+        assertFalse(LoginCryptoLegacy.isLegacyPassword(pbkdf2));
+        assertFalse(LoginCryptoLegacy.isLegacyPassword(SHA1_HUNTER2));
+    }
+
+    // ---------------------------------------------------------------------
+    // PBKDF2 - the format new and re-verified passwords are written in.
+    // ---------------------------------------------------------------------
+
+    /**
+     * The real default costs ~67 ms a call by design, so everything that does not
+     * specifically test the default runs at this count instead. The default is
+     * exercised once, in pbkdf2DefaultIsTheMeasuredCount.
+     */
+    private static final int TEST_ITERATIONS = 1000;
+
+    /**
+     * Fixed PBKDF2 vectors, iterations 1000, salt = the ASCII bytes of
+     * "0123456789abcdef" (base64 "MDEyMzQ1Njc4OWFiY2RlZg"). Produced by
+     * SecretKeyFactory directly and cross-checked against a hand-rolled RFC 8018
+     * PBKDF2-HMAC-SHA512 over the password's full getBytes(UTF_8), which is what
+     * pins the UTF-8 property below.
+     */
+    private static final String PBKDF2_HUNTER2 = "$pbkdf2$1000$MDEyMzQ1Njc4OWFiY2RlZg$"
+            + "Xp/4UtI3VYuUskUJvg/ElBho/1QUob2t4wOqDH2dRs5/P6kzj5+E8oi97sPcw7P4ZvydZ2rKx3aQeetuxYWOOg";
+    private static final String PBKDF2_MIMA = "$pbkdf2$1000$MDEyMzQ1Njc4OWFiY2RlZg$"
+            + "2GEJGz48fzQmgbGv08g0BsStSuOPabhvpSKcT4NySELxu0D6ZKtyvl8og1VKejZOSNem6LPP58Me6CvMQBXxiQ";
+    private static final String PBKDF2_KOUMA = "$pbkdf2$1000$MDEyMzQ1Njc4OWFiY2RlZg$"
+            + "Y3PySvXNOUclOzEBZXwUHjCNNUyNS9TblJYTd++tmEeL33oBpbw7PD4GB3mDyZM/C51jRkirWDtjOgAGroTrPg";
+
+    @Test
+    @DisplayName("PBKDF2 round trip: the right password verifies and nothing else does")
+    void pbkdf2RoundTrip() {
+        final String stored = LoginCrypto.makePbkdf2Hash("hunter2", TEST_ITERATIONS);
+
+        assertTrue(LoginCrypto.checkPbkdf2Hash(stored, "hunter2"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, "hunter3"), "one character different");
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, "Hunter2"), "case change");
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, "hunter2 "), "trailing space");
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, "hunter"), "a prefix of the password");
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, ""));
+        // Unlike checkSha1Hash, which throws on a null (pinned above), the new
+        // entry point answers false for either argument being null.
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, null));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(null, "hunter2"));
+    }
+
+    @Test
+    @DisplayName("PBKDF2 round trips an empty password and a long astral-plane one")
+    void pbkdf2RoundTripsAwkwardPasswords() {
+        final String empty = LoginCrypto.makePbkdf2Hash("", TEST_ITERATIONS);
+        assertTrue(LoginCrypto.checkPbkdf2Hash(empty, ""));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(empty, "x"));
+
+        final String wide = LoginCrypto.makePbkdf2Hash("pässwörd😀密碼", TEST_ITERATIONS);
+        assertTrue(LoginCrypto.checkPbkdf2Hash(wide, "pässwörd😀密碼"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(wide, "pässwörd😀密"));
+    }
+
+    @Test
+    @DisplayName("the stored string is self-describing and fits accounts.password")
+    void pbkdf2StoredFormat() {
+        final String stored = LoginCrypto.makePbkdf2Hash("hunter2", TEST_ITERATIONS);
+
+        assertTrue(stored.startsWith(LoginCrypto.PBKDF2_PREFIX), stored);
+        // $pbkdf2$<iterations>$<16 bytes b64 = 22 chars>$<64 bytes b64 = 86 chars>
+        assertTrue(stored.matches("\\$pbkdf2\\$\\d+\\$[A-Za-z0-9+/]{22}\\$[A-Za-z0-9+/]{86}"), stored);
+        assertEquals(5, stored.split("\\$", -1).length);
+        assertEquals(TEST_ITERATIONS, Integer.parseInt(stored.split("\\$", -1)[2]));
+    }
+
+    @Test
+    @DisplayName("the default is the measured 50000 iterations and still fits varchar(128)")
+    void pbkdf2DefaultIsTheMeasuredCount() {
+        // The one test that pays the real cost (~67 ms per call on the machine the
+        // count was measured on). Three calls, so about a fifth of a second.
+        final String stored = LoginCrypto.makePbkdf2Hash("hunter2");
+
+        assertTrue(stored.startsWith("$pbkdf2$50000$"), stored);
+        // 8 + 5 + 1 + 22 + 1 + 86. accounts.password is varchar(128), which leaves
+        // room for the count to reach seven digits before the column has to grow.
+        assertEquals(123, stored.length(), stored);
+        assertTrue(stored.length() <= 128, "accounts.password is varchar(128)");
+
+        assertTrue(LoginCrypto.checkPbkdf2Hash(stored, "hunter2"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(stored, "hunter3"));
+    }
+
+    @Test
+    @DisplayName("the iteration count is read back from the string, not from the constant")
+    void pbkdf2IterationCountIsForwardCompatible() {
+        // The fixed vectors are 1000 iterations, not today's 50000 default, and
+        // they verify: raising the default later leaves every stored row working.
+        assertTrue(PBKDF2_HUNTER2.startsWith("$pbkdf2$1000$"));
+        assertTrue(LoginCrypto.checkPbkdf2Hash(PBKDF2_HUNTER2, "hunter2"));
+
+        // A third, arbitrary count round-trips too.
+        final String odd = LoginCrypto.makePbkdf2Hash("hunter2", 7777);
+        assertTrue(odd.startsWith("$pbkdf2$7777$"), odd);
+        assertTrue(LoginCrypto.checkPbkdf2Hash(odd, "hunter2"));
+
+        // ...and the count really is used: changing it invalidates the hash.
+        assertFalse(LoginCrypto.checkPbkdf2Hash(PBKDF2_HUNTER2.replace("$1000$", "$1001$"), "hunter2"));
+
+        // Out-of-range counts are refused at write time rather than stored.
+        assertThrows(IllegalArgumentException.class, () -> LoginCrypto.makePbkdf2Hash("hunter2", 0));
+        assertThrows(IllegalArgumentException.class, () -> LoginCrypto.makePbkdf2Hash("hunter2", -1));
+        assertThrows(IllegalArgumentException.class, () -> LoginCrypto.makePbkdf2Hash("hunter2", 10000001));
+    }
+
+    @Test
+    @DisplayName("every hash of the same password gets its own salt")
+    void pbkdf2SaltsDiffer() {
+        final Set<String> strings = new HashSet<>();
+        final Set<String> salts = new HashSet<>();
+        for (int i = 0; i < 16; i++) {
+            final String stored = LoginCrypto.makePbkdf2Hash("hunter2", TEST_ITERATIONS);
+            assertTrue(strings.add(stored), "makePbkdf2Hash repeated itself: " + stored);
+            assertTrue(salts.add(stored.split("\\$", -1)[3]), "salt repeated: " + stored);
+            assertTrue(LoginCrypto.checkPbkdf2Hash(stored, "hunter2"));
+        }
+    }
+
+    @Test
+    @DisplayName("PBKDF2 hashes the full UTF-8 bytes, closing the legacy collision (A12)")
+    void pbkdf2ClosesTheLegacyTruncationCollision() {
+        // "密碼" and "寇碼" share their first two UTF-8 bytes, which is all the
+        // legacy schemes hash - they are the same stored value under all three:
+        assertEquals(LoginCrypto.hexSha1("密碼"), LoginCrypto.hexSha1("寇碼"));
+        assertTrue(LoginCrypto.checkSha1Hash(LoginCrypto.makeSaltedSha1Hash("密碼"), "寇碼"));
+
+        // Under PBKDF2 they are two different passwords and never cross-verify.
+        // The two fixed vectors share a salt and an iteration count, so the only
+        // thing that can make them differ is the password bytes reaching the HMAC.
+        assertNotEquals(PBKDF2_MIMA, PBKDF2_KOUMA);
+        assertEquals(PBKDF2_MIMA.split("\\$", -1)[3], PBKDF2_KOUMA.split("\\$", -1)[3], "same salt");
+
+        assertTrue(LoginCrypto.checkPbkdf2Hash(PBKDF2_MIMA, "密碼"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(PBKDF2_MIMA, "寇碼"));
+        assertTrue(LoginCrypto.checkPbkdf2Hash(PBKDF2_KOUMA, "寇碼"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(PBKDF2_KOUMA, "密碼"));
+
+        // Freshly generated ones behave the same way.
+        final String mima = LoginCrypto.makePbkdf2Hash("密碼", TEST_ITERATIONS);
+        final String kouma = LoginCrypto.makePbkdf2Hash("寇碼", TEST_ITERATIONS);
+        assertTrue(LoginCrypto.checkPbkdf2Hash(mima, "密碼"));
+        assertTrue(LoginCrypto.checkPbkdf2Hash(kouma, "寇碼"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(mima, "寇碼"));
+        assertFalse(LoginCrypto.checkPbkdf2Hash(kouma, "密碼"));
+    }
+
+    @Test
+    @DisplayName("a malformed or truncated stored string is rejected, not thrown on and not accepted")
+    void pbkdf2RejectsMalformedStoredStrings() {
+        final String salt = "MDEyMzQ1Njc4OWFiY2RlZg";
+        final String hash = PBKDF2_HUNTER2.split("\\$", -1)[4];
+        final String[] bad = {
+            "",
+            "$",
+            "$pbkdf2$",
+            "$pbkdf2$1000",
+            "$pbkdf2$1000$" + salt,
+            "$pbkdf2$1000$" + salt + "$",                       // empty hash field
+            "$pbkdf2$1000$$" + hash,                            // empty salt field
+            "$pbkdf2$1000$" + salt + "$" + hash + "$extra",     // a sixth field
+            "$pbkdf2$$" + salt + "$" + hash,                    // no iteration count
+            "$pbkdf2$0$" + salt + "$" + hash,                   // zero iterations
+            "$pbkdf2$-1$" + salt + "$" + hash,                  // negative iterations
+            "$pbkdf2$abc$" + salt + "$" + hash,                 // count is not a number
+            "$pbkdf2$99999999999999$" + salt + "$" + hash,      // count overflows int
+            "$pbkdf2$20000000$" + salt + "$" + hash,            // count over the ceiling
+            "$pbkdf2$1000$!!!!$" + hash,                        // salt is not base64
+            "$pbkdf2$1000$" + salt + "$!!!!",                   // hash is not base64
+            "$pbkdf2$1000$" + salt + "$" + hash.substring(0, 82),  // 61-byte hash
+            "$pbkdf2$1000$" + salt + "$" + hash + "AAAA",          // 67-byte hash
+            "$PBKDF2$1000$" + salt + "$" + hash,                // wrong-case prefix
+            "$pbkdf2$1000$AAAAAAAAAAAAAAAAAAAAAA$" + hash,       // well-formed but wrong salt
+            SHA1_HUNTER2,
+            SHA512_HUNTER2,
+            LEGACY_H_HUNTER2,
+        };
+        for (final String stored : bad) {
+            // assertFalse also proves it did not throw: a throw fails the test.
+            assertFalse(LoginCrypto.checkPbkdf2Hash(stored, "hunter2"), "accepted: " + stored);
+        }
+        // The last two entries are the only ones that could plausibly be a real
+        // row, and isPbkdf2Hash keeps them out of this branch entirely.
+        assertFalse(LoginCrypto.isPbkdf2Hash(SHA512_HUNTER2));
+        assertFalse(LoginCrypto.isPbkdf2Hash(LEGACY_H_HUNTER2));
+    }
+
     private static String sha512Hex(final String in) throws Exception {
         final MessageDigest md = MessageDigest.getInstance("SHA-512");
         // Mirrors hashWithDigest: the digest is fed in.length() bytes, and every

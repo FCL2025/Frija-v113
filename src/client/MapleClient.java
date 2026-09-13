@@ -376,10 +376,21 @@ public class MapleClient {
     }
 
     /**
-     * True if {@code pwd} matches {@code passhash} under any of the three schemes
-     * the {@code accounts} table can hold: the OdinMS legacy {@code $H$} hash, an
-     * unsalted SHA-1, or a salted SHA-512. A null salt means the row predates the
-     * salted scheme.
+     * True if {@code pwd} matches {@code passhash} under any of the four schemes
+     * the {@code accounts} table can hold: PBKDF2-HMAC-SHA-512, the OdinMS legacy
+     * {@code $H$} hash, an unsalted SHA-1, or a salted SHA-512. A null salt means
+     * the row predates the salted scheme.
+     *
+     * The three legacy branches are untouched, and must stay that way: they are
+     * the only thing that lets an account which has not logged in since PBKDF2
+     * landed log in at all. {@link #login} upgrades the row on the way through.
+     *
+     * Used for the second password too ({@link #CheckSecondPassword}), where the
+     * PBKDF2 branch never fires - {@code 2ndpassword} is still a salted SHA-512,
+     * because {@code LoginCrypto.rand_r} peels it back off with a hardcoded
+     * {@code substring(6, 6 + 128)} that a 123-character PBKDF2 string would run
+     * off the end of. Converting that column means changing rand_s/rand_r and
+     * widening {@code varchar(134)} as well, which is a separate job.
      *
      * There is deliberately no master password here. {@code GameConstants.MASTER}
      * used to short-circuit this check, which let anyone who knew that one string
@@ -389,6 +400,13 @@ public class MapleClient {
     private static boolean passwordMatches(final String passhash, final String pwd, final String salt) {
         if (passhash == null || pwd == null) {
             return false;
+        }
+        // PBKDF2 first and exclusively. The prefix is self-describing, so a row
+        // that carries one is never re-tried against a legacy scheme - falling
+        // through would be the one way a weaker check could still answer for an
+        // already-upgraded account.
+        if (LoginCrypto.isPbkdf2Hash(passhash)) {
+            return LoginCrypto.checkPbkdf2Hash(passhash, pwd);
         }
         if (passhash.length() >= 3 && LoginCryptoLegacy.isLegacyPassword(passhash) && LoginCryptoLegacy.checkPassword(pwd, passhash)) {
             return true;
@@ -445,18 +463,37 @@ public class MapleClient {
                     } else {
                         if (passwordMatches(passhash, pwd, salt)) {
                             loginok = 0;
-                            // Anything not already a salted SHA-512 is rehashed as one on
-                            // the way through. This used to run the other way round - both
-                            // the legacy and the SHA-512 branch rewrote the row as an
-                            // unsalted SHA-1, so an account got *weaker* every time its
-                            // owner logged in.
-                            if (salt == null) {
-                                try (PreparedStatement pss = con.prepareStatement("UPDATE `accounts` SET `password` = ?, `salt` = ? WHERE id = ?")) {
-                                    final String newSalt = LoginCrypto.makeSalt();
-                                    pss.setString(1, LoginCrypto.makeSaltedSha512Hash(pwd, newSalt));
-                                    pss.setString(2, newSalt);
-                                    pss.setInt(3, accId);
+                            // Lazy upgrade. This is the only moment the plaintext is in
+                            // hand, so anything not already PBKDF2 is rewritten as PBKDF2
+                            // here; the account never has to be asked to change anything.
+                            // It used to rewrite to a salted SHA-512, and before that it
+                            // ran the other way round - both the legacy and the SHA-512
+                            // branch rewrote the row as an unsalted SHA-1, so an account
+                            // got *weaker* every time its owner logged in.
+                            //
+                            // Only `password` is written. The PBKDF2 string carries its own
+                            // salt and iteration count, so `salt` is not consulted for such
+                            // a row; whatever it held stays there, harmless and ignored.
+                            //
+                            // Note what this does NOT repair: while a row is still on a
+                            // legacy hash, LoginCrypto.hashWithDigest truncates a non-ASCII
+                            // password to its char count in bytes, so a *colliding* password
+                            // reaches this line too - and the upgrade below would then store
+                            // the PBKDF2 of that password, handing the account over. See the
+                            // javadoc on hashWithDigest; it is unfixable without forcing a
+                            // password reset, and is documented rather than hidden.
+                            if (!LoginCrypto.isPbkdf2Hash(passhash)) {
+                                try (PreparedStatement pss = con.prepareStatement("UPDATE `accounts` SET `password` = ? WHERE id = ?")) {
+                                    pss.setString(1, LoginCrypto.makePbkdf2Hash(pwd));
+                                    pss.setInt(2, accId);
                                     pss.executeUpdate();
+                                } catch (SQLException upgrade) {
+                                    // A failed upgrade must never fail the login: loginok is
+                                    // already 0 and the row still holds a hash that verifies,
+                                    // so the player gets in and the next login tries again.
+                                    // Caught here rather than left to the outer handler so
+                                    // that stays true no matter what is added below.
+                                    System.err.println("[login] PBKDF2 upgrade failed for account " + accId + ": " + upgrade);
                                 }
                             }
                         } else {

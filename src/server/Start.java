@@ -36,6 +36,19 @@ import tools.FileoutputUtil;
 
 public class Start {
 
+    /**
+     * The pilot for the tree's one logging mechanism - see {@code tools.Logging}
+     * for how a logger is named, which level replaces which of the four things
+     * this server used to report with, and what must not be converted.
+     *
+     * <p>Everything here stays {@code INFO} and therefore stays on the console
+     * exactly as it printed before: the startup banner is read by the person
+     * waiting for the server to come up, and {@code tools.Logging.Console}
+     * writes an {@code INFO} record to {@code System.out} as the bare message,
+     * in {@code Encodings.NATIVE}, with nothing prefixed.
+     */
+    private static final System.Logger LOG = System.getLogger(Start.class.getName());
+
     /** How many bad scripts the startup scan lists before it summarises the rest. */
     private static final int MAX_BAD_SCRIPTS_PRINTED = 30;
 
@@ -61,7 +74,8 @@ public class Start {
         for (int i = width; i < 20; i++) {
             pad.append(' ');
         }
-        System.out.println("[啟動] " + name + pad + String.format("%6d", (now - phaseStart) / 1000000L) + " ms");
+        LOG.log(System.Logger.Level.INFO,
+                "[啟動] " + name + pad + String.format("%6d", (now - phaseStart) / 1000000L) + " ms");
         phaseStart = now;
     }
 
@@ -90,30 +104,38 @@ public class Start {
             if (result.ok()) {
                 return;
             }
-            System.out.println("[腳本] " + result.total() + " 支腳本中有 " + result.badCount()
-                    + " 支不是 BIG5，將不會生效：");
+            // One record, not one per line: the level prefix would otherwise
+            // repeat down the block, and another thread could log into the
+            // middle of it.
+            final String nl = System.lineSeparator();
+            final StringBuilder sb = new StringBuilder(256);
+            sb.append("[腳本] ").append(result.total()).append(" 支腳本中有 ").append(result.badCount())
+                    .append(" 支不是 BIG5，將不會生效：");
             int shown = 0;
             for (final String path : result.bad()) {
                 if (shown >= MAX_BAD_SCRIPTS_PRINTED) {
-                    System.out.println("      …以及其他 " + (result.badCount() - shown)
-                            + " 支（完整清單請用 !checkscripts 或管理面板 /api/scripts/encoding）");
+                    sb.append(nl).append("      …以及其他 ").append(result.badCount() - shown)
+                            .append(" 支（完整清單請用 !checkscripts 或管理面板 /api/scripts/encoding）");
                     break;
                 }
-                System.out.println("      " + path);
+                sb.append(nl).append("      ").append(path);
                 shown++;
             }
+            LOG.log(System.Logger.Level.WARNING, sb.toString());
         } catch (final Exception e) {
-            System.out.println("[腳本] 編碼檢查失敗（不影響啟動）：" + e);
+            // Deliberately terse: this one always reported e.toString() and
+            // never a trace, so the Throwable is not attached.
+            LOG.log(System.Logger.Level.WARNING, "[腳本] 編碼檢查失敗（不影響啟動）：" + e);
         }
     }
 
     public final static void main(final String args[]) {
         FileoutputUtil.ensureLogDirs();
         if (Boolean.parseBoolean(ServerProperties.getProperty("tms.Admin"))) {
-            System.out.println("[!!! Admin Only Mode Active !!!]");
+            LOG.log(System.Logger.Level.INFO, "[!!! Admin Only Mode Active !!!]");
         }
         if (Boolean.parseBoolean(ServerProperties.getProperty("tms.AutoRegister"))) {
-            System.out.println("Loading Autoregister mode :::");
+            LOG.log(System.Logger.Level.INFO, "Loading Autoregister mode :::");
         }
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("UPDATE accounts SET loggedin = 0")) {
@@ -161,15 +183,15 @@ public class Start {
         ChannelServer.startChannel_Main();
         phase("頻道伺服器");
 
-        System.out.println("[購物商城伺服器啟動中]");
+        LOG.log(System.Logger.Level.INFO, "[購物商城伺服器啟動中]");
         CashShopServer.run_startup_configurations();
-        System.out.println("[購物商城伺服器啟動完成]");
+        LOG.log(System.Logger.Level.INFO, "[購物商城伺服器啟動完成]");
         CheatTimer.getInstance().register(AutobanManager.getInstance(), 60000);
         Runtime.getRuntime().addShutdownHook(new Thread(new Shutdown()));
         try {
             SpeedRunner.getInstance().loadSpeedRuns();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "讀取速通紀錄失敗，排行榜可能不完整", e);
         }
         World.registerRespawn();
         LoginServer.setOn();
@@ -185,7 +207,7 @@ public class Start {
         // Launcher.bat actually waited for.
         final long startupMillis = ManagementFactory.getRuntimeMXBean().getUptime();
         PanelServer.setStartupMillis(startupMillis);
-        System.out.println("Loaded Complete ::: 啟動完成於 "
+        LOG.log(System.Logger.Level.INFO, "Loaded Complete ::: 啟動完成於 "
                 + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                 + "，共花費 "
                 + String.format("%.2f", startupMillis / 1000.0) + " 秒");

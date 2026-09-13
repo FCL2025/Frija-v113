@@ -140,12 +140,41 @@ if exist "!JAVA_HOME!\bin\java.exe" (set "JAVA=!JAVA_HOME!\bin\java.exe") else (
 rem dist\lib holds MINA, Nashorn (dropped from the JDK in 15, so it ships here),
 rem the asm jars Nashorn needs, MySQL Connector/J and slf4j.
 set CLASSPATH=.;dist\TMS113.jar;dist\lib\*
+
+rem Everything logs through java.lang.System.Logger, which is backed by
+rem java.util.logging - and so is MINA, via slf4j-jdk14. Libs\logging.properties
+rem sets the console layout, its charset (native.encoding, i.e. MS950 here, not
+rem the UTF-8 that Charset.defaultCharset() has returned since JDK 18) and the
+rem levels. The path is relative to the repo root, which is the working
+rem directory both modes below are started in.
+rem
+rem The "if exist" is not belt and braces. Pointing this property at a file
+rem that is not there does NOT fall back to the JDK's own conf\logging.properties
+rem and does NOT print a word about it - LogManager ends up with no handlers at
+rem all and the console goes completely silent, which on a server whose startup
+rem banner is the only sign of life reads exactly like a hang. So the property
+rem is only passed when the file is really there.
+rem
+rem The dumper gets it too. Its own System.out output is its user interface and
+rem is untouched by any of this, but it drags in DatabaseConnection and the wz
+rem providers, and anything they log should land on the same console, in the
+rem same encoding, in the same format as the server's - not in the JDK
+rem default handler's two-line stderr format.
+set "LOGCFG="
+if exist Libs\logging.properties (
+    set "LOGCFG=-Djava.util.logging.config.file=Libs/logging.properties"
+) else (
+    echo WARNING: Libs\logging.properties is missing. The console will fall back to
+    echo          the JDK's own two-line format and the Chinese in it may not be
+    echo          readable; the Logs\*.rtf files are unaffected.
+)
+
 if /i "%MODE%"=="cashshop" (
     title CashShopDumper
-    "!JAVA!" -Xmx2G -Xms512M -Dnet.sf.odinms.wzpath=wz tools.wztosql.CashShopDumper
+    "!JAVA!" -Xmx2G -Xms512M !LOGCFG! -Dnet.sf.odinms.wzpath=wz tools.wztosql.CashShopDumper
 ) else (
     title TMS113
-    "!JAVA!" -Xmx4G -Xms2G -Dnet.sf.odinms.wzpath=wz server.Start
+    "!JAVA!" -Xmx4G -Xms2G !LOGCFG! -Dnet.sf.odinms.wzpath=wz server.Start
 )
 pause
 endlocal

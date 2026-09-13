@@ -66,6 +66,12 @@ BIG5 位元組寬度補位、`LoginCrypto`、面板的 `IniFile` 與 `Json`、op
 `dist\lib\` 內的相依：MINA 1.x、Nashorn（JDK 15 起已從 JDK 移除，改由 `nashorn-core` 提供）、
 Nashorn 需要的 asm、MySQL Connector/J、slf4j。
 
+日誌走 `java.lang.System.Logger`（JDK 內建，不加 jar），後端是 `java.util.logging`，
+而 slf4j-jdk14 把 MINA 的 slf4j 也導到同一組 handler。設定在 `Libs/logging.properties`，
+由 `Launcher.bat` 以 `-Djava.util.logging.config.file=` 帶入。慣例寫在 `src/tools/Logging.java`
+的 javadoc 裡。注意：那個參數指向不存在的檔案時不會退回 JDK 預設、也不會報錯，
+console 會完全安靜——`Launcher.bat` 因此會先檢查並警告。
+
 ## 啟動時間
 
 啟動過程中每個階段都會印出花費的毫秒數，最後一行 `Loaded Complete :::` 會標上完成時間與總秒數：

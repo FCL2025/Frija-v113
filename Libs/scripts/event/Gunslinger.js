@@ -8,7 +8,7 @@ function init() {
 function playerEntry(eim, player) {
     var map = eim.createInstanceMap(108000500);
     player.changeMap(map, map.getPortal(0));
-    player.getClient().send(tools.packet.MapPacket.getClock(600));
+    player.getClient().send(Packages.tools.packet.MapPacket.getClock(600));
     eim.schedule("warpOut", 600000);	
 }
 

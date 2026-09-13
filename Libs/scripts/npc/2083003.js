@@ -24,9 +24,9 @@
  *@author Jvlaple :)
  */
  
-importPackage(net.sf.odinms.tools);
-importPackage(net.sf.odinms.client);
-importPackage(net.sf.odinms.server.maps);
+importPackage(Packages.tools.packet);
+importPackage(Packages.client);
+importPackage(Packages.server.maps);
 importPackage(java.lang);
 
 var curStage;

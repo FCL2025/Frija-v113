@@ -21,7 +21,7 @@ function playerEntry(eim, player) {
     em.setProperty("isRiding","true");
     em.schedule("timeOut", timeOnRide * 1000);
     player.changeMap(onRide, onRide.getPortal(0));
-    player.getClient().send(tools.packet.MapPacket.getClock(timeOnRide));
+    player.getClient().send(Packages.tools.packet.MapPacket.getClock(timeOnRide));
 }
 
 function playerDisconnected(eim, player) {

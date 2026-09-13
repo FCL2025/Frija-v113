@@ -19,9 +19,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-importPackage(org.rise.server.maps);
-importPackage(org.rise.net.channel);
-importPackage(org.rise.tools);
+importPackage(Packages.server.maps);
+importPackage(Packages.handling.channel);
+importPackage(Packages.tools.packet);
 
 /*
 Amoria: 2nd stage to 3rd stage portal

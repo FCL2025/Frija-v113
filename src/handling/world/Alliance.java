@@ -17,11 +17,13 @@ import tools.packet.GuildPacket;
  */
 public class Alliance {
 
+    private static final System.Logger LOG = System.getLogger(Alliance.class.getName());
+
     private static final Map<Integer, MapleGuildAlliance> alliances = new LinkedHashMap<>();
     private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     static {
-        System.out.println("Loading GuildAlliances :::");
+        LOG.log(System.Logger.Level.INFO, "Loading GuildAlliances :::");
         Collection<MapleGuildAlliance> allGuilds = MapleGuildAlliance.loadAll();
         for (MapleGuildAlliance g : allGuilds) {
             alliances.put(g.getId(), g);
@@ -269,7 +271,7 @@ public class Alliance {
     }
 
     public static void save() {
-        System.out.println("Saving alliances...");
+        LOG.log(System.Logger.Level.INFO, "Saving alliances...");
         lock.writeLock().lock();
         try {
             for (MapleGuildAlliance a : alliances.values()) {

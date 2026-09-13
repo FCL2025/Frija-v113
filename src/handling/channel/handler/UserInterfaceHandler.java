@@ -31,6 +31,8 @@ import tools.packet.UIPacket;
 
 public class UserInterfaceHandler {
 
+    private static final System.Logger LOG = System.getLogger(UserInterfaceHandler.class.getName());
+
     public static final void CygnusSummon_NPCRequest(final MapleClient c) {
         if (c.getPlayer().getJob() == 2000) {
             NPCScriptManager.getInstance().start(c, 1202000);
@@ -101,7 +103,7 @@ public class UserInterfaceHandler {
                 }
                 //break;
             default:
-                System.out.println("Unhandled ship object, MapID : " + mapid);
+                LOG.log(System.Logger.Level.INFO, "Unhandled ship object, MapID : " + mapid);
                 break;
         }
         c.send(MapPacket.boatPacket(effect));

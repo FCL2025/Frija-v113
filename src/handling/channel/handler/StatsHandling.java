@@ -38,6 +38,8 @@ import tools.packet.CharacterPacket;
 
 public class StatsHandling {
 
+    private static final System.Logger LOG = System.getLogger(StatsHandling.class.getName());
+
     public static final void DistributeAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
         c.send(CharacterPacket.updatePlayerStats(statupdate, true, chr.getJob()));
@@ -276,7 +278,7 @@ public class StatsHandling {
         chr.updateTick(slea.readInt());
         slea.skip(4);
         if (slea.available() < 16) {
-            System.out.println("AutoAssignAP : \n" + slea.toString(true));
+            LOG.log(System.Logger.Level.INFO, "AutoAssignAP : \n" + slea.toString(true));
             FileoutputUtil.log(FileoutputUtil.PacketEx_Log, "AutoAssignAP : \n" + slea.toString(true));
             return;
         }

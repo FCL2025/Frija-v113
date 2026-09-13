@@ -47,6 +47,8 @@ import scripting.NPCScriptManager;
 
 public class PlayerInteractionHandler {
 
+    private static final System.Logger LOG = System.getLogger(PlayerInteractionHandler.class.getName());
+
     private static final byte CREATE = 0x00,
             INVITE_TRADE = 0x02,
             DENY_TRADE = 0x03,
@@ -625,7 +627,7 @@ public class PlayerInteractionHandler {
 
     private static void merchantGetMeso(final MapleClient c, final MapleCharacter chr) {
         final IMaplePlayerShop merchant = chr.getPlayerShop();
-        System.out.println(merchant.getShopType());
+        LOG.log(System.Logger.Level.INFO, String.valueOf(merchant.getShopType()));
         if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
             if (chr.getMeso() + merchant.getMeso() < 0) {
                 c.send(ChatPacket.serverNotice(1, "您身上的楓幣太多了"));

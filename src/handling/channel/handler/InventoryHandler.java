@@ -86,6 +86,8 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class InventoryHandler {
 
+    private static final System.Logger LOG = System.getLogger(InventoryHandler.class.getName());
+
     public static final void ItemMove(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (c.getPlayer().getPlayerShop() != null || c.getPlayer().getConversation() > 0 || c.getPlayer().getTrade() != null) { //hack
             return;
@@ -2300,8 +2302,10 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         } else if (itemId / 10000 == 553) {
             UseRewardItem(slot, itemId, c, c.getPlayer());// this too
         } else {
-            System.out.println("Unhandled CS item : " + itemId);
-            System.out.println(slea.toString(true));
+            // One event, one record: the id and the packet dump were always
+            // read together, and two threads could otherwise interleave.
+            LOG.log(System.Logger.Level.INFO, "Unhandled CS item : " + itemId
+                    + System.lineSeparator() + slea.toString(true));
         }
         return CashUse.of(used);
     }
@@ -2582,7 +2586,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         if (c.getPlayer().haveItem(5230000, 1, true, true) || c.getPlayer().haveItem(2310000, 1, true, true)) {
             if (c.getPlayer().getMapId() >= 910000000 && c.getPlayer().getMapId() <= 910000022) {
                 c.send(PlayerShopPacket.getOwlOpen());
-                System.out.println("TEST");
+                LOG.log(System.Logger.Level.INFO, "TEST");
             } else {
                 c.getPlayer().dropMessage(5, "只能在自由市場使用");
                 c.send(CharacterPacket.enableActions());

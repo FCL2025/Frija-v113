@@ -19,6 +19,8 @@ import tools.packet.PartyPacket;
  */
 public class Party {
 
+    private static final System.Logger LOG = System.getLogger(Party.class.getName());
+
     private static final Map<Integer, MapleParty> parties = new HashMap<>();
     private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private static final AtomicInteger runningPartyId = new AtomicInteger();
@@ -30,7 +32,7 @@ public class Party {
             rs.next();
             runningPartyId.set(rs.getInt(1));
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error reading the next party id from SQL", e);
         }
     }
 

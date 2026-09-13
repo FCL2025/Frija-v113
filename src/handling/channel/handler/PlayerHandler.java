@@ -63,6 +63,8 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class PlayerHandler {
 
+    private static final System.Logger LOG = System.getLogger(PlayerHandler.class.getName());
+
     private static boolean isFinisher(final int skillid) {
         switch (skillid) {
             case 1111003:
@@ -952,13 +954,13 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
         try {
             res = MovementParse.parseMovement(slea, 1);
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("AIOBE Type1:\n" + slea.toString(true));
+            LOG.log(System.Logger.Level.INFO, "AIOBE Type1:\n" + slea.toString(true));
             return;
         }
 
         if (res != null && c.getPlayer().getMap() != null) { // TODO more validation of input data
             if (slea.available() < 13 || slea.available() > 26) {
-                System.out.println("slea.available != 13-26 (movement parsing error)\n" + slea.toString(true));
+                LOG.log(System.Logger.Level.INFO, "slea.available != 13-26 (movement parsing error)\n" + slea.toString(true));
                 return;
             }
             final List<LifeMovementFragment> res2 = new ArrayList<>(res);

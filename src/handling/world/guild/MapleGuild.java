@@ -57,6 +57,8 @@ import tools.packet.UIPacket;
 // explicit is what removes the hazard (-Xlint:this-escape).
 public final class MapleGuild {
 
+    private static final System.Logger LOG = System.getLogger(MapleGuild.class.getName());
+
     private static enum BCOp {
 
         NONE, DISBAND, EMBELMCHANGE
@@ -108,7 +110,7 @@ public final class MapleGuild {
                 ps.setInt(1, guildid);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.first()) {
-                        System.err.println("No members in guild " + id + ".  Impossible... guild is disbanding");
+                        LOG.log(System.Logger.Level.ERROR, "No members in guild " + id + ".  Impossible... guild is disbanding");
                         writeToDB(true);
                         proper = false;
                         return;
@@ -123,7 +125,7 @@ public final class MapleGuild {
             }
 
             if (!leaderCheck) {
-                System.err.println("Leader " + leader + " isn't in guild " + id + ".  Impossible... guild is disbanding.");
+                LOG.log(System.Logger.Level.ERROR, "Leader " + leader + " isn't in guild " + id + ".  Impossible... guild is disbanding.");
                 writeToDB(true);
                 proper = false;
                 return;
@@ -148,8 +150,7 @@ public final class MapleGuild {
                 }
             }
         } catch (SQLException se) {
-            System.err.println("unable to read guild information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read guild information from sql", se);
         }
     }
 
@@ -170,8 +171,7 @@ public final class MapleGuild {
                 }
             }
         } catch (SQLException se) {
-            System.err.println("unable to read guild information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read guild information from sql", se);
         }
         return ret;
     }
@@ -271,8 +271,7 @@ public final class MapleGuild {
                 broadcast(GuildPacket.guildDisband(id));
             }
         } catch (SQLException se) {
-            System.err.println("Error saving guild to SQL");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error saving guild to SQL", se);
         }
     }
 
@@ -457,7 +456,8 @@ public final class MapleGuild {
             ps.setInt(2, id);
             ps.execute();
         } catch (SQLException e) {
-            System.err.println("Saving allianceid ERROR" + e);
+            // Terse on purpose: this one only ever concatenated the exception.
+            LOG.log(System.Logger.Level.ERROR, "Saving allianceid ERROR" + e);
         }
     }
 
@@ -490,8 +490,7 @@ public final class MapleGuild {
                 }
             }
         } catch (SQLException se) {
-            System.err.println("SQL THROW");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "SQL THROW", se);
             return 0;
         }
     }
@@ -607,7 +606,7 @@ public final class MapleGuild {
             }
         }
         // it should never get to this point unless cid was incorrect o_O
-        System.err.println("INFO: unable to find the correct id for changeRank({" + cid + "}, {" + newRank + "})");
+        LOG.log(System.Logger.Level.WARNING, "INFO: unable to find the correct id for changeRank({" + cid + "}, {" + newRank + "})");
     }
 
     public final void changeRank(final int cid, final int newRank) {
@@ -624,7 +623,7 @@ public final class MapleGuild {
             }
         }
         // it should never get to this point unless cid was incorrect o_O
-        System.err.println("INFO: unable to find the correct id for changeRank({" + cid + "}, {" + newRank + "})");
+        LOG.log(System.Logger.Level.WARNING, "INFO: unable to find the correct id for changeRank({" + cid + "}, {" + newRank + "})");
     }
 
     public final void setGuildNotice(final String notice) {
@@ -686,8 +685,7 @@ public final class MapleGuild {
             ps.setInt(5, id);
             ps.execute();
         } catch (SQLException e) {
-            System.err.println("Saving guild logo / BG colo ERROR");
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Saving guild logo / BG colo ERROR", e);
         }
     }
 
@@ -713,8 +711,7 @@ public final class MapleGuild {
             ps.setInt(2, this.id);
             ps.execute();
         } catch (SQLException e) {
-            System.err.println("Saving guild capacity ERROR");
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Saving guild capacity ERROR", e);
         }
         return true;
     }
@@ -831,8 +828,7 @@ public final class MapleGuild {
             ps.setInt(4, cid);
             ps.execute();
         } catch (SQLException se) {
-            System.out.println("SQLException: " + se.getLocalizedMessage());
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "SQLException: " + se.getLocalizedMessage(), se);
         }
     }
         public int getPrefix(MapleCharacter chr) {

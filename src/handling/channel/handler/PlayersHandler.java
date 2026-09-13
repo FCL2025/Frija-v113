@@ -44,6 +44,8 @@ import tools.packet.EventPacket;
 
 public class PlayersHandler {
 
+    private static final System.Logger LOG = System.getLogger(PlayersHandler.class.getName());
+
     public static void Note(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final byte type = slea.readByte();
 
@@ -61,7 +63,7 @@ public class PlayersHandler {
                     chr.sendNote(name, msg, fame ? 1 : 0);
                     chr.getCashInventory().sendedNote(itemz.getUniqueId());
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.log(System.Logger.Level.ERROR, "Error sending a cash-item note", e);
                 }
                 break;
             case 1:
@@ -74,7 +76,7 @@ public class PlayersHandler {
                 }
                 break;
             default:
-                System.out.println("Unhandled note action, " + type + "");
+                LOG.log(System.Logger.Level.INFO, "Unhandled note action, " + type + "");
         }
     }
 

@@ -44,6 +44,8 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class HiredMerchantHandler {
 
+    private static final System.Logger LOG = System.getLogger(HiredMerchantHandler.class.getName());
+
     public static final void UseHiredMerchant(final SeekableLittleEndianAccessor slea, final MapleClient c) {
 //	slea.readInt(); // TimeStamp
 
@@ -244,7 +246,7 @@ public class HiredMerchantHandler {
 
             return pack;
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error loading the hired merchant package from SQL", e);
             return null;
         }
     }

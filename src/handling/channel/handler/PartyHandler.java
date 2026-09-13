@@ -32,6 +32,8 @@ import tools.packet.PartyPacket;
 
 public class PartyHandler {
 
+    private static final System.Logger LOG = System.getLogger(PartyHandler.class.getName());
+
     public static final void DenyPartyRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final int action = slea.readByte();
         final int partyid = slea.readInt();
@@ -169,7 +171,7 @@ public class PartyHandler {
                 }
                 break;
             default:
-                System.out.println("Unhandled Party function." + operation);
+                LOG.log(System.Logger.Level.INFO, "Unhandled Party function." + operation);
                 break;
         }
     }

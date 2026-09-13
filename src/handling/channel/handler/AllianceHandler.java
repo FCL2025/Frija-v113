@@ -33,6 +33,8 @@ import tools.packet.GuildPacket;
 
 public class AllianceHandler {
 
+    private static final System.Logger LOG = System.getLogger(AllianceHandler.class.getName());
+
     public static final void HandleAlliance(final SeekableLittleEndianAccessor slea, final MapleClient c, boolean denied) {
         if (c.getPlayer().getGuildId() <= 0) {
             c.send(CharacterPacket.enableActions());
@@ -146,7 +148,7 @@ public class AllianceHandler {
                 }
                 break;
             default:
-                System.out.println("Unhandled GuildAlliance op: " + op + ", \n" + slea.toString());
+                LOG.log(System.Logger.Level.INFO, "Unhandled GuildAlliance op: " + op + ", \n" + slea.toString());
                 break;
         }
     }

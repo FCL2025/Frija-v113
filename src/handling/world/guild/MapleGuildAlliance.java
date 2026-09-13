@@ -37,6 +37,8 @@ import tools.packet.GuildPacket;
 
 public class MapleGuildAlliance {
 
+    private static final System.Logger LOG = System.getLogger(MapleGuildAlliance.class.getName());
+
     private static enum GAOp {
 
         NONE, DISBAND, NEWGUILD
@@ -69,8 +71,7 @@ public class MapleGuildAlliance {
                 notice = rs.getString("notice");
             }
         } catch (SQLException se) {
-            System.err.println("unable to read guild information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read guild information from sql", se);
             return;
         }
     }
@@ -88,8 +89,7 @@ public class MapleGuildAlliance {
                 }
             }
         } catch (SQLException se) {
-            System.err.println("unable to read guild information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read guild information from sql", se);
         }
         return ret;
     }
@@ -132,8 +132,7 @@ public class MapleGuildAlliance {
                 }
             }
         } catch (SQLException SE) {
-            System.err.println("SQL THROW");
-            SE.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "SQL THROW", SE);
         }
         return ret;
     }
@@ -152,7 +151,8 @@ public class MapleGuildAlliance {
                 ps.execute();
             }
         } catch (SQLException SE) {
-            System.err.println("SQL THROW" + SE);
+            // Terse on purpose: this one only ever concatenated the exception.
+            LOG.log(System.Logger.Level.ERROR, "SQL THROW" + SE);
             return false;
         }
         return true;
@@ -198,8 +198,7 @@ public class MapleGuildAlliance {
             ps.setInt(14, allianceid);
             ps.executeUpdate();
         } catch (SQLException SE) {
-            System.err.println("SQL THROW");
-            SE.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "SQL THROW", SE);
         }
     }
 

@@ -44,6 +44,8 @@ import tools.packet.BuddyPacket;
 
 public class BuddyListHandler {
 
+    private static final System.Logger LOG = System.getLogger(BuddyListHandler.class.getName());
+
     private static final class CharacterIdNameBuddyCapacity extends CharacterNameAndId {
 
         private int buddyCapacity;
@@ -169,7 +171,8 @@ public class BuddyListHandler {
                         c.send(BuddyPacket.buddylistMessage((byte) 15));
                     }
                 } catch (SQLException e) {
-                    System.err.println("SQL THROW" + e);
+                    // Terse on purpose: this one only ever concatenated the exception.
+                    LOG.log(System.Logger.Level.ERROR, "SQL THROW" + e);
                 }
             }
             nextPendingRequest(c);
@@ -210,7 +213,8 @@ public class BuddyListHandler {
                         ps.executeUpdate();
                     }
                 } catch (SQLException e) {
-                    System.err.println("SQL THROW" + e);
+                    // Terse on purpose: this one only ever concatenated the exception.
+                    LOG.log(System.Logger.Level.ERROR, "SQL THROW" + e);
                 }
             } else {
                 c.send(BuddyPacket.buddylistMessage((byte) 11));
@@ -226,7 +230,7 @@ public class BuddyListHandler {
             c.send(BuddyPacket.updateBuddylist(c.getPlayer().getBuddylist().getBuddies()));
             nextPendingRequest(c);
         } else {
-            System.out.println("Unknown buddylist: " + slea.toString());
+            LOG.log(System.Logger.Level.INFO, "Unknown buddylist: " + slea.toString());
         }
     }
 

@@ -31,6 +31,8 @@ import database.DatabaseConnection;
 
 public class MapleGuildRanking {
 
+    private static final System.Logger LOG = System.getLogger(MapleGuildRanking.class.getName());
+
     private static MapleGuildRanking instance = new MapleGuildRanking();
     private List<GuildRankingInfo> ranks = new LinkedList<>();
 
@@ -63,8 +65,7 @@ public class MapleGuildRanking {
                 ranks.add(rank);
             }
         } catch (SQLException e) {
-            System.err.println("Error handling guildRanking");
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error handling guildRanking", e);
         }
     }
 

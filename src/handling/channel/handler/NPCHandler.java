@@ -52,6 +52,8 @@ import tools.packet.InventoryPacket;
 
 public class NPCHandler {
 
+    private static final System.Logger LOG = System.getLogger(NPCHandler.class.getName());
+
     public static final void NPCAnimation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         mplew.writeShort(SendPacketOpcode.NPC_ACTION.getValue());
@@ -316,7 +318,7 @@ public class NPCHandler {
                 break;
             }
             default:
-                System.out.println("Unhandled Storage mode : " + mode);
+                LOG.log(System.Logger.Level.INFO, "Unhandled Storage mode : " + mode);
                 break;
         }
     }

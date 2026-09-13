@@ -42,6 +42,8 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class MobHandler {
 
+    private static final System.Logger LOG = System.getLogger(MobHandler.class.getName());
+
     public static final void MoveMonster(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null || chr.getMap() == null) {
             return; //?
@@ -138,8 +140,10 @@ public class MobHandler {
 
         if (res != null && chr != null) {
             if (slea.available() < 9 || slea.available() > 17) { //9.. 0 -> endPos? -> endPos again? -> 0 -> 0
-                System.out.println("slea.available != 17 (movement parsing error)");
-                System.out.println(slea.toString(true));
+                // One event, one record: the complaint and the packet dump
+                // belong together and two threads could otherwise interleave.
+                LOG.log(System.Logger.Level.INFO, "slea.available != 17 (movement parsing error)"
+                        + System.lineSeparator() + slea.toString(true));
                 c.getSession().close();
                 return;
             }

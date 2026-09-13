@@ -32,6 +32,8 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class MovementParse {
 
+    private static final System.Logger LOG = System.getLogger(MovementParse.class.getName());
+
     //1 = player, 2 = mob, 3 = pet, 4 = summon, 5 = dragon
     public static final List<LifeMovementFragment> parseMovement(final SeekableLittleEndianAccessor lea, int kind) {
         final List<LifeMovementFragment> res = new ArrayList<>();
@@ -130,13 +132,15 @@ public class MovementParse {
                     break;
                 }
                 default:
-                    System.out.println(" command = " + command );
-                    System.out.println("Kind movement: " + kind + ", Remaining : " + (numCommands - res.size()) + " New type of movement ID : " + command + ", packet : " + lea.toString(true));
+                    // One event, one record: the two lines are one report of
+                    // the same unknown movement command.
+                    LOG.log(System.Logger.Level.INFO, " command = " + command + System.lineSeparator()
+                            + "Kind movement: " + kind + ", Remaining : " + (numCommands - res.size()) + " New type of movement ID : " + command + ", packet : " + lea.toString(true));
                     return null;
             }
         }
         if (numCommands != res.size()) {
-            System.out.println("error in movement");
+            LOG.log(System.Logger.Level.INFO, "error in movement");
             return null; // Probably hack
         }
         return res;

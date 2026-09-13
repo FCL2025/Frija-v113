@@ -45,6 +45,8 @@ import tools.packet.FamilyPacket;
 // extends MapleFamily (-Xlint:this-escape).
 public final class MapleFamily {
 
+    private static final System.Logger LOG = System.getLogger(MapleFamily.class.getName());
+
     public static enum FCOp {
 
         NONE, DISBAND;
@@ -85,7 +87,7 @@ public final class MapleFamily {
             }
 
             if (leadername == null || members.size() < 2) {
-                System.err.println("Leader " + leaderid + " isn't in family " + id + ".  Impossible... family is disbanding.");
+                LOG.log(System.Logger.Level.ERROR, "Leader " + leaderid + " isn't in family " + id + ".  Impossible... family is disbanding.");
                 writeToDB(true);
                 proper = false;
                 return;
@@ -134,8 +136,7 @@ public final class MapleFamily {
             resetDescendants(); //set
             resetGens(); //set
         } catch (SQLException se) {
-            System.err.println("unable to read family information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read family information from sql", se);
         }
     }
 
@@ -183,8 +184,7 @@ public final class MapleFamily {
                 }
             }
         } catch (SQLException se) {
-            System.err.println("unable to read family information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read family information from sql", se);
         }
         return ret;
     }
@@ -212,8 +212,7 @@ public final class MapleFamily {
                 }
             }
         } catch (SQLException se) {
-            System.err.println("Error saving family to SQL");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error saving family to SQL", se);
         }
     }
 
@@ -518,8 +517,7 @@ public final class MapleFamily {
             ps.setInt(7, cid);
             ps.execute();
         } catch (SQLException se) {
-            System.out.println("SQLException: " + se.getLocalizedMessage());
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "SQLException: " + se.getLocalizedMessage(), se);
         }
     }
 
@@ -535,7 +533,9 @@ public final class MapleFamily {
                 return rs.getInt(1);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // Only a bare stack trace before: System.Logger needs a message, so
+            // it names the operation and nothing else.
+            LOG.log(System.Logger.Level.ERROR, "Error creating family", e);
             return 0;
         }
     }

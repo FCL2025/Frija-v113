@@ -14,11 +14,13 @@ import handling.world.family.MapleFamilyCharacter;
  */
 public class Family {
 
+    private static final System.Logger LOG = System.getLogger(Family.class.getName());
+
     private static final Map<Integer, MapleFamily> families = new LinkedHashMap<>();
     private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     static {
-        System.out.println("Loading Families :::");
+        LOG.log(System.Logger.Level.INFO, "Loading Families :::");
         Collection<MapleFamily> allGuilds = MapleFamily.loadAll();
         for (MapleFamily g : allGuilds) {
             if (g.isProper()) {
@@ -86,7 +88,7 @@ public class Family {
     }
 
     public static void save() {
-        System.out.println("Saving families...");
+        LOG.log(System.Logger.Level.INFO, "Saving families...");
         lock.writeLock().lock();
         try {
             for (MapleFamily a : families.values()) {

@@ -47,6 +47,8 @@ import tools.packet.NPCPacket;
 
 public class DueyHandler {
 
+    private static final System.Logger LOG = System.getLogger(DueyHandler.class.getName());
+
     /*
      * 19 = Successful
      * 18 = One-of-a-kind Item is already in Reciever's delivery
@@ -195,7 +197,7 @@ public class DueyHandler {
                 break;
             }
             default: {
-                System.out.println("Unhandled Duey operation : " + slea.toString());
+                LOG.log(System.Logger.Level.INFO, "Unhandled Duey operation : " + slea.toString());
                 break;
             }
         }
@@ -216,7 +218,7 @@ public class DueyHandler {
 
             return true;
         } catch (SQLException se) {
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error saving Duey meso package to SQL", se);
             return false;
         }
     }
@@ -241,7 +243,7 @@ public class DueyHandler {
 
             return true;
         } catch (SQLException se) {
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error saving Duey item package to SQL", se);
             return false;
         }
     }
@@ -267,7 +269,7 @@ public class DueyHandler {
             }
             return packages;
         } catch (SQLException se) {
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error loading Duey packages from SQL", se);
             return null;
         }
     }
@@ -305,7 +307,7 @@ public class DueyHandler {
             ps.setInt(1, recipientId);
             ps.executeUpdate();
         } catch (SQLException se) {
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error marking Duey packages as read", se);
         }
     }
 
@@ -316,7 +318,7 @@ public class DueyHandler {
             ps.setInt(2, charid);
             ps.executeUpdate();
         } catch (SQLException se) {
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error deleting Duey package from SQL", se);
         }
     }
 
@@ -329,7 +331,7 @@ public class DueyHandler {
                 }
             }
         } catch (Exception se) {
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error loading Duey package items", se);
         }
         return new MapleDueyActions(packageid);
     }

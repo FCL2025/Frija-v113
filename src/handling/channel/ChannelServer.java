@@ -62,6 +62,8 @@ import tools.packet.ChatPacket;
 
 public class ChannelServer {
 
+    private static final System.Logger LOG = System.getLogger(ChannelServer.class.getName());
+
     public static long serverStartTime;
     private int expRate, mesoRate, dropRate, cashRate;
     private short port = 8585;
@@ -141,10 +143,13 @@ public class ChannelServer {
         try {
             this.serverHandler = new MapleServerHandler(channel, false);
             this.boundAddress = MapleAcceptor.bind(port, serverHandler);
-            System.out.println("Channel " + channel + ": Listening on port " + port + "");
+            LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": Listening on port " + port + "");
             eventSM.init();
         } catch (IOException e) {
-            System.out.println("Binding to port " + port + " failed (ch: " + getChannel() + ")" + e);
+            // ERROR, not INFO: the channel never bound, so it is not serving
+            // anyone. Terse on purpose - this one only ever concatenated the
+            // exception, never a trace, so the Throwable is not attached.
+            LOG.log(System.Logger.Level.ERROR, "Binding to port " + port + " failed (ch: " + getChannel() + ")" + e);
         }
     }
 
@@ -156,15 +161,15 @@ public class ChannelServer {
         // dc all clients by hand so we get sessionClosed...
         shutdown = true;
 
-        System.out.println("Channel " + channel + ", Saving hired merchants...");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Saving hired merchants...");
 
         closeAllMerchant();
 
-        System.out.println("Channel " + channel + ", Saving characters...");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Saving characters...");
 
         getPlayerStorage().disconnectAll();
 
-        System.out.println("Channel " + channel + ", Unbinding...");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Unbinding...");
 
         MapleAcceptor.unbind(boundAddress);
         boundAddress = null;
@@ -580,12 +585,12 @@ public class ChannelServer {
 
     public final void setShutdown() {
         this.shutdown = true;
-        System.out.println("Channel " + channel + " has set to shutdown.");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + " has set to shutdown.");
     }
 
     public final void setFinishShutdown() {
         this.finishedShutdown = true;
-        System.out.println("Channel " + channel + " has finished shutdown.");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + " has finished shutdown.");
     }
 
     public final boolean isAdminOnly() {
@@ -642,7 +647,7 @@ public class ChannelServer {
       ++ppl;
       chr.saveToDB(false, false);
     }
-    System.out.println("[自動存檔] 已經將頻道 " + this.channel + " 的 " + ppl + " 個玩家保存到數據中.");
+    LOG.log(System.Logger.Level.INFO, "[自動存檔] 已經將頻道 " + this.channel + " 的 " + ppl + " 個玩家保存到數據中.");
   }
  }
 

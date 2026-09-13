@@ -19,11 +19,13 @@ import tools.packet.GuildPacket;
  */
 public class Guild {
 
+    private static final System.Logger LOG = System.getLogger(Guild.class.getName());
+
     private static final Map<Integer, MapleGuild> guilds = new LinkedHashMap<>();
     private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     static {
-        System.out.println("Loading Guilds :::");
+        LOG.log(System.Logger.Level.INFO, "Loading Guilds :::");
         Collection<MapleGuild> allGuilds = MapleGuild.loadAll();
         for (MapleGuild g : allGuilds) {
             if (g.isProper()) {
@@ -247,7 +249,7 @@ public class Guild {
     }
 
     public static void save() {
-        System.out.println("Saving guilds...");
+        LOG.log(System.Logger.Level.INFO, "Saving guilds...");
         lock.writeLock().lock();
         try {
             for (MapleGuild a : guilds.values()) {

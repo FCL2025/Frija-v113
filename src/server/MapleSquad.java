@@ -8,11 +8,12 @@ import client.MapleCharacter;
 import handling.channel.ChannelServer;
 import handling.world.Find;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import server.Timer.EtcTimer;
 import server.maps.MapleMap;
@@ -30,8 +31,29 @@ public class MapleSquad {
             this.i = i;
         }
         public int i;
-        public HashMap<Integer, ArrayList<Pair<String, String>>> queuedPlayers = new HashMap<>();
-        public HashMap<Integer, ArrayList<Pair<String, Long>>> queue = new HashMap<>();
+        /*
+         * These two are per-type, which means per-JVM: every channel's squads of
+         * one type share them, and every player who talks to a squad NPC reaches
+         * them from their own handler thread. Keyed by channel, and the per-channel
+         * lists are read far more often than they are written.
+         */
+        private final Map<Integer, List<Pair<String, String>>> queuedPlayers = new ConcurrentHashMap<>();
+        private final Map<Integer, List<Pair<String, Long>>> queue = new ConcurrentHashMap<>();
+
+        /** This channel's waiting-squad queue, created on first use. */
+        private List<Pair<String, Long>> queue(final int ch) {
+            return queue.computeIfAbsent(ch, k -> new CopyOnWriteArrayList<>());
+        }
+
+        /** This channel's log of what happened to each queued squad. */
+        private List<Pair<String, String>> queuedPlayers(final int ch) {
+            return queuedPlayers.computeIfAbsent(ch, k -> new CopyOnWriteArrayList<>());
+        }
+
+        /** Every channel's queue, for the "is this player queued anywhere" scan. */
+        private Collection<List<Pair<String, Long>>> allQueues() {
+            return queue.values();
+        }
     }
 
     private WeakReference<MapleCharacter> leader;
@@ -57,25 +79,31 @@ public class MapleSquad {
         this.status = 1;
         this.beginMapId = leader.getMapId();
         leader.getMap().setSquad(this.type);
-        if (this.type.queue.get(ch) == null) {
-            this.type.queue.put(ch, new ArrayList<>());
-            this.type.queuedPlayers.put(ch, new ArrayList<>());
-        }
+        this.type.queue(ch); // create this channel's two lists up front, as before
+        this.type.queuedPlayers(ch);
         this.startTime = System.currentTimeMillis();
         this.expiration = expiration;
     }
 
     public void copy() {
-        while (type.queue.get(ch).size() > 0 && ChannelServer.getInstance(ch).getMapleSquad(type) == null) {
-            int index = 0;
+        final List<Pair<String, Long>> waiting = type.queue(ch);
+        final List<Pair<String, String>> outcome = type.queuedPlayers(ch);
+        while (!waiting.isEmpty() && ChannelServer.getInstance(ch).getMapleSquad(type) == null) {
+            // Pick the entry that has waited longest by identity, not by index:
+            // another thread can remove one between the scan and the removal, and
+            // then the index would point at somebody else.
+            Pair<String, Long> next = null;
             long lowest = 0;
-            for (int i = 0; i < type.queue.get(ch).size(); i++) {
-                if (lowest == 0 || type.queue.get(ch).get(i).right < lowest) {
-                    index = i;
-                    lowest = type.queue.get(ch).get(i).right;
+            for (Pair<String, Long> entry : waiting) {
+                if (lowest == 0 || entry.right < lowest) {
+                    next = entry;
+                    lowest = entry.right;
                 }
             }
-            final String nextPlayerId = type.queue.get(ch).remove(index).left;
+            if (next == null || !waiting.remove(next)) {
+                continue; // somebody else took it; the list is shorter, so re-check
+            }
+            final String nextPlayerId = next.left;
             final int theirCh = Find.findChannel(nextPlayerId);
             if (theirCh > 0) {
                 final MapleCharacter lead = ChannelServer.getInstance(theirCh).getPlayerStorage().getCharacterByName(nextPlayerId);
@@ -84,10 +112,10 @@ public class MapleSquad {
                     if (ChannelServer.getInstance(ch).addMapleSquad(squad, type.name())) {
                         getBeginMap().broadcastMessage(MapPacket.getClock(expiration / 1000));
                         getBeginMap().broadcastMessage(ChatPacket.serverNotice(6, nextPlayerId + toSay));
-                        type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Success"));
+                        outcome.add(new Pair<>(nextPlayerId, "Success"));
                     } else {
                         squad.clear();
-                        type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Skipped"));
+                        outcome.add(new Pair<>(nextPlayerId, "Skipped"));
                     }
                     break;
                 } else {
@@ -95,11 +123,11 @@ public class MapleSquad {
                         lead.dropMessage(6, "Your squad has been skipped due to you not being in the right channel and map.");
                     }
                     getBeginMap().broadcastMessage(ChatPacket.serverNotice(6, nextPlayerId + "'s squad has been skipped due to the player not being in the right channel and map."));
-                    type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Not in map"));
+                    outcome.add(new Pair<>(nextPlayerId, "Not in map"));
                 }
             } else {
                 getBeginMap().broadcastMessage(ChatPacket.serverNotice(6, nextPlayerId + "'s squad has been skipped due to the player not being online."));
-                type.queuedPlayers.get(ch).add(new Pair<>(nextPlayerId, "Not online"));
+                outcome.add(new Pair<>(nextPlayerId, "Not online"));
             }
         }
     }
@@ -143,14 +171,15 @@ public class MapleSquad {
     }
 
     public List<Pair<String, Long>> getAllNextPlayer() {
-        return type.queue.get(ch);
+        return type.queue(ch);
     }
 
     public String getNextPlayer() {
+        final List<Pair<String, Long>> waiting = type.queue(ch);
         StringBuilder sb = new StringBuilder("\n排隊成員 : ");
-        sb.append("#b").append(type.queue.get(ch).size()).append(" #k ").append("與遠征隊名單 : \n\r ");
+        sb.append("#b").append(waiting.size()).append(" #k ").append("與遠征隊名單 : \n\r ");
         int i = 0;
-        for (Pair<String, Long> chr : type.queue.get(ch)) {
+        for (Pair<String, Long> chr : waiting) {
             i++;
             sb.append(i).append(" : ").append(chr.left);
             sb.append(" \n\r ");
@@ -160,25 +189,26 @@ public class MapleSquad {
     }
 
     public void setNextPlayer(String i) {
+        final List<Pair<String, Long>> waiting = type.queue(ch);
         Pair<String, Long> toRemove = null;
-        for (Pair<String, Long> s : type.queue.get(ch)) {
+        for (Pair<String, Long> s : waiting) {
             if (s.left.equals(i)) {
                 toRemove = s;
                 break;
             }
         }
         if (toRemove != null) {
-            type.queue.get(ch).remove(toRemove);
+            waiting.remove(toRemove);
             return;
         }
-        for (ArrayList<Pair<String, Long>> v : type.queue.values()) {
+        for (List<Pair<String, Long>> v : type.allQueues()) {
             for (Pair<String, Long> s : v) {
                 if (s.left.equals(i)) {
                     return;
                 }
             }
         }
-        type.queue.get(ch).add(new Pair<>(i, System.currentTimeMillis()));
+        waiting.add(new Pair<>(i, System.currentTimeMillis()));
     }
 
     public MapleCharacter getLeader() {

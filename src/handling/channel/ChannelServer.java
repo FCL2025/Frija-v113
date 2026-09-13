@@ -81,7 +81,12 @@ public class ChannelServer {
     private static final Map<Integer, ChannelServer> instances = new ConcurrentHashMap<>();
     private final Map<MapleSquadType, MapleSquad> mapleSquads = new ConcurrentEnumMap<>(MapleSquadType.class);
     private final Map<Integer, HiredMerchant> merchants = new HashMap<>();
-    private final Map<Integer, PlayerNPC> playerNPCs = new HashMap<>();
+    /**
+     * Player NPCs are created and removed from any handler thread, and read by
+     * every thread that walks a map - so this one is concurrent rather than
+     * lock-guarded the way {@link #merchants} is.
+     */
+    private final Map<Integer, PlayerNPC> playerNPCs = new ConcurrentHashMap<>();
     private final ReentrantReadWriteLock merchLock = new ReentrantReadWriteLock(); //merchant
     private final ReentrantReadWriteLock squadLock = new ReentrantReadWriteLock(); //squad
     private int eventmap = -1;
@@ -468,16 +473,17 @@ public class ChannelServer {
     }
 
     public final void addPlayerNPC(final PlayerNPC npc) {
-        if (playerNPCs.containsKey(npc.getId())) {
-            removePlayerNPC(npc);
+        // remove() instead of containsKey() + remove(): only the thread that
+        // actually took the old entry out may touch the map object.
+        if (playerNPCs.remove(npc.getId()) != null) {
+            getMapFactory().getMap(npc.getMapId()).removeMapObject(npc);
         }
         playerNPCs.put(npc.getId(), npc);
         getMapFactory().getMap(npc.getMapId()).addMapObject(npc);
     }
 
     public final void removePlayerNPC(final PlayerNPC npc) {
-        if (playerNPCs.containsKey(npc.getId())) {
-            playerNPCs.remove(npc.getId());
+        if (playerNPCs.remove(npc.getId()) != null) {
             getMapFactory().getMap(npc.getMapId()).removeMapObject(npc);
         }
     }

@@ -647,8 +647,13 @@ public class MapPacket {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.UPDATE_ENV.getValue());
-        mplew.writeInt(map.getEnvironment().size());
-        for (Entry<String, Integer> mp : map.getEnvironment().entrySet()) {
+        // One snapshot, read twice. getEnvironment() now hands back a fresh copy
+        // per call (C2), so calling it for the count and again for the entries
+        // could write a count that disagrees with the entries whenever another
+        // thread toggles a reactor in between - a malformed packet.
+        final Map<String, Integer> env = map.getEnvironment();
+        mplew.writeInt(env.size());
+        for (Entry<String, Integer> mp : env.entrySet()) {
             mplew.writeMapleAsciiString(mp.getKey());
             mplew.writeInt(mp.getValue());
         }

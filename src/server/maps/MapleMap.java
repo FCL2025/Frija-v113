@@ -31,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
@@ -124,12 +125,17 @@ public final class MapleMap {
     private boolean town, clock, personalShop, everlast = false, dropsDisabled = false, gDropsDisabled = false,
             soaring = false, squadTimer = false, isSpawns = true;
     private String mapName, streetName, onUserEnter, onFirstUserEnter, speedRunLeader = "";
-    private List<Integer> dced = new ArrayList<>();
+    // Written from the disconnecting player's own handler thread, read from any
+    // other player's - and written far less often than it is read.
+    private final List<Integer> dced = new CopyOnWriteArrayList<>();
     private ScheduledFuture<?> squadSchedule;
     private long speedRunStart = 0, lastSpawnTime = 0, lastHurtTime = 0;
     private MapleNodes nodes;
     private MapleSquadType squad;
-    private Map<String, Integer> environment = new LinkedHashMap<>();
+    // Insertion-ordered because getUpdateEnvironment() puts it on the wire in
+    // iteration order, so a LinkedHashMap it stays; the synchronized wrapper is
+    // what makes it safe for two players to trip two reactors at once.
+    private final Map<String, Integer> environment = Collections.synchronizedMap(new LinkedHashMap<>());
 
     public MapleMap(final int mapid, final int channel, final int returnMapId, final float monsterRate) {
         this.mapid = mapid;
@@ -3121,11 +3127,9 @@ public final class MapleMap {
     }
 
     public final void toggleEnvironment(final String ms) {
-        if (environment.containsKey(ms)) {
-            moveEnvironment(ms, environment.get(ms) == 1 ? 2 : 1);
-        } else {
-            moveEnvironment(ms, 1);
-        }
+        // One lookup, not containsKey() + get(): absent and "not 1" both mean 1.
+        final Integer current = environment.get(ms);
+        moveEnvironment(ms, current != null && current == 1 ? 2 : 1);
     }
 
     public final void moveEnvironment(final String ms, final int type) {
@@ -3133,8 +3137,15 @@ public final class MapleMap {
         environment.put(ms, type);
     }
 
+    /**
+     * A snapshot, not the live map: the only caller iterates it to build a
+     * packet, and a concurrent moveEnvironment() would otherwise throw a
+     * ConcurrentModificationException in the middle of that.
+     */
     public final Map<String, Integer> getEnvironment() {
-        return environment;
+        synchronized (environment) { // required to iterate a synchronizedMap
+            return Collections.unmodifiableMap(new LinkedHashMap<>(environment));
+        }
     }
 
     public final int getNumPlayersInArea(final int index) {

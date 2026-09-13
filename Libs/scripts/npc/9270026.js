@@ -44,14 +44,14 @@ function action(mode, type, selection) {
     else if (status == 2){
 	cm.dispose();
 	if (beauty == 1){
-	    if (cm.setAvatar(5152039, colors[Math.floor(Math.random() * colors.length)] == 1){
+	    if (cm.setAvatar(5152039, colors[Math.floor(Math.random() * colors.length)]) == 1){
 		cm.sendOk("Enjoy your new and improved cosmetic lenses!");
 	    } else {
 		cm.sendOk("I'm sorry, but I don't think you have our cosmetic lens coupon with you right now. Without the coupon, I'm afraid I can't do it for you..");
 	    }
 	}
 	if (beauty == 2){
-	    if (cm.setAvatar(5152040, colors[selection] == 1){
+	    if (cm.setAvatar(5152040, colors[selection]) == 1){
 		cm.sendOk("Enjoy your new and improved cosmetic lenses!");
 	    } else {
 		cm.sendOk("I'm sorry, but I don't think you have our cosmetic lens coupon with you right now. Without the coupon, I'm afraid I can't do it for you..");

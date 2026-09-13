@@ -57,7 +57,8 @@ public class MapleMiniGame extends AbstractPlayerStore {
         reset();
     }
 
-    public void reset() {
+    // private: the constructor calls it, and nothing outside this class does.
+    private void reset() {
         for (int i = 0; i < slots; i++) {
             points[i] = 0;
             exitAfter[i] = false;

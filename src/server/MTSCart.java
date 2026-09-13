@@ -140,7 +140,9 @@ public class MTSCart {
         //notYetSold shouldnt be saved here
     }
 
-    public void loadCart() throws SQLException {
+    // private: called from the constructor, and nothing outside MTSCart calls
+    // either loader - an overridable call there is a 'this' escape.
+    private void loadCart() throws SQLException {
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_cart WHERE characterid = ?")) {
             ps.setInt(1, characterId);
@@ -158,7 +160,7 @@ public class MTSCart {
         }
     }
 
-    public void loadNotYetSold() throws SQLException {
+    private void loadNotYetSold() throws SQLException {
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE characterid = ?")) {
             ps.setInt(1, characterId);

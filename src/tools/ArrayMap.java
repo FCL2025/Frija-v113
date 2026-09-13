@@ -37,7 +37,10 @@ import java.util.Set;
  * @param <K> The type of the keys.
  * @param <V> The type of the values.
  */
-public class ArrayMap<K, V> extends AbstractMap<K, V> {
+// final: ArrayMap(Map) seeds itself through AbstractMap.putAll, which is
+// overridable and would run against a subclass that has no fields yet
+// (-Xlint:this-escape). Nothing extends ArrayMap.
+public final class ArrayMap<K, V> extends AbstractMap<K, V> {
 
     /**
      * Provides a strongly typed mapping of a key to a value.

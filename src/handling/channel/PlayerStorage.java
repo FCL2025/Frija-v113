@@ -48,10 +48,26 @@ public class PlayerStorage {
     private final Map<Integer, CharacterTransfer> PendingCharacter = new HashMap<>();
     private final int channel;
 
-    public PlayerStorage(int channel) {
+    private PlayerStorage(int channel) {
         this.channel = channel;
+    }
+
+    /**
+     * Builds a storage and arms its stale-pending-transfer sweep.
+     *
+     * <p>The sweep used to be scheduled from the constructor, which handed
+     * {@code this} to a {@code PingTimer} thread - through the inner
+     * {@link PersistingTask} - before the object was finished
+     * (-Xlint:this-escape). The constructor is private so that it is not
+     * possible to build a storage and forget to arm it: a sweep that silently
+     * never runs would leak every stale pending transfer. The first sweep
+     * still lands 900000 ms after the storage is created, exactly as before.
+     */
+    public static PlayerStorage create(final int channel) {
+        final PlayerStorage ret = new PlayerStorage(channel);
         // Prune once every 15 minutes
-        PingTimer.getInstance().schedule(new PersistingTask(), 900000);
+        PingTimer.getInstance().schedule(ret.new PersistingTask(), 900000);
+        return ret;
     }
 
     public final Collection<MapleCharacter> getAllCharacters() {

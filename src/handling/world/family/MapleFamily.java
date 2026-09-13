@@ -40,7 +40,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import tools.packet.FamilyPacket;
 
-public class MapleFamily {
+// final: the loading constructor calls resetPedigree(), which hands 'this' to
+// every MapleFamilyCharacter before the family has finished loading. Nothing
+// extends MapleFamily (-Xlint:this-escape).
+public final class MapleFamily {
 
     public static enum FCOp {
 

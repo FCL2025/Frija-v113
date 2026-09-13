@@ -29,7 +29,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import database.DatabaseConnection;
 
-public class MapleCustomQuest extends MapleQuest {
+// final: the constructor hands 'this' to every MapleQuestRequirement and
+// MapleQuestAction it builds, before the quest is loaded. Nothing extends it
+// (-Xlint:this-escape).
+public final class MapleCustomQuest extends MapleQuest {
 
     // questrequirements/questactions.data are ObjectOutputStream blobs holding a
     // MapleCustomQuestData tree (its own class, the java.util.LinkedList it keeps

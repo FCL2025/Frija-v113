@@ -29,7 +29,9 @@ import client.anticheat.CheatingOffense;
 import server.MapleStatEffect;
 import tools.packet.MapPacket;
 
-public class MapleSummon extends AbstractAnimatedMapleMapObject {
+// final (-Xlint:this-escape): the constructor calls the inherited, overridable
+// setPosition before the summon is finished. Nothing extends MapleSummon.
+public final class MapleSummon extends AbstractAnimatedMapleMapObject {
 
     private final int ownerid, skillLevel, ownerLevel, skill;
     private int fh;

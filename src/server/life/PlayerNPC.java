@@ -41,7 +41,10 @@ import java.util.ArrayList;
 import server.maps.MapleMap;
 import tools.packet.MapPacket;
 
-public class PlayerNPC extends MapleNPC {
+// final (-Xlint:this-escape): both constructors reach inherited members
+// (setCoords, getId) and the ResultSet one runs update(), all before the NPC is
+// finished. Nothing extends PlayerNPC.
+public final class PlayerNPC extends MapleNPC {
 
     private Map<Byte, Integer> equips = new HashMap<>();
     private int mapid, face, hair, charId;
@@ -85,7 +88,8 @@ public class PlayerNPC extends MapleNPC {
         update(cid);
     }
 
-    public void setCoords(int x, int y, int f, int fh) {
+    // private: only PlayerNPC's own constructors ever called it.
+    private void setCoords(int x, int y, int f, int fh) {
         setPosition(new Point(x, y));
         setCy(y);
         setRx0(x - 50);

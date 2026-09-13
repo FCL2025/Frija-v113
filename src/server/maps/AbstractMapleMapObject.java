@@ -27,6 +27,23 @@ public abstract class AbstractMapleMapObject implements MapleMapObject {
     private Point position = new Point();
     private int objectId;
 
+    protected AbstractMapleMapObject() {
+    }
+
+    /**
+     * Positions the object as part of construction.
+     *
+     * <p>A subclass constructor that still has fields to assign must use this
+     * rather than call {@link #setPosition}: that method is overridable -
+     * {@link MapleMist} replaces it with a no-op - so calling it mid-build
+     * would run a subclass override against fields the subclass has not
+     * assigned yet (-Xlint:this-escape).
+     */
+    protected AbstractMapleMapObject(final Point position) {
+        this.position.x = position.x;
+        this.position.y = position.y;
+    }
+
     public abstract MapleMapObjectType getType();
 
     @Override

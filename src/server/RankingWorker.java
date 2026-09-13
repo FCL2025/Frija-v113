@@ -138,7 +138,8 @@ public class RankingWorker {
             loadToString();
         }
 
-        public void loadToString() {
+        // private: the constructor calls it and nothing else ever did.
+        private void loadToString() {
             final StringBuilder builder = new StringBuilder("Rank ");
             builder.append(rank);
             builder.append(" : ");

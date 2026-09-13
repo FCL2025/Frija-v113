@@ -30,7 +30,10 @@ import client.MapleCharacter;
 import client.MapleClient;
 import tools.packet.MapPacket;
 
-public class MapleDragon extends AbstractAnimatedMapleMapObject {
+// final (-Xlint:this-escape): the constructor calls the inherited, overridable
+// setPosition and setStance before the dragon is finished. Nothing extends
+// MapleDragon.
+public final class MapleDragon extends AbstractAnimatedMapleMapObject {
 
     private int owner;
     private int jobid;

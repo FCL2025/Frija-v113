@@ -39,8 +39,8 @@ public class CashShopServer {
     public static final void run_startup_configurations() {
         ip = ServerProperties.getProperty("tms.IP") + ":" + PORT;
 
-        players = new PlayerStorage(-10);
-        playersMTS = new PlayerStorage(-20);
+        players = PlayerStorage.create(-10);
+        playersMTS = PlayerStorage.create(-20);
 
         try {
             InetSocketadd = MapleAcceptor.bind(PORT, new MapleServerHandler(-1, true));

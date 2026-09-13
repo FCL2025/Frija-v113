@@ -28,7 +28,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import tools.packet.MapPacket;
 
-public class MapleMapItem extends AbstractMapleMapObject {
+// final (-Xlint:this-escape): all four constructors set the position through
+// the inherited, overridable setPosition before the drop is finished. Nothing
+// extends MapleMapItem.
+public final class MapleMapItem extends AbstractMapleMapObject {
 
     protected IItem item;
     protected MapleMapObject dropper;

@@ -64,7 +64,10 @@ import tools.packet.ChatPacket;
 import tools.packet.MapPacket;
 import tools.packet.MobPacket;
 
-public class MapleMonster extends AbstractLoadedMapleLife {
+// final (-Xlint:this-escape): both constructors run initWithStats, which calls
+// the inherited, overridable setStance before the mob's own fields are set.
+// Nothing extends MapleMonster.
+public final class MapleMonster extends AbstractLoadedMapleLife {
 
     private MapleMonsterStats stats;
     private OverrideMonsterStats ostats = null;

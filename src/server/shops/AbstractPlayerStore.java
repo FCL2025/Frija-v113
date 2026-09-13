@@ -57,7 +57,10 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
     protected List<MaplePlayerShopItem> items = new LinkedList<>();
 
     public AbstractPlayerStore(MapleCharacter owner, int itemId, String desc, String pass, int slots) {
-        this.setPosition(owner.getPosition());
+        // super(Point), not setPosition(...): this class really is extended
+        // (HiredMerchant, MapleMiniGame, MaplePlayerShop), so an overridable
+        // call here would run against a subclass that has no fields yet.
+        super(owner.getPosition());
         this.ownerName = owner.getName();
         this.ownerId = owner.getId();
         this.owneraccount = owner.getAccountID();

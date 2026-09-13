@@ -51,7 +51,11 @@ import tools.packet.FamilyPacket;
 import tools.packet.GuildPacket;
 import tools.packet.UIPacket;
 
-public class MapleGuild {
+// final: the loading constructor hands 'this' to new MapleGuildSummary(this)
+// (through writeToDB -> broadcast, on the disbanding-error paths) while the
+// guild is still half-read. Nothing extends MapleGuild, and making that
+// explicit is what removes the hazard (-Xlint:this-escape).
+public final class MapleGuild {
 
     private static enum BCOp {
 

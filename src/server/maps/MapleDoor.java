@@ -32,7 +32,10 @@ import tools.packet.CharacterPacket;
 import tools.packet.MapPacket;
 import tools.packet.PartyPacket;
 
-public class MapleDoor extends AbstractMapleMapObject {
+// final (-Xlint:this-escape): both constructors set the position through the
+// inherited, overridable setPosition before the door is finished. Nothing
+// extends MapleDoor, so no subclass can ever observe that.
+public final class MapleDoor extends AbstractMapleMapObject {
 
     private WeakReference<MapleCharacter> owner;
     private MapleMap town;

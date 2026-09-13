@@ -34,7 +34,9 @@ public class MapleMessenger {
         addMem(0, chrfor);
     }
 
-    public void addMem(int pos, MapleMessengerCharacter chrfor) {
+    // private: the constructor calls it, so it must not be overridable
+    // (-Xlint:this-escape). Only MapleMessenger itself ever used it.
+    private void addMem(int pos, MapleMessengerCharacter chrfor) {
         if (members[pos] != null) {
             return;
         }

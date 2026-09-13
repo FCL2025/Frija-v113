@@ -36,7 +36,11 @@ public class MapleInventoryIdentifier {
     private Lock readLock = rwl.readLock(), writeLock = rwl.writeLock();
     private static MapleInventoryIdentifier instance = new MapleInventoryIdentifier();
 
-    public MapleInventoryIdentifier() {
+    // A singleton: only the static `instance` above may build one, and only
+    // the static getInstance() is used from outside. Both that and the private
+    // helpers below keep the constructor's getNextUniqueId() call non-virtual
+    // (-Xlint:this-escape).
+    private MapleInventoryIdentifier() {
         this.runningUID = new AtomicInteger(0);
         getNextUniqueId();
     }
@@ -45,7 +49,7 @@ public class MapleInventoryIdentifier {
         return instance.getNextUniqueId();
     }
 
-    public int getNextUniqueId() {
+    private int getNextUniqueId() {
         if (grabRunningUID() <= 0) {
             setRunningUID(initUID());
         }
@@ -53,7 +57,7 @@ public class MapleInventoryIdentifier {
         return grabRunningUID();
     }
 
-    public int grabRunningUID() {
+    private int grabRunningUID() {
         readLock.lock();
         try {
             return runningUID.get(); //maybe we should really synchronize/do more here..
@@ -62,11 +66,11 @@ public class MapleInventoryIdentifier {
         }
     }
 
-    public void incrementRunningUID() {
+    private void incrementRunningUID() {
         setRunningUID(grabRunningUID() + 1);
     }
 
-    public void setRunningUID(int rUID) {
+    private void setRunningUID(int rUID) {
         if (rUID < grabRunningUID()) { //dont go backwards.
             return;
         }
@@ -78,7 +82,7 @@ public class MapleInventoryIdentifier {
         }
     }
 
-    public int initUID() {
+    private int initUID() {
         int ret = 0;
         if (grabRunningUID() > 0) {
             return grabRunningUID();

@@ -36,7 +36,11 @@ import server.maps.MapleMapObjectType;
 import tools.packet.CharacterPacket;
 import tools.packet.PlayerShopPacket;
 
-public class HiredMerchant extends AbstractPlayerStore {
+// final (-Xlint:this-escape): the constructor schedules the 24h auto-close on
+// EtcTimer, so the task captures 'this' before the constructor returns. It
+// cannot run for a day, and nothing extends HiredMerchant - see the note on the
+// schedule below.
+public final class HiredMerchant extends AbstractPlayerStore {
 
     public ScheduledFuture<?> schedule;
     private List<String> blacklist;
@@ -47,6 +51,9 @@ public class HiredMerchant extends AbstractPlayerStore {
         super(owner, itemId, desc, "", 3);
         start = System.currentTimeMillis();
         blacklist = new LinkedList<>();
+        // The task captures 'this' and is queued before `schedule` is assigned,
+        // so closeShop would read a null schedule and skip its cancel() if it
+        // ever ran first. It cannot: the delay is a full day.
         this.schedule = EtcTimer.getInstance().schedule(() -> {
             closeShop(true, true);
         }, 1000 * 60 * 60 * 24);

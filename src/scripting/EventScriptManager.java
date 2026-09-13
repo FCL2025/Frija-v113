@@ -32,7 +32,12 @@ import tools.FileoutputUtil;
  *
  * @author Matze
  */
-public class EventScriptManager extends AbstractScriptManager {
+// final (-Xlint:this-escape): the constructor compiles the scripts on the
+// common ForkJoinPool, so 'this' is handed to other threads (through the
+// inherited getInvocable) while the object is still being built. The parallel
+// forEach joins before the constructor returns and nothing extends this class,
+// so no subclass can ever see the half-built object.
+public final class EventScriptManager extends AbstractScriptManager {
 
     private static class EventEntry {
 

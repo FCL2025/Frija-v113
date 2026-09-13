@@ -135,7 +135,7 @@ public class ChannelServer {
 
         ip = ServerProperties.getProperty("tms.IP") + ":" + port;
 
-        players = new PlayerStorage(channel);
+        players = PlayerStorage.create(channel);
         loadEvents();
 
         try {
@@ -207,7 +207,7 @@ public class ChannelServer {
 
     public final PlayerStorage getPlayerStorage() {
         if (players == null) { //wth
-            players = new PlayerStorage(channel); //wthhhh
+            players = PlayerStorage.create(channel); //wthhhh
         }
         return players;
     }

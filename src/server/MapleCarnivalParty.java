@@ -14,7 +14,10 @@ import tools.packet.MapPacket;
  *
  * @author Rob
  */
-public class MapleCarnivalParty {
+// final: the constructor publishes 'this' to every member with
+// mem.setCarnivalParty(this) before it is finished. Nothing extends it
+// (-Xlint:this-escape).
+public final class MapleCarnivalParty {
 
     private List<Integer> members = new LinkedList<>();
     private WeakReference<MapleCharacter> leader;

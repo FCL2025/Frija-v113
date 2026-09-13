@@ -34,7 +34,10 @@ import tools.HexTool;
  * @version 1.0
  * @since Revision 352
  */
-public class MaplePacketLittleEndianWriter extends GenericLittleEndianWriter {
+// final (-Xlint:this-escape): the constructor installs the byte sink through
+// the inherited, overridable setByteOutputStream. Nothing extends this writer -
+// packet builders instantiate it directly.
+public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWriter {
 
     private final ByteArrayOutputStream baos;
     private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));

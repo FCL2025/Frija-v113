@@ -20,11 +20,13 @@
  */
 package scripting;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import javax.script.ScriptException;
@@ -52,9 +54,17 @@ import tools.packet.UIPacket;
 public class EventInstanceManager {
 
     private List<MapleCharacter> chars = new LinkedList<>(); //this is messy
-    private List<Integer> dced = new LinkedList<>();
-    private List<MapleMonster> mobs = new LinkedList<>();
-    private Map<Integer, Integer> killCount = new HashMap<>();
+    /*
+     * Every player in the instance runs on their own handler thread, so the
+     * three collections below are written and read from several at once. Unlike
+     * chars they are NOT guarded by mutex: there are broadcasts under that lock
+     * already, and widening it would mean holding it across one. They are final
+     * and cleared - never nulled - on dispose, so a thread that slips past the
+     * disposed check finds an empty collection instead of a NullPointerException.
+     */
+    private final Set<Integer> dced = ConcurrentHashMap.newKeySet();
+    private final List<MapleMonster> mobs = new CopyOnWriteArrayList<>();
+    private final Map<Integer, Integer> killCount = new ConcurrentHashMap<>();
     private EventManager em;
     private int channel;
     private String name;
@@ -66,7 +76,9 @@ public class EventInstanceManager {
     private ScheduledFuture<?> eventTimer;
     private final ReentrantReadWriteLock mutex = new ReentrantReadWriteLock();
     private final Lock rL = mutex.readLock(), wL = mutex.writeLock();
-    private boolean disposed = false;
+    // Read on every entry point from every handler and timer thread, written once
+    // by whoever disposes the instance - so it has to be volatile to be seen.
+    private volatile boolean disposed = false;
 
     public EventInstanceManager(EventManager em, String name, int channel) {
         this.em = em;
@@ -272,7 +284,7 @@ public class EventInstanceManager {
         }
     }
 
-    public List<Integer> getDisconnected() {
+    public Set<Integer> getDisconnected() {
         return dced;
     }
 
@@ -280,14 +292,23 @@ public class EventInstanceManager {
         if (disposed) {
             return 0;
         }
-        return chars.size();
+        rL.lock(); // chars belongs to mutex; this was the one read that skipped it
+        try {
+            // dispose_NoLock nulls chars under wL, and waiting for that lock is
+            // what makes the null reachable here - a disposed instance has 0.
+            return chars == null ? 0 : chars.size();
+        } finally {
+            rL.unlock();
+        }
     }
 
     public void registerMonster(MapleMonster mob) {
         if (disposed) {
             return;
         }
-        mobs.add(mob);
+        synchronized (mobs) {
+            mobs.add(mob);
+        }
         mob.setEventInstance(this);
     }
 
@@ -296,8 +317,18 @@ public class EventInstanceManager {
         if (disposed) {
             return;
         }
-        mobs.remove(mob);
-        if (mobs.size() == 0) {
+        // The removal and the "was that the last one" question have to be one
+        // step, or two players finishing off the last two mobs at the same
+        // moment both see an empty list and allMonstersDead fires twice. The
+        // script itself is invoked after the monitor is dropped.
+        final boolean lastOne;
+        synchronized (mobs) {
+            if (!mobs.remove(mob)) {
+                return;
+            }
+            lastOne = mobs.isEmpty();
+        }
+        if (lastOne) {
             try {
                 em.getIv().invokeFunction("allMonstersDead", this);
             } catch (Exception ex) {
@@ -387,17 +418,14 @@ public class EventInstanceManager {
             return;
         }
         try {
-            Integer kc = killCount.get(chr.getId());
-            int inc = ((Integer) em.getIv().invokeFunction("monsterValue", this, mob.getId())).intValue();
+            // The old shape read killCount, called into the script, then wrote
+            // the sum back - a window long enough for a second kill by the same
+            // player to be lost. merge() does the whole add in one step.
+            final int inc = ((Integer) em.getIv().invokeFunction("monsterValue", this, mob.getId())).intValue();
             if (disposed) {
                 return;
             }
-            if (kc == null) {
-                kc = inc;
-            } else {
-                kc += inc;
-            }
-            killCount.put(chr.getId(), kc);
+            killCount.merge(chr.getId(), inc, Integer::sum);
             if (chr.getCarnivalParty() != null && (mob.getStats().getPoint() > 0 || mob.getStats().getCP() > 0)) {
                 em.getIv().invokeFunction("monsterKilled", this, chr, mob.getStats().getCP() > 0 ? mob.getStats().getCP() : mob.getStats().getPoint());
             }
@@ -456,15 +484,14 @@ public class EventInstanceManager {
             }
             chars.clear();
             chars = null;
-            for (MapleMonster mob : mobs) {
-                mob.setEventInstance(null);
+            synchronized (mobs) {
+                for (MapleMonster mob : mobs) {
+                    mob.setEventInstance(null);
+                }
+                mobs.clear();
             }
-            mobs.clear();
-            mobs = null;
             killCount.clear();
-            killCount = null;
             dced.clear();
-            dced = null;
             timeStarted = 0;
             eventTime = 0;
             props.clear();
@@ -778,6 +805,13 @@ public class EventInstanceManager {
         return (dced.contains(chr.getId()));
     }
 
+    /**
+     * Nothing in src/ or Libs/scripts/ calls this. Worth knowing why that is a
+     * relief: while dced was a List&lt;Integer&gt; this resolved to
+     * List.remove(int index), so it removed by position and threw
+     * IndexOutOfBoundsException for any real character id. As a Set it removes
+     * the id, which is what the name always claimed.
+     */
     public void removeDisconnected(final int id) {
         if (disposed) {
             return;

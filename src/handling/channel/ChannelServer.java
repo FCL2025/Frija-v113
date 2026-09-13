@@ -340,8 +340,27 @@ public class ChannelServer {
         }
     }
 
+    /**
+     * A snapshot of this channel's squads, not a live view.
+     *
+     * <p>It used to hand back {@code unmodifiableMap(mapleSquads)}, which is a
+     * wrapper around the live map: {@link ConcurrentEnumMap} locks each call
+     * but the caller then iterates outside that lock, so
+     * {@code new ArrayList<>(getAllSquads().values())} in {@code !clearsquads}
+     * could walk straight into a {@code ConcurrentModificationException} if a
+     * squad was registered or expired mid-copy. Copying under
+     * {@link #squadLock} - which every mutator below now takes - gives the
+     * caller a map that cannot change under it.
+     */
     public Map<MapleSquadType, MapleSquad> getAllSquads() {
-        return Collections.unmodifiableMap(mapleSquads);
+        final Map<MapleSquadType, MapleSquad> snapshot;
+        squadLock.readLock().lock();
+        try {
+            snapshot = new EnumMap<>(mapleSquads);
+        } finally {
+            squadLock.readLock().unlock();
+        }
+        return Collections.unmodifiableMap(snapshot);
     }
 
     public final MapleSquad getMapleSquad(final String type) {
@@ -349,25 +368,80 @@ public class ChannelServer {
     }
 
     public final MapleSquad getMapleSquad(final MapleSquadType type) {
+        // A single get, which ConcurrentEnumMap already takes its own read lock
+        // for; squadLock is only needed where a test and a set have to be one
+        // step. Callers that act on the answer must expect it to be stale by the
+        // time they do - addMapleSquad is the only thing that may decide a race.
         return mapleSquads.get(type);
     }
 
+    /**
+     * Claim this channel's slot for one squad type, or report that somebody
+     * else got there first.
+     *
+     * <p>This was {@code containsKey} followed by {@code put}. Both calls lock -
+     * {@code mapleSquads} is a {@link ConcurrentEnumMap} - but the *pair* did
+     * not, and {@code Map.putIfAbsent}'s default get-then-put, which
+     * {@code ConcurrentEnumMap} does not override, would have been no better.
+     * Two leaders talking to the same squad NPC on two handler threads could
+     * both be told they had won the slot, and the return value is not
+     * advisory: {@link MapleSquad#copy()} and
+     * {@code NPCConversationManager.registerSquad} both throw a squad away on
+     * {@code false}, so a lost race that reports {@code true} leaves two live
+     * squads believing they own one boss map.
+     *
+     * <p>{@link #squadLock} makes the test and the set one step. Nothing inside
+     * it broadcasts or borrows a database connection, which is what CLAUDE.md
+     * forbids holding a lock across: {@code scheduleRemoval()} only hands a task
+     * to {@code EtcTimer} and has been moved out of the lock anyway, and both
+     * callers send their {@code broadcastMessage} pair after this method has
+     * already returned. The window between the {@code put} and
+     * {@code scheduleRemoval()} - a squad visible with a null {@code removal} -
+     * is exactly the window the old code had, since {@code put} released the
+     * map's internal lock before returning too.
+     */
     public final boolean addMapleSquad(final MapleSquad squad, final String type) {
         final MapleSquadType types = MapleSquadType.valueOf(type.toLowerCase());
-        if (types != null && !mapleSquads.containsKey(types)) {
+        squadLock.writeLock().lock();
+        try {
+            if (mapleSquads.containsKey(types)) {
+                return false;
+            }
             mapleSquads.put(types, squad);
-            squad.scheduleRemoval();
-            return true;
+        } finally {
+            squadLock.writeLock().unlock();
         }
-        return false;
+        squad.scheduleRemoval();
+        return true;
     }
 
-    public final boolean removeMapleSquad(final MapleSquadType types) {
-        if (types != null && mapleSquads.containsKey(types)) {
-            mapleSquads.remove(types);
-            return true;
+    /**
+     * Give up this channel's slot for one squad type - but only if {@code squad}
+     * is still the squad holding it.
+     *
+     * <p>The identity check is the other half of the race above, and it is not
+     * decoration. Both callers of {@link #addMapleSquad} build their squad
+     * first and register it second, and both call {@code clear()} on it when
+     * registration fails. {@code clear()} ends in here, and the old
+     * remove-by-key removed whatever was in the slot - which, on a lost race,
+     * is the squad that had just won it. The loser evicted the winner.
+     *
+     * <p>The only caller is {@link MapleSquad#clear()}, so the one-argument form
+     * this replaced had no other users to keep.
+     */
+    public final boolean removeMapleSquad(final MapleSquadType types, final MapleSquad squad) {
+        if (types == null) {
+            return false;
         }
-        return false;
+        squadLock.writeLock().lock();
+        try {
+            if (mapleSquads.get(types) != squad) {
+                return false;
+            }
+            return mapleSquads.remove(types) != null;
+        } finally {
+            squadLock.writeLock().unlock();
+        }
     }
 
     public final void closeAllMerchant() {

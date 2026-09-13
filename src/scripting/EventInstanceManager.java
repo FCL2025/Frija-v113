@@ -53,7 +53,7 @@ import tools.packet.UIPacket;
 
 public class EventInstanceManager {
 
-    private List<MapleCharacter> chars = new LinkedList<>(); //this is messy
+    private final List<MapleCharacter> chars = new LinkedList<>(); //this is messy
     /*
      * Every player in the instance runs on their own handler thread, so the
      * three collections below are written and read from several at once. Unlike
@@ -61,6 +61,7 @@ public class EventInstanceManager {
      * already, and widening it would mean holding it across one. They are final
      * and cleared - never nulled - on dispose, so a thread that slips past the
      * disposed check finds an empty collection instead of a NullPointerException.
+     * chars is final for the same reason, on top of its mutex.
      */
     private final Set<Integer> dced = ConcurrentHashMap.newKeySet();
     private final List<MapleMonster> mobs = new CopyOnWriteArrayList<>();
@@ -294,9 +295,7 @@ public class EventInstanceManager {
         }
         rL.lock(); // chars belongs to mutex; this was the one read that skipped it
         try {
-            // dispose_NoLock nulls chars under wL, and waiting for that lock is
-            // what makes the null reachable here - a disposed instance has 0.
-            return chars == null ? 0 : chars.size();
+            return chars.size();
         } finally {
             rL.unlock();
         }
@@ -483,7 +482,6 @@ public class EventInstanceManager {
                 chr.setEventInstance(null);
             }
             chars.clear();
-            chars = null;
             synchronized (mobs) {
                 for (MapleMonster mob : mobs) {
                     mob.setEventInstance(null);

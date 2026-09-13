@@ -9,9 +9,10 @@ import client.MapleStat;
 import client.SkillFactory;
 import client.messages.CommandProcessorUtil;
 import handling.channel.ChannelServer;
-import java.text.DateFormat;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import server.life.MobSkillFactory;
 import server.quest.MapleQuest;
@@ -25,6 +26,15 @@ import tools.packet.CharacterPacket;
  * @author Emilyx3
  */
 public class AdminPlayerCommands {
+
+    /**
+     * The "banned until" stamp echoed back to the GM who ran {@code !tempban}.
+     * Same short date + short time in the default FORMAT locale that the
+     * {@code DateFormat.getInstance()} this replaces produced, but immutable, so
+     * unlike a shared {@code SimpleDateFormat} it is safe to hold in a static.
+     */
+    private static final DateTimeFormatter TEMPBAN_UNTIL =
+            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT);
 
     public static PlayerGMRank getPlayerLevelRequired() {
         return PlayerGMRank.ADMIN;
@@ -200,16 +210,18 @@ public class AdminPlayerCommands {
             final int reason = Integer.parseInt(splitted[2]);
             final int numDay = Integer.parseInt(splitted[3]);
 
-            final Calendar cal = Calendar.getInstance();
-            cal.add(Calendar.DATE, numDay);
-            final DateFormat df = DateFormat.getInstance();
+            // System zone, because the GM typed "N days" meaning N local days and
+            // reads the answer on a local clock. plusDays is Calendar.add(DATE, n):
+            // it keeps the wall-clock time of day across a DST boundary rather
+            // than adding a fixed 24 hours.
+            final ZonedDateTime until = ZonedDateTime.now().plusDays(numDay);
 
             if (victim == null) {
                 c.getPlayer().dropMessage(6, "Unable to find character");
                 return 0;
             }
-            victim.tempban("Temp banned by : " + c.getPlayer().getName() + "", cal, reason, true);
-            c.getPlayer().dropMessage(6, "The character " + splitted[1] + " has been successfully tempbanned till " + df.format(cal.getTime()));
+            victim.tempban("Temp banned by : " + c.getPlayer().getName() + "", until.toInstant(), reason, true);
+            c.getPlayer().dropMessage(6, "The character " + splitted[1] + " has been successfully tempbanned till " + TEMPBAN_UNTIL.format(until));
             return 1;
         }
     }

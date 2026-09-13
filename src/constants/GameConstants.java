@@ -23,9 +23,11 @@ package constants;
 import client.inventory.MapleInventoryType;
 import client.inventory.MapleWeaponType;
 import client.status.MonsterStatus;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.WeekFields;
 import java.util.List;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import server.Randomizer;
 import server.maps.MapleMapObjectType;
@@ -1952,7 +1954,10 @@ public class GameConstants {
 
     public static boolean isCustomReactItem(final int rid, final int iid, final int original) {
         if (rid == 2008006) { //orbis pq LOL
-            return iid == (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 4001055);
+            // SUNDAY_START.dayOfWeek() is Calendar.DAY_OF_WEEK's numbering:
+            // Sunday 1 ... Saturday 7, which is what the id arithmetic below
+            // assumes. System zone, as before - the PQ runs on server local time.
+            return iid == (LocalDate.now(ZoneId.systemDefault()).get(WeekFields.SUNDAY_START.dayOfWeek()) + 4001055);
             //4001056 = sunday. 4001062 = saturday
         } else {
             return iid == original;

@@ -3,6 +3,9 @@ package tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Date;
+import java.util.TimeZone;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +93,68 @@ class KoreanDateUtilTest {
             previousItem = item;
             previousQuest = quest;
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Vectors added with the java.time migration (D4). Every function here is a
+    // wire format, so these pin the exact bytes rather than describing intent.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("getTempBanTimestamp handles negative and far-future millis")
+    void tempBanTimestampEdges() {
+        // No DST adjustment anywhere in this one, so the numbers are absolute.
+        assertEquals(116_444_735_999_990_000L, KoreanDateUtil.getTempBanTimestamp(-1L));
+        assertEquals(116_443_872_000_000_000L, KoreanDateUtil.getTempBanTimestamp(-86_400_000L));
+        assertEquals(157_469_184_000_000_000L, KoreanDateUtil.getTempBanTimestamp(4_102_444_800_000L)); // 2100-01-01
+        assertEquals(131_444_736_123_450_000L, KoreanDateUtil.getTempBanTimestamp(OFF_MINUTE));
+    }
+
+    @Test
+    @DisplayName("getItemTimestamp returns its own epoch constant at its own epoch")
+    void itemTimestampEpoch() {
+        // REAL_YEAR2000 in, ITEM_YEAR2000 out - the anchor the whole scale hangs on.
+        assertEquals(-1_085_019_342, KoreanDateUtil.getItemTimestamp(946_681_229_830L));
+        assertEquals(-1_649_285_310, KoreanDateUtil.getItemTimestamp(0L));
+        // Minute truncation is toward zero, and the Unix epoch is before the
+        // item epoch, so -1 ms does not move the answer.
+        assertEquals(KoreanDateUtil.getItemTimestamp(0L), KoreanDateUtil.getItemTimestamp(-1L));
+        assertEquals(-1_649_336_808, KoreanDateUtil.getItemTimestamp(-86_400_000L));
+        assertEquals(795_962_313, KoreanDateUtil.getItemTimestamp(4_102_444_800_000L));
+    }
+
+    @Test
+    @DisplayName("getQuestTimestamp returns its own epoch constant at the Unix epoch")
+    void questTimestampEpoch() {
+        assertEquals(27_111_908, KoreanDateUtil.getQuestTimestamp(0L));
+        assertEquals(27_111_908, KoreanDateUtil.getQuestTimestamp(-1L));
+        assertEquals(27_111_908, KoreanDateUtil.getQuestTimestamp(59_999L));
+        assertEquals(27_111_707, KoreanDateUtil.getQuestTimestamp(-86_400_000L));
+        assertEquals(36_663_678, KoreanDateUtil.getQuestTimestamp(4_102_444_800_000L));
+    }
+
+    @Test
+    @DisplayName("getFileTimestamp at zero and below zero")
+    void fileTimestampEdges() {
+        assertEquals(dstAdjusted(0L) * 10_000L + FT_UT_OFFSET, KoreanDateUtil.getFileTimestamp(0L, false));
+        assertEquals(dstAdjusted(-1L) * 10_000L + FT_UT_OFFSET, KoreanDateUtil.getFileTimestamp(-1L, false));
+
+        // Minute truncation is integer division, i.e. toward zero, not toward
+        // the past: -1 ms rounds up to the epoch rather than down a minute.
+        assertEquals((dstAdjusted(-1L) / 1000 / 60) * 600_000_000L + FT_UT_OFFSET,
+                KoreanDateUtil.getFileTimestamp(-1L, true));
+        assertEquals((dstAdjusted(-86_400_000L) / 1000 / 60) * 600_000_000L + FT_UT_OFFSET,
+                KoreanDateUtil.getFileTimestamp(-86_400_000L, true));
+    }
+
+    @Test
+    @DisplayName("isDST still answers what TimeZone.inDaylightTime answered")
+    void isDstMatchesTheTimeZoneApiItReplaced() {
+        // The implementation moved from TimeZone.inDaylightTime(new Date()) to
+        // ZoneRules.isDaylightSavings(Instant.now()). Both read the JVM default
+        // zone, and getFileTimestamp shifts an hour of wire time on the answer,
+        // so pin them against each other.
+        assertEquals(TimeZone.getDefault().inDaylightTime(new Date()), KoreanDateUtil.isDST());
     }
 
     private static long dstAdjusted(final long millis) {

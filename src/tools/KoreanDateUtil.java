@@ -20,11 +20,19 @@
  */
 package tools;
 
-import java.util.Date;
-import java.util.SimpleTimeZone;
+import java.time.Instant;
+import java.time.ZoneId;
 
 /**
  * Provides a suite of tools for manipulating Korean Timestamps.
+ *
+ * <p><b>The arithmetic below is a wire format and stays in raw integers.</b> The
+ * client parses these as Windows FILETIME-style values - 100-nanosecond ticks
+ * since 1601 for the 64-bit ones, and two home-grown scaled-minute encodings for
+ * the 32-bit item and quest stamps. {@code java.time} has no type for any of
+ * them, and rewriting the multiplications in terms of {@code Duration} or
+ * {@code Instant} would only add a conversion that has to round-trip back to the
+ * same long. Only {@link #isDST()}, which really is a calendar question, moved.
  *
  * @author Frz
  * @since Revision 746
@@ -70,8 +78,22 @@ public class KoreanDateUtil {
         return (int) (time * 0.1396987) + QUEST_UNIXAGE;
     }
 
+    /**
+     * Whether the JVM's own time zone is on daylight saving time right now.
+     *
+     * <p>The system zone, not UTC, and deliberately so: this is the adjustment
+     * {@link #getFileTimestamp} applies before it hands a value to the client,
+     * and the client reads it against the machine's local clock. Taipei has had
+     * no DST since 1979, so on the intended deployment this is a constant
+     * {@code false}; it is kept because the server can be run anywhere.
+     *
+     * <p>{@code ZoneRules.isDaylightSavings} is the same question the old
+     * {@code TimeZone.inDaylightTime(new Date())} asked - "is the offset in
+     * force at this instant more than the standard offset" - just without
+     * allocating a {@code Date}.
+     */
     public static boolean isDST() {
-        return SimpleTimeZone.getDefault().inDaylightTime(new Date());
+        return ZoneId.systemDefault().getRules().isDaylightSavings(Instant.now());
     }
 
     public static long getFileTimestamp(long timeStampinMillis, boolean roundToMinutes) {

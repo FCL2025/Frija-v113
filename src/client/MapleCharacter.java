@@ -36,10 +36,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Deque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -2473,7 +2473,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         return skillMacros;
     }
 
-    public void tempban(String reason, Calendar duration, int greason, boolean IPMac) {
+    /**
+     * @param duration the instant the ban lifts; written straight into
+     * {@code accounts.tempban}, which {@code MapleClient} reads back at login.
+     */
+    public void tempban(String reason, Instant duration, int greason, boolean IPMac) {
         if (IPMac) {
             client.banMacs();
         }
@@ -2487,7 +2491,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             client.getSession().close();
 
             try (PreparedStatement ps = con.prepareStatement("UPDATE accounts SET tempban = ?, banreason = ?, greason = ? WHERE id = ?")) {
-                Timestamp TS = new Timestamp(duration.getTimeInMillis());
+                // Millisecond resolution on purpose: the column has no
+                // fractional-seconds precision, and Timestamp.from(Instant)
+                // would hand the driver nanoseconds it has to round away.
+                Timestamp TS = new Timestamp(duration.toEpochMilli());
                 ps.setTimestamp(1, TS);
                 ps.setString(2, reason);
                 ps.setInt(3, greason);

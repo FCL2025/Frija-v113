@@ -1,7 +1,7 @@
 package server.quest;
 
 import client.ISkill;
-import java.util.Calendar;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.LinkedList;
 
@@ -200,11 +200,36 @@ public class MapleQuestRequirement {
                 return c.getLevel() >= intStore;
             case lvmax:
                 return c.getLevel() <= intStore;
-            case end:
+            case end: {
+                // Quest.wz stores this as yyyyMMddHH in server local time.
+                //
+                // Two quirks of the Calendar code this replaces are preserved on
+                // purpose, because changing either one changes which quests are
+                // available and that is a gameplay decision, not a refactor:
+                //
+                //  1. cal.set(year, month, ..) fed the 1-based month from the
+                //     string into Calendar's 0-based MONTH field, so every
+                //     deadline is read one month late (and a "12" rolls into
+                //     January of the next year). plusMonths on the 1st of
+                //     January reproduces that, including the roll.
+                //  2. Calendar.set leaves SECOND and MILLISECOND alone, so the
+                //     deadline inherited whatever second it happened to be when
+                //     the check ran. Starting from now() and overwriting only
+                //     the fields set() overwrote keeps that.
+                //
+                // Days are added rather than assigned for the same reason: the
+                // lenient Calendar rolled a "31" in a 30-day month into the 1st
+                // of the next, where withDayOfMonth(31) would throw.
                 final String timeStr = stringStore;
-                final Calendar cal = Calendar.getInstance();
-                cal.set(Integer.parseInt(timeStr.substring(0, 4)), Integer.parseInt(timeStr.substring(4, 6)), Integer.parseInt(timeStr.substring(6, 8)), Integer.parseInt(timeStr.substring(8, 10)), 0);
-                return cal.getTimeInMillis() >= System.currentTimeMillis();
+                final ZonedDateTime now = ZonedDateTime.now();
+                final ZonedDateTime end = now.withDayOfMonth(1).withMonth(1)
+                        .withYear(Integer.parseInt(timeStr.substring(0, 4)))
+                        .plusMonths(Integer.parseInt(timeStr.substring(4, 6)))
+                        .plusDays(Integer.parseInt(timeStr.substring(6, 8)) - 1L)
+                        .withHour(Integer.parseInt(timeStr.substring(8, 10)))
+                        .withMinute(0);
+                return end.toInstant().toEpochMilli() >= System.currentTimeMillis();
+            }
             case mob:
                 for (Pair<Integer, Integer> a : dataStore) {
                     final int mobId = a.getLeft();

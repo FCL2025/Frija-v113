@@ -37,8 +37,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.temporal.TemporalField;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -260,9 +264,19 @@ public class CharacterRepository {
                     ret.vpoints = rs.getInt("vpoints");
 
                     if (rs.getTimestamp("lastlogon") != null) {
-                        final Calendar cal = Calendar.getInstance();
-                        cal.setTimeInMillis(rs.getTimestamp("lastlogon").getTime());
-                        if (cal.get(Calendar.DAY_OF_WEEK) + 1 == Calendar.getInstance().get(Calendar.DAY_OF_WEEK)) {
+                        // 連續登入獎勵。The comparison is on Calendar's Sunday=1
+                        // numbering, and is kept exactly as it was, wrap-around
+                        // quirk included: Saturday is 7, 7 + 1 is 8, and no day
+                        // is 8, so an account whose previous login was a Saturday
+                        // never gets the 50 ACash. Fixing that is a gameplay
+                        // change, not part of a java.time migration.
+                        final ZoneId zone = ZoneId.systemDefault();
+                        // SUNDAY_START.dayOfWeek() is Calendar.DAY_OF_WEEK's
+                        // numbering exactly: Sunday 1 ... Saturday 7.
+                        final TemporalField dayOfWeek = WeekFields.SUNDAY_START.dayOfWeek();
+                        final int lastLogon = Instant.ofEpochMilli(rs.getTimestamp("lastlogon").getTime())
+                                .atZone(zone).get(dayOfWeek);
+                        if (lastLogon + 1 == ZonedDateTime.now(zone).get(dayOfWeek)) {
                             ret.acash += 50;
                         }
                     }

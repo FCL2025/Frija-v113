@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
-import java.util.SimpleTimeZone;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
@@ -73,8 +71,14 @@ public class PacketHelper {
         return ((time * 10000000) + FT_UT_OFFSET);
     }
 
+    /**
+     * Unreferenced twin of {@link KoreanDateUtil#getFileTimestamp}, kept only
+     * because it is public; note the different {@link #FT_UT_OFFSET}, four hours
+     * off the real 1601 epoch. The DST test is
+     * {@link KoreanDateUtil#isDST()}'s, so the two cannot drift apart.
+     */
     public static long getFileTimestamp(long timeStampinMillis, boolean roundToMinutes) {
-        if (SimpleTimeZone.getDefault().inDaylightTime(new Date())) {
+        if (KoreanDateUtil.isDST()) {
             timeStampinMillis -= 3600000L;
         }
         long time;

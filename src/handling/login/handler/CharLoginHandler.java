@@ -20,8 +20,8 @@
  */
 package handling.login.handler;
 
+import java.time.Instant;
 import java.util.List;
-import java.util.Calendar;
 
 import client.inventory.IItem;
 import client.inventory.Item;
@@ -85,7 +85,7 @@ public class CharLoginHandler {
         }
 
         loginok = c.login(login, pwd, ipBan || macBan);
-        final Calendar tempbannedTill = c.getTempBanCalendar();
+        final Instant tempbannedTill = c.getTempBanTime();
 
         if (loginok == 0 && (ipBan || macBan) && !c.isGm()) {
             loginok = 3;
@@ -98,9 +98,9 @@ public class CharLoginHandler {
             if (!loginFailCount(c)) {
                 c.send(LoginPacket.getLoginFailed(loginok));
             }
-        } else if (tempbannedTill.getTimeInMillis() != 0) {
+        } else if (!tempbannedTill.equals(Instant.EPOCH)) {
             if (!loginFailCount(c)) {
-                c.send(LoginPacket.getTempBan(KoreanDateUtil.getTempBanTimestamp(tempbannedTill.getTimeInMillis()), c.getBanReason()));
+                c.send(LoginPacket.getTempBan(KoreanDateUtil.getTempBanTimestamp(tempbannedTill.toEpochMilli()), c.getBanReason()));
             }
         } else {
             c.loginAttempt = 0;

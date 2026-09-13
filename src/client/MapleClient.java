@@ -24,7 +24,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Calendar;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,7 +87,7 @@ public class MapleClient {
     private int channel = 1, accId = 1, world, birthday;
     private int charslots = DEFAULT_CHARSLOT;
     private boolean loggedIn = false, serverTransition = false;
-    private Calendar tempban = null;
+    private Instant tempban = null;
     private String accountName;
     private long lastPong = 0, lastPing = 0;
     private boolean monitored = false, receiving = true;
@@ -203,31 +203,36 @@ public class MapleClient {
         return loggedIn;
     }
 
-    private Calendar getTempBanCalendar(ResultSet rs) throws SQLException {
-        Calendar lTempban = Calendar.getInstance();
+    /**
+     * The instant this account's temporary ban expires, or {@link Instant#EPOCH}
+     * for "not temp-banned" - that sentinel is what the caller tests, and it is
+     * the same zero the column itself uses, so it is kept rather than swapped
+     * for {@code null}.
+     */
+    private Instant getTempBanTime(ResultSet rs) throws SQLException {
         // Read the column as text before anything else touches it. An account
         // that has never been banned carries the column's 0000-00-00 00:00:00
         // default, and Connector/J 8 refuses to hand that value to getTimestamp
         // ("Zero date value prohibited") or to getLong ("Unsupported conversion
         // from TIMESTAMP to java.lang.Long"). getString returns it verbatim.
         // This test used to read getLong("tempban") == 0, which worked only on
-        // the pre-8 connector.
+        // the pre-8 connector. Do not replace it with a java.time accessor -
+        // getObject(.., LocalDateTime.class) refuses a zero date just as loudly.
         final String rawTempban = rs.getString("tempban");
         if (rawTempban == null || rawTempban.startsWith("0000-00-00")) {
-            lTempban.setTimeInMillis(0);
+            return Instant.EPOCH;
+        }
+        // getTimestamp().getTime() rather than toInstant(): the column has no
+        // fractional-seconds precision, and millisecond truncation is what the
+        // Calendar this replaces did.
+        final Instant lTempban = Instant.ofEpochMilli(rs.getTimestamp("tempban").getTime());
+        if (Instant.now().isBefore(lTempban)) {
             return lTempban;
         }
-        Calendar today = Calendar.getInstance();
-        lTempban.setTimeInMillis(rs.getTimestamp("tempban").getTime());
-        if (today.getTimeInMillis() < lTempban.getTimeInMillis()) {
-            return lTempban;
-        }
-
-        lTempban.setTimeInMillis(0);
-        return lTempban;
+        return Instant.EPOCH;
     }
 
-    public Calendar getTempBanCalendar() {
+    public Instant getTempBanTime() {
         return tempban;
     }
 
@@ -441,7 +446,7 @@ public class MapleClient {
                 salt2 = rs.getString("salt2");
                 gm = rs.getInt("gm") > 0;
                 greason = rs.getByte("greason");
-                tempban = getTempBanCalendar(rs);
+                tempban = getTempBanTime(rs);
                 gender = rs.getByte("gender");
 
                 if (secondPassword != null && salt2 != null) {

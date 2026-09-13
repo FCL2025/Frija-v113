@@ -27,10 +27,11 @@ import client.inventory.Equip;
 import client.inventory.IEquip;
 import client.inventory.MapleWeaponType;
 import java.lang.ref.WeakReference;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 
 import java.util.Map.Entry;
@@ -472,7 +473,9 @@ public class PlayerStats {
                 }
             }
         }
-        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        // Server local time, as before: the time-of-day EXP coupons below are
+        // sold against the wall clock the player sees, not UTC.
+        int hour = LocalTime.now(ZoneId.systemDefault()).getHour();
         for (IItem item : chra.getInventory(MapleInventoryType.CASH)) {
             int itemId = item.getItemId();
             if (expMod < 3 && (itemId == 5211060 || itemId == 5211050 || itemId == 5211051 || itemId == 5211052 || itemId == 5211053 || itemId == 5211054)) {

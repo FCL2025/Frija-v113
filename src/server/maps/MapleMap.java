@@ -35,7 +35,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
-import java.util.Calendar;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 import client.inventory.Equip;
 import client.inventory.IItem;
@@ -1845,8 +1846,11 @@ public final class MapleMap {
                 chr.getClient().send(MapPacket.getClock((int) (chr.getEventInstance().getTimeLeft() / 1000)));
             }
             if (hasClock()) {
-                final Calendar cal = Calendar.getInstance();
-                chr.getClient().send((MapPacket.getClockTime(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), cal.get(Calendar.SECOND))));
+                // Goes out on the wire as three bytes the client renders on the
+                // map clock, so it must stay server local time - one snapshot,
+                // not three separate now() reads that could straddle a second.
+                final LocalTime now = LocalTime.now(ZoneId.systemDefault());
+                chr.getClient().send((MapPacket.getClockTime(now.getHour(), now.getMinute(), now.getSecond())));
             }
             if (chr.getCarnivalParty() != null && chr.getEventInstance() != null) {
                 chr.getEventInstance().onMapLoad(chr);

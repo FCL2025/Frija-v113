@@ -72,12 +72,21 @@ public class Start {
      * belongs to simply stops answering - no exception the player or the
      * administrator ever sees. Two batches of them (nine portal scripts, eight
      * NPC scripts) lived in this tree for years that way. The scan costs about
-     * 100 ms for ~2,450 files, so it runs on every start; it never blocks or
+     * 0.4 s for ~2,450 files, so it runs on every start; it never blocks or
      * fails one, and it says nothing at all when every script is fine.
+     *
+     * <p>This is deliberately {@code scanEncoding()} and not
+     * {@link ScriptEncodingCheck#scan()}: the latter also hands every script
+     * to Nashorn, which finds a second family of silently-dead scripts (six of
+     * them in this tree) but costs 2.5-4 s and a few hundred MB of short-lived
+     * allocation. That is more than half of this server's whole startup, for a
+     * fault that cannot appear between two runs of the same source tree, so
+     * the compile half lives on {@code !checkscripts} and
+     * {@code GET /api/scripts/encoding} instead.
      */
     private static void checkScriptEncoding() {
         try {
-            final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scan();
+            final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scanEncoding();
             if (result.ok()) {
                 return;
             }

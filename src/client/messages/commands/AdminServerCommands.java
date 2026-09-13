@@ -647,9 +647,18 @@ public class AdminServerCommands {
     }
 
     /**
-     * Re-runs the BIG5 scan the server does at startup. A script that is not
-     * BIG5 is read as an empty file, so the NPC just stops answering; this is
-     * the way to find out that is what happened.
+     * Re-runs the script health scan, and it is a superset of the one the
+     * server does at startup: startup only strict-decodes BIG5 (~0.4 s), this
+     * also hands every script to Nashorn for compilation (~4 s in total).
+     * Both failures look the same in game - a script that is not BIG5 is read
+     * as an empty file, and one that will not compile never defines its entry
+     * point, so either way the NPC or quest just stops answering and
+     * {@code Log_Script_Except.rtf} only says {@code No such function action}.
+     * This is the way to find out that is what happened.
+     *
+     * <p>The sweep blocks this handler thread for those ~4 s, which is
+     * harmless: MINA's {@code ExecutorFilter} runs one task per session at a
+     * time, so only the GM who typed the command waits.
      */
     public static class CheckScripts extends CommandExecute {
 
@@ -659,10 +668,12 @@ public class AdminServerCommands {
         public int execute(MapleClient c, String[] splitted) {
             final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scan();
             if (result.ok()) {
-                c.getPlayer().dropMessage(6, "[腳本] " + result.total() + " 支腳本的編碼都是 BIG5，沒有問題。");
+                c.getPlayer().dropMessage(6, "[腳本] " + result.total() + " 支腳本都讀得到也編得過，沒有問題。");
                 return 1;
             }
-            c.getPlayer().dropMessage(6, "[腳本] " + result.total() + " 支腳本中有 " + result.badCount() + " 支不是 BIG5，將不會生效：");
+            c.getPlayer().dropMessage(6, "[腳本] " + result.total() + " 支腳本中有 " + result.badCount()
+                    + " 支不會生效（不是 BIG5 " + result.notBig5().size()
+                    + " 支、編不過 " + result.notCompiling().size() + " 支）：");
             int shown = 0;
             for (String path : result.bad()) {
                 if (shown >= MAX_LISTED) {

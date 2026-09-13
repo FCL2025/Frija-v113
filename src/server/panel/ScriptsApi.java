@@ -192,15 +192,29 @@ final class ScriptsApi {
     }
 
     /**
-     * The same scan the server runs at startup and {@code !checkscripts} runs
-     * in game: every {@code *.js} under {@code Libs/scripts} strictly decoded
-     * as BIG5, and the ones that fail named. Read-only and uncached, so it
-     * answers for the files as they are on disk right now - including a script
-     * repaired through {@link #write} a moment ago.
+     * The same scan {@code !checkscripts} runs in game: every {@code *.js}
+     * under {@code Libs/scripts} strictly decoded as BIG5 and then handed to
+     * Nashorn's compiler, with everything that fails either half named.
+     * Read-only and uncached, so it answers for the files as they are on disk
+     * right now - including a script repaired through {@link #write} a moment
+     * ago.
+     *
+     * <p>Both halves matter and they fail the same way from the outside: the
+     * NPC simply stops answering. {@code bad} is the two of them together, the
+     * way it always was; {@code notBig5} and {@code notCompiling} split it.
+     * The compile half takes a few seconds for ~2,450 files, which is why
+     * startup only runs the decode half - this endpoint is one of the two
+     * places that pays for the rest.
      */
     private static Map<String, Object> encoding() {
         final ScriptEncodingCheck.Result result = ScriptEncodingCheck.scan();
-        return Json.obj("total", result.total(), "bad", result.bad());
+        final List<Map<String, Object>> notCompiling = new ArrayList<>();
+        for (final ScriptEncodingCheck.Failure f : result.notCompiling()) {
+            notCompiling.add(Json.obj("path", f.path(), "error", f.error()));
+        }
+        return Json.obj("total", result.total(), "bad", result.bad(),
+                "notBig5", result.notBig5(), "notCompiling", notCompiling,
+                "compileChecked", result.compileChecked());
     }
 
     private static Map<String, Object> read(final String kind, final String name) throws IOException {

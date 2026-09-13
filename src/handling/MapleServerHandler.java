@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import client.MapleClient;
 import handling.world.Client;
@@ -317,11 +318,163 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         super.messageSent(session, message);
     }
 
+    /**
+     * Full log entries written per session before this handler goes quiet, and
+     * the session attribute the running count lives in.
+     *
+     * <p>A broken or hostile client can drive {@link #exceptionCaught} in a
+     * loop, and an unbounded append to an {@code .rtf} from a MINA handler
+     * thread is a denial-of-service on its own - the disk write is the
+     * expensive part and the attacker pays nothing for it. A per-session budget
+     * is the right bound rather than a global rate: a global one lets one bad
+     * session hide every other session's first failure, which is the exact
+     * failure mode this method exists to stop. The overall ceiling is still
+     * bounded, because {@link #sessionOpened}'s flood check already caps how
+     * many sessions one address may open before the address is blocked
+     * outright.
+     *
+     * <p>The counter is an {@link AtomicInteger} in the session's attribute
+     * map, so it dies with the session and leaks nothing. Two threads racing to
+     * create it would cost a couple of extra entries and nothing else;
+     * MINA's {@code ExecutorFilter} runs at most one event per session at a
+     * time, so it should not happen at all.
+     */
+    private static final int EXCEPTION_LOG_LIMIT = 5;
+    private static final String EXCEPTION_COUNT_KEY = "handling.exceptionCount";
+
+    /**
+     * The last stop for anything thrown out of decoding, packet handling or a
+     * write - and until now it threw it away. The body was commented out
+     * entirely, so an {@link Error}, which walks straight through every
+     * {@code catch (Exception)} on the way here, produced literally nothing: no
+     * log line, no stack trace, no sign that anything had happened.
+     *
+     * <p>That is not theoretical. {@code Libs/scripts/npc/2040043.js} makes
+     * Nashorn throw a bare {@link AssertionError} while generating bytecode for
+     * it. The error passed through {@code AbstractScriptManager}, through
+     * {@code NPCScriptManager}, through the dispatch path and arrived here,
+     * where it vanished - so LPQ stage 8's NPC simply did nothing, forever,
+     * with not one line anywhere to say why.
+     *
+     * <p>Three rules shape what it may do, all of them because it runs on a
+     * handler thread on the error path:
+     *
+     * <ul>
+     * <li><b>It must not throw.</b> The whole body sits inside one
+     * {@code catch (Throwable)}. If the reporting itself fails there is nowhere
+     * left to report to, and propagating out of here would take a MINA thread
+     * with it.</li>
+     * <li><b>It must not write without a bound.</b> See
+     * {@link #EXCEPTION_LOG_LIMIT}.</li>
+     * <li><b>It must not bury the routine ones in stack traces.</b> A client
+     * that vanishes mid-write surfaces here as an {@link IOException} -
+     * "connection reset", {@code ClosedChannelException}. That is normal, it
+     * happens once per ungraceful disconnect, and its trace says nothing anyone
+     * can act on. Those get one line naming the exception and the player, and
+     * no trace. The category is still logged, not swallowed: a genuine I/O
+     * failure that is not a disconnect still leaves its name, its message and
+     * its context in the same file.</li>
+     * </ul>
+     *
+     * <p>What the commented-out original body had was the client lookup, the
+     * {@code MapleClient.getLogMessage(client, cause.getMessage())} context
+     * string and passing {@code cause} itself so the trace went out - all three
+     * are kept. What could not be kept was its sink: it called {@code log.error}
+     * on an slf4j logger that this class has not had for as long as the repo
+     * has existed. {@link FileoutputUtil} is where the rest of this class
+     * already sends swallowed exceptions, so this goes to the same file as
+     * {@code messageReceived}'s own catch, {@link FileoutputUtil#PacketEx_Log}.
+     * The second commented-out line, a bare {@code cause.printStackTrace()}, is
+     * deliberately not restored as-is - full traces on stdout are the same
+     * unbounded-write problem - and is replaced by one line on stderr naming
+     * the log file, so an operator watching the console still sees that
+     * something happened.
+     */
     @Override
     public void exceptionCaught(final IoSession session, final Throwable cause) throws Exception {
-        /*	MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
-         log.error(MapleClient.getLogMessage(client, cause.getMessage()), cause);*/
-//	cause.printStackTrace();
+        try {
+            if (cause == null) {
+                return;
+            }
+            final int seen = countException(session);
+            if (seen > EXCEPTION_LOG_LIMIT) {
+                return; // already said, on entry EXCEPTION_LOG_LIMIT, that we were going quiet
+            }
+            final MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+            final String where = channel > -1 ? "[Channel " + channel + "]" : (cs ? "[Cash Server]" : "[Login Server]");
+            final String address = session.getRemoteAddress() == null ? "?" : session.getRemoteAddress().toString();
+            // MINA's own decoder exceptions carry a hex dump of the offending
+            // buffer in getMessage(), so the message is truncated: one entry has
+            // to stay one readable entry, and the client chooses its length.
+            String message = cause.getMessage();
+            if (message != null && message.length() > 512) {
+                message = message.substring(0, 512) + "…(截斷)";
+            }
+            final String what = cause.getClass().getName() + (message == null ? "" : ": " + message);
+
+            final StringBuilder sb = new StringBuilder();
+            sb.append(where).append(" [IP: ").append(address).append("] ");
+            // getLogMessage prefixes the character (name + cid) and the account
+            // name when there is a client far enough along to have them.
+            sb.append(MapleClient.getLogMessage(client, what));
+            final boolean routine = isRoutineDisconnect(cause);
+            if (routine) {
+                sb.append(" [連線中斷，不輸出堆疊]");
+            } else {
+                sb.append(nl).append(FileoutputUtil.getString(cause));
+            }
+            if (seen == EXCEPTION_LOG_LIMIT) {
+                sb.append(nl).append("[此連線已達 ").append(EXCEPTION_LOG_LIMIT)
+                        .append(" 筆上限，後續的例外不再記錄]");
+            }
+            // One append, one entry: FileoutputUtil writes the header and the
+            // body in a single call for exactly this reason.
+            FileoutputUtil.log(FileoutputUtil.PacketEx_Log, sb.toString());
+            if (!routine) {
+                System.err.println(where + " exceptionCaught " + what + " - 詳見 " + FileoutputUtil.PacketEx_Log);
+            }
+        } catch (final Throwable ignored) {
+            // The error path's own error path. There is nothing left to report
+            // to, and throwing from here would kill a MINA handler thread.
+        }
+    }
+
+    /**
+     * How many times this session has reached {@link #exceptionCaught},
+     * including this one.
+     */
+    private static int countException(final IoSession session) {
+        if (session.getAttribute(EXCEPTION_COUNT_KEY) instanceof AtomicInteger seen) {
+            return seen.incrementAndGet();
+        }
+        final AtomicInteger fresh = new AtomicInteger(1);
+        session.setAttribute(EXCEPTION_COUNT_KEY, fresh);
+        return 1;
+    }
+
+    /**
+     * True for the everyday "the client went away" throwables - anything with
+     * an {@link IOException} anywhere in its cause chain, which covers
+     * {@code SocketException: Connection reset},
+     * {@code ClosedChannelException} and {@code EOFException}. These are logged
+     * as one line instead of a stack trace.
+     *
+     * <p>The walk is depth-bounded because a {@code Throwable} whose cause
+     * chain loops back on itself would otherwise spin here, on an I/O thread,
+     * forever.
+     */
+    private static boolean isRoutineDisconnect(final Throwable cause) {
+        Throwable t = cause;
+        for (int depth = 0; t != null && depth < 8; depth++) {
+            if (t instanceof IOException) {
+                return true;
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     @Override

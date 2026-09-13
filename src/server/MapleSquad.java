@@ -56,17 +56,52 @@ public class MapleSquad {
         }
     }
 
-    private WeakReference<MapleCharacter> leader;
+    private volatile WeakReference<MapleCharacter> leader;
     private final String leaderName, toSay;
+    /**
+     * The roster and the ban list, name to job name.
+     *
+     * <p>Both stay {@link LinkedHashMap}s because insertion order is load
+     * bearing: the leader is the first entry, {@link #getSquadMemberString}
+     * numbers the menu rows from that order, and {@link #banMember} refuses row
+     * 0 on the strength of it. So neither can become a {@code ConcurrentHashMap},
+     * which would scramble it.
+     *
+     * <p>They were unguarded. Every member of a squad reaches them from their
+     * own handler thread - join, leave and the leader's ban/accept menus are all
+     * NPC scripts, and {@code EventInstanceManager} removes a member from a
+     * timer thread when they leave the instance - so a {@code put} and a
+     * {@code remove} could land on the same bucket at once.
+     *
+     * <p>{@link #memberLock} guards every read and every write of both maps. It
+     * is a plain monitor rather than a {@code ReentrantReadWriteLock} on
+     * purpose: a squad holds at most 30 entries and the operations happen at
+     * NPC-menu rate, so there is nothing for a read lock to win, and a monitor
+     * is reentrant in both directions where a read/write lock deadlocks the
+     * moment a read-holding method wants to write.
+     *
+     * <p>Nothing that sends a packet happens inside it. Each mutator decides
+     * under the lock what it changed and sends its {@code dropMessage} after
+     * releasing it, and {@link #clear()} releases it before calling
+     * {@code removeMapleSquad}, so {@code memberLock} never nests inside
+     * {@code ChannelServer}'s {@code squadLock} or the other way round.
+     */
     private final Map<String, String> members = new LinkedHashMap<>();
     private final Map<String, String> bannedMembers = new LinkedHashMap<>();
+    private final Object memberLock = new Object();
     private final int ch;
     private final long startTime;
     private final int expiration;
     private final int beginMapId;
     private final MapleSquadType type;
-    private byte status = 0;
-    private ScheduledFuture<?> removal;
+    /**
+     * Written by the squad NPC's thread and by the {@code EtcTimer} task, read
+     * by both plus whoever walks the boss map - volatile so a cleared squad
+     * actually looks cleared to the next thread. The read-modify-write in
+     * {@link #setStatus} is still not atomic; see the note there.
+     */
+    private volatile byte status = 0;
+    private volatile ScheduledFuture<?> removal;
     private MapleClient c;
 
     public MapleSquad(final int ch, final String type, final MapleCharacter leader, final int expiration, final String toSay) {
@@ -142,10 +177,14 @@ public class MapleSquad {
             removal.cancel(false);
             removal = null;
         }
-        members.clear();
-        bannedMembers.clear();
+        synchronized (memberLock) {
+            members.clear();
+            bannedMembers.clear();
+        }
         leader = null;
-        ChannelServer.getInstance(ch).removeMapleSquad(type);
+        // Identity-checked: a squad that lost the registration race clears
+        // itself, and must not take the winner's slot down with it.
+        ChannelServer.getInstance(ch).removeMapleSquad(type, this);
         this.status = 0;
     }
 
@@ -213,7 +252,12 @@ public class MapleSquad {
 
     public MapleCharacter getLeader() {
         if (leader == null || leader.get() == null) {
-            if (members.size() > 0 && getChar(leaderName) != null) {
+            final boolean hasMembers;
+            synchronized (memberLock) {
+                hasMembers = !members.isEmpty();
+            }
+            // clear() is called with memberLock released: it broadcasts.
+            if (hasMembers && getChar(leaderName) != null) {
                 leader = new WeakReference<>(getChar(leaderName));
             } else {
                 if (status != 0) {
@@ -222,104 +266,188 @@ public class MapleSquad {
                 return null;
             }
         }
-        return leader.get();
+        final WeakReference<MapleCharacter> ref = leader;
+        return ref == null ? null : ref.get();
     }
 
     public boolean containsMember(MapleCharacter member) {
-        for (String mmbr : members.keySet()) {
-            if (mmbr.equalsIgnoreCase(member.getName())) {
-                return true;
+        return containsMember(member.getName());
+    }
+
+    /** Case-insensitive, as the loop it replaces was. */
+    private boolean containsMember(final String name) {
+        synchronized (memberLock) {
+            for (String mmbr : members.keySet()) {
+                if (mmbr.equalsIgnoreCase(name)) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
     public List<String> getMembers() {
-        return new LinkedList<>(members.keySet());
+        synchronized (memberLock) {
+            return new LinkedList<>(members.keySet());
+        }
     }
 
     public List<String> getBannedMembers() {
-        return new LinkedList<>(bannedMembers.keySet());
+        synchronized (memberLock) {
+            return new LinkedList<>(bannedMembers.keySet());
+        }
     }
 
     public int getSquadSize() {
-        return members.size();
+        synchronized (memberLock) {
+            return members.size();
+        }
     }
 
     public boolean isBanned(MapleCharacter member) {
-        return bannedMembers.containsKey(member.getName());
+        synchronized (memberLock) {
+            return bannedMembers.containsKey(member.getName());
+        }
     }
 
     public int addMember(MapleCharacter member, boolean join) {
-    if (getLeader() == null) {
-        return -1;
-    }
+        final MapleCharacter lead = getLeader();
+        if (lead == null) {
+            return -1;
+        }
+        final String name = member.getName();
         final String job = MapleCarnivalChallenge.getJobBasicNameById(member.getJob());
         if (join) {
-            if (!containsMember(member) && !getAllNextPlayer().contains(member.getName())) {
-                if (members.size() <= 30) {
-                    members.put(member.getName(), job);
-                    getLeader().dropMessage(6, member.getName() + " (" + job + ") 加入了遠征隊!");
-                    return 1;
+            // getAllNextPlayer() is a List<Pair<String, Long>>, so contains(String)
+            // can only ever be false. That is a known pre-existing bug and it is
+            // left exactly as it was: making it work would start turning away
+            // players who are queued for the next squad, which is a gameplay
+            // change and not this one's to make.
+            if (getAllNextPlayer().contains(name)) {
+                return -1;
+            }
+            synchronized (memberLock) {
+                if (containsMember(name)) {
+                    return -1;
                 }
-                return 2;
+                if (members.size() > 30) {
+                    return 2;
+                }
+                members.put(name, job);
             }
-            return -1;
-        } else {
-            if (containsMember(member)) {
-                members.remove(member.getName());
-                getLeader().dropMessage(6, member.getName() + " (" + job + ") 離開了遠征隊.");
-                return 1;
-            }
-            return -1;
+            lead.dropMessage(6, name + " (" + job + ") 加入了遠征隊!");
+            return 1;
         }
+        synchronized (memberLock) {
+            if (!containsMember(name)) {
+                return -1;
+            }
+            members.remove(name);
+        }
+        lead.dropMessage(6, name + " (" + job + ") 離開了遠征隊.");
+        return 1;
     }
 
+    /**
+     * Let a banned member back in by their row in the menu
+     * {@link #getSquadMemberString}{@code (2)} drew.
+     *
+     * <p>The size check, the list build and the {@code get(pos)} are now one
+     * step under {@link #memberLock}, so {@code pos} can no longer be validated
+     * against one version of the ban list and resolved against another.
+     *
+     * <p>What that does <i>not</i> fix, and cannot be fixed here, is that
+     * {@code pos} is an index into a menu the client drew earlier: see the note
+     * on {@link #banMember}.
+     */
     public void acceptMember(int pos) {
-        if (pos < 0 || pos >= bannedMembers.size()) {
-            return;
+        final MapleCharacter toadd;
+        synchronized (memberLock) {
+            if (pos < 0 || pos >= bannedMembers.size()) {
+                return;
+            }
+            final String name = new LinkedList<>(bannedMembers.keySet()).get(pos);
+            // As before, an offline player is not un-banned at all. getChar is a
+            // PlayerStorage map read - no packet, no database - so it is safe
+            // under the lock, and resolving it here is what keeps the check and
+            // the move atomic.
+            toadd = name == null ? null : getChar(name);
+            if (toadd == null) {
+                return;
+            }
+            members.put(name, bannedMembers.get(name));
+            bannedMembers.remove(name);
         }
-        final List<String> membersAsList = getBannedMembers();
-        final String toadd = membersAsList.get(pos);
-        if (toadd != null && getChar(toadd) != null) {
-            members.put(toadd, bannedMembers.get(toadd));
-            bannedMembers.remove(toadd);
-
-            getChar(toadd).dropMessage(5, getLeaderName() + " 允許你重新回來遠征隊");
-        }
+        toadd.dropMessage(5, getLeaderName() + " 允許你重新回來遠征隊");
     }
 
     public void reAddMember(MapleCharacter chr) {
-        removeMember(chr);
-        members.put(chr.getName(), MapleCarnivalChallenge.getJobBasicNameById(chr.getJob()));
+        final String job = MapleCarnivalChallenge.getJobBasicNameById(chr.getJob());
+        synchronized (memberLock) {
+            // remove then put, as before: it moves the entry to the end of the
+            // insertion order rather than leaving it where it was.
+            members.remove(chr.getName());
+            members.put(chr.getName(), job);
+        }
     }
 
     public void removeMember(MapleCharacter chr) {
-        if (members.containsKey(chr.getName())) {
-            members.remove(chr.getName());
-        }
+        removeMember(chr.getName());
     }
 
     public void removeMember(String chr) {
-        if (members.containsKey(chr)) {
-            members.remove(chr);
+        synchronized (memberLock) {
+            members.remove(chr); // containsKey first was redundant, and was not atomic with it
         }
     }
 
+    /**
+     * Throw a member out by their row in the menu
+     * {@link #getSquadMemberString}{@code (1)} drew. Row 0 is the leader and is
+     * refused.
+     *
+     * <p>The three steps - size check, build the list, {@code get(pos)} - are
+     * now one step under {@link #memberLock}. That removes the crash and the
+     * wrong-list read: the index can no longer be checked against one roster
+     * and resolved against another, shorter one.
+     *
+     * <p><b>It does not, and a lock cannot, answer the question underneath.</b>
+     * {@code pos} arrives from an NPC selection: the client drew a numbered
+     * list at the moment the leader opened the menu, and sends back the row
+     * number when they click. If somebody left the squad in between, row 3 is
+     * now a different player, and this bans that different player - silently,
+     * and with a message that names them. Deciding what should happen instead
+     * is a product call, not a refactor, and it is written up in the task notes
+     * rather than answered here. Fixing it at all means the menu carrying the
+     * member's name instead of their index, which changes
+     * {@link #getSquadMemberString} and every squad NPC script with it.
+     */
     public void banMember(int pos) {
-        if (pos <= 0 || pos >= members.size()) { //may not ban leader
-            return;
+        final MapleCharacter banned;
+        synchronized (memberLock) {
+            if (pos <= 0 || pos >= members.size()) { //may not ban leader
+                return;
+            }
+            final String name = new LinkedList<>(members.keySet()).get(pos);
+            // As before, a member who is not online on this channel is not banned.
+            banned = name == null ? null : getChar(name);
+            if (banned == null) {
+                return;
+            }
+            bannedMembers.put(name, members.get(name));
+            members.remove(name);
         }
-        final List<String> membersAsList = getMembers();
-        final String toban = membersAsList.get(pos);
-        if (toban != null && getChar(toban) != null) {
-            bannedMembers.put(toban, members.get(toban));
-            members.remove(toban);
-
-            getChar(toban).dropMessage(5, getLeaderName() + " 從遠征隊中刪除您.");
-        }
+        banned.dropMessage(5, getLeaderName() + " 從遠征隊中刪除您.");
     }
 
+    /**
+     * Note that the status write and the {@code removal} cancel are two steps,
+     * so two threads calling this with {@code 2} at the same moment can both
+     * see a non-null {@code removal} and both cancel it. Cancelling an already
+     * cancelled {@code ScheduledFuture} is a no-op, so that is harmless today;
+     * it is written down because it stops being harmless the moment anything
+     * else is added here.
+     */
     public void setStatus(byte status) {
         this.status = status;
         if (status == 2 && removal != null) {
@@ -333,10 +461,27 @@ public class MapleSquad {
     }
 
     public int getBannedMemberSize() {
-        return bannedMembers.size();
+        synchronized (memberLock) {
+            return bannedMembers.size();
+        }
     }
 
+    /**
+     * Builds one of the four squad menus. The whole build is under
+     * {@link #memberLock} so the count in the header and the rows below it come
+     * from the same roster, and nobody can be removed from {@code members}
+     * halfway down the list and leave the numbering with a hole in it. It only
+     * appends to a {@link StringBuilder}, so nothing here sends a packet while
+     * the lock is held.
+     */
     public String getSquadMemberString(byte type) {
+        synchronized (memberLock) {
+            return buildSquadMemberString(type);
+        }
+    }
+
+    /** Caller holds {@link #memberLock}. */
+    private String buildSquadMemberString(byte type) {
         switch (type) {
             case 0: {
                 StringBuilder sb = new StringBuilder("遠征隊名單 : ");
@@ -409,13 +554,20 @@ public class MapleSquad {
         return type;
     }
 
+    /**
+     * Job-name histogram of the current roster. {@code memberLock} is reentrant,
+     * so {@link #buildSquadMemberString} case 3 calling this while already
+     * holding it is fine.
+     */
     public final Map<String, Integer> getJobs() {
         final Map<String, Integer> jobs = new LinkedHashMap<>();
-        for (Entry<String, String> chr : members.entrySet()) {
-            if (jobs.containsKey(chr.getValue())) {
-                jobs.put(chr.getValue(), jobs.get(chr.getValue()) + 1);
-            } else {
-                jobs.put(chr.getValue(), 1);
+        synchronized (memberLock) {
+            for (Entry<String, String> chr : members.entrySet()) {
+                if (jobs.containsKey(chr.getValue())) {
+                    jobs.put(chr.getValue(), jobs.get(chr.getValue()) + 1);
+                } else {
+                    jobs.put(chr.getValue(), 1);
+                }
             }
         }
         return jobs;

@@ -1132,10 +1132,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             ps.close();
 
             deleteWhereCharacterId(con, "DELETE FROM skillmacros WHERE characterid = ?");
+            ps = con.prepareStatement("INSERT INTO skillmacros (characterid, skill1, skill2, skill3, name, shout, position) VALUES (?, ?, ?, ?, ?, ?, ?)");
             for (int i = 0; i < 5; i++) {
                 final SkillMacro macro = skillMacros[i];
                 if (macro != null) {
-                    ps = con.prepareStatement("INSERT INTO skillmacros (characterid, skill1, skill2, skill3, name, shout, position) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     ps.setInt(1, id);
                     ps.setInt(2, macro.getSkill1());
                     ps.setInt(3, macro.getSkill2());
@@ -1143,10 +1143,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     ps.setString(5, macro.getName());
                     ps.setInt(6, macro.getShout());
                     ps.setInt(7, i);
-                    ps.execute();
-                    ps.close();
+                    ps.addBatch();
                 }
             }
+            ps.executeBatch();
+            ps.close();
 
             deleteWhereCharacterId(con, "DELETE FROM inventoryslot WHERE characterid = ?");
             ps = con.prepareStatement("INSERT INTO inventoryslot (characterid, `equip`, `use`, `setup`, `etc`, `cash`) VALUES (?, ?, ?, ?, ?, ?)");
@@ -1167,11 +1168,16 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             for (final Entry<Integer, String> q : questinfo.entrySet()) {
                 ps.setInt(2, q.getKey());
                 ps.setString(3, q.getValue());
-                ps.execute();
+                ps.addBatch();
             }
+            ps.executeBatch();
             ps.close();
 
             deleteWhereCharacterId(con, "DELETE FROM queststatus WHERE characterid = ?");
+            // queststatus 維持逐列 executeUpdate：每一列的 generated key 就是
+            // queststatusmobs 的外來鍵，改成批次就拿不到逐列的 key。只有
+            // queststatusmobs 收成批次 —— key 在 setInt 當下已經取出，累積到最後
+            // 才送出不會改變任何一列的內容。
             ps = con.prepareStatement("INSERT INTO queststatus (`queststatusid`, `characterid`, `quest`, `status`, `time`, `forfeited`, `customData`) VALUES (DEFAULT, ?, ?, ?, ?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS);
             pse = con.prepareStatement("INSERT INTO queststatusmobs VALUES (DEFAULT, ?, ?, ?)");
             ps.setInt(1, id);
@@ -1190,12 +1196,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                         pse.setInt(1, rs.getInt(1));
                         pse.setInt(2, mob);
                         pse.setInt(3, q.getMobKills(mob));
-                        pse.executeUpdate();
+                        pse.addBatch();
                     }
                 }
                 rs.close();
             }
             ps.close();
+            pse.executeBatch();
             pse.close();
 
             deleteWhereCharacterId(con, "DELETE FROM skills WHERE characterid = ?");
@@ -1208,9 +1215,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     ps.setByte(3, skill.getValue().skillevel);
                     ps.setByte(4, skill.getValue().masterlevel);
                     ps.setLong(5, skill.getValue().expiration);
-                    ps.execute();
+                    ps.addBatch();
                 }
             }
+            ps.executeBatch();
             ps.close();
 
             List<MapleCoolDownValueHolder> cd = getCooldowns();
@@ -1221,8 +1229,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     ps.setInt(2, cooling.skillId);
                     ps.setLong(3, cooling.startTime);
                     ps.setLong(4, cooling.length);
-                    ps.execute();
+                    ps.addBatch();
                 }
+                ps.executeBatch();
                 ps.close();
             }
 
@@ -1233,9 +1242,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 if (savedLocations[savedLocationType.getValue()] != -1) {
                     ps.setInt(2, savedLocationType.getValue());
                     ps.setInt(3, savedLocations[savedLocationType.getValue()]);
-                    ps.execute();
+                    ps.addBatch();
                 }
             }
+            ps.executeBatch();
             ps.close();
 
             ps = con.prepareStatement("DELETE FROM achievements WHERE accountid = ?");
@@ -1247,8 +1257,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 ps.setInt(1, id);
                 ps.setInt(2, achid);
                 ps.setInt(3, accountid);
-                ps.executeUpdate();
+                ps.addBatch();
             }
+            ps.executeBatch();
             ps.close();
 
             deleteWhereCharacterId(con, "DELETE FROM buddies WHERE characterid = ?");
@@ -1257,8 +1268,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             for (BuddylistEntry entry : buddylist.getBuddies()) {
                 ps.setInt(2, entry.getCharacterId());
                 ps.setInt(3, entry.isVisible() ? 0 : 1);
-                ps.execute();
+                ps.addBatch();
             }
+            ps.executeBatch();
             ps.close();
 
             ps = con.prepareStatement("UPDATE accounts SET `ACash` = ?, `mPoints` = ?, `points` = ?, `vpoints` = ? WHERE id = ?");
@@ -1282,35 +1294,38 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             monsterbook.saveCards(id);
 
             deleteWhereCharacterId(con, "DELETE FROM wishlist WHERE characterid = ?");
+            ps = con.prepareStatement("INSERT INTO wishlist(characterid, sn) VALUES(?, ?) ");
             for (int i = 0; i < getWishlistSize(); i++) {
-                ps = con.prepareStatement("INSERT INTO wishlist(characterid, sn) VALUES(?, ?) ");
                 ps.setInt(1, getId());
                 ps.setInt(2, wishlist[i]);
-                ps.execute();
-                ps.close();
+                ps.addBatch();
             }
+            ps.executeBatch();
+            ps.close();
 
             deleteWhereCharacterId(con, "DELETE FROM trocklocations WHERE characterid = ?");
+            ps = con.prepareStatement("INSERT INTO trocklocations(characterid, mapid) VALUES(?, ?) ");
             for (int i = 0; i < rocks.length; i++) {
                 if (rocks[i] != 999999999) {
-                    ps = con.prepareStatement("INSERT INTO trocklocations(characterid, mapid) VALUES(?, ?) ");
                     ps.setInt(1, getId());
                     ps.setInt(2, rocks[i]);
-                    ps.execute();
-                    ps.close();
+                    ps.addBatch();
                 }
             }
+            ps.executeBatch();
+            ps.close();
 
             deleteWhereCharacterId(con, "DELETE FROM regrocklocations WHERE characterid = ?");
+            ps = con.prepareStatement("INSERT INTO regrocklocations(characterid, mapid) VALUES(?, ?) ");
             for (int i = 0; i < regrocks.length; i++) {
                 if (regrocks[i] != 999999999) {
-                    ps = con.prepareStatement("INSERT INTO regrocklocations(characterid, mapid) VALUES(?, ?) ");
                     ps.setInt(1, getId());
                     ps.setInt(2, regrocks[i]);
-                    ps.execute();
-                    ps.close();
+                    ps.addBatch();
                 }
             }
+            ps.executeBatch();
+            ps.close();
 
             con.commit();
         } catch (Exception e) {

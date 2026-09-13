@@ -43,6 +43,8 @@ import tools.Pair;
 
 public class CashShop {
 
+    private static final System.Logger LOG = System.getLogger(CashShop.class.getName());
+
     private int accountId, characterId;
     private ItemLoader factory;
     private List<IItem> inventory = new ArrayList<>();
@@ -179,7 +181,8 @@ public class CashShop {
             ps.setInt(5, uniqueid);
             ps.executeUpdate();
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            // ERROR: the gift row was never written, so the recipient never gets it.
+            LOG.log(System.Logger.Level.ERROR, "Error sending a cash gift to character " + recipient, sqle);
         }
     }
 
@@ -212,7 +215,9 @@ public class CashShop {
             }
             save();
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            // ERROR: whatever was read is handed back, but the DELETE and the
+            // save may not have run, so gifts can be delivered twice or lost.
+            LOG.log(System.Logger.Level.ERROR, "Error loading the cash gifts of character " + characterId, sqle);
         }
         return gifts;
     }

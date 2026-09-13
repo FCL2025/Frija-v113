@@ -22,6 +22,8 @@ import tools.packet.CharacterPacket;
 
 public class MapleQuest {
 
+    private static final System.Logger LOG = System.getLogger(MapleQuest.class.getName());
+
     // Was a LinkedHashMap, but nothing in this class ever iterates `quests`
     // in insertion order (only get/put by id), so ConcurrentHashMap is a
     // drop-in, race-free replacement.
@@ -202,10 +204,11 @@ public class MapleQuest {
                 built = new MapleCustomQuest(id);
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            // One record where there were two console prints (a trace and the
+            // line naming the quest); the two ScriptEx_Log entries are unchanged.
+            LOG.log(System.Logger.Level.ERROR, "Caused by questID " + id, ex);
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Caused by questID " + id);
-            System.out.println("Caused by questID " + id);
             return new MapleCustomQuest(id);
         }
         final MapleQuest existing = quests.putIfAbsent(id, built);

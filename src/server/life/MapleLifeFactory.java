@@ -39,6 +39,8 @@ import tools.StringUtil;
 
 public class MapleLifeFactory {
 
+    private static final System.Logger LOG = System.getLogger(MapleLifeFactory.class.getName());
+
     private static final MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Mob.wz"));
     private static final MapleDataProvider stringDataWZ = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/String.wz"));
     private static final MapleDataProvider etcDataWZ = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Etc.wz"));
@@ -56,7 +58,9 @@ public class MapleLifeFactory {
         } else if (type.equalsIgnoreCase("m")) {
             return getMonster(id);
         } else {
-            System.err.println("Unknown Life type: " + type + "");
+            // ERROR: no life object is built, so whatever the map wanted here
+            // never appears.
+            LOG.log(System.Logger.Level.ERROR, "Unknown Life type: " + type + "");
             return null;
         }
     }
@@ -91,7 +95,7 @@ public class MapleLifeFactory {
                         }
                         questCount.put(id, z);
                     } else {
-                        System.out.println("null questcountgroup");
+                        LOG.log(System.Logger.Level.INFO, "null questcountgroup");
                     }
                 }
             }

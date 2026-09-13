@@ -28,6 +28,8 @@ import tools.StringUtil;
 
 public class MapleItemInformationProvider {
 
+    private static final System.Logger LOG = System.getLogger(MapleItemInformationProvider.class.getName());
+
     private final static MapleItemInformationProvider instance = new MapleItemInformationProvider();
     protected final MapleDataProvider etcData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Etc.wz"));
     protected final MapleDataProvider itemData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Item.wz"));
@@ -89,7 +91,7 @@ public class MapleItemInformationProvider {
     protected final Map<Integer, String> faceList = new ConcurrentHashMap<>();
 
     protected MapleItemInformationProvider() {
-        System.out.println("Loading MapleItemInformationProvider :::");
+        LOG.log(System.Logger.Level.INFO, "Loading MapleItemInformationProvider :::");
     }
 
     public final void load() {
@@ -518,7 +520,9 @@ public class MapleItemInformationProvider {
             }
         } catch (NullPointerException e) {
             //catch npe because obviously the wz have some error XD
-            e.printStackTrace();
+            // ERROR: the remaining stats are skipped, so the equip comes back
+            // levelled only as far as the bad entry.
+            LOG.log(System.Logger.Level.ERROR, "Error levelling up equip " + nEquip.getItemId(), e);
         }
         return nEquip;
     }
@@ -1453,7 +1457,9 @@ public class MapleItemInformationProvider {
         return ret;
     }
     public short getPetFlagInfo(int itemId) {
-        System.out.println("ItemID = " + itemId);
+        // A leftover debug print, kept because removing it changes what is
+        // reported; as a record it can now be silenced from Libs/logging.properties.
+        LOG.log(System.Logger.Level.INFO, "ItemID = " + itemId);
         final Short cached = this.petFlagInfo.get(itemId);
         if (cached != null) {
             return cached;

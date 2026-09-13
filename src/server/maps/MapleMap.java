@@ -101,6 +101,8 @@ import tools.Pair;
 
 public final class MapleMap {
 
+    private static final System.Logger LOG = System.getLogger(MapleMap.class.getName());
+
     /*
      * Holds mappings of OID -> MapleMapObject separated by MapleMapObjectType.
      * Please acquire the appropriate lock when reading and writing to the LinkedHashMaps.
@@ -2503,7 +2505,10 @@ public final class MapleMap {
             pos3.y -= 1;
         }
         if (pos1 == null && pos2 == null && pos3 == null) {
-            System.out.println("WARNING: mapid " + mapid + ", monster " + monster.getId() + " could not be spawned.");
+            // WARNING rather than INFO: the spawn point is dropped. Not a hot
+            // path - addAreaMonsterSpawn runs once per map, from MapleMapFactory
+            // while the map is being parsed. Message kept verbatim.
+            LOG.log(System.Logger.Level.WARNING, "WARNING: mapid " + mapid + ", monster " + monster.getId() + " could not be spawned.");
 
             return;
         } else if (pos1 != null) {
@@ -2845,7 +2850,9 @@ public final class MapleMap {
                 SpeedRunner.getInstance().loadSpeedRunData(type);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the speedrun row and the in-memory table are left
+            // inconsistent and this run is not recorded.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the speedrun record", e);
         }
     }
 

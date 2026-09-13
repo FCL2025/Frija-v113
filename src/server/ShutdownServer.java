@@ -25,6 +25,8 @@ import server.panel.PanelServer;
  */
 public class ShutdownServer implements Runnable {
 
+    private static final System.Logger LOG = System.getLogger(ShutdownServer.class.getName());
+
     private static final ShutdownServer instance = new ShutdownServer();
     /** How long to let in-flight character saves finish before pulling the plug. */
     private static final long DRAIN_MILLIS = 5000;
@@ -57,7 +59,8 @@ public class ShutdownServer implements Runnable {
             }
             LoginServer.shutdown();
         } catch (final Exception e) {
-            e.printStackTrace();
+            // ERROR: a channel or the login server may still be accepting.
+            LOG.log(System.Logger.Level.ERROR, "Error closing the servers to new connections", e);
         }
 
         // 2. Disconnect and save every player, channel by channel. Over a
@@ -66,7 +69,8 @@ public class ShutdownServer implements Runnable {
             try {
                 ChannelServer.getInstance(channel).shutdown(this);
             } catch (final Exception e) {
-                e.printStackTrace();
+                // ERROR: that channel's players may not have been saved.
+                LOG.log(System.Logger.Level.ERROR, "Error shutting down channel " + channel, e);
             }
         }
 
@@ -76,7 +80,10 @@ public class ShutdownServer implements Runnable {
             Alliance.save();
             Family.save();
         } catch (final Exception e) {
-            System.err.println("THROW" + e);
+            // ERROR, and terse on purpose: this one only ever concatenated the
+            // exception. Guild/alliance/family state lives only in memory, so
+            // whatever was not flushed is gone.
+            LOG.log(System.Logger.Level.ERROR, "THROW" + e);
         }
 
         // 4. No more scheduled work - including the two pools the old
@@ -94,7 +101,9 @@ public class ShutdownServer implements Runnable {
         try {
             DatabaseConnection.closeAll();
         } catch (final SQLException e) {
-            System.err.println("THROW" + e);
+            // ERROR, and terse on purpose: this one only ever concatenated the
+            // exception. The JVM exits on the next line regardless.
+            LOG.log(System.Logger.Level.ERROR, "THROW" + e);
         }
 
         System.exit(0); //not sure if this is really needed for ChannelServer

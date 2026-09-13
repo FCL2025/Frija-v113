@@ -13,6 +13,8 @@ import tools.Pair;
 
 public class ItemMakerFactory {
 
+    private static final System.Logger LOG = System.getLogger(ItemMakerFactory.class.getName());
+
     private final static ItemMakerFactory instance = new ItemMakerFactory();
     protected Map<Integer, ItemMakerCreateEntry> createCache = new HashMap<>();
     protected Map<Integer, GemCreateEntry> gemCache = new HashMap<>();
@@ -23,7 +25,7 @@ public class ItemMakerFactory {
     }
 
     protected ItemMakerFactory() {
-        System.out.println("Loading ItemMakerFactory :::");
+        LOG.log(System.Logger.Level.INFO, "Loading ItemMakerFactory :::");
         // 0 = Item upgrade crystals
         // 1 / 2/ 4/ 8 = Item creation
 

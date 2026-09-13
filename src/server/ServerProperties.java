@@ -16,6 +16,10 @@ import java.io.InputStreamReader;
  */
 public class ServerProperties {
 
+    // Declared before the static block below, which uses it: static fields and
+    // static initialisers run in the order they are written.
+    private static final System.Logger LOG = System.getLogger(ServerProperties.class.getName());
+
     private static final Properties props = new Properties();
 
     private static final String[] toLoad = {
@@ -33,7 +37,9 @@ public class ServerProperties {
                 props.load(fr);
                 fr.close();
             } catch (IOException ex) {
-                ex.printStackTrace();
+                // ERROR: this file is not read, so every tms.* key in it is
+                // missing and the server runs on defaults it never announced.
+                LOG.log(System.Logger.Level.ERROR, "Error reading " + s, ex);
             }
         }
         try (Connection con = DatabaseConnection.getConnection();
@@ -43,7 +49,9 @@ public class ServerProperties {
                 props.put(rs.getString("name") + rs.getInt("channelid"), rs.getString("value"));
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: the line before System.exit(0), and for most startup
+            // failures the only thing printed at all.
+            LOG.log(System.Logger.Level.ERROR, "Error reading auth_server_channel_ip", ex);
             System.exit(0); //Big ass error.
         }
 

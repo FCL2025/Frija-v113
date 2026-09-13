@@ -23,6 +23,8 @@ import tools.packet.InventoryPacket;
 
 public class MapleStorage {
 
+    private static final System.Logger LOG = System.getLogger(MapleStorage.class.getName());
+
     private int id;
     private int accountId;
     private List<IItem> items;
@@ -79,7 +81,9 @@ public class MapleStorage {
                 }
             }
         } catch (SQLException ex) {
-            System.err.println("Error loading storage" + ex);
+            // ERROR, and terse on purpose: this one only ever concatenated the
+            // exception. The storage comes back empty or half-filled.
+            LOG.log(System.Logger.Level.ERROR, "Error loading storage" + ex);
         }
         return ret;
     }
@@ -102,7 +106,9 @@ public class MapleStorage {
             }
             ItemLoader.STORAGE.saveItems(listing, accountId);
         } catch (SQLException ex) {
-            System.err.println("Error saving storage" + ex);
+            // ERROR, and terse on purpose: this one only ever concatenated the
+            // exception. changed stays true and the storage never reached the row.
+            LOG.log(System.Logger.Level.ERROR, "Error saving storage" + ex);
         }
     }
 

@@ -46,6 +46,8 @@ import tools.packet.MTSCSPacket;
 public class MTSStorage {
     //stores all carts all mts items, updates every hour
 
+    private static final System.Logger LOG = System.getLogger(MTSStorage.class.getName());
+
     private long lastUpdate = System.currentTimeMillis();
     private final Map<Integer, MTSCart> idToCart;
     private final AtomicInteger packageId;
@@ -58,7 +60,7 @@ public class MTSStorage {
     //mts_items is id/packageid, tab(byte), price, characterid, seller, expiration
 
     public MTSStorage() {
-        System.out.println("Loading MTSStorage :::");
+        LOG.log(System.Logger.Level.INFO, "Loading MTSStorage :::");
         idToCart = new LinkedHashMap<>();
         buyNow = new LinkedHashMap<>();
         packageId = new AtomicInteger(1);
@@ -161,7 +163,9 @@ public class MTSStorage {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the load stops where it failed, so the auctions after that
+            // row are missing and packageId is set from a short read.
+            LOG.log(System.Logger.Level.ERROR, "Error loading the MTS auctions", e);
         }
         packageId.set(lastPackage);
     }
@@ -172,7 +176,7 @@ public class MTSStorage {
         }
         this.end = isShutDown;
         if (isShutDown) {
-            System.out.println("Saving MTS...");
+            LOG.log(System.Logger.Level.INFO, "Saving MTS...");
         }
         final Map<Integer, ArrayList<IItem>> expire = new HashMap<>();
         final List<Integer> toRemove = new ArrayList<>();
@@ -211,22 +215,25 @@ public class MTSStorage {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: mts_items was emptied first, so a failure here loses the
+            // auctions that had not been re-inserted yet.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the MTS auctions", e);
         } finally {
             mutex.writeLock().unlock();
         }
         if (isShutDown) {
-            System.out.println("Saving MTS items...");
+            LOG.log(System.Logger.Level.INFO, "Saving MTS items...");
         }
         try {
             for (Entry<Integer, ArrayList<Pair<IItem, MapleInventoryType>>> ite : items.entrySet()) {
                 ItemLoader.MTS.saveItems(ite.getValue(), ite.getKey());
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: the items behind the remaining auctions were not written.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the MTS auction items", e);
         }
         if (isShutDown) {
-            System.out.println("Saving MTS carts...");
+            LOG.log(System.Logger.Level.INFO, "Saving MTS carts...");
         }
         cart_mutex.writeLock().lock();
         try {
@@ -243,7 +250,9 @@ public class MTSStorage {
                 c.getValue().save();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: the carts after the failure keep neither their expired
+            // items back nor their removals.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the MTS carts", e);
         } finally {
             cart_mutex.writeLock().unlock();
         }
@@ -270,7 +279,9 @@ public class MTSStorage {
                 ret = new MTSCart(characterId);
                 idToCart.put(characterId, ret);
             } catch (SQLException e) {
-                e.printStackTrace();
+                // ERROR: the cart could not be read, so getCart hands back one
+                // that does not hold what the player actually has on the MTS.
+                LOG.log(System.Logger.Level.ERROR, "Error creating the MTS cart of character " + characterId, e);
             } finally {
                 cart_mutex.writeLock().unlock();
             }

@@ -43,6 +43,8 @@ import server.ServerProperties;
  */
 final class SettingsApi {
 
+    private static final System.Logger LOG = System.getLogger(SettingsApi.class.getName());
+
     static final Path INI = Path.of("Settings.ini");
 
     private enum Apply {
@@ -277,8 +279,10 @@ final class SettingsApi {
                 }
                 return Json.obj("ok", true, "changed", changed);
             } catch (final IOException | RuntimeException e) {
-                System.err.println("[面板] 寫入 " + INI + " 失敗：");
-                e.printStackTrace();
+                // One record where there were two prints: the message and the
+                // trace are the same event. Only the console half moved - the
+                // reply below is the same {"ok": false, "error": …} object.
+                LOG.log(System.Logger.Level.ERROR, "[面板] 寫入 " + INI + " 失敗", e);
                 return Json.obj("ok", false, "error", String.valueOf(e));
             }
         }

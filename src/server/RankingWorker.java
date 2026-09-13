@@ -33,6 +33,8 @@ import java.util.Map;
 
 public class RankingWorker {
 
+    private static final System.Logger LOG = System.getLogger(RankingWorker.class.getName());
+
     private final Map<Integer, List<RankingInformation>> rankings = new HashMap<>();
     private final Map<String, Integer> jobCommands = new HashMap<>();
     private static RankingWorker instance;
@@ -57,13 +59,14 @@ public class RankingWorker {
     }
 
     public final void run() {
-        System.out.println("Loading Ranking Server :::");
+        LOG.log(System.Logger.Level.INFO, "Loading Ranking Server :::");
         loadJobCommands();
         try (Connection con = DatabaseConnection.getConnection()) {
             updateRanking(con);
         } catch (Exception ex) {
-            ex.printStackTrace();
-            System.err.println("Could not update rankings");
+            // One record where there were two prints: the trace and the message
+            // are the same event. The ranking tables keep their old contents.
+            LOG.log(System.Logger.Level.ERROR, "Could not update rankings", ex);
         }
         //System.out.println("排行啟動完成 :::"); //keep
     }

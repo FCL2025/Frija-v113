@@ -48,6 +48,8 @@ import java.util.Set;
  */
 public final class Router implements HttpHandler {
 
+    private static final System.Logger LOG = System.getLogger(Router.class.getName());
+
     /** One route body. Return a value for {@link Json#write}; throw {@link HttpError} for a non-200. */
     @FunctionalInterface
     public interface Route {
@@ -223,8 +225,11 @@ public final class Router implements HttpHandler {
                     ? Json.obj("error", e.getMessage())
                     : Json.obj("error", e.getMessage(), "details", e.getDetails()));
         } catch (final Exception e) {
-            System.err.println("[面板] " + ex.getRequestMethod() + " " + ex.getRequestURI() + " 發生例外：");
-            e.printStackTrace();
+            // One record where there were two prints: the message and the
+            // trace are the same event. Only the console half moved - the reply
+            // below is still a 500 carrying the same {"error": …} body.
+            LOG.log(System.Logger.Level.ERROR,
+                    "[面板] " + ex.getRequestMethod() + " " + ex.getRequestURI() + " 發生例外", e);
             sendJson(ex, 500, Json.obj("error", "伺服器內部錯誤：" + e));
         } finally {
             ex.close();

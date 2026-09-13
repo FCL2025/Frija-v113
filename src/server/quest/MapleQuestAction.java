@@ -44,6 +44,8 @@ import tools.packet.QuestPacket;
 
 public class MapleQuestAction {
 
+    private static final System.Logger LOG = System.getLogger(MapleQuestAction.class.getName());
+
     private MapleQuestActionType type;
     private MapleData data;
     private MapleQuest quest;
@@ -153,7 +155,10 @@ public class MapleQuestAction {
                             MapleInventoryManipulator.removeById(c.getClient(), GameConstants.getInventoryType(id), id, (count * -1), true, false);
                         } catch (InventoryException ie) {
                             // it's better to catch this here so we'll atleast try to remove the other items
-                            System.err.println("[h4x] Completing a quest without meeting the requirements" + ie);
+                            // WARNING, and terse on purpose: this one only ever
+                            // concatenated the exception, and the comment above
+                            // says the loop deliberately carries on.
+                            LOG.log(System.Logger.Level.WARNING, "[h4x] Completing a quest without meeting the requirements" + ie);
                         }
                         c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     } else { // add items

@@ -43,6 +43,8 @@ import tools.packet.UIPacket;
 
 public class MapScriptMethods {
 
+    private static final System.Logger LOG = System.getLogger(MapScriptMethods.class.getName());
+
     private static final Point witchTowerPos = new Point(-60, 184);
     private static final String[] mulungEffects = {
         "我等著你，只要你持之以恆，必能走向正確的道路",
@@ -464,7 +466,7 @@ public class MapScriptMethods {
                 break;
             }
             default: {
-                System.out.println("未處理的腳本 : " + scriptName + ", 型態 : onUserEnter - 地圖ID " + c.getPlayer().getMapId());
+                LOG.log(System.Logger.Level.INFO, "未處理的腳本 : " + scriptName + ", 型態 : onUserEnter - 地圖ID " + c.getPlayer().getMapId());
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "未處理的腳本 : " + scriptName + ", 型態 : onUserEnter - 地圖ID " + c.getPlayer().getMapId());
                 break;
             }
@@ -805,7 +807,7 @@ public class MapScriptMethods {
                 break;
             }
             default: {
-                System.out.println("未處理的腳本 : " + scriptName + ", 型態 : onUserEnter - 地圖ID " + c.getPlayer().getMapId());
+                LOG.log(System.Logger.Level.INFO, "未處理的腳本 : " + scriptName + ", 型態 : onUserEnter - 地圖ID " + c.getPlayer().getMapId());
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "未處理的腳本 : " + scriptName + ", 型態 : onUserEnter - 地圖ID " + c.getPlayer().getMapId());
                 break;
             }

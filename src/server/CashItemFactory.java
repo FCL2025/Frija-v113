@@ -18,6 +18,8 @@ import server.CashItemInfo.CashModInfo;
 
 public class CashItemFactory {
 
+    private static final System.Logger LOG = System.getLogger(CashItemFactory.class.getName());
+
     private final static CashItemFactory instance = new CashItemFactory();
     private final static int[] bestItems = new int[]{50400003, 50300092, 30200034, 50100010, 50300099};
     // volatile: read unsynchronized by getModInfo()/getAllModInfo() from any
@@ -47,7 +49,7 @@ public class CashItemFactory {
         if (initialized) {
             return;
         }
-        System.out.println("Loading CashItemFactory :::");
+        LOG.log(System.Logger.Level.INFO, "Loading CashItemFactory :::");
         for (MapleData field : data.getData("Commodity.img").getChildren()) {
             final int itemId = MapleDataTool.getIntConvert("ItemId", field, 0);
             final int SN = MapleDataTool.getIntConvert("SN", field, 0);
@@ -154,7 +156,9 @@ public class CashItemFactory {
                 into.put(sn, new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags")));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the map is left as far as the query got, so the cash items
+            // it did not reach keep their unmodified price, flags and period.
+            LOG.log(System.Logger.Level.ERROR, "Error loading cashshop_modified_items", e);
         }
     }
 

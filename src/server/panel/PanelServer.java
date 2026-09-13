@@ -41,6 +41,8 @@ import server.ServerProperties;
  */
 public final class PanelServer {
 
+    private static final System.Logger LOG = System.getLogger(PanelServer.class.getName());
+
     /** Listening port. {@code 0} disables the panel. Default {@value #DEFAULT_PORT}. */
     public static final String PORT_PROPERTY = "tms.PanelPort";
     /** Size of the request pool. Default {@code max(4, cores)}. */
@@ -78,7 +80,7 @@ public final class PanelServer {
         }
         final int port = intProperty(PORT_PROPERTY, DEFAULT_PORT);
         if (port <= 0) {
-            System.out.println("[面板] " + PORT_PROPERTY + " = 0，管理面板停用。");
+            LOG.log(System.Logger.Level.INFO, "[面板] " + PORT_PROPERTY + " = 0，管理面板停用。");
             return;
         }
         final String token = resolveToken();
@@ -88,12 +90,16 @@ public final class PanelServer {
         try {
             server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
         } catch (final BindException e) {
-            System.err.println("[面板] 無法綁定 127.0.0.1:" + port + "（" + e.getMessage() + "）。"
+            // ERROR, and terse on purpose: this one only ever reported
+            // e.getMessage(). The panel is given up on; the game still starts.
+            LOG.log(System.Logger.Level.ERROR, "[面板] 無法綁定 127.0.0.1:" + port + "（" + e.getMessage() + "）。"
                     + "port 已被其他程式占用；管理面板停用，伺服器照常啟動。可在 Settings.ini 以 "
                     + PORT_PROPERTY + " 改用別的 port。");
             return;
         } catch (final IOException e) {
-            System.err.println("[面板] 無法建立 HTTP 伺服器，管理面板停用：" + e);
+            // ERROR, and terse on purpose: this one only ever concatenated
+            // the exception. The panel is given up on; the game still starts.
+            LOG.log(System.Logger.Level.ERROR, "[面板] 無法建立 HTTP 伺服器，管理面板停用：" + e);
             return;
         }
 
@@ -114,8 +120,11 @@ public final class PanelServer {
         server.start();
 
         instance = new PanelServer(server, pool, token, port);
-        System.out.println("[面板] 管理面板：http://127.0.0.1:" + port + "/  （" + threads + " 條處理執行緒）");
-        System.out.println("[面板] 登入 Token：" + token);
+        // One record: the two lines are one banner, and two calls would let
+        // another thread log between the address and the token.
+        LOG.log(System.Logger.Level.INFO,
+                "[面板] 管理面板：http://127.0.0.1:" + port + "/  （" + threads + " 條處理執行緒）"
+                + System.lineSeparator() + "[面板] 登入 Token：" + token);
     }
 
     /**
@@ -141,7 +150,7 @@ public final class PanelServer {
             p.pool.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        System.out.println("[面板] 管理面板已關閉。");
+        LOG.log(System.Logger.Level.INFO, "[面板] 管理面板已關閉。");
     }
 
     public static PanelServer getInstance() {
@@ -184,7 +193,8 @@ public final class PanelServer {
             try {
                 return Integer.parseInt(configured.trim());
             } catch (final NumberFormatException e) {
-                System.err.println("[面板] " + key + " 不是整數（" + configured + "），改用預設值 " + def + "。");
+                // WARNING: the default is used and the panel starts anyway.
+                LOG.log(System.Logger.Level.WARNING, "[面板] " + key + " 不是整數（" + configured + "），改用預設值 " + def + "。");
             }
         }
         return def;

@@ -8,6 +8,8 @@ import constants.GameConstants;
 
 public class RandomRewards {
 
+    private static final System.Logger LOG = System.getLogger(RandomRewards.class.getName());
+
     private final static RandomRewards instance = new RandomRewards();
     private List<Integer> compiledGold = null;
     private List<Integer> compiledSilver = null;
@@ -22,7 +24,7 @@ public class RandomRewards {
     }
 
     protected RandomRewards() {
-        System.out.println("Loading RandomRewards :::");
+        LOG.log(System.Logger.Level.INFO, "Loading RandomRewards :::");
         // Gold Box
         List<Integer> returnArray = new ArrayList<>();
 

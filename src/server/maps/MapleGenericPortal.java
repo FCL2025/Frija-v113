@@ -31,6 +31,8 @@ import tools.packet.CharacterPacket;
 
 public class MapleGenericPortal implements MaplePortal {
 
+    private static final System.Logger LOG = System.getLogger(MapleGenericPortal.class.getName());
+
     private String name, target, scriptName;
     private Point position;
     private int targetmap, type, id;
@@ -112,7 +114,9 @@ public class MapleGenericPortal implements MaplePortal {
                 try {
                     PortalScriptManager.getInstance().executePortalScript(this, c);
                 } catch (final Exception e) {
-                    e.printStackTrace();
+                    // ERROR: the portal script did not run, so the player is
+                    // left standing in the portal with nothing having happened.
+                    LOG.log(System.Logger.Level.ERROR, "Error running portal script " + getScriptName(), e);
                 }
             } else if (getTargetMapId() != 999999999) {
                 final MapleMap to = ChannelServer.getInstance(c.getChannel()).getMapFactory().getMap(getTargetMapId());

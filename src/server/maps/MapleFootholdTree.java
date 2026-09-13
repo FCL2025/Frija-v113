@@ -27,6 +27,8 @@ import java.util.List;
 
 public class MapleFootholdTree {
 
+    private static final System.Logger LOG = System.getLogger(MapleFootholdTree.class.getName());
+
     private MapleFootholdTree nw = null;
     private MapleFootholdTree ne = null;
     private MapleFootholdTree sw = null;
@@ -165,7 +167,7 @@ public class MapleFootholdTree {
         for (final MapleFoothold fh2 : footholds) { // To
             if (fh2.getX1() <= tox && fh2.getX2() >= tox && fh2.getY1() <= toy && fh2.getY2() >= toy) { // monster pos is within
                 if (!(fhdata.getId() == fh2.getId() || fh2.getId() == fhdata.getNext() || fh2.getId() == fhdata.getPrev())) {
-                    System.out.println("Couldn't find the correct pos for next/prev");
+                    LOG.log(System.Logger.Level.INFO, "Couldn't find the correct pos for next/prev");
                     return false;
                 }
                 return true;

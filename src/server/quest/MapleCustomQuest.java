@@ -34,6 +34,8 @@ import database.DatabaseConnection;
 // (-Xlint:this-escape).
 public final class MapleCustomQuest extends MapleQuest {
 
+    private static final System.Logger LOG = System.getLogger(MapleCustomQuest.class.getName());
+
     // questrequirements/questactions.data are ObjectOutputStream blobs holding a
     // MapleCustomQuestData tree (its own class, the java.util.LinkedList it keeps
     // its children in, the quest-value it wraps, and a String name) written by a
@@ -95,8 +97,11 @@ public final class MapleCustomQuest extends MapleQuest {
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
-            System.err.println("Error loading custom quest from SQL." + ex);
+            // One record where there were two prints: the trace and the message
+            // are the same event, and the attached Throwable's first line is the
+            // ex.toString() the message used to concatenate. The quest keeps only
+            // the actions read before the failure.
+            LOG.log(System.Logger.Level.ERROR, "Error loading custom quest from SQL.", ex);
         }
     }
 }

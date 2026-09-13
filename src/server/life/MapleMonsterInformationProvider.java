@@ -34,6 +34,8 @@ import database.DatabaseConnection;
 
 public class MapleMonsterInformationProvider {
 
+    private static final System.Logger LOG = System.getLogger(MapleMonsterInformationProvider.class.getName());
+
     private static final MapleMonsterInformationProvider instance = new MapleMonsterInformationProvider();
     /**
      * Every mob death on any Maple-Handler-N thread reads this, and
@@ -82,7 +84,10 @@ public class MapleMonsterInformationProvider {
                                 rs.getShort("questid")));
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving drop" + e);
+            // WARNING, and terse on purpose: this one only ever concatenated
+            // the exception, and the comment below says the half-read table is
+            // published regardless - the server carries on with it.
+            LOG.log(System.Logger.Level.WARNING, "Error retrieving drop" + e);
         }
         // Published whether or not the query got through, because a half-read
         // table is what the old code left behind too.

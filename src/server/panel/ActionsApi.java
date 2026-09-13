@@ -36,6 +36,8 @@ import tools.packet.ChatPacket;
  */
 final class ActionsApi {
 
+    private static final System.Logger LOG = System.getLogger(ActionsApi.class.getName());
+
     /** Notice styles the client renders, by the number {@code serverNotice} takes. */
     private static final Map<String, Integer> NOTICE_TYPES = Map.of(
             "notice", 0, // [公告] in the chat log
@@ -97,8 +99,11 @@ final class ActionsApi {
                         cs.reloadEvents();
                     } catch (final RuntimeException e) {
                         notes.add("頻道 " + cs.getChannel() + "：" + e);
-                        System.err.println("[面板] 頻道 " + cs.getChannel() + " 重載事件失敗：");
-                        e.printStackTrace();
+                        // One record where there were two prints: the message
+                        // and the trace are the same event. The HTTP reply is
+                        // unchanged - the note above still goes back in "errors".
+                        LOG.log(System.Logger.Level.ERROR,
+                                "[面板] 頻道 " + cs.getChannel() + " 重載事件失敗", e);
                     }
                 }
             }

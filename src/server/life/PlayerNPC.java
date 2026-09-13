@@ -46,6 +46,8 @@ import tools.packet.MapPacket;
 // finished. Nothing extends PlayerNPC.
 public final class PlayerNPC extends MapleNPC {
 
+    private static final System.Logger LOG = System.getLogger(PlayerNPC.class.getName());
+
     private Map<Byte, Integer> equips = new HashMap<>();
     private int mapid, face, hair, charId;
     private byte skin, gender;
@@ -107,7 +109,8 @@ public final class PlayerNPC extends MapleNPC {
                 toAdd.add(new PlayerNPC(rs));
             }
         } catch (Exception se) {
-            se.printStackTrace();
+            // ERROR: only the NPCs read before the failure reach the channels.
+            LOG.log(System.Logger.Level.ERROR, "Error loading the player NPCs", se);
         }
         for (PlayerNPC npc : toAdd) {
             npc.addToServer();
@@ -174,7 +177,8 @@ public final class PlayerNPC extends MapleNPC {
                 removeFromServer();
             }
         } catch (Exception se) {
-            se.printStackTrace();
+            // ERROR: the rows survive, so the player NPC is only half deleted.
+            LOG.log(System.Logger.Level.ERROR, "Error deleting player NPC " + getId(), se);
         }
     }
 
@@ -219,7 +223,8 @@ public final class PlayerNPC extends MapleNPC {
                 }
             }
         } catch (Exception se) {
-            se.printStackTrace();
+            // ERROR: the player NPC is left half-written to the database.
+            LOG.log(System.Logger.Level.ERROR, "Error saving player NPC " + getId(), se);
         }
     }
 

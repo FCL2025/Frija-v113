@@ -25,6 +25,8 @@ import tools.packet.NPCPacket;
 
 public class MapleShop {
 
+    private static final System.Logger LOG = System.getLogger(MapleShop.class.getName());
+
     private static final Set<Integer> rechargeableItems = new LinkedHashSet<>();
     private int id;
     private int npcId;
@@ -245,7 +247,9 @@ public class MapleShop {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Could not load shop" + e);
+            // ERROR, and terse on purpose: this one only ever concatenated the
+            // exception. The shop is handed back with whatever it had read.
+            LOG.log(System.Logger.Level.ERROR, "Could not load shop" + e);
         }
         return ret;
     }

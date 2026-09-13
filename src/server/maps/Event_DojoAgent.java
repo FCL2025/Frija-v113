@@ -32,6 +32,8 @@ import tools.packet.EventPacket;
 
 public class Event_DojoAgent {
 
+    private static final System.Logger LOG = System.getLogger(Event_DojoAgent.class.getName());
+
     private final static int baseAgentMapId = 970030000; // 9500337 = mano
     private final static Point point1 = new Point(140, 0),
             point2 = new Point(-193, 0),
@@ -218,7 +220,8 @@ public class Event_DojoAgent {
                 }
             }
         } catch (Exception rm) {
-            rm.printStackTrace();
+            // ERROR: the warp is abandoned and warpNextMap returns false.
+            LOG.log(System.Logger.Level.ERROR, "Error warping a party to the next dojo stage", rm);
         }
         return false;
     }

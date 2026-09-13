@@ -47,6 +47,8 @@ import tools.packet.PlayerShopPacket;
 
 public abstract class AbstractPlayerStore extends AbstractMapleMapObject implements IMaplePlayerShop {
 
+    private static final System.Logger LOG = System.getLogger(AbstractPlayerStore.class.getName());
+
     protected boolean open = false, available = false;
     protected String ownerName, des, pass;
     protected int ownerId, owneraccount, itemId, channel, map;
@@ -177,7 +179,9 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
             ItemLoader.HIRED_MERCHANT.saveItems(iters, packageid, owneraccount, ownerId);
             return true;
         } catch (SQLException se) {
-            se.printStackTrace();
+            // ERROR: saveItems returns false, so the store's stock was not
+            // written and the caller treats the save as failed.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the items of a player store", se);
         }
         return false;
     }

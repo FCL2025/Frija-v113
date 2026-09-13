@@ -28,6 +28,8 @@ import tools.FileoutputUtil;
  */
 public abstract class Timer {
 
+    private static final System.Logger LOG = System.getLogger(Timer.class.getName());
+
     public static class WorldTimer extends Timer {
 
         private static final WorldTimer instance = new WorldTimer();
@@ -199,7 +201,8 @@ public abstract class Timer {
             if (!current.awaitTermination(5, TimeUnit.SECONDS)) {
                 final List<Runnable> abandoned = current.shutdownNow();
                 if (!abandoned.isEmpty()) {
-                    System.out.println(name + ": abandoned " + abandoned.size()
+                    // WARNING rather than INFO: scheduled work was thrown away.
+                    LOG.log(System.Logger.Level.WARNING, name + ": abandoned " + abandoned.size()
                             + " task(s) that did not finish in time.");
                 }
             }

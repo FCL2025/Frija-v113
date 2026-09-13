@@ -7,9 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * MapleStory's "shanda" custom encryption, the second layer under AES-OFB.
@@ -17,9 +18,8 @@ import org.junit.jupiter.api.Test;
  * <p>Both call sites are commented out ({@code MaplePacketDecoder} line 68 and
  * {@code MaplePacketEncoder} line 64), so nothing in the running server reaches
  * this class today. It is pinned anyway, because re-enabling those two lines is
- * a one-character change and the asymmetry documented on
- * {@link #encryptThenDecryptDoesNotRoundTrip()} would otherwise be discovered
- * by a client that can no longer log in.
+ * a one-character change, and a pair that does not round trip would otherwise be
+ * discovered by a client that can no longer log in.
  *
  * <p>Expected byte arrays here are <b>behaviour snapshots</b> taken from this
  * implementation, not a specification.
@@ -38,7 +38,7 @@ class MapleCustomEncryptionTest {
     @Test
     @DisplayName("behaviour snapshot: decryptData")
     void knownVectorDecrypt() {
-        final byte[] expected = {(byte) 0x71, (byte) 0x60, (byte) 0x53, (byte) 0x40, (byte) 0x63};
+        final byte[] expected = {(byte) 0xFE, (byte) 0x0F, (byte) 0xEB, (byte) 0x96, (byte) 0x98};
         assertArrayEquals(expected, MapleCustomEncryption.decryptData(SAMPLE.clone()));
     }
 
@@ -61,28 +61,30 @@ class MapleCustomEncryptionTest {
     }
 
     @Test
-    @DisplayName("encryptData then decryptData does NOT come back - this is the current behaviour")
-    void encryptThenDecryptDoesNotRoundTrip() {
-        // encryptData runs six rounds (`for (int j = 0; j < 6; j++)`), decryptData
-        // runs exactly one (`for (int j = 1; j <= 1; j++)`). That one round is a
-        // precise inverse of encryptData's *last* round, so decryptData undoes a
-        // sixth of the work and the other five rounds stay on the data.
-        //
-        // This test pins what actually happens so that the asymmetry cannot be
-        // "fixed" by accident. If someone deliberately corrects decryptData's
-        // loop bound to `j <= 6`, this test fails and
-        // encryptThenDecryptRoundTrips() below should be re-enabled in its place.
-        final byte[] expected = {(byte) 0x7D, (byte) 0x31, (byte) 0x6F, (byte) 0x75, (byte) 0x7B};
-        final byte[] actual = MapleCustomEncryption.decryptData(MapleCustomEncryption.encryptData(SAMPLE.clone()));
-        assertArrayEquals(expected, actual);
-        assertFalse(Arrays.equals(SAMPLE, actual));
-    }
-
-    @Test
-    @Disabled("decryptData only reverses one of encryptData's six rounds - see encryptThenDecryptDoesNotRoundTrip()")
-    @DisplayName("encryptData then decryptData returns the original (would hold if decryptData ran six rounds)")
+    @DisplayName("encryptData then decryptData returns the original")
     void encryptThenDecryptRoundTrips() {
         assertArrayEquals(SAMPLE, MapleCustomEncryption.decryptData(MapleCustomEncryption.encryptData(SAMPLE.clone())));
+    }
+
+    @ParameterizedTest(name = "{0} bytes")
+    @ValueSource(ints = {0, 1, 2, 5, 255, 256, 300})
+    @DisplayName("encryptData then decryptData returns the original at every length")
+    void encryptThenDecryptRoundTripsAtEveryLength(final int length) {
+        // encryptData runs six rounds (`for (int j = 0; j < 6; j++)`), alternating
+        // a forward pass and a backward pass; decryptData has to undo all six, in
+        // reverse order, with the branch that matches each round's parity. It used
+        // to run `for (int j = 1; j <= 1; j++)` - one round, which inverted only
+        // encryptData's last one and left the other five on the data.
+        //
+        // Both directions work in place, so the original is kept as a copy. The
+        // lengths either side of 256 matter because each round seeds itself with
+        // `dataLength`, which is a byte and wraps there.
+        final byte[] original = new byte[length];
+        for (int i = 0; i < length; i++) {
+            original[i] = (byte) (i * 7 + 3);
+        }
+        assertArrayEquals(original,
+                MapleCustomEncryption.decryptData(MapleCustomEncryption.encryptData(original.clone())));
     }
 
     @Test

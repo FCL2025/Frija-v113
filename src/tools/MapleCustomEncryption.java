@@ -78,7 +78,11 @@ public class MapleCustomEncryption {
      * @return The decrypted data.
      */
     public static final byte[] decryptData(final byte data[]) {
-        for (int j = 1; j <= 1; j++) {
+        // encryptData runs rounds j = 0..5; each round here is the exact inverse of
+        // the encrypt round with the same number, so they have to be undone in
+        // reverse order. The parity test below must stay the same as encryptData's,
+        // so that round j is always inverted by the branch that produced it.
+        for (int j = 5; j >= 0; j--) {
             byte remember = 0;
             byte dataLength = (byte) (data.length & 0xFF);
             byte nextRemember = 0;

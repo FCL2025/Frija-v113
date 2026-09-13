@@ -137,10 +137,12 @@ public class NPCHandler {
 
     public static final void QuestAction(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final byte action = slea.readByte();
-        short quest = slea.readShort();
-        if (quest < 0) { //questid 50000 and above, WILL cast to negative, this was tested.
-            quest += 65536; // 此行其實無效：quest 是 short，(short)(quest + 65536) 就等於 quest 本身。questid >= 32768（本樹有 26 個 50000 系列腳本）因此永遠查不到對應的 MapleQuest。正解是 int quest = slea.readShort() & 0xFFFF，但那會改變行為，故意保留 -Xlint 警告等人決定。
-        }
+        // 客戶端送的 questid 是 16 位元「無號」值，所以 32768 以上讀成 short 會是負數。
+        // 原本的修法是 `short quest = slea.readShort(); if (quest < 0) quest += 65536;`，
+        // 而那是空操作：quest 是 short，(short)(quest + 65536) 就等於 quest 本身，
+        // 加完又被截回 16 位元。作者的註解寫明了意圖，但那行從來沒生效過，所以
+        // questid >= 32768 的任務一律查不到 MapleQuest。& 0xFFFF 才是真的把它當無號看。
+        final int quest = slea.readShort() & 0xFFFF;
         if (chr == null) {
             return;
         }
@@ -435,7 +437,7 @@ public class NPCHandler {
     }
 
     public static final void UpdateQuest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
-        final MapleQuest quest = MapleQuest.getInstance(slea.readShort());
+        final MapleQuest quest = MapleQuest.getInstance(slea.readShort() & 0xFFFF); // 無號，見 QuestAction
         if (quest != null) {
             c.getPlayer().updateQuest(c.getPlayer().getQuest(quest), true);
         }
@@ -445,7 +447,7 @@ public class NPCHandler {
         final short slot = slea.readShort();
         final int itemId = slea.readInt();
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.ETC).getItem(slot);
-        final short qid = slea.readShort();
+        final int qid = slea.readShort() & 0xFFFF; // 無號，見 QuestAction
         slea.readShort();
         final MapleQuest quest = MapleQuest.getInstance(qid);
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();

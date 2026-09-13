@@ -1071,7 +1071,7 @@ public class InventoryHandler {
 
     private static CashUse useNpcTeleportRock(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         boolean used = false;
-        final short questid = slea.readShort();
+        final int questid = slea.readShort() & 0xFFFF; // 無號，見 NPCHandler.QuestAction
         final int npcid = slea.readInt();
         final MapleQuest quest = MapleQuest.getInstance(questid);
 

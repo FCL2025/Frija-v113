@@ -31,6 +31,8 @@ import server.ServerProperties;
 
 public class LoginServer {
 
+    private static final System.Logger LOG = System.getLogger(LoginServer.class.getName());
+
     public static final int PORT = 8484;
     private static InetSocketAddress InetSocketadd;
     /**
@@ -61,9 +63,12 @@ public class LoginServer {
 
         try {
             InetSocketadd = MapleAcceptor.bind(PORT, new MapleServerHandler(-1, false));
-            System.out.println("Login   1: Listening on port " + PORT);
+            LOG.log(System.Logger.Level.INFO, "Login   1: Listening on port " + PORT);
         } catch (IOException e) {
-            System.err.println("Binding to port " + PORT + " failed" + e);
+            // Deliberately terse: this one has only ever reported e.toString(),
+            // so the Throwable is not attached. The port is not listening
+            // afterwards, hence ERROR rather than WARNING.
+            LOG.log(System.Logger.Level.ERROR, "Binding to port " + PORT + " failed" + e);
         }
     }
 
@@ -71,7 +76,7 @@ public class LoginServer {
         if (finishedShutdown) {
             return;
         }
-        System.out.println("Shutting down login...");
+        LOG.log(System.Logger.Level.INFO, "Shutting down login...");
         MapleAcceptor.unbind(InetSocketadd);
         finishedShutdown = true; //nothing. lol
     }

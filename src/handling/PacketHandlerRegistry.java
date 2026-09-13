@@ -82,6 +82,8 @@ import tools.packet.LoginPacket;
  */
 public final class PacketHandlerRegistry {
 
+    private static final System.Logger LOG = System.getLogger(PacketHandlerRegistry.class.getName());
+
     /**
      * Opcode to handler. Written only by {@link #put} from the static
      * initialiser below, read-only from then on.
@@ -117,7 +119,7 @@ public final class PacketHandlerRegistry {
     public static void handle(final RecvPacketOpcode header, final SeekableLittleEndianAccessor slea, final MapleClient c, final boolean cs) throws Exception {
         final PacketHandler handler = HANDLERS.get(header);
         if (handler == null) {
-            System.out.println("[UNHANDLED] Recv [" + header.toString() + "] found");
+            LOG.log(System.Logger.Level.INFO, "[UNHANDLED] Recv [" + header.toString() + "] found");
             return;
         }
         handler.handle(slea, c, cs);
@@ -303,7 +305,7 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.BUY_CS_ITEM, (slea, c, cs) -> CashShopOperation.BuyCashItem(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.COUPON_CODE, (slea, c, cs) -> {
             FileoutputUtil.log(FileoutputUtil.PacketEx_Log, "Coupon : \n" + slea.toString(true));
-            System.out.println(slea.toString());
+            LOG.log(System.Logger.Level.INFO, slea.toString());
             slea.skip(2);
             CashShopOperation.CouponCode(slea.readMapleAsciiString(), c);
         });

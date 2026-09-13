@@ -9,6 +9,8 @@ import java.sql.SQLException;
 
 public class AutoRegister {
 
+    private static final System.Logger LOG = System.getLogger(AutoRegister.class.getName());
+
     private static final int ACCOUNTS_PER_IP = 1;
 
     public static boolean getAccountExists(String login) {
@@ -22,7 +24,10 @@ public class AutoRegister {
                 }
             }
         } catch (SQLException ex) {
-            System.out.println(ex);
+            // Terse on purpose - this only ever printed ex.toString(). ERROR
+            // rather than INFO because the answer returned below is then wrong:
+            // an existing account reads back as free.
+            LOG.log(System.Logger.Level.ERROR, "查詢帳號是否存在失敗：" + ex);
         }
         return accountExists;
     }
@@ -70,7 +75,8 @@ public class AutoRegister {
             }
             return true;
         } catch (SQLException ex) {
-            System.out.println(ex);
+            // Terse on purpose, as above; the registration is abandoned.
+            LOG.log(System.Logger.Level.ERROR, "自動註冊失敗：" + ex);
             return false;
         }
     }

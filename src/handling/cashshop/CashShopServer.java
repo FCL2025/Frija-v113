@@ -30,6 +30,8 @@ import server.ServerProperties;
 
 public class CashShopServer {
 
+    private static final System.Logger LOG = System.getLogger(CashShopServer.class.getName());
+
     private static volatile String ip;
     private static volatile InetSocketAddress InetSocketadd;
     private final static int PORT = 8596;
@@ -44,10 +46,11 @@ public class CashShopServer {
 
         try {
             InetSocketadd = MapleAcceptor.bind(PORT, new MapleServerHandler(-1, true));
-            System.out.println("Shop    1: Listening on port " + PORT);
+            LOG.log(System.Logger.Level.INFO, "Shop    1: Listening on port " + PORT);
         } catch (final Exception e) {
-            System.err.println("Binding to port " + PORT + " failed");
-            e.printStackTrace();
+            // One record where there were two prints: the message and the trace
+            // belong to the same event, and the startup is abandoned right after.
+            LOG.log(System.Logger.Level.ERROR, "Binding to port " + PORT + " failed", e);
             throw new RuntimeException("Binding failed.", e);
         }
     }
@@ -68,11 +71,11 @@ public class CashShopServer {
         if (finishedShutdown) {
             return;
         }
-        System.out.println("Saving all connected clients (CS)...");
+        LOG.log(System.Logger.Level.INFO, "Saving all connected clients (CS)...");
         players.disconnectAll();
         playersMTS.disconnectAll();
         MTSStorage.getInstance().saveBuyNow(true);
-        System.out.println("Shutting down CS...");
+        LOG.log(System.Logger.Level.INFO, "Shutting down CS...");
         MapleAcceptor.unbind(InetSocketadd);
         finishedShutdown = true;
     }

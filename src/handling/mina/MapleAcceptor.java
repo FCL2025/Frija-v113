@@ -71,6 +71,8 @@ import server.ServerProperties;
  */
 public final class MapleAcceptor {
 
+    private static final System.Logger LOG = System.getLogger(MapleAcceptor.class.getName());
+
     /** Size of the shared packet-handler pool. */
     public static final String HANDLER_THREADS_PROPERTY = "tms.HandlerThreads";
 
@@ -94,7 +96,7 @@ public final class MapleAcceptor {
                 60, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), namedThreadFactory());
         HANDLER_POOL.allowCoreThreadTimeOut(true);
         ACCEPTOR = new SocketAcceptor();
-        System.out.println("[Network] Packet handlers: " + threads + " threads.");
+        LOG.log(System.Logger.Level.INFO, "[Network] Packet handlers: " + threads + " threads.");
     }
 
     private MapleAcceptor() {

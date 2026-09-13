@@ -60,6 +60,21 @@ import tools.FileoutputUtil;
 
 public class MapleServerHandler extends IoHandlerAdapter implements MapleServerHandlerMBean {
 
+    /**
+     * Ordinary application logging for this class - see {@code tools.Logging}
+     * for the conventions.
+     *
+     * <p>This is emphatically <em>not</em> where the three packet logs go. The
+     * 10k ring flushed by the MBean's {@link #writeLog}, the per-player
+     * {@code !monitor} file and the per-IP {@code PacketLog_<ip>.txt} are
+     * forensic captures with their own files, their own lifetimes and their own
+     * exclusion list ({@link #sensitive}); they write through {@link FileWriter}
+     * and must stay that way. What goes through {@code LOG} here is the
+     * reporting <em>about</em> them - "could not reload", "could not close" -
+     * plus session state and the {@code tms.Debug} hex dump.
+     */
+    private static final System.Logger LOG = System.getLogger(MapleServerHandler.class.getName());
+
     public static final boolean Log_Packets = true;
     private int channel = -1;
     private boolean cs;
@@ -92,6 +107,25 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
     private static final File loggedIPs = new File("Logs/LogIPs.txt");
     /** Rebuilt wholesale by {@code !reloadipmonitor} while handlers read it. */
     private static final Map<String, FileWriter> logIPMap = new ConcurrentHashMap<>();
+    /**
+     * {@code tms.Debug} - dump every received packet as hex.
+     *
+     * <p>It is now one of two gates, not the only one: the dump goes out at
+     * {@code DEBUG}, so the logging configuration has to allow it as well. To
+     * get the dumps back an operator needs {@code tms.Debug = true} in
+     * {@code Settings.ini} <em>and</em> this line in
+     * {@code Libs/logging.properties}:
+     *
+     * <pre>
+     *     handling.MapleServerHandler.level = FINE
+     * </pre>
+     *
+     * ({@code DEBUG} reaches {@code java.util.logging} as {@code FINE}; the
+     * console handler is already at {@code ALL}, so the logger's level is the
+     * only thing in the way.) Use {@link #debugDump()} rather than reading this
+     * field - building the hex dump is the expensive part and must not happen
+     * when nothing will print it.
+     */
     private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
     //Note to Zero: Use an enumset. Don't iterate through an array.
     private static final EnumSet<RecvPacketOpcode> blocked = EnumSet.noneOf(RecvPacketOpcode.class);
@@ -133,8 +167,10 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                         fw.close();
                     }
                 } catch (IOException ex) {
-                    System.out.println("Error closing Packet Log.");
-                    System.out.println(ex);
+                    // One record where there were two prints. Terse on purpose:
+                    // this only ever reported ex.toString(). The reload carries
+                    // on with the next writer, so WARNING.
+                    LOG.log(System.Logger.Level.WARNING, "Error closing Packet Log." + nl + ex);
                 }
             }
         }
@@ -156,10 +192,12 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                     logIPMap.put(line, fw);
                 }
             }
-            System.out.println("[IP Monitor] 記錄封包中的 IP: " + logIPMap.keySet());
+            LOG.log(System.Logger.Level.INFO, "[IP Monitor] 記錄封包中的 IP: " + logIPMap.keySet());
         } catch (Exception e) {
-            System.out.println("Could not reload packet logged IPs.");
-            System.out.println(e);
+            // One record where there were two prints, terse as before. The
+            // reload did not happen, so ERROR: whatever was listed in
+            // LogIPs.txt is not being monitored.
+            LOG.log(System.Logger.Level.ERROR, "Could not reload packet logged IPs." + nl + e);
         }
     }
 
@@ -274,8 +312,8 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             //The log is a static object, so we can just use this hacky method.
             mBeanServer.registerMBean(mbean, new ObjectName("handling:type=MapleServerHandler"));
         } catch (Exception e) {
-            System.out.println("Error registering PacketLog MBean");
-            e.printStackTrace();
+            // One record: the message and the trace are the same event.
+            LOG.log(System.Logger.Level.ERROR, "Error registering PacketLog MBean", e);
         }
     }
 
@@ -295,7 +333,10 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 Packet_Log_Lock.readLock().unlock();
             }
         } catch (IOException ex) {
-            System.out.println("Error writing log to file.");
+            // Terse on purpose, and unchanged: this has never reported `ex` at
+            // all, and attaching it now would change what the MBean's caller
+            // sees. The dump was abandoned, so ERROR.
+            LOG.log(System.Logger.Level.ERROR, "Error writing log to file.");
         }
     }
 
@@ -385,10 +426,12 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
      * already sends swallowed exceptions, so this goes to the same file as
      * {@code messageReceived}'s own catch, {@link FileoutputUtil#PacketEx_Log}.
      * The second commented-out line, a bare {@code cause.printStackTrace()}, is
-     * deliberately not restored as-is - full traces on stdout are the same
-     * unbounded-write problem - and is replaced by one line on stderr naming
-     * the log file, so an operator watching the console still sees that
-     * something happened.
+     * deliberately not restored as-is - full traces on the console are the same
+     * unbounded-write problem - and is replaced by one {@code ERROR} record
+     * naming the log file, so an operator watching the console still sees that
+     * something happened. That record carries <em>no</em> {@link Throwable} for
+     * the same reason: {@code tools.Logging.ConsoleFormat} appends a full stack
+     * trace to any record that has one, which is exactly what this is avoiding.
      */
     @Override
     public void exceptionCaught(final IoSession session, final Throwable cause) throws Exception {
@@ -431,7 +474,11 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             // body in a single call for exactly this reason.
             FileoutputUtil.log(FileoutputUtil.PacketEx_Log, sb.toString());
             if (!routine) {
-                System.err.println(where + " exceptionCaught " + what + " - 詳見 " + FileoutputUtil.PacketEx_Log);
+                // No Throwable attached: see this method's javadoc. The full
+                // trace is already in PacketEx_Log, one entry, bounded by
+                // EXCEPTION_LOG_LIMIT.
+                LOG.log(System.Logger.Level.ERROR,
+                        where + " exceptionCaught " + what + " - 詳見 " + FileoutputUtil.PacketEx_Log);
             }
         } catch (final Throwable ignored) {
             // The error path's own error path. There is nothing left to report
@@ -556,7 +603,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             sb.append("[Login Server]");
         }
         sb.append("IoSession opened ").append(address);
-        System.out.println(sb.toString());
+        LOG.log(System.Logger.Level.INFO, sb.toString());
         Client.addClient(client);
 
         FileWriter fw = isLoggedIP(session);
@@ -603,22 +650,22 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             // enum constants, on every packet from every client.
             final RecvPacketOpcode recv = RecvPacketOpcode.forValue(header_num);
             if (recv == null) {
-                if (debugMode) {
+                if (debugDump()) {
                     final StringBuilder sb = new StringBuilder("Received data 未處理 : ");
                     sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
-                    System.out.println(sb.toString());
+                    LOG.log(System.Logger.Level.DEBUG, sb.toString());
                 }
                 return;
             }
 
-            if (debugMode) {
+            if (debugDump()) {
                 if (sensitive.contains(recv)) {
                     // The body holds a password in clear text - name the opcode only.
-                    System.out.println("Received data 已處理 :" + String.valueOf(recv) + " [內容含密碼，不輸出]");
+                    LOG.log(System.Logger.Level.DEBUG, "Received data 已處理 :" + String.valueOf(recv) + " [內容含密碼，不輸出]");
                 } else {
                     final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
                     sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
-                    System.out.println(sb.toString());
+                    LOG.log(System.Logger.Level.DEBUG, sb.toString());
                 }
             }
             final MapleClient c = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
@@ -654,9 +701,25 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             }
         } catch (Exception e) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
-            e.printStackTrace();
+            // The trace went to stdout before and still does, as one record
+            // rather than an interleaved block: tools.Logging.ConsoleFormat
+            // appends it to the message.
+            LOG.log(System.Logger.Level.ERROR, "封包處理發生例外 - 詳見 " + FileoutputUtil.PacketEx_Log, e);
         }
 
+    }
+
+    /**
+     * Whether a {@code tms.Debug} hex dump should be built at all.
+     *
+     * <p>Both gates, checked in the cheap order, on the per-packet path: the
+     * {@code tms.Debug} switch first, then whether {@code DEBUG} is loggable.
+     * The dump itself is two passes of {@code HexTool} over the whole packet,
+     * so it must not be built for a record that will be thrown away - see
+     * {@link #debugMode} for what an operator has to set.
+     */
+    private static boolean debugDump() {
+        return debugMode && LOG.isLoggable(System.Logger.Level.DEBUG);
     }
 
     @Override

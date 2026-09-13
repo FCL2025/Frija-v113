@@ -30,6 +30,8 @@ import provider.MapleDataTool;
 
 public class LoginInformationProvider {
 
+    private static final System.Logger LOG = System.getLogger(LoginInformationProvider.class.getName());
+
     private final static LoginInformationProvider instance = new LoginInformationProvider();
     protected final List<String> ForbiddenName = new ArrayList<>();
 
@@ -38,7 +40,7 @@ public class LoginInformationProvider {
     }
 
     protected LoginInformationProvider() {
-        System.out.println("Loading LoginInformationProvider :::");
+        LOG.log(System.Logger.Level.INFO, "Loading LoginInformationProvider :::");
         final String WZpath = System.getProperty("net.sf.odinms.wzpath");
         final MapleData nameData = MapleDataProviderFactory.getDataProvider(new File(WZpath + "/Etc.wz")).getData("ForbiddenName.img");
         for (final MapleData data : nameData.getChildren()) {

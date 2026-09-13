@@ -28,6 +28,8 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class CashShopOperation {
 
+    private static final System.Logger LOG = System.getLogger(CashShopOperation.class.getName());
+
     public static void LeaveCS(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         CashShopServer.getPlayerStorageMTS().deregisterPlayer(chr);
         CashShopServer.getPlayerStorage().deregisterPlayer(chr);
@@ -104,7 +106,7 @@ public class CashShopOperation {
         try {
             validcode = MapleCharacterUtil.getNXCodeValid(code.toUpperCase(), validcode);
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "檢查優惠序號失敗，視為無效序號", e);
         }
 
         if (validcode) {
@@ -112,13 +114,13 @@ public class CashShopOperation {
                 type = MapleCharacterUtil.getNXCodeType(code);
                 item = MapleCharacterUtil.getNXCodeItem(code);
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOG.log(System.Logger.Level.ERROR, "讀取優惠序號內容失敗", e);
             }
             if (type != 4) {
                 try {
                     MapleCharacterUtil.setNXCodeUsed(c.getPlayer().getName(), code);
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    LOG.log(System.Logger.Level.ERROR, "標記優惠序號為已使用失敗，該序號可能被重複使用", e);
                 }
             }
             /*

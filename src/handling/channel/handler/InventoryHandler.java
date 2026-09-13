@@ -908,6 +908,59 @@ public class InventoryHandler {
         }
     }
 
+    /**
+     * What one cash-item branch of {@link #UseCashItem} wants done once it has run.
+     *
+     * <p>The 1,247-line {@code switch (itemId)} that used to be the body of {@code
+     * UseCashItem} kept two mutable locals - {@code used} and {@code cc} - that the
+     * branches wrote and the code after the switch read: {@code used} decides whether
+     * the item is consumed, {@code cc} whether the player is bounced to the next
+     * channel. Three branches skipped the lot by returning outright. Now that each
+     * branch is its own method, those two booleans are its return value and {@link
+     * #ABORT} is that bare {@code return;} - it skips the consumption, the {@code
+     * enableActions()} and the channel change, exactly as returning from the middle
+     * of the switch used to.
+     */
+    private enum CashUse {
+
+        /** Neither: the branch ran and asked for nothing. The old plain {@code break;}. */
+        NONE(false, false),
+        /** Consume one of the item from the cash inventory slot it was used from. */
+        USED(true, false),
+        /** Change channel without consuming the item. */
+        CC(false, true),
+        /** Consume the item and change channel. */
+        USED_CC(true, true),
+        /** Leave {@link #UseCashItem} at once - no consumption, no {@code enableActions()}. */
+        ABORT(false, false);
+
+        final boolean used;
+        final boolean cc;
+
+        CashUse(final boolean used, final boolean cc) {
+            this.used = used;
+            this.cc = cc;
+        }
+
+        static CashUse of(final boolean used) {
+            return used ? USED : NONE;
+        }
+
+        static CashUse of(final boolean used, final boolean cc) {
+            return used ? (cc ? USED_CC : USED) : (cc ? CC : NONE);
+        }
+    }
+
+    /**
+     * Use one item from the cash inventory.
+     *
+     * <p>This reads the slot and the item id, checks that the slot really holds that
+     * item, and then hands the rest of the packet to the one {@code use…} method
+     * registered below for that id. Each of those methods is an arm of this table and
+     * nothing else calls it; the reads it makes from {@code slea} carry on from the two
+     * made here, so what an arm reads - and in what order - is part of the protocol and
+     * may not be reordered or shared with another arm.
+     */
     public static final void UseCashItem(final SeekableLittleEndianAccessor slea, final MapleClient c) {
 //        c.getPlayer().updateTick(slea.readInt());
         final byte slot = (byte) slea.readShort();
@@ -919,1228 +972,88 @@ public class InventoryHandler {
             return;
         }
 
-        boolean used = false, cc = false;
-        switch (itemId) {
-            case 5043001: // NPC Teleport Rock
-            case 5043000: { // NPC Teleport Rock
-                final short questid = slea.readShort();
-                final int npcid = slea.readInt();
-                final MapleQuest quest = MapleQuest.getInstance(questid);
-
-                if (c.getPlayer().getQuest(quest).getStatus() == 1 && quest.canComplete(c.getPlayer(), npcid)) {
-                    final int mapId = MapleLifeFactory.getNPCLocation(npcid);
-                    if (mapId != -1) {
-                        final MapleMap map = c.getChannelServer().getMapFactory().getMap(mapId);
-                        if (map.containsNPC(npcid) && !FieldLimitType.VipRock.check(c.getPlayer().getMap().getFieldLimit()) && !FieldLimitType.VipRock.check(map.getFieldLimit()) && c.getPlayer().getEventInstance() == null) {
-                            c.getPlayer().changeMap(map, map.getPortal(0));
-                        }
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(1, "Unknown error has occurred.");
-                    }
-                }
-                break;
-            }
-            case 5042000:
-                if(c.getPlayer().getEventInstance() == null){
-                    final MapleMap target = c.getChannelServer().getMapFactory().getMap(701000000);
-                    c.getPlayer().changeMap(target, target.getPortal(0));
-                    used = true;
-                }
-                break;
-            case 5042001:
-                if(c.getPlayer().getEventInstance() == null){
-                    final MapleMap target = c.getChannelServer().getMapFactory().getMap(741000000);
-                    c.getPlayer().changeMap(target, target.getPortal(0));
-                    used = true;
-                }
-                break;
-            case 5560000: // The Teleport tick
-            case 5561000:{ // The VIP Teleport tick
-                slea.skip(1);
-                final MapleMap target = c.getChannelServer().getMapFactory().getMap(slea.readInt());
-                if (c.getPlayer().getEventInstance() == null) { //Makes sure this map doesn't have a forced return map
-                    c.getPlayer().changeMap(target, target.getPortal(0));
-                    used = true;
-                }
-                break;
-            }
-            case 2320000: // The Teleport Rock
-            case 5041000: // VIP Teleport Rock
-            case 5040000: // The Teleport Rock
-            case 5040001: { // Teleport Coke
-                if (slea.readByte() == 0) { // Rocktype
-                    final MapleMap target = c.getChannelServer().getMapFactory().getMap(slea.readInt());
-                    if ((itemId == 5041000 && c.getPlayer().isRockMap(target.getId())) || (itemId != 5041000 && c.getPlayer().isRegRockMap(target.getId()))) {
-                        if (!FieldLimitType.VipRock.check(c.getPlayer().getMap().getFieldLimit()) && !FieldLimitType.VipRock.check(target.getFieldLimit()) && c.getPlayer().getEventInstance() == null) { //Makes sure this map doesn't have a forced return map
-                            c.getPlayer().changeMap(target, target.getPortal(0));
-                            used = true;
-                        }
-                    }
-                } else {
-                    final MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
-                    if (victim != null && !victim.isGM() && c.getPlayer().getEventInstance() == null && victim.getEventInstance() == null) {
-                        if (!FieldLimitType.VipRock.check(c.getPlayer().getMap().getFieldLimit()) && !FieldLimitType.VipRock.check(c.getChannelServer().getMapFactory().getMap(victim.getMapId()).getFieldLimit())) {
-                            if (itemId == 5041000 || (victim.getMapId() / 100000000) == (c.getPlayer().getMapId() / 100000000)) { // Viprock or same continent
-                                c.getPlayer().changeMap(victim.getMap(), victim.getMap().findClosestSpawnpoint(victim.getPosition()));
-                                used = true;
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-            case 5050000: { // AP Reset
-                List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
-                final int apto = slea.readInt();
-                final int apfrom = slea.readInt();
-
-                if (apto == apfrom) {
-                    break; // Hack
-                }
-                final int job = c.getPlayer().getJob();
-                final PlayerStats playerst = c.getPlayer().getStat();
-                used = true;
-
-                switch (apto) { // AP to
-                    case 64: // str
-                        if (playerst.getStr() >= 999) {
-                            used = false;
-                        }
-                        break;
-                    case 128: // dex
-                        if (playerst.getDex() >= 999) {
-                            used = false;
-                        }
-                        break;
-                    case 256: // int
-                        if (playerst.getInt() >= 999) {
-                            used = false;
-                        }
-                        break;
-                    case 512: // luk
-                        if (playerst.getLuk() >= 999) {
-                            used = false;
-                        }
-                        break;
-                    case 2048: // hp
-                        if (playerst.getMaxHp() >= 30000) {
-                            used = false;
-                        }
-                        break;
-                    case 8192: // mp
-                        if (playerst.getMaxMp() >= 30000) {
-                            used = false;
-                        }
-                        break;
-                }
-                switch (apfrom) { // AP to
-                    case 64: // str
-                        if (playerst.getStr() <= 4 || (c.getPlayer().getJob() % 1000 / 100 == 1 && playerst.getStr() <= 35)) {
-                            used = false;
-                        }
-                        break;
-                    case 128: // dex
-                        if (playerst.getDex() <= 4 || (c.getPlayer().getJob() % 1000 / 100 == 3 && playerst.getDex() <= 25) || (c.getPlayer().getJob() % 1000 / 100 == 4 && playerst.getDex() <= 25) || (c.getPlayer().getJob() % 1000 / 100 == 5 && playerst.getDex() <= 20)) {
-                            used = false;
-                        }
-                        break;
-                    case 256: // int
-                        if (playerst.getInt() <= 4 || (c.getPlayer().getJob() % 1000 / 100 == 2 && playerst.getInt() <= 20)) {
-                            used = false;
-                        }
-                        break;
-                    case 512: // luk
-                        if (playerst.getLuk() <= 4) {
-                            used = false;
-                        }
-                        break;
-                    case 2048: // hp
-                        if (/*playerst.getMaxMp() < ((c.getPlayer().getLevel() * 14) + 134) || */c.getPlayer().getHpApUsed() <= 0 || c.getPlayer().getHpApUsed() >= 10000) {
-                            used = false;
-                        }
-                        break;
-                    case 8192: // mp
-                        if (/*playerst.getMaxMp() < ((c.getPlayer().getLevel() * 14) + 134) || */c.getPlayer().getHpApUsed() <= 0 || c.getPlayer().getHpApUsed() >= 10000) {
-                            used = false;
-                        }
-                        break;
-                }
-                if (used) {
-                    switch (apto) { // AP to
-                        case 64: { // str
-                            final int toSet = playerst.getStr() + 1;
-                            playerst.setStr((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.STR, toSet));
-                            break;
-                        }
-                        case 128: { // dex
-                            final int toSet = playerst.getDex() + 1;
-                            playerst.setDex((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.DEX, toSet));
-                            break;
-                        }
-                        case 256: { // int
-                            final int toSet = playerst.getInt() + 1;
-                            playerst.setInt((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.INT, toSet));
-                            break;
-                        }
-                        case 512: { // luk
-                            final int toSet = playerst.getLuk() + 1;
-                            playerst.setLuk((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.LUK, toSet));
-                            break;
-                        }
-                        case 2048: // hp
-                            int maxhp = playerst.getMaxHp(); // 累加期間用 int，最後 clamp 到 30000 才轉回 short
-
-                            if (job == 0) { // Beginner
-                                maxhp += Randomizer.rand(8, 12);
-                            } else if ((job >= 100 && job <= 132) || (job >= 3200 && job <= 3212)) { // Warrior
-                                ISkill improvingMaxHP = SkillFactory.getSkill(1000001);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp += Randomizer.rand(20, 25);
-                                if (improvingMaxHPLevel >= 1) {
-                                    maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job))) { // Magician
-                                maxhp += Randomizer.rand(10, 20);
-                            } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312)) { // Bowman
-                                maxhp += Randomizer.rand(16, 20);
-                            } else if ((job >= 500 && job <= 522) || (job >= 3500 && job <= 3512)) { // Pirate
-                                ISkill improvingMaxHP = SkillFactory.getSkill(5100000);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp += Randomizer.rand(18, 22);
-                                if (improvingMaxHPLevel >= 1) {
-                                    maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 1500 && job <= 1512) { // Pirate
-                                ISkill improvingMaxHP = SkillFactory.getSkill(15100000);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp += Randomizer.rand(18, 22);
-                                if (improvingMaxHPLevel >= 1) {
-                                    maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 1100 && job <= 1112) { // Soul Master
-                                ISkill improvingMaxHP = SkillFactory.getSkill(11000000);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp += Randomizer.rand(36, 42);
-                                if (improvingMaxHPLevel >= 1) {
-                                    maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 1200 && job <= 1212) { // Flame Wizard
-                                maxhp += Randomizer.rand(15, 21);
-                            } else if (job >= 2000 && job <= 2112) { // Aran
-                                maxhp += Randomizer.rand(40, 50);
-                            } else { // GameMaster
-                                maxhp += Randomizer.rand(50, 100);
-                            }
-                            maxhp = Math.min(30000, Math.abs(maxhp));
-                            c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
-                            playerst.setMaxHp((short) maxhp); // clamp 過，必定在 0..30000
-                            statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
-                            break;
-
-                        case 8192: // mp
-                            int maxmp = playerst.getMaxMp(); // 同上
-
-                            if (job == 0) { // Beginner
-                                maxmp += Randomizer.rand(6, 8);
-                            } else if (job >= 100 && job <= 132) { // Warrior
-                                maxmp += Randomizer.rand(5, 7);
-                            } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
-                                ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
-                                int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
-                                maxmp += Randomizer.rand(18, 20);
-                                if (improvingMaxMPLevel >= 1) {
-                                    maxmp += improvingMaxMP.getEffect(improvingMaxMPLevel).getY() * 2;
-                                }
-                            } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 500 && job <= 522) || (job >= 3200 && job <= 3212) || (job >= 3500 && job <= 3512) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 1500 && job <= 1512)) { // Bowman
-                                maxmp += Randomizer.rand(10, 12);
-                            } else if (job >= 1100 && job <= 1112) { // Soul Master
-                                maxmp += Randomizer.rand(6, 9);
-                            } else if (job >= 1200 && job <= 1212) { // Flame Wizard
-                                ISkill improvingMaxMP = SkillFactory.getSkill(12000000);
-                                int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
-                                maxmp += Randomizer.rand(18, 20);
-                                if (improvingMaxMPLevel >= 1) {
-                                    maxmp += improvingMaxMP.getEffect(improvingMaxMPLevel).getY() * 2;
-                                }
-                            } else if (job >= 2000 && job <= 2112) { // Aran
-                                maxmp += Randomizer.rand(6, 9);
-                            } else { // GameMaster
-                                maxmp += Randomizer.rand(50, 100);
-                            }
-                            maxmp = Math.min(30000, Math.abs(maxmp));
-                            c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
-                            playerst.setMaxMp((short) maxmp); // clamp 過，必定在 0..30000
-                            statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
-                            break;
-                    }
-                    switch (apfrom) { // AP from
-                        case 64: { // str
-                            final int toSet = playerst.getStr() - 1;
-                            playerst.setStr((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.STR, toSet));
-                            break;
-                        }
-                        case 128: { // dex
-                            final int toSet = playerst.getDex() - 1;
-                            playerst.setDex((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.DEX, toSet));
-                            break;
-                        }
-                        case 256: { // int
-                            final int toSet = playerst.getInt() - 1;
-                            playerst.setInt((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.INT, toSet));
-                            break;
-                        }
-                        case 512: { // luk
-                            final int toSet = playerst.getLuk() - 1;
-                            playerst.setLuk((short) toSet);
-                            statupdate.add(new Pair<>(MapleStat.LUK, toSet));
-                            break;
-                        }
-                        case 2048: // HP
-                            int maxhp = playerst.getMaxHp(); // 扣回 AP：只會往下減，轉回 short 與原本逐步截斷等價
-                            if (job == 0) { // Beginner
-                                maxhp -= 12;
-                            } else if (job >= 100 && job <= 132) { // Warrior
-                                ISkill improvingMaxHP = SkillFactory.getSkill(1000001);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp -= 24;
-                                if (improvingMaxHPLevel >= 1) {
-                                    maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 200 && job <= 232) { // Magician
-                                maxhp -= 10;
-                            } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312) || (job >= 3500 && job <= 3512)) { // Bowman, Thief
-                                maxhp -= 15;
-                            } else if (job >= 500 && job <= 522) { // Pirate
-                                ISkill improvingMaxHP = SkillFactory.getSkill(5100000);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp -= 15;
-                                if (improvingMaxHPLevel > 0) {
-                                    maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 1500 && job <= 1512) { // Pirate
-                                ISkill improvingMaxHP = SkillFactory.getSkill(15100000);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp -= 15;
-                                if (improvingMaxHPLevel > 0) {
-                                    maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 1100 && job <= 1112) { // Soul Master
-                                ISkill improvingMaxHP = SkillFactory.getSkill(11000000);
-                                int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
-                                maxhp -= 27;
-                                if (improvingMaxHPLevel >= 1) {
-                                    maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
-                                }
-                            } else if (job >= 1200 && job <= 1212) { // Flame Wizard
-                                maxhp -= 12;
-                            } else if ((job >= 2000 && job <= 2112) || (job >= 3200 && job <= 3212)) { // Aran
-                                maxhp -= 40;
-                            } else { // GameMaster
-                                maxhp -= 20;
-                            }
-                            c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
-                            playerst.setHp(maxhp);
-                            playerst.setMaxHp((short) maxhp);
-                            statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
-                            break;
-                        case 8192: // MP
-                            int maxmp = playerst.getMaxMp(); // 同上
-                            if (job == 0) { // Beginner
-                                maxmp -= 8;
-                            } else if (job >= 100 && job <= 132) { // Warrior
-                                maxmp -= 4;
-                            } else if (job >= 200 && job <= 232) { // Magician
-                                ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
-                                int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
-                                maxmp -= 20;
-                                if (improvingMaxMPLevel >= 1) {
-                                    maxmp -= improvingMaxMP.getEffect(improvingMaxMPLevel).getY();
-                                }
-                            } else if ((job >= 500 && job <= 522) || (job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 1500 && job <= 1512) || (job >= 3300 && job <= 3312) || (job >= 3500 && job <= 3512)) { // Pirate, Bowman. Thief
-                                maxmp -= 10;
-                            } else if (job >= 1100 && job <= 1112) { // Soul Master
-                                maxmp -= 6;
-                            } else if (job >= 1200 && job <= 1212) { // Flame Wizard
-                                ISkill improvingMaxMP = SkillFactory.getSkill(12000000);
-                                int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
-                                maxmp -= 25;
-                                if (improvingMaxMPLevel >= 1) {
-                                    maxmp -= improvingMaxMP.getEffect(improvingMaxMPLevel).getY();
-                                }
-                            } else if (job >= 2000 && job <= 2112) { // Aran
-                                maxmp -= 5;
-                            } else { // GameMaster
-                                maxmp -= 20;
-                            }
-                            c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
-                            playerst.setMp(maxmp);
-                            playerst.setMaxMp((short) maxmp);
-                            statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
-                            break;
-                    }
-                    c.send(CharacterPacket.updatePlayerStats(statupdate, true, c.getPlayer().getJob()));
-                }
-                break;
-            }
-        case 5050001: // SP Reset (1st job)
-        case 5050002: // SP Reset (2nd job)
-        case 5050003: // SP Reset (3rd job)
-        case 5050004: { // SP Reset (4th job)
-        int skill1 = slea.readInt();
-        int skill2 = slea.readInt();
-
-        ISkill skillSPTo = SkillFactory.getSkill(skill1);
-        ISkill skillSPFrom = SkillFactory.getSkill(skill2);
-
-        if (skillSPTo.isBeginnerSkill() || skillSPFrom.isBeginnerSkill()) {
-            break;
+        final CashUse result = switch (itemId) {
+            case 5043001, // NPC Teleport Rock
+                 5043000 -> useNpcTeleportRock(slea, c); // NPC Teleport Rock
+            case 5042000 -> useWarpTicket5042000(c);
+            case 5042001 -> useWarpTicket5042001(c);
+            case 5560000, // The Teleport tick
+                 5561000 -> useTeleportTicket(slea, c); // The VIP Teleport tick
+            case 2320000, // The Teleport Rock
+                 5041000, // VIP Teleport Rock
+                 5040000, // The Teleport Rock
+                 5040001 -> useTeleportRock(slea, c, itemId); // Teleport Coke
+            case 5050000 -> useApReset(slea, c); // AP Reset
+            case 5050001, // SP Reset (1st job)
+                 5050002, // SP Reset (2nd job)
+                 5050003, // SP Reset (3rd job)
+                 5050004 -> useSpReset(slea, c); // SP Reset (4th job)
+            case 5500000 -> useMagicHourglass1Day(slea, c); // Magic Hourglass 1 day
+            case 5500001 -> useMagicHourglass7Days(slea, c); // Magic Hourglass 7 day
+            case 5500002 -> useMagicHourglass20Days(slea, c); // Magic Hourglass 20 day
+            case 5500005 -> useMagicHourglass50Days(slea, c); // Magic Hourglass 50 day
+            case 5500006 -> useMagicHourglass99Days(slea, c); // Magic Hourglass 99 day
+            case 5060000 -> useItemTag(slea, c); // Item Tag
+            case 5062000 -> useMiracleCube(slea, c, toUse); //miracle cube
+            case 5520001, //p.karma
+                 5520000 -> useKarma(slea, c, itemId); // Karma
+            case 5570000 -> useViciousHammer(slea, c); // Vicious Hammer
+            case 5610001,
+                 5610000 -> useVega(slea, c, itemId); // Vega 30
+            case 5060001 -> useSealingLock(slea, c); // Sealing Lock
+            case 5061000 -> useSealingLock7Days(slea, c); // Sealing Lock 7 days
+            case 5061001 -> useSealingLock30Days(slea, c); // Sealing Lock 30 days
+            case 5061002 -> useSealingLock90Days(slea, c); // Sealing Lock 90 days
+            case 5060003 -> usePeanut(c); //peanut
+            case 5070000 -> useMegaphone5070000(slea, c); // Megaphone
+            case 5071000 -> useMegaphone5071000(slea, c); // Megaphone
+            case 5077000 -> useTripleMegaphone(slea, c); // 3 line Megaphone
+            case 5073000 -> useHeartMegaphone(slea, c); // Heart Megaphone
+            case 5074000 -> useSkullMegaphone(slea, c); // Skull Megaphone
+            case 5072000 -> useSuperMegaphone(slea, c); // Super Megaphone
+            case 5076000 -> useItemMegaphone(slea, c); // Item Megaphone
+            case 5075000, // MapleTV Messenger
+                 5075001, // MapleTV Star Messenger
+                 5075002 -> useMapleTvMessengerUnavailable(c); // MapleTV Heart Messenger
+            case 5075003, 5075004, 5075005 -> useMapleTvMessenger(slea, c, itemId);
+            case 5090100, // Wedding Invitation Card
+                 5090000 -> useNote(slea, c); // Note
+            case 5100000 -> useCongratulatorySong(c); // Congratulatory Song
+            case 5190001, 5190002, 5190003, 5190004, 5190005, 5190006,
+                 5190007, 5190008,
+                 5190000 -> useAddPetFlag(slea, c, itemId); // Pet Flags
+            case 5191001, 5191002, 5191003, 5191004,
+                 5191000 -> useRemovePetFlag(slea, c, itemId); // Pet Flags
+            case 5170000 -> usePetNameChange(slea, c); // Pet name change
+            case 5240000, 5240001, 5240002, 5240003, 5240004, 5240005,
+                 5240006, 5240007, 5240008, 5240009, 5240010, 5240011,
+                 5240012, 5240013, 5240014, 5240015, 5240016, 5240017,
+                 5240018, 5240019, 5240020, 5240021, 5240022, 5240023,
+                 5240024, 5240025, 5240026, 5240027,
+                 5240028 -> usePetFood(c, itemId); // Pet food
+            case 5230000 -> useOwlOfMinerva(slea, c); // owl of minerva
+            case 5281001, //idk, but probably
+                 5280001, // Gas Skill
+                 5281000 -> useGasSkill(c); // Passed gas
+            case 5370000 -> useChalkboard(slea, c); // Chalkboard
+            case 5370001 -> useBlackboard(slea, c); // BlackBoard
+            case 5390000, // Diablo Messenger
+                 5390001, // Cloud 9 Messenger
+                 5390002, // Loveholic Messenger
+                 5390003, // New Year Megassenger 1
+                 5390004, // New Year Megassenger 2
+                 5390005, // Cute Tiger Messenger
+                 5390006 -> useAvatarMegaphone(slea, c, itemId); // Tiger Roar's Messenger
+            case 5450000 -> useTravellingMerchant(c); // Mu Mu the Travelling Merchant
+            case 5152100, 5152101, 5152102, 5152103, 5152104, 5152105,
+                 5152106, 5152107 -> useEyeColourCoupon(c, itemId);
+            default -> useOtherCashItem(slea, c, itemId, slot);
+        };
+        if (result == CashUse.ABORT) {
+            return;
         }
-        if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c.getPlayer().getSkillLevel(skillSPFrom) > 0) {
-            c.getPlayer().changeSkillLevel(skillSPFrom, (byte) (c.getPlayer().getSkillLevel(skillSPFrom) - 1), c.getPlayer().getMasterLevel(skillSPFrom));
-            c.getPlayer().changeSkillLevel(skillSPTo, (byte) (c.getPlayer().getSkillLevel(skillSPTo) + 1), c.getPlayer().getMasterLevel(skillSPTo));
-            used = true;
-        }
-        break;
-        }
-            case 5500000: { // Magic Hourglass 1 day
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
-                final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                final int days = 1;
-                if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
-                    boolean change = true;
-                    for (String z : GameConstants.RESERVED) {
-                        if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
-                            change = false;
-                        }
-                    }
-                    if (change) {
-                        item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(1, "It may not be used on this item.");
-                    }
-                }
-                break;
-            }
-            case 5500001: { // Magic Hourglass 7 day
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
-                final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                final int days = 7;
-                if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
-                    boolean change = true;
-                    for (String z : GameConstants.RESERVED) {
-                        if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
-                            change = false;
-                        }
-                    }
-                    if (change) {
-                        item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(1, "It may not be used on this item.");
-                    }
-                }
-                break;
-            }
-            case 5500002: { // Magic Hourglass 20 day
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
-                final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                final int days = 20;
-                if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
-                    boolean change = true;
-                    for (String z : GameConstants.RESERVED) {
-                        if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
-                            change = false;
-                        }
-                    }
-                    if (change) {
-                        item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(1, "It may not be used on this item.");
-                    }
-                }
-                break;
-            }
-            case 5500005: { // Magic Hourglass 50 day
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
-                final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                final int days = 50;
-                if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
-                    boolean change = true;
-                    for (String z : GameConstants.RESERVED) {
-                        if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
-                            change = false;
-                        }
-                    }
-                    if (change) {
-                        item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(1, "It may not be used on this item.");
-                    }
-                }
-                break;
-            }
-            case 5500006: { // Magic Hourglass 99 day
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
-                final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                final int days = 99;
-                if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
-                    boolean change = true;
-                    for (String z : GameConstants.RESERVED) {
-                        if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
-                            change = false;
-                        }
-                    }
-                    if (change) {
-                        item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(1, "It may not be used on this item.");
-                    }
-                }
-                break;
-            }
-            case 5060000: { // Item Tag
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readByte());
-
-                if (item != null && item.getOwner().equals("")) {
-                    boolean change = true;
-                    for (String z : GameConstants.RESERVED) {
-                        if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
-                            change = false;
-                        }
-                    }
-                    if (change) {
-                        item.setOwner(c.getPlayer().getName());
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
-                        used = true;
-                    }
-                }
-                break;
-            }
-            case 5062000: { //miracle cube
-                final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIP).getItem((byte) slea.readInt());
-                if (item != null && c.getPlayer().getInventory(MapleInventoryType.USE).getNumFreeSlot() >= 1) {
-                    final Equip eq = (Equip) item;
-                    if (eq.getState() >= 5) {
-                        eq.renewPotential();
-                        c.send(InventoryPacket.scrolledItem(toUse, item, false, true));
-                        c.getPlayer().forceReAddItem_NoUpdate(item, MapleInventoryType.EQUIP);
-                        MapleInventoryManipulator.addById(c, 2430112, (short) 1);
-                        used = true;
-                    } else {
-                        c.getPlayer().dropMessage(5, "Make sure your equipment has a potential.");
-                    }
-                } else {
-                    c.getPlayer().dropMessage(5, "Make sure you have room for a Fragment.");
-                }
-                break;
-            }
-            case 5520001: //p.karma
-            case 5520000: { // Karma
-                final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
-                final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
-
-                if (item != null && !ItemFlag.KARMA_EQ.check(item.getFlag()) && !ItemFlag.KARMA_USE.check(item.getFlag())) {
-                    if ((itemId == 5520000 && MapleItemInformationProvider.getInstance().isKarmaEnabled(item.getItemId())) || (itemId == 5520001 && MapleItemInformationProvider.getInstance().isPKarmaEnabled(item.getItemId()))) {
-                        byte flag = item.getFlag();
-                        if (type == MapleInventoryType.EQUIP) {
-                            flag = (byte) (flag | ItemFlag.KARMA_EQ.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
-                        } else {
-                            flag = (byte) (flag | ItemFlag.KARMA_USE.getValue());
-                        }
-                        item.setFlag(flag);
-
-                        c.getPlayer().forceReAddItem_Flag(item, type);
-                        used = true;
-                    }
-                }
-                break;
-            }
-            case 5570000: { // Vicious Hammer
-                slea.readInt(); // Inventory type, Hammered eq is always EQ.
-                final Equip item = (Equip) c.getPlayer().getInventory(MapleInventoryType.EQUIP).getItem((byte) slea.readInt());
-                // another int here, D3 49 DC 00
-                if (item != null) {
-                    if (GameConstants.canHammer(item.getItemId()) && MapleItemInformationProvider.getInstance().getSlots(item.getItemId()) > 0 && item.getViciousHammer() <= 2) {
-                        item.setViciousHammer((byte) (item.getViciousHammer() + 1));
-                        item.setUpgradeSlots((byte) (item.getUpgradeSlots() + 1));
-
-                        c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIP);
-                        used = true;
-                        cc = true;
-                    } else {
-                        c.getPlayer().dropMessage(5, "You may not use it on this item.");
-                        cc = true;
-                    }
-                }
-
-                break;
-            }
-            case 5610001:
-            case 5610000: { // Vega 30
-                slea.readInt(); // Inventory type, always eq
-                final byte dst = (byte) slea.readInt();
-                slea.readInt(); // Inventory type, always use
-                final byte src = (byte) slea.readInt();
-                used = UseUpgradeScroll(src, dst, (byte) 2, c, c.getPlayer(), itemId); //cannot use ws with vega but we dont care
-                cc = used;
-                break;
-            }
-            case 5060001: { // Sealing Lock
-                final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
-                final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
-                // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
-                if (item != null && item.getExpiration() == -1) {
-                    byte flag = item.getFlag();
-                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
-                    item.setFlag(flag);
-
-                    c.getPlayer().forceReAddItem_Flag(item, type);
-                    used = true;
-                }
-                break;
-            }
-            case 5061000: { // Sealing Lock 7 days
-                final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
-                final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
-                // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
-                if (item != null && item.getExpiration() == -1) {
-                    byte flag = item.getFlag();
-                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
-                    item.setFlag(flag);
-                    item.setExpiration(System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000));
-
-                    c.getPlayer().forceReAddItem_Flag(item, type);
-                    used = true;
-                }
-                break;
-            }
-            case 5061001: { // Sealing Lock 30 days
-                final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
-                final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
-                // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
-                if (item != null && item.getExpiration() == -1) {
-                    byte flag = item.getFlag();
-                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
-                    item.setFlag(flag);
-
-                    item.setExpiration(System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000));
-
-                    c.getPlayer().forceReAddItem_Flag(item, type);
-                    used = true;
-                }
-                break;
-            }
-            case 5061002: { // Sealing Lock 90 days
-                final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
-                final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
-                // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
-                if (item != null && item.getExpiration() == -1) {
-                    byte flag = item.getFlag();
-                    flag = (byte) (flag | ItemFlag.LOCK.getValue());
-                    item.setFlag(flag);
-
-                    item.setExpiration(System.currentTimeMillis() + (90 * 24 * 60 * 60 * 1000));
-
-                    c.getPlayer().forceReAddItem_Flag(item, type);
-                    used = true;
-                }
-                break;
-            }
-            case 5060003: {//peanut
-                IItem item = c.getPlayer().getInventory(MapleInventoryType.ETC).findById(4170023);
-                if (item == null || item.getQuantity() <= 0) { // hacking{
-                    return;
-                }
-                if (getIncubatedItems(c)) {
-                    MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.ETC, item.getPosition(), (short) 1, false);
-                    used = true;
-                }
-            }
-            break;
-            case 5070000: { // Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-              if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-             c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String message = slea.readMapleAsciiString();
-
-                    if (message.length() > 65) {
-                        break;
-                    }
-                    final StringBuilder sb = new StringBuilder();
-                    addMedalString(c.getPlayer(), sb);
-                    sb.append(c.getPlayer().getName());
-                    sb.append(" : ");
-                    sb.append(message);
-                    final boolean ear = slea.readByte() != 0;
-
-                    c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(2, sb.toString()));
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5071000: { // Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-                if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String message = slea.readMapleAsciiString();
-
-                    if (message.length() > 65) {
-                        break;
-                    }
-                      final boolean ear = slea.readByte() != 0;
-               
-                    final StringBuilder sb = new StringBuilder();
-                    addMedalString(c.getPlayer(), sb);
-                    sb.append(c.getPlayer().getName());
-                    sb.append(" : ");
-                    sb.append(message);
-                  c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(2, sb.toString()));
-                      
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5077000: { // 3 line Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-              if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final byte numLines = slea.readByte();
-                    if (numLines > 3) {
-                        return;
-                    }
-                    final List<String> messages = new LinkedList<>();
-                    String message;
-                    for (int i = 0; i < numLines; i++) {
-                        message = slea.readMapleAsciiString();
-                        if (message.length() > 65) {
-                            break;
-                        }
-                        messages.add(c.getPlayer().getName() + " : " + message);
-                    }
-                    final boolean ear = slea.readByte() > 0;
-
-                    Broadcast.broadcastSmega(ChatPacket.tripleSmega(messages, ear, c.getChannel()).getBytes());
-
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5073000: { // Heart Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-                            if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String message = slea.readMapleAsciiString();
-
-                    if (message.length() > 65) {
-                        break;
-                    }
-                    final StringBuilder sb = new StringBuilder();
-                    addMedalString(c.getPlayer(), sb);
-                    sb.append(c.getPlayer().getName());
-                    sb.append(" : ");
-                    sb.append(message);
-
-                    final boolean ear = slea.readByte() != 0;
-
-                    Broadcast.broadcastSmega(ChatPacket.serverNotice(11, c.getChannel(), sb.toString(), ear).getBytes());
-                        
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5074000: { // Skull Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-              if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String message = slea.readMapleAsciiString();
-
-                    if (message.length() > 65) {
-                        break;
-                    }
-                    final StringBuilder sb = new StringBuilder();
-                    addMedalString(c.getPlayer(), sb);
-                    sb.append(c.getPlayer().getName());
-                    sb.append(" : ");
-                    sb.append(message);
-
-                    final boolean ear = slea.readByte() != 0;
-                    if (c.getPlayer().isPlayer() && message.indexOf("幹") != -1 || message.indexOf("豬") != -1 || message.indexOf("笨") != -1 || message.indexOf("靠") != -1 || message.indexOf("腦包") != -1 || message.indexOf("腦") != -1 || message.indexOf("智障") != -1 || message.indexOf("白目") != -1 || message.indexOf("白吃") != -1){ 
-                             c.getPlayer().dropMessage("說髒話是不禮貌的，請勿說髒話。");                 
-                             c.send(CharacterPacket.enableActions());
-                             return;
-                         }
-                    Broadcast.broadcastSmega(ChatPacket.serverNotice(12, c.getChannel(), sb.toString(), ear).getBytes());
-
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5072000: { // Super Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須要10等以上才能使用.");
-                    break;
-                }
-               if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String message = slea.readMapleAsciiString();
-
-                    if (message.length() > 65) {
-                        break;
-                    }
-                    final StringBuilder sb = new StringBuilder();
-                    addMedalString(c.getPlayer(), sb);
-                    sb.append(c.getPlayer().getName());
-                    sb.append(" : ");
-                    sb.append(message);
-
-                    final boolean ear = slea.readByte() != 0;
-
-                    Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), sb.toString(), ear).getBytes());
-             
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5076000: { // Item Megaphone
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-               if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String message = slea.readMapleAsciiString();
-
-                    if (message.length() > 65) {
-                        break;
-                    }
-                    final StringBuilder sb = new StringBuilder();
-                    addMedalString(c.getPlayer(), sb);
-                    sb.append(c.getPlayer().getName());
-                    sb.append(" : ");
-                    sb.append(message);
-
-                    final boolean ear = slea.readByte() > 0;
-
-                    IItem item = null;
-                    if (slea.readByte() == 1) { //item
-                        byte invType = (byte) slea.readInt();
-                        byte pos = (byte) slea.readInt();
-                        item = c.getPlayer().getInventory(MapleInventoryType.getByType(invType)).getItem(pos);
-                    }
-                    Broadcast.broadcastSmega(ChatPacket.itemMegaphone(sb.toString(), ear, c.getChannel(), item).getBytes());
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
-                }
-                break;
-            }
-            case 5075000: // MapleTV Messenger
-            case 5075001: // MapleTV Star Messenger
-            case 5075002: { // MapleTV Heart Messenger
-                c.getPlayer().dropMessage(5, "There are no MapleTVs to broadcast the message to.");
-                break;
-            }
-            case 5075003:
-            case 5075004:
-            case 5075005: {
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-                int tvType = itemId % 10;
-                if (tvType == 3) {
-                    slea.readByte(); //who knows
-                }
-                boolean ear = tvType != 1 && tvType != 2 && slea.readByte() > 1; //for tvType 1/2, there is no byte. 
-                MapleCharacter victim = tvType == 1 || tvType == 4 ? null : c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString()); //for tvType 4, there is no string.
-                if (tvType == 0 || tvType == 3) { //doesn't allow two
-                    victim = null;
-                } else if (victim == null) {
-                    c.getPlayer().dropMessage(1, "That character is not in the channel.");
-                    break;
-                }
-                String message = slea.readMapleAsciiString();
-                Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), c.getPlayer().getName() + " : " + message, ear).getBytes());
-                break;
-            }
-            case 5090100: // Wedding Invitation Card
-            case 5090000: { // Note
-                final String sendTo = slea.readMapleAsciiString();
-                final String msg = slea.readMapleAsciiString();
-                c.getPlayer().sendNote(sendTo, msg);
-                used = true;
-                break;
-            }
-            case 5100000: { // Congratulatory Song
-                c.getPlayer().getMap().broadcastMessage(MTSCSPacket.playCashSong(5100000, c.getPlayer().getName()));
-                used = true;
-                break;
-            }
-            case 5190001:
-            case 5190002:
-            case 5190003:
-            case 5190004:
-            case 5190005:
-            case 5190006:
-            case 5190007:
-            case 5190008:
-            case 5190000: { // Pet Flags
-                final int uniqueid = (int) slea.readLong();
-                MaplePet pet = c.getPlayer().getPet(0);
-                int slo = 0;
-
-                if (pet == null) {
-                    break;
-                }
-                if (pet.getUniqueId() != uniqueid) {
-                    pet = c.getPlayer().getPet(1);
-                    slo = 1;
-                    if (pet != null) {
-                        if (pet.getUniqueId() != uniqueid) {
-                            pet = c.getPlayer().getPet(2);
-                            slo = 2;
-                            if (pet != null) {
-                                if (pet.getUniqueId() != uniqueid) {
-                                    break;
-                                }
-                            } else {
-                                break;
-                            }
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                PetFlag zz = PetFlag.getByAddId(itemId);
-                if (zz != null && !zz.check(pet.getFlags())) {
-                    pet.setFlags(pet.getFlags() | zz.getValue());
-                    c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
-                    c.send(CharacterPacket.enableActions());
-                    c.send(MTSCSPacket.changePetFlag(uniqueid, true, zz.getValue()));
-                    used = true;
-                }
-                break;
-            }
-            case 5191001:
-            case 5191002:
-            case 5191003:
-            case 5191004:
-            case 5191000: { // Pet Flags
-                final int uniqueid = (int) slea.readLong();
-                MaplePet pet = c.getPlayer().getPet(0);
-                int slo = 0;
-
-                if (pet == null) {
-                    break;
-                }
-                if (pet.getUniqueId() != uniqueid) {
-                    pet = c.getPlayer().getPet(1);
-                    slo = 1;
-                    if (pet != null) {
-                        if (pet.getUniqueId() != uniqueid) {
-                            pet = c.getPlayer().getPet(2);
-                            slo = 2;
-                            if (pet != null) {
-                                if (pet.getUniqueId() != uniqueid) {
-                                    break;
-                                }
-                            } else {
-                                break;
-                            }
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                PetFlag zz = PetFlag.getByDelId(itemId);
-                if (zz != null && zz.check(pet.getFlags())) {
-                    pet.setFlags(pet.getFlags() - zz.getValue());
-                    c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
-                    c.send(CharacterPacket.enableActions());
-                    c.send(MTSCSPacket.changePetFlag(uniqueid, false, zz.getValue()));
-                    used = true;
-                }
-                break;
-            }
-            case 5170000: { // Pet name change
-                MaplePet pet = c.getPlayer().getPet(0);
-                int slo = 0;
-
-                if (pet == null) {
-                    break;
-                }
-                String nName = slea.readMapleAsciiString();
-                pet.setName(nName);
-                c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
-                c.send(CharacterPacket.enableActions());
-                c.getPlayer().getMap().broadcastMessage(MTSCSPacket.changePetName(c.getPlayer(), nName, slo));
-                used = true;
-                break;
-            }
-            case 5240000:
-            case 5240001:
-            case 5240002:
-            case 5240003:
-            case 5240004:
-            case 5240005:
-            case 5240006:
-            case 5240007:
-            case 5240008:
-            case 5240009:
-            case 5240010:
-            case 5240011:
-            case 5240012:
-            case 5240013:
-            case 5240014:
-            case 5240015:
-            case 5240016:
-            case 5240017:
-            case 5240018:
-            case 5240019:
-            case 5240020:
-            case 5240021:
-            case 5240022:
-            case 5240023:
-            case 5240024:
-            case 5240025:
-            case 5240026:
-            case 5240027:
-            case 5240028: { // Pet food
-                MaplePet pet = c.getPlayer().getPet(0);
-
-                if (pet == null) {
-                    break;
-                }
-                if (!pet.canConsume(itemId)) {
-                    pet = c.getPlayer().getPet(1);
-                    if (pet != null) {
-                        if (!pet.canConsume(itemId)) {
-                            pet = c.getPlayer().getPet(2);
-                            if (pet != null) {
-                                if (!pet.canConsume(itemId)) {
-                                    break;
-                                }
-                            } else {
-                                break;
-                            }
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                final byte petindex = c.getPlayer().getPetIndex(pet);
-                pet.setFullness(100);
-                if (pet.getCloseness() < 30000) {
-                    if (pet.getCloseness() + 100 > 30000) {
-                        pet.setCloseness(30000);
-                    } else {
-                        pet.setCloseness(pet.getCloseness() + 100);
-                    }
-                    if (pet.getCloseness() >= GameConstants.getClosenessNeededForLevel(pet.getLevel() + 1)) {
-                        pet.setLevel(pet.getLevel() + 1);
-                        c.send(PetPacket.showOwnPetLevelUp(c.getPlayer().getPetIndex(pet)));
-                        c.getPlayer().getMap().broadcastMessage(PetPacket.showPetLevelUp(c.getPlayer(), petindex));
-                    }
-                }
-                c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem(pet.getInventoryPosition())));
-                c.getPlayer().getMap().broadcastMessage(c.getPlayer(), PetPacket.commandResponse(c.getPlayer().getId(), (byte) 1, petindex, true, true), true);
-                used = true;
-                break;
-            }
-            case 5230000: {// owl of minerva
-                final int itemSearch = slea.readInt();
-                final List<HiredMerchant> hms = c.getChannelServer().searchMerchant(itemSearch);
-                if (hms.size() > 0) {
-                    c.send(PlayerShopPacket.getOwlSearched(itemSearch, hms));
-                    used = true;
-                } else {
-                    c.getPlayer().dropMessage(1, "找不到物品");
-                }
-                break;
-            }
-            case 5281001: //idk, but probably
-            case 5280001: // Gas Skill
-            case 5281000: { // Passed gas
-                Rectangle bounds = new Rectangle((int) c.getPlayer().getPosition().getX(), (int) c.getPlayer().getPosition().getY(), 1, 1);
-                MapleMist mist = new MapleMist(bounds, c.getPlayer());
-                c.getPlayer().getMap().spawnMist(mist, 10000, true);
-                c.getPlayer().getMap().broadcastMessage(ChatPacket.getChatText(c.getPlayer().getId(), "Oh no, I farted!", false, 1));
-                c.send(CharacterPacket.enableActions());
-                used = true;
-                break;
-            }
-            case 5370000: { // Chalkboard
-                if (c.getPlayer().getMapId() / 1000000 == 109) {
-                    c.getPlayer().dropMessage(1, "請勿在活動地圖使用黑板");
-                } else {
-                    c.getPlayer().setChalkboard(slea.readMapleAsciiString());
-                }
-                break;
-            }
-            case 5370001: { // BlackBoard
-                if (c.getPlayer().getMapId() / 1000000 == 109) {
-                    c.getPlayer().dropMessage(1, "請勿在活動地圖使用黑板");
-                } else {
-                    c.getPlayer().setChalkboard(slea.readMapleAsciiString());
-                }
-                break;
-            }
-            case 5390000: // Diablo Messenger
-            case 5390001: // Cloud 9 Messenger
-            case 5390002: // Loveholic Messenger
-            case 5390003: // New Year Megassenger 1
-            case 5390004: // New Year Megassenger 2
-            case 5390005: // Cute Tiger Messenger
-            case 5390006: { // Tiger Roar's Messenger
-                if (c.getPlayer().getLevel() < 10) {
-                    c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
-                    break;
-                }
-                if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
-                    c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
-                    break;
-                }
-                if (!c.getChannelServer().getMegaphoneMuteState()) {
-                    final String text = slea.readMapleAsciiString();
-                    if (text.length() > 55) {
-                        break;
-                    }
-                    final boolean ear = slea.readByte() != 0;
-                    Broadcast.broadcastSmega(ChatPacket.getAvatarMega(c.getPlayer(), c.getChannel(), itemId, text, ear).getBytes());
-                    used = true;
-                }
-                break;
-            }
-              
-            case 5450000: { // Mu Mu the Travelling Merchant
-                MapleShopFactory.getInstance().getShop(61).sendShop(c);
-                break;
-            }
-            case 5152100:
-            case 5152101:
-            case 5152102:
-            case 5152103:
-            case 5152104:
-            case 5152105:
-            case 5152106:
-            case 5152107:{
-                int color_num = (itemId - 5152100);
-                int current = (c.getPlayer().getFace()% 100) + ((c.getPlayer().getFace()/1000))*1000;
-                int newface = current + (color_num * 100);
-                if (MapleItemInformationProvider.getInstance().faceExists(newface))
-                {
-                    c.getPlayer().setFace(newface);
-                    c.getPlayer().updateSingleStat(MapleStat.FACE, newface);
-                    c.getPlayer().equipChanged();
-                    used = true;
-                }else{
-                     c.getPlayer().dropMessage(6,"該臉部沒有此瞳孔顏色唷");
-                }
-                break;
-            }
-            default:
-                if (itemId / 10000 == 512) {
-                    final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-                    final String msg = slea.readMapleAsciiString();
-                    c.getPlayer().getMap().startMapEffect(msg, itemId);
-
-                    final int buff = ii.getStateChangeItem(itemId);
-                    if (buff != 0) {
-                        for (MapleCharacter mChar : c.getPlayer().getMap().getCharactersThreadsafe()) {
-                            ii.getItemEffect(buff).applyTo(mChar);
-                        }
-                    }
-                    used = true;
-                } else if (itemId / 10000 == 510) {
-                    c.getPlayer().getMap().startJukebox(c.getPlayer().getName(), itemId);
-                    used = true;
-                } else if (itemId / 10000 == 520) {
-                    final int mesars = MapleItemInformationProvider.getInstance().getMeso(itemId);
-                    if (mesars > 0 && c.getPlayer().getMeso() < (Integer.MAX_VALUE - mesars)) {
-                        used = true;
-                        if (Math.random() > 0.1) {
-                            final int gainmes = Randomizer.nextInt(mesars);
-                            c.getPlayer().gainMeso(gainmes, false);
-                            c.send(MTSCSPacket.sendMesobagSuccess(gainmes));
-                        } else {
-                            c.send(MTSCSPacket.sendMesobagFailed());
-                        }
-                    }
-                    /*                } else if (itemId / 10000 == 562) {
-                     UseSkillBook(slot, itemId, c, c.getPlayer()); //this should handle removing*/
-                } else if (itemId / 10000 == 553) {
-                    UseRewardItem(slot, itemId, c, c.getPlayer());// this too
-                } else {
-                    System.out.println("Unhandled CS item : " + itemId);
-                    System.out.println(slea.toString(true));
-                }
-                break;
-        }
+        final boolean used = result.used;
+        final boolean cc = result.cc;
 
         if (used) {
             MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.CASH, slot, (short) 1, false, true);
@@ -2154,6 +1067,1243 @@ public class InventoryHandler {
             c.getPlayer().dropMessage(5, "Auto changing channels. Please wait.");
             c.getPlayer().changeChannel(c.getChannel() == ChannelServer.getChannelCount() ? 1 : (c.getChannel() + 1));
         }
+    }
+
+    private static CashUse useNpcTeleportRock(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final short questid = slea.readShort();
+        final int npcid = slea.readInt();
+        final MapleQuest quest = MapleQuest.getInstance(questid);
+
+        if (c.getPlayer().getQuest(quest).getStatus() == 1 && quest.canComplete(c.getPlayer(), npcid)) {
+            final int mapId = MapleLifeFactory.getNPCLocation(npcid);
+            if (mapId != -1) {
+                final MapleMap map = c.getChannelServer().getMapFactory().getMap(mapId);
+                if (map.containsNPC(npcid) && !FieldLimitType.VipRock.check(c.getPlayer().getMap().getFieldLimit()) && !FieldLimitType.VipRock.check(map.getFieldLimit()) && c.getPlayer().getEventInstance() == null) {
+                    c.getPlayer().changeMap(map, map.getPortal(0));
+                }
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(1, "Unknown error has occurred.");
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useWarpTicket5042000(final MapleClient c) {
+        boolean used = false;
+        if(c.getPlayer().getEventInstance() == null){
+            final MapleMap target = c.getChannelServer().getMapFactory().getMap(701000000);
+            c.getPlayer().changeMap(target, target.getPortal(0));
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useWarpTicket5042001(final MapleClient c) {
+        boolean used = false;
+        if(c.getPlayer().getEventInstance() == null){
+            final MapleMap target = c.getChannelServer().getMapFactory().getMap(741000000);
+            c.getPlayer().changeMap(target, target.getPortal(0));
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useTeleportTicket(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        slea.skip(1);
+        final MapleMap target = c.getChannelServer().getMapFactory().getMap(slea.readInt());
+        if (c.getPlayer().getEventInstance() == null) { //Makes sure this map doesn't have a forced return map
+            c.getPlayer().changeMap(target, target.getPortal(0));
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useTeleportRock(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        boolean used = false;
+        if (slea.readByte() == 0) { // Rocktype
+            final MapleMap target = c.getChannelServer().getMapFactory().getMap(slea.readInt());
+            if ((itemId == 5041000 && c.getPlayer().isRockMap(target.getId())) || (itemId != 5041000 && c.getPlayer().isRegRockMap(target.getId()))) {
+                if (!FieldLimitType.VipRock.check(c.getPlayer().getMap().getFieldLimit()) && !FieldLimitType.VipRock.check(target.getFieldLimit()) && c.getPlayer().getEventInstance() == null) { //Makes sure this map doesn't have a forced return map
+                    c.getPlayer().changeMap(target, target.getPortal(0));
+                    used = true;
+                }
+            }
+        } else {
+            final MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
+            if (victim != null && !victim.isGM() && c.getPlayer().getEventInstance() == null && victim.getEventInstance() == null) {
+                if (!FieldLimitType.VipRock.check(c.getPlayer().getMap().getFieldLimit()) && !FieldLimitType.VipRock.check(c.getChannelServer().getMapFactory().getMap(victim.getMapId()).getFieldLimit())) {
+                    if (itemId == 5041000 || (victim.getMapId() / 100000000) == (c.getPlayer().getMapId() / 100000000)) { // Viprock or same continent
+                        c.getPlayer().changeMap(victim.getMap(), victim.getMap().findClosestSpawnpoint(victim.getPosition()));
+                        used = true;
+                    }
+                }
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useApReset(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
+        final int apto = slea.readInt();
+        final int apfrom = slea.readInt();
+
+        if (apto == apfrom) {
+            return CashUse.of(used); // Hack
+        }
+        final int job = c.getPlayer().getJob();
+        final PlayerStats playerst = c.getPlayer().getStat();
+        used = true;
+
+        switch (apto) { // AP to
+            case 64: // str
+                if (playerst.getStr() >= 999) {
+                    used = false;
+                }
+                break;
+            case 128: // dex
+                if (playerst.getDex() >= 999) {
+                    used = false;
+                }
+                break;
+            case 256: // int
+                if (playerst.getInt() >= 999) {
+                    used = false;
+                }
+                break;
+            case 512: // luk
+                if (playerst.getLuk() >= 999) {
+                    used = false;
+                }
+                break;
+            case 2048: // hp
+                if (playerst.getMaxHp() >= 30000) {
+                    used = false;
+                }
+                break;
+            case 8192: // mp
+                if (playerst.getMaxMp() >= 30000) {
+                    used = false;
+                }
+                break;
+        }
+        switch (apfrom) { // AP to
+            case 64: // str
+                if (playerst.getStr() <= 4 || (c.getPlayer().getJob() % 1000 / 100 == 1 && playerst.getStr() <= 35)) {
+                    used = false;
+                }
+                break;
+            case 128: // dex
+                if (playerst.getDex() <= 4 || (c.getPlayer().getJob() % 1000 / 100 == 3 && playerst.getDex() <= 25) || (c.getPlayer().getJob() % 1000 / 100 == 4 && playerst.getDex() <= 25) || (c.getPlayer().getJob() % 1000 / 100 == 5 && playerst.getDex() <= 20)) {
+                    used = false;
+                }
+                break;
+            case 256: // int
+                if (playerst.getInt() <= 4 || (c.getPlayer().getJob() % 1000 / 100 == 2 && playerst.getInt() <= 20)) {
+                    used = false;
+                }
+                break;
+            case 512: // luk
+                if (playerst.getLuk() <= 4) {
+                    used = false;
+                }
+                break;
+            case 2048: // hp
+                if (/*playerst.getMaxMp() < ((c.getPlayer().getLevel() * 14) + 134) || */c.getPlayer().getHpApUsed() <= 0 || c.getPlayer().getHpApUsed() >= 10000) {
+                    used = false;
+                }
+                break;
+            case 8192: // mp
+                if (/*playerst.getMaxMp() < ((c.getPlayer().getLevel() * 14) + 134) || */c.getPlayer().getHpApUsed() <= 0 || c.getPlayer().getHpApUsed() >= 10000) {
+                    used = false;
+                }
+                break;
+        }
+        if (used) {
+            switch (apto) { // AP to
+                case 64: { // str
+                    final int toSet = playerst.getStr() + 1;
+                    playerst.setStr((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.STR, toSet));
+                    break;
+                }
+                case 128: { // dex
+                    final int toSet = playerst.getDex() + 1;
+                    playerst.setDex((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.DEX, toSet));
+                    break;
+                }
+                case 256: { // int
+                    final int toSet = playerst.getInt() + 1;
+                    playerst.setInt((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.INT, toSet));
+                    break;
+                }
+                case 512: { // luk
+                    final int toSet = playerst.getLuk() + 1;
+                    playerst.setLuk((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.LUK, toSet));
+                    break;
+                }
+                case 2048: // hp
+                    int maxhp = playerst.getMaxHp(); // 累加期間用 int，最後 clamp 到 30000 才轉回 short
+
+                    if (job == 0) { // Beginner
+                        maxhp += Randomizer.rand(8, 12);
+                    } else if ((job >= 100 && job <= 132) || (job >= 3200 && job <= 3212)) { // Warrior
+                        ISkill improvingMaxHP = SkillFactory.getSkill(1000001);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp += Randomizer.rand(20, 25);
+                        if (improvingMaxHPLevel >= 1) {
+                            maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job))) { // Magician
+                        maxhp += Randomizer.rand(10, 20);
+                    } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312)) { // Bowman
+                        maxhp += Randomizer.rand(16, 20);
+                    } else if ((job >= 500 && job <= 522) || (job >= 3500 && job <= 3512)) { // Pirate
+                        ISkill improvingMaxHP = SkillFactory.getSkill(5100000);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp += Randomizer.rand(18, 22);
+                        if (improvingMaxHPLevel >= 1) {
+                            maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 1500 && job <= 1512) { // Pirate
+                        ISkill improvingMaxHP = SkillFactory.getSkill(15100000);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp += Randomizer.rand(18, 22);
+                        if (improvingMaxHPLevel >= 1) {
+                            maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 1100 && job <= 1112) { // Soul Master
+                        ISkill improvingMaxHP = SkillFactory.getSkill(11000000);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp += Randomizer.rand(36, 42);
+                        if (improvingMaxHPLevel >= 1) {
+                            maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 1200 && job <= 1212) { // Flame Wizard
+                        maxhp += Randomizer.rand(15, 21);
+                    } else if (job >= 2000 && job <= 2112) { // Aran
+                        maxhp += Randomizer.rand(40, 50);
+                    } else { // GameMaster
+                        maxhp += Randomizer.rand(50, 100);
+                    }
+                    maxhp = Math.min(30000, Math.abs(maxhp));
+                    c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
+                    playerst.setMaxHp((short) maxhp); // clamp 過，必定在 0..30000
+                    statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
+                    break;
+
+                case 8192: // mp
+                    int maxmp = playerst.getMaxMp(); // 同上
+
+                    if (job == 0) { // Beginner
+                        maxmp += Randomizer.rand(6, 8);
+                    } else if (job >= 100 && job <= 132) { // Warrior
+                        maxmp += Randomizer.rand(5, 7);
+                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
+                        ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
+                        int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
+                        maxmp += Randomizer.rand(18, 20);
+                        if (improvingMaxMPLevel >= 1) {
+                            maxmp += improvingMaxMP.getEffect(improvingMaxMPLevel).getY() * 2;
+                        }
+                    } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 500 && job <= 522) || (job >= 3200 && job <= 3212) || (job >= 3500 && job <= 3512) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 1500 && job <= 1512)) { // Bowman
+                        maxmp += Randomizer.rand(10, 12);
+                    } else if (job >= 1100 && job <= 1112) { // Soul Master
+                        maxmp += Randomizer.rand(6, 9);
+                    } else if (job >= 1200 && job <= 1212) { // Flame Wizard
+                        ISkill improvingMaxMP = SkillFactory.getSkill(12000000);
+                        int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
+                        maxmp += Randomizer.rand(18, 20);
+                        if (improvingMaxMPLevel >= 1) {
+                            maxmp += improvingMaxMP.getEffect(improvingMaxMPLevel).getY() * 2;
+                        }
+                    } else if (job >= 2000 && job <= 2112) { // Aran
+                        maxmp += Randomizer.rand(6, 9);
+                    } else { // GameMaster
+                        maxmp += Randomizer.rand(50, 100);
+                    }
+                    maxmp = Math.min(30000, Math.abs(maxmp));
+                    c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() + 1));
+                    playerst.setMaxMp((short) maxmp); // clamp 過，必定在 0..30000
+                    statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
+                    break;
+            }
+            switch (apfrom) { // AP from
+                case 64: { // str
+                    final int toSet = playerst.getStr() - 1;
+                    playerst.setStr((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.STR, toSet));
+                    break;
+                }
+                case 128: { // dex
+                    final int toSet = playerst.getDex() - 1;
+                    playerst.setDex((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.DEX, toSet));
+                    break;
+                }
+                case 256: { // int
+                    final int toSet = playerst.getInt() - 1;
+                    playerst.setInt((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.INT, toSet));
+                    break;
+                }
+                case 512: { // luk
+                    final int toSet = playerst.getLuk() - 1;
+                    playerst.setLuk((short) toSet);
+                    statupdate.add(new Pair<>(MapleStat.LUK, toSet));
+                    break;
+                }
+                case 2048: // HP
+                    int maxhp = playerst.getMaxHp(); // 扣回 AP：只會往下減，轉回 short 與原本逐步截斷等價
+                    if (job == 0) { // Beginner
+                        maxhp -= 12;
+                    } else if (job >= 100 && job <= 132) { // Warrior
+                        ISkill improvingMaxHP = SkillFactory.getSkill(1000001);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp -= 24;
+                        if (improvingMaxHPLevel >= 1) {
+                            maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 200 && job <= 232) { // Magician
+                        maxhp -= 10;
+                    } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312) || (job >= 3500 && job <= 3512)) { // Bowman, Thief
+                        maxhp -= 15;
+                    } else if (job >= 500 && job <= 522) { // Pirate
+                        ISkill improvingMaxHP = SkillFactory.getSkill(5100000);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp -= 15;
+                        if (improvingMaxHPLevel > 0) {
+                            maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 1500 && job <= 1512) { // Pirate
+                        ISkill improvingMaxHP = SkillFactory.getSkill(15100000);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp -= 15;
+                        if (improvingMaxHPLevel > 0) {
+                            maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 1100 && job <= 1112) { // Soul Master
+                        ISkill improvingMaxHP = SkillFactory.getSkill(11000000);
+                        int improvingMaxHPLevel = c.getPlayer().getSkillLevel(improvingMaxHP);
+                        maxhp -= 27;
+                        if (improvingMaxHPLevel >= 1) {
+                            maxhp -= improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
+                        }
+                    } else if (job >= 1200 && job <= 1212) { // Flame Wizard
+                        maxhp -= 12;
+                    } else if ((job >= 2000 && job <= 2112) || (job >= 3200 && job <= 3212)) { // Aran
+                        maxhp -= 40;
+                    } else { // GameMaster
+                        maxhp -= 20;
+                    }
+                    c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
+                    playerst.setHp(maxhp);
+                    playerst.setMaxHp((short) maxhp);
+                    statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
+                    break;
+                case 8192: // MP
+                    int maxmp = playerst.getMaxMp(); // 同上
+                    if (job == 0) { // Beginner
+                        maxmp -= 8;
+                    } else if (job >= 100 && job <= 132) { // Warrior
+                        maxmp -= 4;
+                    } else if (job >= 200 && job <= 232) { // Magician
+                        ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
+                        int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
+                        maxmp -= 20;
+                        if (improvingMaxMPLevel >= 1) {
+                            maxmp -= improvingMaxMP.getEffect(improvingMaxMPLevel).getY();
+                        }
+                    } else if ((job >= 500 && job <= 522) || (job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 1500 && job <= 1512) || (job >= 3300 && job <= 3312) || (job >= 3500 && job <= 3512)) { // Pirate, Bowman. Thief
+                        maxmp -= 10;
+                    } else if (job >= 1100 && job <= 1112) { // Soul Master
+                        maxmp -= 6;
+                    } else if (job >= 1200 && job <= 1212) { // Flame Wizard
+                        ISkill improvingMaxMP = SkillFactory.getSkill(12000000);
+                        int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
+                        maxmp -= 25;
+                        if (improvingMaxMPLevel >= 1) {
+                            maxmp -= improvingMaxMP.getEffect(improvingMaxMPLevel).getY();
+                        }
+                    } else if (job >= 2000 && job <= 2112) { // Aran
+                        maxmp -= 5;
+                    } else { // GameMaster
+                        maxmp -= 20;
+                    }
+                    c.getPlayer().setHpApUsed((short) (c.getPlayer().getHpApUsed() - 1));
+                    playerst.setMp(maxmp);
+                    playerst.setMaxMp((short) maxmp);
+                    statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
+                    break;
+            }
+            c.send(CharacterPacket.updatePlayerStats(statupdate, true, c.getPlayer().getJob()));
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useSpReset(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+int skill1 = slea.readInt();
+int skill2 = slea.readInt();
+
+ISkill skillSPTo = SkillFactory.getSkill(skill1);
+ISkill skillSPFrom = SkillFactory.getSkill(skill2);
+
+if (skillSPTo.isBeginnerSkill() || skillSPFrom.isBeginnerSkill()) {
+    return CashUse.of(used);
+}
+if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c.getPlayer().getSkillLevel(skillSPFrom) > 0) {
+    c.getPlayer().changeSkillLevel(skillSPFrom, (byte) (c.getPlayer().getSkillLevel(skillSPFrom) - 1), c.getPlayer().getMasterLevel(skillSPFrom));
+    c.getPlayer().changeSkillLevel(skillSPTo, (byte) (c.getPlayer().getSkillLevel(skillSPTo) + 1), c.getPlayer().getMasterLevel(skillSPTo));
+    used = true;
+}
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMagicHourglass1Day(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
+        final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        final int days = 1;
+        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+            boolean change = true;
+            for (String z : GameConstants.RESERVED) {
+                if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
+                    change = false;
+                }
+            }
+            if (change) {
+                item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(1, "It may not be used on this item.");
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMagicHourglass7Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
+        final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        final int days = 7;
+        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+            boolean change = true;
+            for (String z : GameConstants.RESERVED) {
+                if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
+                    change = false;
+                }
+            }
+            if (change) {
+                item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(1, "It may not be used on this item.");
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMagicHourglass20Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
+        final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        final int days = 20;
+        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+            boolean change = true;
+            for (String z : GameConstants.RESERVED) {
+                if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
+                    change = false;
+                }
+            }
+            if (change) {
+                item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(1, "It may not be used on this item.");
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMagicHourglass50Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
+        final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        final int days = 50;
+        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+            boolean change = true;
+            for (String z : GameConstants.RESERVED) {
+                if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
+                    change = false;
+                }
+            }
+            if (change) {
+                item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(1, "It may not be used on this item.");
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMagicHourglass99Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
+        final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        final int days = 99;
+        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+            boolean change = true;
+            for (String z : GameConstants.RESERVED) {
+                if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
+                    change = false;
+                }
+            }
+            if (change) {
+                item.setExpiration(item.getExpiration() + (days * 24 * 60 * 60 * 1000));
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(1, "It may not be used on this item.");
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useItemTag(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readByte());
+
+        if (item != null && item.getOwner().equals("")) {
+            boolean change = true;
+            for (String z : GameConstants.RESERVED) {
+                if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
+                    change = false;
+                }
+            }
+            if (change) {
+                item.setOwner(c.getPlayer().getName());
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIPPED);
+                used = true;
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMiracleCube(final SeekableLittleEndianAccessor slea, final MapleClient c, final IItem toUse) {
+        boolean used = false;
+        final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIP).getItem((byte) slea.readInt());
+        if (item != null && c.getPlayer().getInventory(MapleInventoryType.USE).getNumFreeSlot() >= 1) {
+            final Equip eq = (Equip) item;
+            if (eq.getState() >= 5) {
+                eq.renewPotential();
+                c.send(InventoryPacket.scrolledItem(toUse, item, false, true));
+                c.getPlayer().forceReAddItem_NoUpdate(item, MapleInventoryType.EQUIP);
+                MapleInventoryManipulator.addById(c, 2430112, (short) 1);
+                used = true;
+            } else {
+                c.getPlayer().dropMessage(5, "Make sure your equipment has a potential.");
+            }
+        } else {
+            c.getPlayer().dropMessage(5, "Make sure you have room for a Fragment.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useKarma(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        boolean used = false;
+        final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
+        final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
+
+        if (item != null && !ItemFlag.KARMA_EQ.check(item.getFlag()) && !ItemFlag.KARMA_USE.check(item.getFlag())) {
+            if ((itemId == 5520000 && MapleItemInformationProvider.getInstance().isKarmaEnabled(item.getItemId())) || (itemId == 5520001 && MapleItemInformationProvider.getInstance().isPKarmaEnabled(item.getItemId()))) {
+                byte flag = item.getFlag();
+                if (type == MapleInventoryType.EQUIP) {
+                    flag = (byte) (flag | ItemFlag.KARMA_EQ.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
+                } else {
+                    flag = (byte) (flag | ItemFlag.KARMA_USE.getValue());
+                }
+                item.setFlag(flag);
+
+                c.getPlayer().forceReAddItem_Flag(item, type);
+                used = true;
+            }
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useViciousHammer(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        boolean cc = false;
+        slea.readInt(); // Inventory type, Hammered eq is always EQ.
+        final Equip item = (Equip) c.getPlayer().getInventory(MapleInventoryType.EQUIP).getItem((byte) slea.readInt());
+        // another int here, D3 49 DC 00
+        if (item != null) {
+            if (GameConstants.canHammer(item.getItemId()) && MapleItemInformationProvider.getInstance().getSlots(item.getItemId()) > 0 && item.getViciousHammer() <= 2) {
+                item.setViciousHammer((byte) (item.getViciousHammer() + 1));
+                item.setUpgradeSlots((byte) (item.getUpgradeSlots() + 1));
+
+                c.getPlayer().forceReAddItem(item, MapleInventoryType.EQUIP);
+                used = true;
+                cc = true;
+            } else {
+                c.getPlayer().dropMessage(5, "You may not use it on this item.");
+                cc = true;
+            }
+        }
+        return CashUse.of(used, cc);
+    }
+
+    private static CashUse useVega(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        boolean used = false;
+        boolean cc = false;
+        slea.readInt(); // Inventory type, always eq
+        final byte dst = (byte) slea.readInt();
+        slea.readInt(); // Inventory type, always use
+        final byte src = (byte) slea.readInt();
+        used = UseUpgradeScroll(src, dst, (byte) 2, c, c.getPlayer(), itemId); //cannot use ws with vega but we dont care
+        cc = used;
+        return CashUse.of(used, cc);
+    }
+
+    private static CashUse useSealingLock(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
+        final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
+        // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
+        if (item != null && item.getExpiration() == -1) {
+            byte flag = item.getFlag();
+            flag = (byte) (flag | ItemFlag.LOCK.getValue());
+            item.setFlag(flag);
+
+            c.getPlayer().forceReAddItem_Flag(item, type);
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useSealingLock7Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
+        final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
+        // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
+        if (item != null && item.getExpiration() == -1) {
+            byte flag = item.getFlag();
+            flag = (byte) (flag | ItemFlag.LOCK.getValue());
+            item.setFlag(flag);
+            item.setExpiration(System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000));
+
+            c.getPlayer().forceReAddItem_Flag(item, type);
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useSealingLock30Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
+        final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
+        // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
+        if (item != null && item.getExpiration() == -1) {
+            byte flag = item.getFlag();
+            flag = (byte) (flag | ItemFlag.LOCK.getValue());
+            item.setFlag(flag);
+
+            item.setExpiration(System.currentTimeMillis() + (30 * 24 * 60 * 60 * 1000));
+
+            c.getPlayer().forceReAddItem_Flag(item, type);
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useSealingLock90Days(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final MapleInventoryType type = MapleInventoryType.getByType((byte) slea.readInt());
+        final IItem item = c.getPlayer().getInventory(type).getItem((byte) slea.readInt());
+        // another int here, lock = 5A E5 F2 0A, 7 day = D2 30 F3 0A
+        if (item != null && item.getExpiration() == -1) {
+            byte flag = item.getFlag();
+            flag = (byte) (flag | ItemFlag.LOCK.getValue());
+            item.setFlag(flag);
+
+            item.setExpiration(System.currentTimeMillis() + (90 * 24 * 60 * 60 * 1000));
+
+            c.getPlayer().forceReAddItem_Flag(item, type);
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse usePeanut(final MapleClient c) {
+        boolean used = false;
+        IItem item = c.getPlayer().getInventory(MapleInventoryType.ETC).findById(4170023);
+        if (item == null || item.getQuantity() <= 0) { // hacking{
+            return CashUse.ABORT;
+        }
+        if (getIncubatedItems(c)) {
+            MapleInventoryManipulator.removeFromSlot(c, MapleInventoryType.ETC, item.getPosition(), (short) 1, false);
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMegaphone5070000(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+      if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+     c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String message = slea.readMapleAsciiString();
+
+            if (message.length() > 65) {
+                return CashUse.of(used);
+            }
+            final StringBuilder sb = new StringBuilder();
+            addMedalString(c.getPlayer(), sb);
+            sb.append(c.getPlayer().getName());
+            sb.append(" : ");
+            sb.append(message);
+            final boolean ear = slea.readByte() != 0;
+
+            c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(2, sb.toString()));
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMegaphone5071000(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+        if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String message = slea.readMapleAsciiString();
+
+            if (message.length() > 65) {
+                return CashUse.of(used);
+            }
+              final boolean ear = slea.readByte() != 0;
+       
+            final StringBuilder sb = new StringBuilder();
+            addMedalString(c.getPlayer(), sb);
+            sb.append(c.getPlayer().getName());
+            sb.append(" : ");
+            sb.append(message);
+          c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(2, sb.toString()));
+              
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useTripleMegaphone(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+      if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final byte numLines = slea.readByte();
+            if (numLines > 3) {
+                return CashUse.ABORT;
+            }
+            final List<String> messages = new LinkedList<>();
+            String message;
+            for (int i = 0; i < numLines; i++) {
+                message = slea.readMapleAsciiString();
+                if (message.length() > 65) {
+                    break;
+                }
+                messages.add(c.getPlayer().getName() + " : " + message);
+            }
+            final boolean ear = slea.readByte() > 0;
+
+            Broadcast.broadcastSmega(ChatPacket.tripleSmega(messages, ear, c.getChannel()).getBytes());
+
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useHeartMegaphone(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+                    if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String message = slea.readMapleAsciiString();
+
+            if (message.length() > 65) {
+                return CashUse.of(used);
+            }
+            final StringBuilder sb = new StringBuilder();
+            addMedalString(c.getPlayer(), sb);
+            sb.append(c.getPlayer().getName());
+            sb.append(" : ");
+            sb.append(message);
+
+            final boolean ear = slea.readByte() != 0;
+
+            Broadcast.broadcastSmega(ChatPacket.serverNotice(11, c.getChannel(), sb.toString(), ear).getBytes());
+                
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useSkullMegaphone(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+      if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String message = slea.readMapleAsciiString();
+
+            if (message.length() > 65) {
+                return CashUse.of(used);
+            }
+            final StringBuilder sb = new StringBuilder();
+            addMedalString(c.getPlayer(), sb);
+            sb.append(c.getPlayer().getName());
+            sb.append(" : ");
+            sb.append(message);
+
+            final boolean ear = slea.readByte() != 0;
+            if (c.getPlayer().isPlayer() && message.indexOf("幹") != -1 || message.indexOf("豬") != -1 || message.indexOf("笨") != -1 || message.indexOf("靠") != -1 || message.indexOf("腦包") != -1 || message.indexOf("腦") != -1 || message.indexOf("智障") != -1 || message.indexOf("白目") != -1 || message.indexOf("白吃") != -1){ 
+                     c.getPlayer().dropMessage("說髒話是不禮貌的，請勿說髒話。");                 
+                     c.send(CharacterPacket.enableActions());
+                     return CashUse.ABORT;
+                 }
+            Broadcast.broadcastSmega(ChatPacket.serverNotice(12, c.getChannel(), sb.toString(), ear).getBytes());
+
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useSuperMegaphone(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須要10等以上才能使用.");
+            return CashUse.of(used);
+        }
+       if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String message = slea.readMapleAsciiString();
+
+            if (message.length() > 65) {
+                return CashUse.of(used);
+            }
+            final StringBuilder sb = new StringBuilder();
+            addMedalString(c.getPlayer(), sb);
+            sb.append(c.getPlayer().getName());
+            sb.append(" : ");
+            sb.append(message);
+
+            final boolean ear = slea.readByte() != 0;
+
+            Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), sb.toString(), ear).getBytes());
+     
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useItemMegaphone(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+       if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String message = slea.readMapleAsciiString();
+
+            if (message.length() > 65) {
+                return CashUse.of(used);
+            }
+            final StringBuilder sb = new StringBuilder();
+            addMedalString(c.getPlayer(), sb);
+            sb.append(c.getPlayer().getName());
+            sb.append(" : ");
+            sb.append(message);
+
+            final boolean ear = slea.readByte() > 0;
+
+            IItem item = null;
+            if (slea.readByte() == 1) { //item
+                byte invType = (byte) slea.readInt();
+                byte pos = (byte) slea.readInt();
+                item = c.getPlayer().getInventory(MapleInventoryType.getByType(invType)).getItem(pos);
+            }
+            Broadcast.broadcastSmega(ChatPacket.itemMegaphone(sb.toString(), ear, c.getChannel(), item).getBytes());
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(5, "目前喇叭停止使用.");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useMapleTvMessengerUnavailable(final MapleClient c) {
+        c.getPlayer().dropMessage(5, "There are no MapleTVs to broadcast the message to.");
+        return CashUse.NONE;
+    }
+
+    private static CashUse useMapleTvMessenger(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.NONE;
+        }
+        int tvType = itemId % 10;
+        if (tvType == 3) {
+            slea.readByte(); //who knows
+        }
+        boolean ear = tvType != 1 && tvType != 2 && slea.readByte() > 1; //for tvType 1/2, there is no byte. 
+        MapleCharacter victim = tvType == 1 || tvType == 4 ? null : c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString()); //for tvType 4, there is no string.
+        if (tvType == 0 || tvType == 3) { //doesn't allow two
+            victim = null;
+        } else if (victim == null) {
+            c.getPlayer().dropMessage(1, "That character is not in the channel.");
+            return CashUse.NONE;
+        }
+        String message = slea.readMapleAsciiString();
+        Broadcast.broadcastSmega(ChatPacket.serverNotice(3, c.getChannel(), c.getPlayer().getName() + " : " + message, ear).getBytes());
+        return CashUse.NONE;
+    }
+
+    private static CashUse useNote(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final String sendTo = slea.readMapleAsciiString();
+        final String msg = slea.readMapleAsciiString();
+        c.getPlayer().sendNote(sendTo, msg);
+        used = true;
+        return CashUse.of(used);
+    }
+
+    private static CashUse useCongratulatorySong(final MapleClient c) {
+        boolean used = false;
+        c.getPlayer().getMap().broadcastMessage(MTSCSPacket.playCashSong(5100000, c.getPlayer().getName()));
+        used = true;
+        return CashUse.of(used);
+    }
+
+    private static CashUse useAddPetFlag(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        boolean used = false;
+        final int uniqueid = (int) slea.readLong();
+        MaplePet pet = c.getPlayer().getPet(0);
+        int slo = 0;
+
+        if (pet == null) {
+            return CashUse.of(used);
+        }
+        if (pet.getUniqueId() != uniqueid) {
+            pet = c.getPlayer().getPet(1);
+            slo = 1;
+            if (pet != null) {
+                if (pet.getUniqueId() != uniqueid) {
+                    pet = c.getPlayer().getPet(2);
+                    slo = 2;
+                    if (pet != null) {
+                        if (pet.getUniqueId() != uniqueid) {
+                            return CashUse.of(used);
+                        }
+                    } else {
+                        return CashUse.of(used);
+                    }
+                }
+            } else {
+                return CashUse.of(used);
+            }
+        }
+        PetFlag zz = PetFlag.getByAddId(itemId);
+        if (zz != null && !zz.check(pet.getFlags())) {
+            pet.setFlags(pet.getFlags() | zz.getValue());
+            c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
+            c.send(CharacterPacket.enableActions());
+            c.send(MTSCSPacket.changePetFlag(uniqueid, true, zz.getValue()));
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useRemovePetFlag(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        boolean used = false;
+        final int uniqueid = (int) slea.readLong();
+        MaplePet pet = c.getPlayer().getPet(0);
+        int slo = 0;
+
+        if (pet == null) {
+            return CashUse.of(used);
+        }
+        if (pet.getUniqueId() != uniqueid) {
+            pet = c.getPlayer().getPet(1);
+            slo = 1;
+            if (pet != null) {
+                if (pet.getUniqueId() != uniqueid) {
+                    pet = c.getPlayer().getPet(2);
+                    slo = 2;
+                    if (pet != null) {
+                        if (pet.getUniqueId() != uniqueid) {
+                            return CashUse.of(used);
+                        }
+                    } else {
+                        return CashUse.of(used);
+                    }
+                }
+            } else {
+                return CashUse.of(used);
+            }
+        }
+        PetFlag zz = PetFlag.getByDelId(itemId);
+        if (zz != null && zz.check(pet.getFlags())) {
+            pet.setFlags(pet.getFlags() - zz.getValue());
+            c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
+            c.send(CharacterPacket.enableActions());
+            c.send(MTSCSPacket.changePetFlag(uniqueid, false, zz.getValue()));
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse usePetNameChange(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        MaplePet pet = c.getPlayer().getPet(0);
+        int slo = 0;
+
+        if (pet == null) {
+            return CashUse.of(used);
+        }
+        String nName = slea.readMapleAsciiString();
+        pet.setName(nName);
+        c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem((byte) pet.getInventoryPosition())));
+        c.send(CharacterPacket.enableActions());
+        c.getPlayer().getMap().broadcastMessage(MTSCSPacket.changePetName(c.getPlayer(), nName, slo));
+        used = true;
+        return CashUse.of(used);
+    }
+
+    private static CashUse usePetFood(final MapleClient c, final int itemId) {
+        boolean used = false;
+        MaplePet pet = c.getPlayer().getPet(0);
+
+        if (pet == null) {
+            return CashUse.of(used);
+        }
+        if (!pet.canConsume(itemId)) {
+            pet = c.getPlayer().getPet(1);
+            if (pet != null) {
+                if (!pet.canConsume(itemId)) {
+                    pet = c.getPlayer().getPet(2);
+                    if (pet != null) {
+                        if (!pet.canConsume(itemId)) {
+                            return CashUse.of(used);
+                        }
+                    } else {
+                        return CashUse.of(used);
+                    }
+                }
+            } else {
+                return CashUse.of(used);
+            }
+        }
+        final byte petindex = c.getPlayer().getPetIndex(pet);
+        pet.setFullness(100);
+        if (pet.getCloseness() < 30000) {
+            if (pet.getCloseness() + 100 > 30000) {
+                pet.setCloseness(30000);
+            } else {
+                pet.setCloseness(pet.getCloseness() + 100);
+            }
+            if (pet.getCloseness() >= GameConstants.getClosenessNeededForLevel(pet.getLevel() + 1)) {
+                pet.setLevel(pet.getLevel() + 1);
+                c.send(PetPacket.showOwnPetLevelUp(c.getPlayer().getPetIndex(pet)));
+                c.getPlayer().getMap().broadcastMessage(PetPacket.showPetLevelUp(c.getPlayer(), petindex));
+            }
+        }
+        c.send(PetPacket.updatePet(pet, c.getPlayer().getInventory(MapleInventoryType.CASH).getItem(pet.getInventoryPosition())));
+        c.getPlayer().getMap().broadcastMessage(c.getPlayer(), PetPacket.commandResponse(c.getPlayer().getId(), (byte) 1, petindex, true, true), true);
+        used = true;
+        return CashUse.of(used);
+    }
+
+    private static CashUse useOwlOfMinerva(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        boolean used = false;
+        final int itemSearch = slea.readInt();
+        final List<HiredMerchant> hms = c.getChannelServer().searchMerchant(itemSearch);
+        if (hms.size() > 0) {
+            c.send(PlayerShopPacket.getOwlSearched(itemSearch, hms));
+            used = true;
+        } else {
+            c.getPlayer().dropMessage(1, "找不到物品");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useGasSkill(final MapleClient c) {
+        boolean used = false;
+        Rectangle bounds = new Rectangle((int) c.getPlayer().getPosition().getX(), (int) c.getPlayer().getPosition().getY(), 1, 1);
+        MapleMist mist = new MapleMist(bounds, c.getPlayer());
+        c.getPlayer().getMap().spawnMist(mist, 10000, true);
+        c.getPlayer().getMap().broadcastMessage(ChatPacket.getChatText(c.getPlayer().getId(), "Oh no, I farted!", false, 1));
+        c.send(CharacterPacket.enableActions());
+        used = true;
+        return CashUse.of(used);
+    }
+
+    private static CashUse useChalkboard(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        if (c.getPlayer().getMapId() / 1000000 == 109) {
+            c.getPlayer().dropMessage(1, "請勿在活動地圖使用黑板");
+        } else {
+            c.getPlayer().setChalkboard(slea.readMapleAsciiString());
+        }
+        return CashUse.NONE;
+    }
+
+    private static CashUse useBlackboard(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        if (c.getPlayer().getMapId() / 1000000 == 109) {
+            c.getPlayer().dropMessage(1, "請勿在活動地圖使用黑板");
+        } else {
+            c.getPlayer().setChalkboard(slea.readMapleAsciiString());
+        }
+        return CashUse.NONE;
+    }
+
+    private static CashUse useAvatarMegaphone(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId) {
+        boolean used = false;
+        if (c.getPlayer().getLevel() < 10) {
+            c.getPlayer().dropMessage(5, "必須等級10級以上才可以使用.");
+            return CashUse.of(used);
+        }
+        if (!c.getPlayer().getCheatTracker().canAvatarSmega2()) {
+            c.getPlayer().dropMessage(6, "很抱歉為了防止刷廣,所以你每10秒只能用一次.");
+            return CashUse.of(used);
+        }
+        if (!c.getChannelServer().getMegaphoneMuteState()) {
+            final String text = slea.readMapleAsciiString();
+            if (text.length() > 55) {
+                return CashUse.of(used);
+            }
+            final boolean ear = slea.readByte() != 0;
+            Broadcast.broadcastSmega(ChatPacket.getAvatarMega(c.getPlayer(), c.getChannel(), itemId, text, ear).getBytes());
+            used = true;
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useTravellingMerchant(final MapleClient c) {
+        MapleShopFactory.getInstance().getShop(61).sendShop(c);
+        return CashUse.NONE;
+    }
+
+    private static CashUse useEyeColourCoupon(final MapleClient c, final int itemId) {
+        boolean used = false;
+        int color_num = (itemId - 5152100);
+        int current = (c.getPlayer().getFace()% 100) + ((c.getPlayer().getFace()/1000))*1000;
+        int newface = current + (color_num * 100);
+        if (MapleItemInformationProvider.getInstance().faceExists(newface))
+        {
+            c.getPlayer().setFace(newface);
+            c.getPlayer().updateSingleStat(MapleStat.FACE, newface);
+            c.getPlayer().equipChanged();
+            used = true;
+        }else{
+             c.getPlayer().dropMessage(6,"該臉部沒有此瞳孔顏色唷");
+        }
+        return CashUse.of(used);
+    }
+
+    private static CashUse useOtherCashItem(final SeekableLittleEndianAccessor slea, final MapleClient c, final int itemId, final byte slot) {
+        boolean used = false;
+        if (itemId / 10000 == 512) {
+            final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+            final String msg = slea.readMapleAsciiString();
+            c.getPlayer().getMap().startMapEffect(msg, itemId);
+
+            final int buff = ii.getStateChangeItem(itemId);
+            if (buff != 0) {
+                for (MapleCharacter mChar : c.getPlayer().getMap().getCharactersThreadsafe()) {
+                    ii.getItemEffect(buff).applyTo(mChar);
+                }
+            }
+            used = true;
+        } else if (itemId / 10000 == 510) {
+            c.getPlayer().getMap().startJukebox(c.getPlayer().getName(), itemId);
+            used = true;
+        } else if (itemId / 10000 == 520) {
+            final int mesars = MapleItemInformationProvider.getInstance().getMeso(itemId);
+            if (mesars > 0 && c.getPlayer().getMeso() < (Integer.MAX_VALUE - mesars)) {
+                used = true;
+                if (Math.random() > 0.1) {
+                    final int gainmes = Randomizer.nextInt(mesars);
+                    c.getPlayer().gainMeso(gainmes, false);
+                    c.send(MTSCSPacket.sendMesobagSuccess(gainmes));
+                } else {
+                    c.send(MTSCSPacket.sendMesobagFailed());
+                }
+            }
+            /*                } else if (itemId / 10000 == 562) {
+             UseSkillBook(slot, itemId, c, c.getPlayer()); //this should handle removing*/
+        } else if (itemId / 10000 == 553) {
+            UseRewardItem(slot, itemId, c, c.getPlayer());// this too
+        } else {
+            System.out.println("Unhandled CS item : " + itemId);
+            System.out.println(slea.toString(true));
+        }
+        return CashUse.of(used);
     }
 
     public static final void Pickup_Player(final SeekableLittleEndianAccessor slea, MapleClient c, final MapleCharacter chr) {

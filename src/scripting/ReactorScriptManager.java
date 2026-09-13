@@ -29,9 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-
 import client.MapleClient;
 import database.DatabaseConnection;
 import server.maps.ReactorDropEntry;
@@ -55,15 +52,14 @@ public class ReactorScriptManager extends AbstractScriptManager {
 
     public final void act(final MapleClient c, final MapleReactor reactor) {
         try {
-            final Invocable iv = getInvocable("reactor/" + reactor.getReactorId() + ".js", c);
+            final ScriptScope iv = getInvocable("reactor/" + reactor.getReactorId() + ".js", c);
 
             if (iv == null) {
                 return;
             }
-            final ScriptEngine scriptengine = (ScriptEngine) iv;
             ReactorActionManager rm = new ReactorActionManager(c, reactor);
 
-            scriptengine.put("rm", rm);
+            iv.put("rm", rm);
             iv.invokeFunction("act");
         } catch (Exception e) {
             System.err.println("Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);

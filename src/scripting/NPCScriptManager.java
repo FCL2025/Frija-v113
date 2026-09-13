@@ -21,9 +21,6 @@
 package scripting;
 
 import java.util.Map;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-
 import client.MapleClient;
 import java.util.WeakHashMap;
 import java.util.concurrent.locks.Lock;
@@ -47,7 +44,7 @@ public class NPCScriptManager extends AbstractScriptManager {
                 c.getPlayer().dropMessage("[系統提示]您已經建立與NPC:" + npc + "的對話(start)。");
             }
             if (!cms.containsKey(c)) {
-                Invocable iv = getInvocable("npc/" + npc + ".js", c, true);
+                ScriptScope iv = getInvocable("npc/" + npc + ".js", c, true);
                 if (iv == null) {
 
                     iv = getInvocable("npc/notcoded.js", c, true); //safe disposal
@@ -57,12 +54,11 @@ public class NPCScriptManager extends AbstractScriptManager {
                         return;
                     }
                 }
-                final ScriptEngine scriptengine = (ScriptEngine) iv;
                 final NPCConversationManager cm = new NPCConversationManager(c, npc, -1, (byte) -1, iv);
                 cms.put(c, cm);
 
-                scriptengine.put("cm", cm);
-                scriptengine.put("npcid", npc);
+                iv.put("cm", cm);
+                iv.put("npcid", npc);
                 c.getPlayer().setConversation(1);
 
                 try {
@@ -122,15 +118,14 @@ public class NPCScriptManager extends AbstractScriptManager {
         lock.lock();
         try {
             if (!cms.containsKey(c)) {
-                final Invocable iv = getInvocable("quest/" + quest + ".js", c, true);
+                final ScriptScope iv = getInvocable("quest/" + quest + ".js", c, true);
                 if (iv == null) {
                     dispose(c);
                     return;
                 }
-                final ScriptEngine scriptengine = (ScriptEngine) iv;
                 final NPCConversationManager cm = new NPCConversationManager(c, npc, quest, (byte) 0, iv);
                 cms.put(c, cm);
-                scriptengine.put("qm", cm);
+                iv.put("qm", cm);
 
                 c.getPlayer().setConversation(1);
                 if (c.getPlayer().isGM()) {
@@ -184,15 +179,14 @@ public class NPCScriptManager extends AbstractScriptManager {
         lock.lock();
         try {
             if (!cms.containsKey(c)) {
-                final Invocable iv = getInvocable("quest/" + quest + ".js", c, true);
+                final ScriptScope iv = getInvocable("quest/" + quest + ".js", c, true);
                 if (iv == null) {
                     dispose(c);
                     return;
                 }
-                final ScriptEngine scriptengine = (ScriptEngine) iv;
                 final NPCConversationManager cm = new NPCConversationManager(c, npc, quest, (byte) 1, iv);
                 cms.put(c, cm);
-                scriptengine.put("qm", cm);
+                iv.put("qm", cm);
 
                 c.getPlayer().setConversation(1);
                 //System.out.println("NPCID started: " + npc + " endquest " + quest);
@@ -242,10 +236,10 @@ public class NPCScriptManager extends AbstractScriptManager {
         if (npccm != null) {
             cms.remove(c);
             if (npccm.getType() == -1) {
-                c.removeScriptEngine("Libs/scripts/npc/" + npccm.getNpc() + ".js");
-                c.removeScriptEngine("Libs/scripts/npc/notcoded.js");
+                c.removeScriptScope("Libs/scripts/npc/" + npccm.getNpc() + ".js");
+                c.removeScriptScope("Libs/scripts/npc/notcoded.js");
             } else {
-                c.removeScriptEngine("Libs/scripts/quest/" + npccm.getQuest() + ".js");
+                c.removeScriptScope("Libs/scripts/quest/" + npccm.getQuest() + ".js");
             }
         }
         if (c.getPlayer() != null && c.getPlayer().getConversation() == 1) {

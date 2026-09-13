@@ -35,8 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 
-import javax.script.ScriptEngine;
-
 import database.DatabaseConnection;
 import database.DatabaseException;
 import handling.MaplePacket;
@@ -58,6 +56,7 @@ import handling.world.guild.MapleGuildCharacter;
 import server.maps.MapleMap;
 import server.MapleTrade;
 import server.shops.IMaplePlayerShop;
+import scripting.ScriptScope;
 import tools.FileoutputUtil;
 import tools.MapleAESOFB;
 import tools.packet.ChatPacket;
@@ -97,7 +96,15 @@ public class MapleClient {
     public short loginAttempt = 0;
     private List<Integer> allowedChar = new LinkedList<>();
     private Set<String> macs = new HashSet<>();
-    private Map<String, ScriptEngine> engines = new HashMap<>();
+    /**
+     * One Nashorn Global per script this client is running. A plain HashMap
+     * on purpose: only this client's own handler thread ever touches it, and
+     * the panel deliberately stays out of it - a live conversation belongs to
+     * the player, not to an admin. What is shared process-wide is the compiled
+     * form of the scripts, in {@link scripting.ScriptCache}, and that is the
+     * thing the reloads drop.
+     */
+    private Map<String, ScriptScope> engines = new HashMap<>();
     private ScheduledFuture<?> idleTask = null;
     private String secondPassword, salt2; // To be used only on login
     private final Lock mutex = new ReentrantLock(true);
@@ -1134,15 +1141,15 @@ public class MapleClient {
         return gm;
     }
 
-    public final void setScriptEngine(final String name, final ScriptEngine e) {
+    public final void setScriptScope(final String name, final ScriptScope e) {
         engines.put(name, e);
     }
 
-    public final ScriptEngine getScriptEngine(final String name) {
+    public final ScriptScope getScriptScope(final String name) {
         return engines.get(name);
     }
 
-    public final void removeScriptEngine(final String name) {
+    public final void removeScriptScope(final String name) {
         engines.remove(name);
     }
 

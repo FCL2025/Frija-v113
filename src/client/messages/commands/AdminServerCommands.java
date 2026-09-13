@@ -16,6 +16,7 @@ import scripting.EventInstanceManager;
 import scripting.EventManager;
 import scripting.PortalScriptManager;
 import scripting.ReactorScriptManager;
+import scripting.ScriptCache;
 import scripting.ScriptEncodingCheck;
 import server.MapleShopFactory;
 import server.MapleSquad;
@@ -630,6 +631,11 @@ public class AdminServerCommands {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
+            // Before the channels rebuild their EventScriptManagers, not
+            // after: they compile through ScriptCache, so a stale entry left
+            // here would be handed straight back to the new managers and the
+            // edited file would never take effect.
+            ScriptCache.clearKind("event");
             for (ChannelServer instance : ChannelServer.getAllInstances()) {
                 instance.reloadEvents();
             }
@@ -642,6 +648,34 @@ public class AdminServerCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             MapleQuest.clearQuests();
+            // The WZ quest data and the quest scripts are two different
+            // things, but nobody typing this means only one of them, and
+            // before the scripts were cached the file was re-read on every
+            // conversation anyway.
+            ScriptCache.clearKind("quest");
+            return 1;
+        }
+    }
+
+    /**
+     * Drops every compiled script, so the next player to run one re-reads the
+     * file. This is what {@code !reloadportal} and {@code !reloadevents} do for
+     * their own kind; NPC, quest and reactor scripts have no reload of their
+     * own because they never needed one - until they were cached, every
+     * conversation read the file off disk.
+     *
+     * <p>It does not touch a live conversation: those are per-MapleClient
+     * scopes owned by the handler thread of the player they belong to, so a
+     * player who is mid-dialogue finishes it in the old script and gets the
+     * new one on the next one (or at once, with {@code @解卡}).
+     */
+    public static class ReloadScripts extends CommandExecute {
+
+        @Override
+        public int execute(MapleClient c, String[] splitted) {
+            PortalScriptManager.getInstance().clearScripts();
+            final int dropped = ScriptCache.clear();
+            c.getPlayer().dropMessage(6, "[腳本] 已清掉 " + dropped + " 支已編譯腳本，下次執行時重讀檔案。");
             return 1;
         }
     }

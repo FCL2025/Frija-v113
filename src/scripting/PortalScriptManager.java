@@ -20,28 +20,21 @@
  */
 package scripting;
 
-import java.io.File;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.script.Compilable;
 import javax.script.CompiledScript;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineFactory;
-import javax.script.ScriptEngineManager;
 
 import client.MapleClient;
 import server.MaplePortal;
 import tools.FileoutputUtil;
-import tools.StringUtil;
 
 public class PortalScriptManager {
 
     private static final PortalScriptManager instance = new PortalScriptManager();
     /**
-     * One entry per portal script name, compiled on demand by whichever
+     * One entry per portal script name, evaluated on demand by whichever
      * Maple-Handler-N thread first walks into that portal, and dropped by
      * {@code !reloadportal} or by saving a portal script in the panel from a
      * Panel-Worker-N thread.
@@ -51,22 +44,20 @@ public class PortalScriptManager {
      * old code said with a null value that a ConcurrentHashMap will not take.
      * That negative has to keep working: without it every step into such a
      * portal would read and recompile a script file.
+     *
+     * <p>Unlike NPC and quest scripts, a portal script has no per-player state
+     * to keep apart - one {@link PortalScript} is shared by everyone who steps
+     * on the portal, as it always was - so there is one {@link ScriptScope} per
+     * name here rather than one per entry.
      */
     private final Map<String, Optional<PortalScript>> scripts = new ConcurrentHashMap<>();
-    private final static ScriptEngineFactory sef = findNashorn();
 
-    /**
-     * Nashorn was dropped from the JDK in 15, so from JDK 15 on it only exists
-     * if nashorn-core and the asm jars are on the classpath. Say so plainly:
-     * without this the field above is simply null and every portal in the game
-     * dies inside a static initialiser with no hint as to why.
-     */
-    private static ScriptEngineFactory findNashorn() {
-        final ScriptEngine engine = new ScriptEngineManager().getEngineByName("nashorn");
-        if (engine == null) {
-            throw new IllegalStateException("No 'nashorn' script engine found. Put nashorn-core and the asm jars on the classpath.");
-        }
-        return engine.getFactory();
+    static {
+        // Asked for here on purpose, and left to throw. Without it a missing
+        // Nashorn takes every portal in the game down inside a bare
+        // ExceptionInInitializerError with no hint as to why; with it, the
+        // message names the jars that are not on the classpath.
+        ScriptCache.requireEngine();
     }
 
     public final static PortalScriptManager getInstance() {
@@ -79,39 +70,25 @@ public class PortalScriptManager {
             return cached.orElse(null);
         }
 
-        String scriptPath = "Libs/scripts/portal/" + scriptName + ".js";
-        final File scriptFile = new File(scriptPath);
-        if (!scriptFile.exists()) {
+        final String scriptPath = "Libs/scripts/portal/" + scriptName + ".js";
+        final CompiledScript compiled = ScriptCache.compiled(scriptPath);
+        if (compiled == null) {
             scripts.put(scriptName, Optional.<PortalScript>empty());
             return null;
         }
-        StringBuilder builder = new StringBuilder();
-        builder.append("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
-        builder.append(StringUtil.readFileAsString(scriptPath));
-
-        //InputStreamReader fr = null;
-        final ScriptEngine portal = sef.getScriptEngine();
+        PortalScript script = null;
         try {
-            //fr = new InputStreamReader(new FileInputStream(scriptFile), "Big5");
-            CompiledScript compiled = ((Compilable) portal).compile(builder.toString());
-            compiled.eval();
+            final ScriptScope scope = ScriptCache.newScope();
+            scope.run(compiled);
+            script = scope.getInterface(PortalScript.class);
         } catch (final Exception e) {
             System.err.println("Error executing Portalscript: " + scriptName + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Portal script. (" + scriptName + ") " + e);
-        }/* finally {
-            if (fr != null) {
-                try {
-                    fr.close();
-                } catch (final IOException e) {
-                    System.err.println("ERROR CLOSING" + e);
-                }
-            }
-        }*/
-        final PortalScript script = ((Invocable) portal).getInterface(PortalScript.class);
-        // Miss-then-put, not computeIfAbsent: compiling a script under the
+        }
+        // Miss-then-put, not computeIfAbsent: evaluating a script under the
         // map's bin lock would block everyone else who missed in the same bin,
         // and the script's own top-level code runs in there. Two threads
-        // entering the same portal at once compile it twice and the second one
+        // entering the same portal at once evaluate it twice and the second one
         // wins; both callers get a working script.
         scripts.put(scriptName, Optional.ofNullable(script));
         return script;
@@ -132,7 +109,13 @@ public class PortalScriptManager {
         }
     }
 
+    /**
+     * Drops both halves: the {@link PortalScript} objects here and the compiled
+     * scripts behind them. Without the second one a portal script edited on
+     * disk would be re-evaluated from the stale bytecode and never change.
+     */
     public final void clearScripts() {
         scripts.clear();
+        ScriptCache.clearKind("portal");
     }
 }

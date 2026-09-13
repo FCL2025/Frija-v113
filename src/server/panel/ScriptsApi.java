@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import scripting.PortalScriptManager;
+import scripting.ScriptCache;
 import scripting.ScriptEncodingCheck;
 import tools.Encodings;
 
@@ -40,13 +41,21 @@ import tools.Encodings;
  * {@code encodingOk: false} and shows its UTF-8 reading, so saving it from
  * the editor is exactly the fix; nothing here does that on its own.
  *
- * <p>What a save does to the running server depends on the kind:
- * portal scripts are cached process-wide and are dropped here; event
- * scripts are compiled per channel at startup and want a reload from
- * {@link ActionsApi}; NPC, quest and reactor scripts are cached per
- * {@code MapleClient}, in a plain {@code HashMap} only that client's handler
- * thread touches, so the next client to run the script simply reads the new
- * file and the ones mid-conversation are told to use {@code @解卡}.
+ * <p>What a save does to the running server depends on the kind. Every kind
+ * is compiled once and kept in {@link ScriptCache}, so every save drops that
+ * script from there - without it the file on disk would change and the server
+ * would go on running the bytecode it compiled the first time. On top of that,
+ * portal scripts also have the {@link PortalScript} objects built from them
+ * cached process-wide, and those are dropped here too; event scripts are
+ * instantiated per channel and still want a reload from {@link ActionsApi} to
+ * re-run their {@code init()}.
+ *
+ * <p>What is deliberately <i>not</i> touched is a live conversation. An NPC,
+ * quest or reactor script already running has its own scope in a plain
+ * {@code HashMap} belonging to that player and to that player's handler
+ * thread; the panel has no business reaching into it from a Panel-Worker-N
+ * thread. The next conversation reads the new script, and a player stuck in
+ * the old one is told to use {@code @解卡}.
  */
 final class ScriptsApi {
 
@@ -266,9 +275,9 @@ final class ScriptsApi {
     /** What the UI tells the user a save will mean for the running server. */
     private static String afterSave(final String kind) {
         return switch (kind) {
-            case "portal" -> "存檔後會自動清掉傳送點腳本快取，下次踩到就是新版。";
-            case "event" -> "事件腳本是各頻道啟動時編譯的；存檔後請按「重載事件」。";
-            default -> "沒有全域快取：還沒跑過這支腳本的玩家下次就會讀到新檔；正卡在對話中的玩家請用 @解卡 或重登。";
+            case "portal" -> "存檔後會自動清掉這支腳本的編譯快取與傳送點快取，下次踩到就是新版。";
+            case "event" -> "存檔後會自動清掉這支腳本的編譯快取；事件是各頻道各自建立的，請再按「重載事件」。";
+            default -> "存檔後會自動清掉這支腳本的編譯快取，下次跟它互動的玩家就會讀到新檔；正卡在對話中的玩家請用 @解卡 或重登。";
         };
     }
 
@@ -301,6 +310,11 @@ final class ScriptsApi {
         Files.write(tmp, bytes);
         Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 
+        // Always: the compiled form of this one script is now stale. Portal
+        // scripts additionally have a PortalScript object built from them, and
+        // clearScripts() drops both halves for every portal at once, which
+        // is why the response still only reports "portal" as reloaded.
+        ScriptCache.removeScript(kind, name);
         String reloaded = null;
         if (kind.equals("portal")) {
             PortalScriptManager.getInstance().clearScripts();

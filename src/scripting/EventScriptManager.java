@@ -24,8 +24,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
 
 import handling.channel.ChannelServer;
 import tools.FileoutputUtil;
@@ -38,13 +36,13 @@ public class EventScriptManager extends AbstractScriptManager {
 
     private static class EventEntry {
 
-        public EventEntry(final String script, final Invocable iv, final EventManager em) {
+        public EventEntry(final String script, final ScriptScope iv, final EventManager em) {
             this.script = script;
             this.iv = iv;
             this.em = em;
         }
         public String script;
-        public Invocable iv;
+        public ScriptScope iv;
         public EventManager em;
     }
     private final Map<String, EventEntry> events = new LinkedHashMap<>();
@@ -73,7 +71,7 @@ public class EventScriptManager extends AbstractScriptManager {
      */
     public EventScriptManager(final ChannelServer cserv, final String[] scripts) {
         super();
-        final Invocable[] loaded = new Invocable[scripts.length];
+        final ScriptScope[] loaded = new ScriptScope[scripts.length];
         IntStream.range(0, scripts.length).parallel().forEach(i -> {
             if (!scripts[i].equals("")) {
                 loaded[i] = getInvocable("event/" + scripts[i] + ".js", null);
@@ -97,7 +95,7 @@ public class EventScriptManager extends AbstractScriptManager {
     public final void init() {
         for (final EventEntry entry : events.values()) {
             try {
-                ((ScriptEngine) entry.iv).put("em", entry.em);
+                entry.iv.put("em", entry.em);
                 entry.iv.invokeFunction("init", (Object) null);
                
             } catch (final Exception ex) {

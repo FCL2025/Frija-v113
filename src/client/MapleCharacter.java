@@ -49,6 +49,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -79,7 +82,6 @@ import handling.world.guild.MapleGuild;
 import handling.world.guild.MapleGuildCharacter;
 import java.lang.ref.WeakReference;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import tools.MockIOSession;
 import scripting.EventInstanceManager;
@@ -162,23 +164,59 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     private boolean smega, hidden, hasSummon = false;
     int[] wishlist, rocks, savedLocations, regrocks, remainingSp = new int[10];
     private AtomicInteger inst;
+    // C4 併發審核：以下每個可變集合都逐一追過「誰讀、誰寫、跑在哪條執行緒」。
+    // 會踩到別人角色物件的四條路徑是 MapleMap.broadcastMessage / MapleMap 對 characters
+    // 的走訪、隊伍與公會的迭代、server.Timer 的排程工作，以及面板的 Panel-Worker-N。
+    // 標「只有本人」的欄位是確認過只在自己的 Maple-Handler-N 上進出，故刻意不改。
+
+    // 只在自己的 handler thread 上整串換掉參考（PlayerHandler 移動封包寫、AdminMapCommands 讀自己的），
+    // list 內容從不就地修改，換頻/複製人也只是再指一次 → 不需要同步。
     private List<LifeMovementFragment> lastres;
+    // 只有本人：PlayersHandler 的給人氣（chr 就是 c.getPlayer()）與換頻時的 CharacterTransfer。
     List<Integer> lastmonthfameids;
+    // 共用：智慧之門到期時 BuffTimer 的 CancelEffectAction → cancelEffect() 會走訪並清空，
+    // 本人的 handler thread 同時可能 addDoor；清單只有一兩筆且幾乎不寫 → CopyOnWriteArrayList。
     private List<MapleDoor> doors;
+    // 共用：World.handleCooldowns 在 WorldTimer 上走訪、MapleMap.addPlayer 與
+    // CharacterPacket/PetPacket 在「別人」的 handler thread 上走訪，本人只在自己的執行緒增刪。
     List<MaplePet> pets;
+    // 固定長度陣列，元素只是參考覆寫（addClone/disposeClones），沒有結構性改動 → 不需要同步。
     private WeakReference<MapleCharacter>[] clones;
+    // 共用：MapleMonster.switchController 由「攻擊者」的 handler thread 摘掉原控制者的怪，
+    // MapleMap.updateMonsterController 由 Respawn（WorldTimer）指派，MapleMap.removePlayer
+    // 還會拿 iterator 邊走邊 remove → 需要 iterator 支援移除的並行 Set。
     private Set<MapleMonster> controlled;
+    // 共用，但早就上了讀寫鎖；getAndWriteLockVisibleMapObjects() 是把寫鎖交給呼叫端的設計，
+    // 唯一的使用者 MapleMap.movePlayer 以 try/finally 配對 unlockWriteVisibleMapObjects()。
     private Set<MapleMapObject> visibleMapObjects;
     private ReentrantReadWriteLock visibleMapObjectsLock;
+    // 共用：怪物死亡時 MapleMonster.killBy 會對「每一個攻擊者」呼叫 mobKilled()，
+    // 也就是在擊殺者的 handler thread 上走訪別人的 quests；!saveall 還會在 GM 的執行緒上存檔走訪。
+    // 原本是 LinkedHashMap，確認過寫封包與存檔都不依賴插入順序（客戶端與資料庫都以 quest id 為鍵）。
     Map<MapleQuest, MapleQuestStatus> quests;
+    // 不確定，故維持原狀：唯一的跨執行緒走訪是 CharacterRepository.saveToDB（!saveall / unlockAcc），
+    // 但 customData 允許 null 值（QuestInfoPacket 與存檔都特別處理 null），ConcurrentHashMap
+    // 不收 null，換過去會從「寫出空字串」變成 NPE。留給人決定。
     Map<Integer, String> questinfo;
-    Map<ISkill, SkillEntry> skills = new LinkedHashMap<>();
+    // 共用（唯讀方向）：PlayerStats.recalcLocalStats 會在施放隊伍 buff 的那個玩家執行緒上
+    // 讀被施放者的 skills，!saveall 也會在別人的執行緒上走訪；寫入只有本人。
+    // 換 ConcurrentHashMap 後 get(null) 會丟 NPE，故 getSkillLevel/getMasterLevel 補了 null 判斷，
+    // 行為與 LinkedHashMap.get(null) 回 null 完全一致。
+    Map<ISkill, SkillEntry> skills = new ConcurrentHashMap<>();
     private Map<MapleBuffStat, MapleBuffStatValueHolder> effects = new ConcurrentEnumMap<>(MapleBuffStat.class);
+    // 共用：別人進地圖時在他的 handler thread 上走訪（sendSpawnData）、MapleMap.removePlayer 也走訪，
+    // 同時 BuffTimer 的 CancelEffectAction → deregisterBuffStats 會移除 → 需要並行 Map。
     private Map<Integer, MapleSummon> summons;
-    private Map<Integer, MapleCoolDownValueHolder> coolDowns = new LinkedHashMap<>();
+    // 共用：World.handleCooldowns 在 WorldTimer 上到期移除，Time Leap 由施放者的執行緒清掉
+    // 隊友的冷卻（MapleStatEffect.applyTo），本人的 handler thread 則在放技能時加入。
+    private Map<Integer, MapleCoolDownValueHolder> coolDowns = new ConcurrentHashMap<>();
     private Map<MapleDisease, MapleDiseaseValueHolder> diseases = new ConcurrentEnumMap<>(MapleDisease.class);
     CashShop cs;
-    private Deque<MapleCarnivalChallenge> pendingCarnivalRequests;
+    // 共用：怪物嘉年華的挑戰是由「挑戰者」的 handler thread 呼叫 owner.addCarnivalRequest()
+    // 塞進對方的佇列（Libs/scripts/npc/2042000 等），EventInstanceManager 又會清空 →
+    // 改用 ConcurrentLinkedDeque，且 clearCarnivalRequests() 改成 clear() 而不是換一個新物件
+    // （換物件會讓正在加入的執行緒寫到被丟掉的舊佇列上）。
+    private final Deque<MapleCarnivalChallenge> pendingCarnivalRequests = new ConcurrentLinkedDeque<>();
     private MapleCarnivalParty carnivalParty;
     BuddyList buddylist;
     MonsterBook monsterbook;
@@ -193,6 +231,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     MapleStorage storage;
     private MapleTrade trade;
     MapleMount mount;
+    // 只有本人：成就功能整段被註解掉了，現在只剩換頻時 CharacterTransfer 的複製會碰它。
     List<Integer> finishedAchievements = new ArrayList<>();
     private MapleMessenger messenger;
     byte[] petStore;
@@ -209,8 +248,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             dragonBloodSchedule, fairySchedule, mapTimeLimitTask, fishing;
     private long nextConsume = 0, pqStartTime = 0;
     private Event_PyramidSubway pyramidSubway = null;
+    // 只有本人：expirationTask() 兩個階段都在登入／換頻那條 handler thread 上跑
+    //（CharacterRepository.loadCharFromDB 與 InterServerHandler），沒有第二條路徑。
     private List<Integer> pendingExpiration = null, pendingSkills = null;
-    private Map<Integer, Integer> movedMobs = new HashMap<>();
+    // 共用：addMoveMob() 在「移動怪物的人」的 handler thread 上，會反過來改同地圖每個人的
+    // 這張表（chr.getMoveMobs().remove(...)），而且本身是先讀後寫的累加 → 並行 Map + merge。
+    private final Map<Integer, Integer> movedMobs = new ConcurrentHashMap<>();
     private String teleportname = "";
 
     MapleCharacter(final boolean ChannelServer) {
@@ -221,7 +264,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         for (MapleInventoryType type : MapleInventoryType.values()) {
             inventory[type.ordinal()] = new MapleInventory(type);
         }
-        quests = new LinkedHashMap<>(); // Stupid erev quest.
+        quests = new ConcurrentHashMap<>(); // Stupid erev quest.
         stats = new PlayerStats(this);
         for (int i = 0; i < remainingSp.length; i++) {
             remainingSp[i] = 0;
@@ -249,12 +292,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             inst = new AtomicInteger();
             inst.set(0); // 1 = NPC/ Quest, 2 = Duey, 3 = Hired Merch store, 4 = Storage
             keylayout = new MapleKeyLayout();
-            doors = new ArrayList<>();
-            controlled = new LinkedHashSet<>();
-            summons = new LinkedHashMap<>();
+            doors = new CopyOnWriteArrayList<>();
+            controlled = ConcurrentHashMap.newKeySet();
+            summons = new ConcurrentHashMap<>();
             visibleMapObjects = new LinkedHashSet<>();
             visibleMapObjectsLock = new ReentrantReadWriteLock();
-            pendingCarnivalRequests = new LinkedList<>();
 
             savedLocations = new int[SavedLocationType.values().length];
             for (int i = 0; i < SavedLocationType.values().length; i++) {
@@ -262,7 +304,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             }
             questinfo = new LinkedHashMap<>();
             anticheat = new CheatTracker(this);
-            pets = new ArrayList<>();
+            pets = new CopyOnWriteArrayList<>();
         }
     }
 
@@ -544,20 +586,19 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public final void setQuestAdd(final MapleQuest quest, final byte status, final String customData) {
-        if (!quests.containsKey(quest)) {
-            final MapleQuestStatus stat = new MapleQuestStatus(quest, status);
+        // C4：containsKey + put 併成 computeIfAbsent，一樣是「沒有才建」，
+        // 但不會兩條執行緒各建一份、其中一份的進度寫完就被蓋掉。
+        quests.computeIfAbsent(quest, k -> {
+            final MapleQuestStatus stat = new MapleQuestStatus(k, status);
             stat.setCustomData(customData);
-            quests.put(quest, stat);
-        }
+            return stat;
+        });
     }
 
     public final MapleQuestStatus getQuestNAdd(final MapleQuest quest) {
-        if (!quests.containsKey(quest)) {
-            final MapleQuestStatus status = new MapleQuestStatus(quest, (byte) 0);
-            quests.put(quest, status);
-            return status;
-        }
-        return quests.get(quest);
+        // C4：原本是 containsKey → put → return，兩條執行緒同時進來會各拿到一份
+        // MapleQuestStatus，其中一份的進度寫完就被丟掉。computeIfAbsent 保證只有一份。
+        return quests.computeIfAbsent(quest, k -> new MapleQuestStatus(k, (byte) 0));
     }
 
     public final MapleQuestStatus getQuestNoAdd(final MapleQuest quest) {
@@ -2190,7 +2231,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (clone) {
             return;
         }
-        if (monster != null && controlled.contains(monster)) {
+        // C4：contains + remove 併成一步，理由同 removeCooldown。
+        if (monster != null) {
             controlled.remove(monster);
         }
     }
@@ -2257,6 +2299,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public byte getSkillLevel(final ISkill skill) {
+        // C4：skills 換成 ConcurrentHashMap 之後 get(null) 會丟 NPE；
+        // SkillFactory.getSkill() 對不存在的技能 id 會回 null，呼叫端不一定先擋。
+        // 原本 LinkedHashMap.get(null) 回 null，等同走到下面的 return 0。
+        if (skill == null) {
+            return 0;
+        }
         final SkillEntry ret = skills.get(skill);
         if (ret == null || ret.skillevel <= 0) {
             return 0;
@@ -2269,6 +2317,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public byte getMasterLevel(final ISkill skill) {
+        // C4：null 判斷的理由同 getSkillLevel。
+        if (skill == null) {
+            return 0;
+        }
         final SkillEntry ret = skills.get(skill);
         if (ret == null) {
             return 0;
@@ -3208,9 +3260,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void removeCooldown(int skillId) {
-        if (coolDowns.containsKey(Integer.valueOf(skillId))) {
-            coolDowns.remove(Integer.valueOf(skillId));
-        }
+        // C4：containsKey + remove 併成一步。remove() 本身就是「有才刪、沒有就沒事」，
+        // 語意不變，但不會再有 WorldTimer 的到期掃描與 Time Leap 之間的先讀後寫空窗。
+        coolDowns.remove(Integer.valueOf(skillId));
     }
 
     public boolean skillisCooling(int skillId) {
@@ -3697,7 +3749,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void clearCarnivalRequests() {
-        pendingCarnivalRequests = new LinkedList<>();
+        // C4：原本是換一個新的 LinkedList；正在 addCarnivalRequest 的挑戰者執行緒
+        // 可能還抓著舊的參考，挑戰就寫進被丟掉的佇列裡。改成原地清空。
+        pendingCarnivalRequests.clear();
     }
 
     public void startMonsterCarnival(final int enemyavailable, final int enemytotal) {
@@ -4002,18 +4056,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void addMoveMob(int mobid) {
-        if (movedMobs.containsKey(mobid)) {
-            movedMobs.put(mobid, movedMobs.get(mobid) + 1);
-            if (movedMobs.get(mobid) > 30) { //trying to move not null monster = broadcast dead
-                for (MapleCharacter chr : getMap().getCharactersThreadsafe()) { //also broadcast to others
-                    if (chr.getMoveMobs().containsKey(mobid)) { //they also tried to move this mob
-                        chr.getClient().send(MobPacket.killMonster(mobid, 1));
-                        chr.getMoveMobs().remove(mobid);
-                    }
+        // C4：原本是 containsKey → get → +1 → put，再 get 一次來比 30，中間任何一步
+        // 都可能被別人的執行緒插進來（下面那個迴圈就是在改別人的這張表），計數會少算。
+        // merge 一次做完並回傳新值，單執行緒下的結果與原本逐字相同：
+        // 不存在時放 1（1 > 30 為假，本來也不會進 if），存在時 +1 後比較。
+        final int moved = movedMobs.merge(mobid, 1, Integer::sum);
+        if (moved > 30) { //trying to move not null monster = broadcast dead
+            for (MapleCharacter chr : getMap().getCharactersThreadsafe()) { //also broadcast to others
+                if (chr.getMoveMobs().containsKey(mobid)) { //they also tried to move this mob
+                    chr.getClient().send(MobPacket.killMonster(mobid, 1));
+                    chr.getMoveMobs().remove(mobid);
                 }
             }
-        } else {
-            movedMobs.put(mobid, 1);
         }
     }
 

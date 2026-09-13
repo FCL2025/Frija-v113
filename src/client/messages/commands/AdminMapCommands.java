@@ -40,6 +40,8 @@ import tools.packet.MobPacket;
  */
 public class AdminMapCommands {
 
+    private static final System.Logger LOG = System.getLogger(AdminMapCommands.class.getName());
+
     public static PlayerGMRank getPlayerLevelRequired() {
         return PlayerGMRank.ADMIN;
     }
@@ -537,8 +539,11 @@ public class AdminMapCommands {
                     ps.setInt(10, c.getPlayer().getMapId());
                     ps.executeUpdate();
                    } catch (SQLException SE) {
-                    System.err.println("SQL THROW");
-                    SE.printStackTrace();
+                    // One record, not two: the "SQL THROW" line and the trace
+                    // were always the same event. ERROR - the NPC is spawned on
+                    // the live map below but its spawns row was not written, so
+                    // it disappears at the next restart.
+                    LOG.log(System.Logger.Level.ERROR, "SQL THROW", SE);
                 }
                 
                 c.getPlayer().getMap().addMapObject(npc);
@@ -611,7 +616,8 @@ public class AdminMapCommands {
                 c.getPlayer().dropMessage(6, "Done");
             } catch (Exception e) {
                 c.getPlayer().dropMessage(6, "NPC failed... : " + e.getMessage());
-                e.printStackTrace();
+                // ERROR: the player NPC was not created.
+                LOG.log(System.Logger.Level.ERROR, "!makepnpc 失敗", e);
             }
             return 1;
         }
@@ -634,7 +640,8 @@ public class AdminMapCommands {
                 c.getPlayer().dropMessage(6, "Done");
             } catch (Exception e) {
                 c.getPlayer().dropMessage(6, "NPC failed... : " + e.getMessage());
-                e.printStackTrace();
+                // ERROR: the player NPC was not created.
+                LOG.log(System.Logger.Level.ERROR, "!makeofflinep 失敗", e);
             }
             return 1;
         }
@@ -655,7 +662,8 @@ public class AdminMapCommands {
                 }
             } catch (Exception e) {
                 c.getPlayer().dropMessage(6, "NPC failed... : " + e.getMessage());
-                e.printStackTrace();
+                // ERROR: the player NPC was not destroyed.
+                LOG.log(System.Logger.Level.ERROR, "!destroypnpc 失敗", e);
             }
             return 1;
         }

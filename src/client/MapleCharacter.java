@@ -140,6 +140,9 @@ import tools.FileoutputUtil;
 
 public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
+    /** 命名與分級規則見 {@code tools.Logging}。 */
+    private static final System.Logger LOG = System.getLogger(MapleCharacter.class.getName());
+
     // E4：持久化搬到同 package 的 CharacterRepository 之後，被它直接讀寫的欄位
     // 一律只放寬到 package-private（不是 public），沒被它碰到的維持 private。
     // 原本擠在同一行的宣告因此拆成兩行，讓放寬的範圍剛好是需要的那些、不多不少。
@@ -347,7 +350,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error getting character default" + e);
+            // ERROR: abandoned, so the new character keeps the zeroed account
+            // name and currency defaults. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error getting character default" + e);
         }
         return ret;
     }
@@ -2554,7 +2559,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 ps.execute();
             }
         } catch (SQLException ex) {
-            System.err.println("Error while tempbanning" + ex);
+            // ERROR: the temp ban may be only half-written - the session is
+            // already closed above but the tempban columns can be untouched, so
+            // the account comes straight back. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while tempbanning" + ex);
         }
 
     }
@@ -2596,7 +2604,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 }
             }
         } catch (SQLException ex) {
-            System.err.println("Error while banning" + ex);
+            // ERROR: the ban is abandoned, false goes back to the caller and the
+            // session below is never closed. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while banning" + ex);
             return false;
         }
         client.getSession().close();
@@ -2666,7 +2676,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 return ret;
             }
         } catch (SQLException ex) {
-            System.err.println("Error while banning" + ex);
+            // ERROR: the ban is abandoned and false goes back to the caller.
+            // Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while banning" + ex);
         }
         return false;
     }
@@ -2923,7 +2935,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             ps.setInt(2, to.getId());
             ps.execute();
         } catch (SQLException e) {
-            System.err.println("ERROR writing famelog for char " + getName() + " to " + to.getName() + e);
+            // ERROR: lastfametime and lastmonthfameids were already updated in
+            // memory above, so the famelog row is simply missing. Terse.
+            LOG.log(System.Logger.Level.ERROR, "ERROR writing famelog for char " + getName() + " to " + to.getName() + e);
         }
     }
 
@@ -3157,8 +3171,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             ps.setInt(5, id);
             ps.execute();
         } catch (SQLException se) {
-            System.out.println("SQLException: " + se.getLocalizedMessage());
-            se.printStackTrace();
+            // One record, not two: the message and the trace were always the
+            // same event. ERROR rather than the INFO the stream would suggest -
+            // the family columns were not written.
+            LOG.log(System.Logger.Level.ERROR, "SQLException: " + se.getLocalizedMessage(), se);
         }
     }
 
@@ -3295,7 +3311,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 deleteWhereCharacterId(con, "DELETE FROM skills_cooldowns WHERE charid = ?");
 
             } catch (SQLException e) {
-                System.err.println("Error while retriving cooldown from SQL storage");
+                // ERROR: abandoned, so the player logs in with some or all of
+                // their cooldowns gone - and the DELETE that clears the rows may
+                // not have run either. Kept as terse as it was: this one never
+                // reported the exception at all.
+                LOG.log(System.Logger.Level.ERROR, "Error while retriving cooldown from SQL storage");
             }
         }
     }
@@ -3386,7 +3406,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 client.send(MTSCSPacket.showNotes(rs, count));
             }
         } catch (SQLException e) {
-            System.err.println("Unable to show note" + e);
+            // ERROR: abandoned, so the note window is never sent. Terse.
+            LOG.log(System.Logger.Level.ERROR, "Unable to show note" + e);
         }
     }
 
@@ -3409,7 +3430,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 ps.execute();
             }
         } catch (SQLException e) {
-            System.err.println("Unable to delete note" + e);
+            // ERROR: abandoned. The fame may already have been granted above
+            // while the note row survives, so it can be claimed again. Terse.
+            LOG.log(System.Logger.Level.ERROR, "Unable to delete note" + e);
         }
     }
 
@@ -3681,7 +3704,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             ps.setString(2, bossid);
             ps.executeUpdate();
         } catch (Exception Ex) {
-            System.err.println("Error while insert bosslog for char " + getName() + ": " + Ex);
+            // ERROR: the bosslog row was not written, so the NPC scripts that
+            // read it will let this boss be run again. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while insert bosslog for char " + getName() + ": " + Ex);
         }
     }
     public void dropMessage(int type, String message) {
@@ -4038,7 +4063,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                                 }
                                 pet_count++;
                             }
-                            System.out.println("Count = " + count + " Pet_count = " + pet_count);
+                            // Leftover developer trace, kept at INFO so it still
+                            // prints exactly as it did. Not a hot path: this runs
+                            // once per pet summon, on a player action.
+                            LOG.log(System.Logger.Level.INFO, "Count = " + count + " Pet_count = " + pet_count);
                             Collections.swap(pets, count, pet_count);
                         }
                         
@@ -4550,8 +4578,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             pqStartTime = System.currentTimeMillis();
             updateOneInfo(questid, "try", String.valueOf(Integer.parseInt(getOneInfo(questid, "try")) + 1));
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("tryPartyQuest error");
+            // One record, not two. ERROR rather than the INFO the stream would
+            // suggest: the attempt counter was abandoned part-way, so the
+            // party-quest record for this character is now inconsistent.
+            LOG.log(System.Logger.Level.ERROR, "tryPartyQuest error", e);
         }
     }
 
@@ -4574,8 +4604,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 pqStartTime = 0;
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("endPartyQuest error");
+            // One record, not two. ERROR for the same reason as tryPartyQuest:
+            // the record is left half-updated and pqStartTime is not cleared.
+            LOG.log(System.Logger.Level.ERROR, "endPartyQuest error", e);
         }
 
     }

@@ -32,6 +32,8 @@ import database.DatabaseConnection;
 
 public class MapleCharacterUtil {
 
+    private static final System.Logger LOG = System.getLogger(MapleCharacterUtil.class.getName());
+
     private static final Pattern namePattern = Pattern.compile("[a-zA-Z0-9_-]{3,12}");
     private static final Pattern petPattern = Pattern.compile("[a-zA-Z0-9_-]{4,12}");
 
@@ -89,7 +91,9 @@ public class MapleCharacterUtil {
                 return rs.getInt("id");
             }
         } catch (SQLException e) {
-            System.err.println("error 'getIdByName' " + e);
+            // ERROR: the lookup is abandoned and -1 comes back, which the
+            // callers read as "no such character". Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "error 'getIdByName' " + e);
         }
         return -1;
     }
@@ -104,7 +108,8 @@ public class MapleCharacterUtil {
                 prompt = rs.next() ? false : true;
             }
         } catch (SQLException e) {
-            System.err.println("error 'PromptPoll' " + e);
+            // ERROR: abandoned, and the caller is told not to prompt. Terse.
+            LOG.log(System.Logger.Level.ERROR, "error 'PromptPoll' " + e);
         }
         return prompt;
     }
@@ -121,7 +126,9 @@ public class MapleCharacterUtil {
 
             ps.execute();
         } catch (SQLException e) {
-            System.err.println("error 'SetPoll' " + e);
+            // ERROR: the reply row was never inserted, yet true is returned
+            // below - this line is the only trace of the lost answer. Terse.
+            LOG.log(System.Logger.Level.ERROR, "error 'SetPoll' " + e);
         }
         return true;
     }
@@ -172,7 +179,10 @@ public class MapleCharacterUtil {
                 return -2;
             }
         } catch (SQLException e) {
-            System.err.println("error 'getIdByName' " + e);
+            // ERROR: the second password was not changed (-2 = unknown error).
+            // The "getIdByName" in the text is a copy-paste that predates this
+            // method; kept verbatim so the line stays greppable. Terse.
+            LOG.log(System.Logger.Level.ERROR, "error 'getIdByName' " + e);
             return -2;
         }
     }
@@ -206,7 +216,8 @@ public class MapleCharacterUtil {
                 return new Pair<>(rs.getInt("id"), new Pair<>(rs.getInt("accountid"), rs.getInt("gender")));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: abandoned, and null comes back as "no such character".
+            LOG.log(System.Logger.Level.ERROR, "error 'getInfoByName' " + name, e);
         }
         return null;
     }
@@ -230,7 +241,9 @@ public class MapleCharacterUtil {
             ps.setInt(5, fame);
             ps.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Unable to send note" + e);
+            // ERROR: the note row was not written, so the note is simply lost
+            // - the sender is told nothing. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Unable to send note" + e);
         }
     }
 

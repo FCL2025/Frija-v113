@@ -39,6 +39,8 @@ import java.security.NoSuchAlgorithmException;
  */
 public class LoginCryptoLegacy {
 
+    private static final System.Logger LOG = System.getLogger(LoginCryptoLegacy.class.getName());
+
     /**
      * Map of 6 bit nibbles to base64 characters.
      */
@@ -136,9 +138,12 @@ public class LoginCryptoLegacy {
             out = seed.substring(0, 12);
             out += encode64(sha1Hash);
         } catch (NoSuchAlgorithmException Ex) {
-            System.err.println("Error hashing password." + Ex);
+            // ERROR, not WARNING: out stays null and the RuntimeException below
+            // abandons the hash. Terse on purpose - this only ever printed
+            // Ex.toString(), never a trace.
+            LOG.log(System.Logger.Level.ERROR, "Error hashing password." + Ex);
         } catch (UnsupportedEncodingException Ex) {
-            System.err.println("Error hashing password." + Ex);
+            LOG.log(System.Logger.Level.ERROR, "Error hashing password." + Ex);
         }
         if (out == null) {
             throw new RuntimeException("Error hashing password - out = null");

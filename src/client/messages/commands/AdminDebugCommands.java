@@ -45,6 +45,8 @@ import tools.packet.UIPacket;
  */
 public class AdminDebugCommands {
 
+    private static final System.Logger LOG = System.getLogger(AdminDebugCommands.class.getName());
+
     public static PlayerGMRank getPlayerLevelRequired() {
         return PlayerGMRank.ADMIN;
     }
@@ -406,7 +408,10 @@ public class AdminDebugCommands {
                 sampler.save(fw, 1, 10);
                 fw.close();
             } catch (IOException e) {
-                System.err.println("Error saving profile" + e);
+                // ERROR: the sampler is stopped and reset below either way, so
+                // the profile this run collected is gone. Terse on purpose -
+                // this only ever printed e.toString().
+                LOG.log(System.Logger.Level.ERROR, "Error saving profile" + e);
             }
             sampler.reset();
             return 1;

@@ -78,6 +78,14 @@ import tools.Pair;
  */
 public class CharacterRepository {
 
+    /**
+     * 命名與分級規則見 {@code tools.Logging}。這裡是存檔／載入路徑，所有
+     * {@code [charsave]} 開頭的訊息都是「這次存檔被放棄或回滾了」的唯一紀錄，
+     * 因此一律 {@code ERROR}；唯一的例外是 quest generated key 那一筆，
+     * 它只跳過一筆怪物計數而整次存檔照常完成，所以是 {@code WARNING}。
+     */
+    private static final System.Logger LOG = System.getLogger(CharacterRepository.class.getName());
+
     private CharacterRepository() {
     }
 
@@ -458,8 +466,11 @@ public class CharacterRepository {
                 }
             }
         } catch (SQLException ess) {
-            ess.printStackTrace();
-            System.out.println("Failed to load character..");
+            // One record, not two: the trace and the "Failed to load character.."
+            // line were always the same event. ERROR rather than the INFO the
+            // stream would suggest - the load is abandoned here and a
+            // half-populated MapleCharacter is still returned below.
+            LOG.log(System.Logger.Level.ERROR, "Failed to load character..", ess);
         } finally {
             try {
                 if (ps != null) {
@@ -619,13 +630,16 @@ public class CharacterRepository {
 
             con.commit();
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("[charsave] Error saving character data");
+            // One record: the trace and the message were always one event.
+            LOG.log(System.Logger.Level.ERROR, "[charsave] Error saving character data", e);
             try {
                 con.rollback();
             } catch (SQLException ex) {
-                e.printStackTrace();
-                System.err.println("[charsave] Error Rolling Back");
+                // Reports `e`, the save failure, and not `ex`, the rollback
+                // failure - that is what both lines here always did, so it is
+                // kept verbatim rather than quietly corrected. The rollback
+                // failing means the transaction state is unknown, so ERROR.
+                LOG.log(System.Logger.Level.ERROR, "[charsave] Error Rolling Back", e);
             }
         } finally {
             try {
@@ -641,14 +655,17 @@ public class CharacterRepository {
                 con.setAutoCommit(true);
                 con.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             } catch (SQLException e) {
-                e.printStackTrace();
-                System.err.println("[charsave] Error going back to autocommit mode");
+                // One record. ERROR: the connection goes back to the pool still
+                // in a transaction, with the wrong isolation level.
+                LOG.log(System.Logger.Level.ERROR, "[charsave] Error going back to autocommit mode", e);
             }
         }
         } catch (SQLException e) {
             // Thrown by returning the connection to the pool; the save itself
-            // is already accounted for by the catch above.
-            System.err.println("[charsave] Error releasing the connection: " + e);
+            // is already accounted for by the catch above. ERROR: the borrow was
+            // not given back, which is a permit that never returns to the pool.
+            // Terse on purpose - this one never printed a trace.
+            LOG.log(System.Logger.Level.ERROR, "[charsave] Error releasing the connection: " + e);
         }
     }
 
@@ -827,7 +844,11 @@ public class CharacterRepository {
                 // 玩家掉的是整隻角色這次的進度，而不是這一筆任務的怪物計數。
                 if (!rs.next()) {
                     rs.close();
-                    System.err.println(MapleClient.getLogMessage(chr, "[charsave] queststatus 未回傳 generated key，略過 quest " + q.getQuest().getId() + " 的怪物計數"));
+                    // WARNING, not ERROR: the save carries on (continue) and
+                    // only this one quest's mob counts are skipped. The message
+                    // is built on the !rs.next() branch, which a healthy save
+                    // never takes, so the quest loop pays nothing for it.
+                    LOG.log(System.Logger.Level.WARNING, MapleClient.getLogMessage(chr, "[charsave] queststatus 未回傳 generated key，略過 quest " + q.getQuest().getId() + " 的怪物計數"));
                     continue;
                 }
                 final int queststatusid = rs.getInt(1);
@@ -996,12 +1017,16 @@ public class CharacterRepository {
 
             con.commit();
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println(MapleClient.getLogMessage(chr, "[charsave] Error saving character data") + e);
+            // One record: the trace and the context line were always one event,
+            // so the message keeps its trailing e.toString() and the Throwable
+            // carries the trace.
+            LOG.log(System.Logger.Level.ERROR, MapleClient.getLogMessage(chr, "[charsave] Error saving character data") + e, e);
             try {
                 con.rollback();
             } catch (SQLException ex) {
-                System.err.println(MapleClient.getLogMessage(chr, "[charsave] Error Rolling Back") + e);
+                // Again reports `e`, the save failure, not `ex`, the rollback
+                // failure - kept verbatim. Terse, as it was: no trace here.
+                LOG.log(System.Logger.Level.ERROR, MapleClient.getLogMessage(chr, "[charsave] Error Rolling Back") + e);
             }
         } finally {
             try {
@@ -1017,13 +1042,16 @@ public class CharacterRepository {
                 con.setAutoCommit(true);
                 con.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             } catch (SQLException e) {
-                System.err.println(MapleClient.getLogMessage(chr, "[charsave] Error going back to autocommit mode") + e);
+                // ERROR: the connection goes back to the pool still in a
+                // transaction, with the wrong isolation level. Terse, as it was.
+                LOG.log(System.Logger.Level.ERROR, MapleClient.getLogMessage(chr, "[charsave] Error going back to autocommit mode") + e);
             }
         }
         } catch (SQLException e) {
             // Thrown by returning the connection to the pool; the save itself
-            // is already accounted for by the catch above.
-            System.err.println(MapleClient.getLogMessage(chr, "[charsave] Error releasing the connection") + e);
+            // is already accounted for by the catch above. ERROR: the borrow was
+            // not given back. Terse, as it was.
+            LOG.log(System.Logger.Level.ERROR, MapleClient.getLogMessage(chr, "[charsave] Error releasing the connection") + e);
         }
     }
 

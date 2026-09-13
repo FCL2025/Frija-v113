@@ -31,6 +31,8 @@ import database.DatabaseConnection;
 
 public class MapleInventoryIdentifier {
 
+    private static final System.Logger LOG = System.getLogger(MapleInventoryIdentifier.class.getName());
+
     private AtomicInteger runningUID;
     private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     private Lock readLock = rwl.readLock(), writeLock = rwl.writeLock();
@@ -105,7 +107,9 @@ public class MapleInventoryIdentifier {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the scan is abandoned and initUID() falls back to 0, so
+            // the sequence restarts over ids that are already in use.
+            LOG.log(System.Logger.Level.ERROR, "Error reading the highest unique item id", e);
         }
         return ret;
     }

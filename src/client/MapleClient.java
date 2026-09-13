@@ -72,6 +72,14 @@ import server.quest.MapleQuest;
 
 public class MapleClient {
 
+    /**
+     * See {@code tools.Logging} for the naming and level rules. This is the
+     * login path, so most of what used to reach {@code System.err} here is the
+     * only record that a ban, a login-state write or a MAC write was abandoned:
+     * those are {@code ERROR}, not {@code WARNING}.
+     */
+    private static final System.Logger LOG = System.getLogger(MapleClient.class.getName());
+
     public static final byte LOGIN_NOTLOGGEDIN = 0,
             LOGIN_SERVER_TRANSITION = 1,
             LOGIN_LOGGEDIN = 2,
@@ -194,7 +202,9 @@ public class MapleClient {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("error loading characters internal" + e);
+            // ERROR: the list is abandoned half-built, so the character-select
+            // screen silently loses characters. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "error loading characters internal" + e);
         }
         return chars;
     }
@@ -252,7 +262,9 @@ public class MapleClient {
                 }
             }
         } catch (SQLException ex) {
-            System.err.println("Error checking ip bans" + ex);
+            // ERROR: the check is abandoned and ret stays false, so a banned IP
+            // is let through. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error checking ip bans" + ex);
         }
         return ret;
     }
@@ -286,7 +298,9 @@ public class MapleClient {
                 }
             }
         } catch (SQLException ex) {
-            System.err.println("Error checking mac bans" + ex);
+            // ERROR: same shape as the IP check - abandoned, ret stays false,
+            // so a banned MAC is let through. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error checking mac bans" + ex);
         }
         return ret;
     }
@@ -327,7 +341,8 @@ public class MapleClient {
                 banMacs(macBans);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: the MACs were never loaded, so nothing was banned.
+            LOG.log(System.Logger.Level.ERROR, "Error banning MACs for account " + accId, e);
         }
     }
 
@@ -361,7 +376,9 @@ public class MapleClient {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error banning MACs" + e);
+            // ERROR: the macbans rows were not written, so the ban did not take.
+            // Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error banning MACs" + e);
         }
     }
 
@@ -505,7 +522,12 @@ public class MapleClient {
                                     // so the player gets in and the next login tries again.
                                     // Caught here rather than left to the outer handler so
                                     // that stays true no matter what is added below.
-                                    System.err.println("[login] PBKDF2 upgrade failed for account " + accId + ": " + upgrade);
+                                    // ERROR: the login itself carries on, but the
+                                    // UPDATE was abandoned - this line is the only
+                                    // record that the row is still on a weak hash.
+                                    // Terse on purpose, as it was.
+                                    LOG.log(System.Logger.Level.ERROR,
+                                            "[login] PBKDF2 upgrade failed for account " + accId + ": " + upgrade);
                                 }
                             }
                         } else {
@@ -517,7 +539,9 @@ public class MapleClient {
             }
             }
         } catch (SQLException e) {
-            System.err.println("ERROR" + e);
+            // ERROR: the whole login query is abandoned and loginok stays 5, so
+            // the client is told the account is already logged in. Terse.
+            LOG.log(System.Logger.Level.ERROR, "ERROR" + e);
         }
         return loginok;
     }
@@ -558,7 +582,9 @@ public class MapleClient {
                 ps.setString(1, accountName);
                 ps.executeUpdate();
             } catch (SQLException se) {
-                System.err.println("ERROR unlockAcc" + se);
+                // ERROR: loggedin stays set, so the account is stuck and cannot
+                // log in again until it is cleared by hand. Terse on purpose.
+                LOG.log(System.Logger.Level.ERROR, "ERROR unlockAcc" + se);
             }
         }
     }
@@ -601,7 +627,9 @@ public class MapleClient {
             ps.setInt(1, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error while unbanning" + e);
+            // ERROR: the account is still banned; the unban did not happen.
+            // Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while unbanning" + e);
         }
     }
 
@@ -623,7 +651,9 @@ public class MapleClient {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            System.err.println("Error while unbanning" + e);
+            // ERROR: abandoned, -2 goes back to the caller and the account is
+            // still banned. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while unbanning" + e);
             return -2;
         }
         return 0;
@@ -647,7 +677,9 @@ public class MapleClient {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error saving MACs" + e);
+            // ERROR: the macs column was not updated, so a later MAC ban has
+            // nothing to work from. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error saving MACs" + e);
         }
     }
 
@@ -667,7 +699,10 @@ public class MapleClient {
             ps.setInt(3, getAccID());
             ps.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("error updating login state" + e);
+            // ERROR: the loggedin column keeps its old value while the in-memory
+            // state below moves on, which is exactly how an account gets stuck.
+            // Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "error updating login state" + e);
         }
         if (newstate == MapleClient.LOGIN_NOTLOGGEDIN || newstate == MapleClient.LOGIN_WAITING) {
             loggedIn = false;
@@ -688,7 +723,10 @@ public class MapleClient {
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            System.err.println("error updating login state" + e);
+            // ERROR: the new second password never reached the row. The text is
+            // a copy-paste that predates this method; kept verbatim so the line
+            // stays greppable. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "error updating login state" + e);
         }
     }
 
@@ -700,7 +738,8 @@ public class MapleClient {
             ps.executeUpdate();
 
         } catch (SQLException e) {
-            System.err.println("error updating gender" + e);
+            // ERROR: the gender column was not updated. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "error updating gender" + e);
         }
     }
 
@@ -864,9 +903,13 @@ public class MapleClient {
                         Family.setFamilyMemberOnline(chrf, false, -1);
                     }
                 } catch (final Exception e) {
-                    e.printStackTrace();
+                    // One record, not two: the trace and the context line were
+                    // always the same event, so the message keeps e.toString()
+                    // (as before) and the Throwable carries the trace.
+                    // getLogMessage is null-safe all the way down, so it stays
+                    // non-throwing on this half-disconnected player.
+                    LOG.log(System.Logger.Level.ERROR, getLogMessage(this, "ERROR") + e, e);
                     FileoutputUtil.outputFileError(FileoutputUtil.Acc_Stuck, e);
-                    System.err.println(getLogMessage(this, "ERROR") + e);
                 } finally {
                     if (RemoveInChannelServer && ch != null) {
                         ch.removePlayer(idz, namez);
@@ -896,9 +939,9 @@ public class MapleClient {
                         player.setMessenger(null);
                     }
                 } catch (final Exception e) {
-                    e.printStackTrace();
+                    // Same merge as the channel-server branch above.
+                    LOG.log(System.Logger.Level.ERROR, getLogMessage(this, "ERROR") + e, e);
                     FileoutputUtil.outputFileError(FileoutputUtil.Acc_Stuck, e);
-                    System.err.println(getLogMessage(this, "ERROR") + e);
                 } finally {
                     if (RemoveInChannelServer && ch > 0) {
                         CashShopServer.getPlayerStorage().deregisterPlayer(idz, namez);
@@ -935,7 +978,12 @@ public class MapleClient {
 
             return canlogin;
         } catch (final SQLException e) {
-            System.out.println("Failed in checking IP address for client.");
+            // ERROR rather than the INFO the stream would suggest: this is a
+            // caught SQLException that abandons the check and falls through to
+            // "allowed" below, not progress an operator reads. Kept exactly as
+            // terse as it was - it never reported the exception at all, so `e`
+            // stays unused rather than changing what goes on the console.
+            LOG.log(System.Logger.Level.ERROR, "Failed in checking IP address for client.");
         }
         return true;
     }
@@ -1008,7 +1056,9 @@ public class MapleClient {
             return 0;
         } catch (Exception e) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
-            e.printStackTrace();
+            // ERROR: the delete is abandoned part-way and 1 (failure) goes back
+            // to the client, so the character's rows are left half-removed.
+            LOG.log(System.Logger.Level.ERROR, getLogMessage(this, "刪除角色失敗，cid " + cid), e);
         }
         return 1;
     }
@@ -1133,7 +1183,9 @@ public class MapleClient {
 
             return ret;
         } catch (final SQLException e) {
-            System.err.println("findAccIdForCharacterName SQL error");
+            // ERROR: abandoned, and -1 comes back as "no such character". Kept
+            // as terse as it was - it never reported the exception at all.
+            LOG.log(System.Logger.Level.ERROR, "findAccIdForCharacterName SQL error");
         }
         return -1;
     }
@@ -1202,7 +1254,9 @@ public class MapleClient {
                 }
             }
         } catch (SQLException sqlE) {
-            sqlE.printStackTrace();
+            // ERROR: abandoned, so the default slot count is used and, on the
+            // INSERT branch, no character_slots row exists for this account.
+            LOG.log(System.Logger.Level.ERROR, "讀取角色欄位數失敗，帳號 " + accId, sqlE);
         }
 
         return charslots;
@@ -1221,7 +1275,9 @@ public class MapleClient {
             ps.setInt(3, accId);
             ps.executeUpdate();
         } catch (SQLException sqlE) {
-            sqlE.printStackTrace();
+            // ERROR: charslots was already incremented in memory but the row was
+            // not written, so the extra slot is gone at the next login.
+            LOG.log(System.Logger.Level.ERROR, "增加角色欄位失敗，帳號 " + accId, sqlE);
             return false;
         }
         return true;
@@ -1274,7 +1330,9 @@ public class MapleClient {
             }
             return ret;
         } catch (SQLException e) {
-            System.err.println("Error while unbanning" + e);
+            // ERROR: abandoned part-way, so the IP or MAC bans may be only
+            // half-removed. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while unbanning" + e);
             return -2;
         }
     }
@@ -1313,7 +1371,8 @@ public class MapleClient {
             }
             return 0;
         } catch (SQLException e) {
-            System.err.println("Error while unbanning" + e);
+            // ERROR: the hellban was not lifted. Terse on purpose.
+            LOG.log(System.Logger.Level.ERROR, "Error while unbanning" + e);
             return -2;
         }
     }

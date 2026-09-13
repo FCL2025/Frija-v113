@@ -27,8 +27,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import database.DatabaseConnection;
 import server.MapleItemInformationProvider;
 import server.movement.StaticLifeMovement;
@@ -36,6 +34,8 @@ import server.movement.LifeMovement;
 import server.movement.LifeMovementFragment;
 
 public class MaplePet {
+
+    private static final System.Logger LOG = System.getLogger(MaplePet.class.getName());
 
     public static enum PetFlag {
 
@@ -125,7 +125,10 @@ public class MaplePet {
                 return ret;
             }
         } catch (SQLException ex) {
-            Logger.getLogger(MaplePet.class.getName()).log(Level.SEVERE, null, ex);
+            // Was java.util.logging.Level.SEVERE with a null message; SEVERE is
+            // what System.Logger's ERROR reaches JUL as, and the load is
+            // abandoned (null), so ERROR is also the right level on its own.
+            LOG.log(System.Logger.Level.ERROR, "Error loading pet " + petid + " from the database", ex);
             return null;
         }
     }
@@ -146,7 +149,8 @@ public class MaplePet {
             ps.executeUpdate(); // Execute statement
             changed = false;
         } catch (final SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: changed stays true and the pet's state never reached the row.
+            LOG.log(System.Logger.Level.ERROR, "Error saving pet " + uniqueid + " to the database", ex);
         }
     }
 
@@ -170,7 +174,8 @@ public class MaplePet {
             pse.setShort(7, flag); //flags
             pse.executeUpdate();
         } catch (final SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: the pet row was not written and createPet gives up.
+            LOG.log(System.Logger.Level.ERROR, "Error creating pet " + uniqueid + " (item " + itemid + ")", ex);
             return null;
         }
         final MaplePet pet = new MaplePet(itemid, uniqueid);

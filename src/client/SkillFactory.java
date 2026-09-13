@@ -37,6 +37,8 @@ import tools.StringUtil;
 
 public class SkillFactory {
 
+    private static final System.Logger LOG = System.getLogger(SkillFactory.class.getName());
+
     private static final Map<Integer, ISkill> skills = new ConcurrentHashMap<>();
     private static final Map<Integer, List<Integer>> skillsByJob = new ConcurrentHashMap<>();
     private static final Map<Integer, SummonSkillEntry> SummonSkillInformation = new ConcurrentHashMap<>();
@@ -59,7 +61,7 @@ public class SkillFactory {
         if (skills.size() != 0) {
             return skills.get(Integer.valueOf(id));
         }
-        System.out.println("Loading SkillFactory :::");
+        LOG.log(System.Logger.Level.INFO, "Loading SkillFactory :::");
         final MapleDataProvider datasource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Skill.wz"));
         final MapleDataDirectoryEntry root = datasource.getRoot();
 

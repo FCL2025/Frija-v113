@@ -37,6 +37,8 @@ import tools.packet.ChatPacket;
  */
 public class AdminServerCommands {
 
+    private static final System.Logger LOG = System.getLogger(AdminServerCommands.class.getName());
+
     public static PlayerGMRank getPlayerLevelRequired() {
         return PlayerGMRank.ADMIN;
     }
@@ -90,7 +92,7 @@ public class AdminServerCommands {
         return;
                     }
                     Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "伺服器即將在 " + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.").getBytes());;
-                    System.out.println("伺服器即將在 " + minutesLeft + "分鐘後關閉.");
+                    LOG.log(System.Logger.Level.INFO, "伺服器即將在 " + minutesLeft + "分鐘後關閉.");
                     minutesLeft--;
                 }, 60000);
             } else {

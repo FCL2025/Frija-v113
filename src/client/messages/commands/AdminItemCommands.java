@@ -33,6 +33,8 @@ import tools.packet.InventoryPacket;
  */
 public class AdminItemCommands {
 
+    private static final System.Logger LOG = System.getLogger(AdminItemCommands.class.getName());
+
     public static PlayerGMRank getPlayerLevelRequired() {
         return PlayerGMRank.ADMIN;
     }
@@ -375,7 +377,9 @@ public class AdminItemCommands {
                         }
                         MapleRing.addToDB(itemId, c.getPlayer(), fff.getName(), fff.getId(), ringID);
                     } catch (SQLException e) {
-                        e.printStackTrace();
+                        // ERROR: both rings are already in the players'
+                        // inventories but the rings rows were not written.
+                        LOG.log(System.Logger.Level.ERROR, "!marriage 寫入婚戒失敗，道具 " + itemId, e);
                     }
                 }
             }

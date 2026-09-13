@@ -33,6 +33,8 @@ import server.MapleInventoryManipulator;
 
 public class MapleRing {
 
+    private static final System.Logger LOG = System.getLogger(MapleRing.class.getName());
+
     private int ringId;
     private int ringId2;
     private int partnerId;
@@ -66,7 +68,8 @@ public class MapleRing {
                 return ret;
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: the ring is abandoned and comes back as null.
+            LOG.log(System.Logger.Level.ERROR, "Error loading ring " + ringId + " from the database", ex);
 
             return null;
         }
@@ -103,7 +106,9 @@ public class MapleRing {
             }
             return makeRing(itemid, partner1, partner2, id2, msg, sn);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            // ERROR: the ring pair was not created and createRing gives up with 0.
+            // partner2 is a plain name, so nothing here can throw a second time.
+            LOG.log(System.Logger.Level.ERROR, "Error creating ring " + itemid + " with " + partner2, ex);
             return 0;
         }
     }
@@ -188,7 +193,8 @@ public class MapleRing {
                 ps.executeUpdate();
             }
         } catch (SQLException sex) {
-            sex.printStackTrace();
+            // ERROR: the pair of ring rows survives, so the ring stays half-removed.
+            LOG.log(System.Logger.Level.ERROR, "Error removing the rings of character " + player.getId(), sex);
         }
     }
 

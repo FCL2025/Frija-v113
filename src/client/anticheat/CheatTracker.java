@@ -42,6 +42,8 @@ import tools.packet.ChatPacket;
 
 public class CheatTracker {
 
+    private static final System.Logger LOG = System.getLogger(CheatTracker.class.getName());
+
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private final Lock rL = lock.readLock(), wL = lock.writeLock();
     private final Map<CheatingOffense, CheatingOffenseEntry> offenses = new LinkedHashMap<>();
@@ -289,7 +291,10 @@ public class CheatTracker {
             case SAME_DAMAGE:
                 gm_message--;
                 if (gm_message == 0) {
-                    System.out.println(MapleCharacterUtil.makeMapleReadable(chrhardref.getName()) + "疑似使用外掛");
+                    // registerOffense() runs per attack packet, but this arm is
+                    // reached once every 100 offences, so the message is built
+                    // behind the existing counter and not on every hit.
+                    LOG.log(System.Logger.Level.INFO, MapleCharacterUtil.makeMapleReadable(chrhardref.getName()) + "疑似使用外掛");
                     Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "[管理員訊息] " + MapleCharacterUtil.makeMapleReadable(chrhardref.getName()) + " suspected of hacking! " + StringUtil.makeEnumHumanReadable(offense.name()) + (param == null ? "" : (" - " + param))).getBytes());
                     AutobanManager.getInstance().autoban(chrhardref.getClient(), StringUtil.makeEnumHumanReadable(offense.name()));
                     gm_message = 100;

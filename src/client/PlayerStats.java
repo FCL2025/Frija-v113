@@ -48,6 +48,8 @@ import tools.packet.InventoryPacket;
 
 public class PlayerStats {
 
+    private static final System.Logger LOG = System.getLogger(PlayerStats.class.getName());
+
     private WeakReference<MapleCharacter> chr;
     private Map<Integer, Integer> setHandling = new HashMap<>();
     private List<Equip> durabilityHandling = new ArrayList<>(), equipLevelHandling = new ArrayList<>();
@@ -797,7 +799,10 @@ public class PlayerStats {
                     speedMod = 1.8f;
                     break;
                 default:
-                    System.err.println("Unhandeled monster riding level, Speedmod = " + speedMod + "");
+                    // recalcLocalStats() is hot, but this arm only runs for a
+                    // riding level the switch does not know, so the message is
+                    // built on the anomaly path and never on the common one.
+                    LOG.log(System.Logger.Level.WARNING, "Unhandeled monster riding level, Speedmod = " + speedMod + "");
             }
         }
         hands = this.localdex + this.localint_ + this.localluk;

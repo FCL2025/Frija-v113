@@ -46,6 +46,8 @@ import tools.FileoutputUtil;
 
 public class CommandProcessor {
 
+    private static final System.Logger LOG = System.getLogger(CommandProcessor.class.getName());
+
     private final static HashMap<String, CommandObject> commands = new HashMap<>();
     private final static HashMap<Integer, ArrayList<String>> commandList = new HashMap<>();
 
@@ -79,7 +81,9 @@ public class CommandProcessor {
                             }
                         }
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        // ERROR: this one command class is skipped, so the
+                        // command word it would have registered does not exist.
+                        LOG.log(System.Logger.Level.ERROR, "指令註冊失敗，略過 " + c.getName(), ex);
                         FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
                     }
                 }
@@ -94,7 +98,9 @@ public class CommandProcessor {
                 rankList.addAll(cL);
                 Collections.sort(rankList);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                // ERROR: the whole command file is skipped - every command word
+                // it holds is missing for the rest of the run.
+                LOG.log(System.Logger.Level.ERROR, "指令檔載入失敗，略過 " + clasz.getName(), ex);
                 FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
             }
         }
@@ -151,7 +157,7 @@ public class CommandProcessor {
                         int ret = co.execute(c, splitted);
                         if (ret > 0 && c.getPlayer() != null) { //incase d/c after command or something
                             logGMCommandToDB(c.getPlayer(), line);
-                            System.out.println("[ " + c.getPlayer().getName() + " ] 使用了指令: " + line);
+                            LOG.log(System.Logger.Level.INFO, "[ " + c.getPlayer().getName() + " ] 使用了指令: " + line);
                         }
                     } else {
                         sendDisplayMessage(c, "你沒有權限可以使用指令.", type);
@@ -175,7 +181,9 @@ public class CommandProcessor {
             ps.executeUpdate();
         } catch (SQLException ex) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, ex);
-            ex.printStackTrace();
+            // ERROR: the gmlog row was not written, so this command's audit
+            // trail is gone. Kept after outputFileError, as it was.
+            LOG.log(System.Logger.Level.ERROR, "寫入 gmlog 失敗：" + command, ex);
         }
     }
 }

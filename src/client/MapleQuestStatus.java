@@ -33,6 +33,17 @@ public class MapleQuestStatus {
 
     private MapleQuest quest;
     private byte status;
+    // C11：killedMobs 是共用的。怪物死亡時 MapleMonster.killBy:434 在「擊殺者」的 handler
+    // thread 上對每一個攻擊者呼叫 MapleCharacter.mobKilled()，走進來的是別人角色的
+    // MapleQuestStatus；存檔（CharacterRepository:574 / :857，!saveall 或自動存檔）與換頻時的
+    // CharacterTransfer 重建（MapleCharacter:486）又會在第三條執行緒上走訪它。C4 只把
+    // MapleCharacter.quests 換成並行 Map，這一層是同一個競態的下一層：mobKilled() 本身是
+    // 「get → maxMob → put」的讀改寫，兩個人同時打同一種怪就會掉掉其中一隻。
+    //
+    // **刻意維持 LinkedHashMap，改用 monitor 保護。** QuestPacket.updateQuestMobKills:99 把
+    // 每一個值補零成三位數之後直接串成一個字串送出去，客戶端是照位置解析的——換成
+    // ConcurrentHashMap 會把每一個多目標任務的進度顯示打亂（和 C7 的 MapleSquad 同一個理由）。
+    private final Object killedMobsLock = new Object();
     private Map<Integer, Integer> killedMobs = null;
     private int npc;
     private long completionTime;
@@ -90,9 +101,11 @@ public class MapleQuestStatus {
     }
 
     private final void registerMobs() {
-        killedMobs = new LinkedHashMap<>();
-        for (final int i : quest.getRelevantMobs().keySet()) {
-            killedMobs.put(i, 0);
+        synchronized (killedMobsLock) {
+            killedMobs = new LinkedHashMap<>();
+            for (final int i : quest.getRelevantMobs().keySet()) {
+                killedMobs.put(i, 0);
+            }
         }
     }
 
@@ -111,26 +124,32 @@ public class MapleQuestStatus {
                 return false;
             }
         }
-        final Integer mob = killedMobs.get(id);
-        if (mob != null) {
-            final int mo = maxMob(id);
-            if (mob >= mo) {
-                return false; //nothing happened
-            }
-            killedMobs.put(id, Math.min(mob + 1, mo));
-            return true;
-        }
-        for (Entry<Integer, Integer> mo : killedMobs.entrySet()) {
-            if (questCount(mo.getKey(), id)) {
-                final int mobb = maxMob(mo.getKey());
-                if (mo.getValue() >= mobb) {
-                    return false; //nothing
+        // C11：整段「查現有計數 → 比上限 → 寫回」在同一把鎖底下，否則兩個攻擊者同時打死
+        // 同一種怪會各自讀到同一個舊值、各自寫回同一個新值，少算一隻。
+        // 鎖裡只有 maxMob()（讀 WZ 來的不可變 Map）與 questCount()（MapleLifeFactory 的
+        // 快取查表），沒有 broadcast 也沒有資料庫借用。
+        synchronized (killedMobsLock) {
+            final Integer mob = killedMobs.get(id);
+            if (mob != null) {
+                final int mo = maxMob(id);
+                if (mob >= mo) {
+                    return false; //nothing happened
                 }
-                killedMobs.put(mo.getKey(), Math.min(mo.getValue() + 1, mobb));
+                killedMobs.put(id, Math.min(mob + 1, mo));
                 return true;
             }
-        } //i doubt this
-        return false;
+            for (Entry<Integer, Integer> mo : killedMobs.entrySet()) {
+                if (questCount(mo.getKey(), id)) {
+                    final int mobb = maxMob(mo.getKey());
+                    if (mo.getValue() >= mobb) {
+                        return false; //nothing
+                    }
+                    killedMobs.put(mo.getKey(), Math.min(mo.getValue() + 1, mobb));
+                    return true;
+                }
+            } //i doubt this
+            return false;
+        }
     }
 
     private final boolean questCount(final int mo, final int id) {
@@ -145,29 +164,48 @@ public class MapleQuestStatus {
     }
 
     public final void setMobKills(final int id, final int count) {
-        if (killedMobs == null) {
-            registerMobs(); //lol
+        synchronized (killedMobsLock) {
+            if (killedMobs == null) {
+                registerMobs(); //lol
+            }
+            killedMobs.put(id, count);
         }
-        killedMobs.put(id, count);
     }
 
     public final boolean hasMobKills() {
-        if (killedMobs == null) {
-            return false;
+        synchronized (killedMobsLock) {
+            if (killedMobs == null) {
+                return false;
+            }
+            return killedMobs.size() > 0;
         }
-        return killedMobs.size() > 0;
     }
 
     public final int getMobKills(final int id) {
-        final Integer mob = killedMobs.get(id);
-        if (mob == null) {
-            return 0;
+        synchronized (killedMobsLock) {
+            final Integer mob = killedMobs.get(id);
+            if (mob == null) {
+                return 0;
+            }
+            return mob;
         }
-        return mob;
     }
 
+    /**
+     * C11：回傳的是「插入順序的快照」，不是活的檢視。
+     *
+     * <p>三個呼叫端都在別的執行緒上走訪它——{@code QuestPacket.updateQuestMobKills}（送封包）、
+     * {@code CharacterRepository} 的兩處存檔、{@code MapleCharacter.ReconstructChr} 的換頻重建
+     * ——而擊殺者的執行緒同時可能在 {@code mobKilled()} 裡寫。回傳活的 {@code LinkedHashMap}
+     * 等於把走訪暴露在結構性修改底下。查證過沒有任何呼叫端透過這個回傳值做寫入。
+     *
+     * <p>{@code null} 的語意保留：沒有目標怪的任務本來就回 {@code null}，
+     * {@code MapleCharacter:486} 靠這個判斷。
+     */
     public final Map<Integer, Integer> getMobKills() {
-        return killedMobs;
+        synchronized (killedMobsLock) {
+            return killedMobs == null ? null : new LinkedHashMap<>(killedMobs);
+        }
     }
 
     public final long getCompletionTime() {

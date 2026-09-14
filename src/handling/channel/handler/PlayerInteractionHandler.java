@@ -47,8 +47,6 @@ import scripting.NPCScriptManager;
 
 public class PlayerInteractionHandler {
 
-    private static final System.Logger LOG = System.getLogger(PlayerInteractionHandler.class.getName());
-
     private static final byte CREATE = 0x00,
             INVITE_TRADE = 0x02,
             DENY_TRADE = 0x03,
@@ -627,7 +625,10 @@ public class PlayerInteractionHandler {
 
     private static void merchantGetMeso(final MapleClient c, final MapleCharacter chr) {
         final IMaplePlayerShop merchant = chr.getPlayerShop();
-        LOG.log(System.Logger.Level.INFO, String.valueOf(merchant.getShopType()));
+        // 這裡原本在 null 檢查之前先印出 merchant.getShopType()：玩家不在商店狀態時
+        // 按下「領取楓幣」就是一發 NPE。那行是初版就在的裸除錯 println（只印一個數字、
+        // 沒有訊息也沒有角色名），F1 把它機械式轉成 INFO 而沒有判斷它該不該存在，
+        // 這裡直接刪掉——下面的守衛本來就只讓 shopType == 1 進去。
         if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
             if (chr.getMeso() + merchant.getMeso() < 0) {
                 c.send(ChatPacket.serverNotice(1, "您身上的楓幣太多了"));

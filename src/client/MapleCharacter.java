@@ -159,6 +159,28 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             rank = 1, rankMove = 0, jobRank = 1, jobRankMove = 0, marriageId,
             currentrep, totalrep, gachexp,
             expression, constellation, blood, month, day, beans, prefix;
+    // C10：exp 與 level 的「讀 → 算 → 寫」必須是一步。擊殺者的 handler thread 會經由
+    // MapleMonster.killBy → MapleMap.killMonster 對「每一個攻擊者／每一個隊員」呼叫
+    // gainExpMonster，所以同一隻角色的 exp 同時被好幾條執行緒加；沒有鎖時 exp += total
+    // 是典型的掉更新。升級門檻的判斷也必須只有一條執行緒過得去——和 MapleMonster.damage
+    // 用 damageLock 決定「誰的那一下把 HP 打過零」是同一個模式，否則兩條執行緒會各自
+    // levelUp() 一次，玩家一次跳兩級。
+    // 鎖底下只有純算術：levelUp() 會 broadcast、familyRep() 會借資料庫連線，兩者都在鎖外，
+    // 這是 CLAUDE.md「鎖不可握過 broadcast 或資料庫借用」要求的。
+    private final Object expLock = new Object();
+    // C10：由 expLock 保護。levelUp() 不能在鎖底下跑（它 broadcast、更新隊伍公會家族），
+    // 所以改用「這一刻已經有人在升級了」的旗標：第二條執行緒只把經驗值疊上去，由正在升級的
+    // 那一條在 levelUp() 回來之後重新讀 exp、一併結算後面的級數（原本就有的 gainExp(0,…)
+    // 遞迴就是在做這件事）。沒有這個旗標時兩條執行緒會各自 levelUp 一次，玩家憑同一份經驗
+    // 白跳一級，而且第二次的 exp -= needed 會把經驗值扣成負的、再被尾端的 exp < 0 夾成滿格。
+    // 單執行緒時這個旗標永遠是 false，行為和改之前逐字相同。
+    private boolean levellingUp;
+    // C10：meso / acash / maplepoints 同理，而且它們的「讀 → 檢查 → 寫」本來就是複合操作
+    // （meso + gain < 0 的溢位守門、acash + quantity < 0 的上限守門）。
+    // 跨執行緒的呼叫端：gainMeso 由交易確認方的執行緒同時改買賣雙方（MapleTrade.completeTrade）、
+    // 由商人店主以外的買家執行緒加錢（PlayerInteractionHandler）；modifyCSPoints 由商城的
+    // handler thread 與面板的 Panel-Worker-N（AccountsApi 改帳號貨幣）同時改。
+    private final Object currencyLock = new Object();
     private int fallcounter = 0, chair, itemEffect, marriageItemId = 0,
             linkMid = 0, coconutteam = 0, followid = 0, battleshipHP = 0,
             challenge, guildContribution = 0, beansNum, beansRange;
@@ -1328,7 +1350,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public int getExp() {
-        return exp;
+        synchronized (expLock) {
+            return exp;
+        }
     }
 
     public short getRemainingAp() {
@@ -1398,7 +1422,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void setExp(int exp) {
-        this.exp = exp;
+        synchronized (expLock) {
+            this.exp = exp;
+        }
     }
 
     public void setHair(int hair) {
@@ -1809,14 +1835,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     }
                     diepercentage = (float) (v8 / this.stats.getLuk() + 0.05);
                 }
-                int v10 = (int) (exp - (long) ((double) expforlevel * diepercentage));
-                if (v10 < 0) {
-                    v10 = 0;
+                // C10：死亡扣經驗也是「讀 → 算 → 寫」，和擊殺者執行緒的 gainExpMonster
+                // 互斥，否則死亡瞬間拿到的那一筆經驗會整筆消失。
+                synchronized (expLock) {
+                    int v10 = (int) (exp - (long) ((double) expforlevel * diepercentage));
+                    if (v10 < 0) {
+                        v10 = 0;
+                    }
+                    this.exp = v10;
                 }
-                this.exp = v10;
             }
         }
-        this.updateSingleStat(MapleStat.EXP, this.exp);
+        this.updateSingleStat(MapleStat.EXP, getExp());
         if (!stats.checkEquipDurabilitys(this, -100)) { //i guess this is how it works ?
             dropMessage(5, "An item has run out of durability but has no inventory room to go to.");
         } //lol
@@ -1934,44 +1964,70 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     
     public void gainExp(final int total, final boolean show, final boolean inChat, final boolean white , final boolean OneLevel) {
         try {
-            int prevexp = getExp();
-            int needed = GameConstants.getExpNeededForLevel(level);
-            if (level >= 200 || (GameConstants.isKOC(job) && level >= 120)) {
-                if (exp + total > needed) {
-                    setExp(needed);
-                } else {
-                    exp += total;
-                }
-            } else {
-                boolean leveled = false;
-                if (exp + total >= needed) {
-                    exp += total;
-                    levelUp();
-                    leveled = true;
-                    needed = GameConstants.getExpNeededForLevel(level);
-                    if (exp > needed) {
-                        if( OneLevel ){
-                            setExp(needed);
-                        }else{
-                            gainExp(0, false, false, false , false);
-                        }
+            // C10：經驗值的加總與「這一次是不是該升級」在 expLock 底下一次算完。
+            // leveled 的條件和改之前逐字等價（原本是加之前判斷 exp + total >= needed，
+            // 這裡是加之後判斷 exp >= needed），只多了 !levellingUp 這一個並行守門。
+            // levelUp()（會 broadcast、更新隊伍公會家族）與 familyRep()（會借資料庫連線）
+            // 一律在鎖外做。
+            final int prevexp;
+            int needed;
+            final boolean maxLevel;
+            final boolean leveled;
+            synchronized (expLock) {
+                prevexp = exp;
+                needed = GameConstants.getExpNeededForLevel(level);
+                maxLevel = level >= 200 || (GameConstants.isKOC(job) && level >= 120);
+                if (maxLevel) {
+                    if (exp + total > needed) {
+                        exp = needed;
+                    } else {
+                        exp += total;
                     }
+                    leveled = false;
                 } else {
                     exp += total;
-                }
-                if (total > 0) {
-                    familyRep(prevexp, needed, leveled);
+                    leveled = exp >= needed && !levellingUp;
+                    if (leveled) {
+                        levellingUp = true;
+                    }
                 }
             }
-            if (total != 0) {
-                if (exp < 0) { // After adding, and negative
-                    if (total > 0) {
-                        setExp(needed);
-                    } else if (total < 0) {
-                        setExp(0);
+            if (leveled) {
+                final boolean overflow;
+                try {
+                    levelUp();
+                } finally {
+                    synchronized (expLock) {
+                        levellingUp = false;
                     }
                 }
-                updateSingleStat(MapleStat.EXP, getExp());
+                synchronized (expLock) {
+                    needed = GameConstants.getExpNeededForLevel(level);
+                    overflow = exp > needed;
+                    if (overflow && OneLevel) {
+                        exp = needed;
+                    }
+                }
+                if (overflow && !OneLevel) {
+                    gainExp(0, false, false, false , false);
+                }
+            }
+            if (!maxLevel && total > 0) {
+                familyRep(prevexp, needed, leveled);
+            }
+            if (total != 0) {
+                final int cur;
+                synchronized (expLock) {
+                    if (exp < 0) { // After adding, and negative
+                        if (total > 0) {
+                            exp = needed;
+                        } else if (total < 0) {
+                            exp = 0;
+                        }
+                    }
+                    cur = exp;
+                }
+                updateSingleStat(MapleStat.EXP, cur);
                 if (show) { // still show the expgain even if it's not there
                     client.send(CharacterPacket.GainEXP_Others(total, inChat, white));
                 }
@@ -2003,7 +2059,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     public void gainExpMonster(final int gain, final boolean show, final boolean white, final byte pty, int Class_Bonus_EXP, int Equipment_Bonus_EXP, int Premium_Bonus_EXP) {
         int total = gain + Class_Bonus_EXP + Equipment_Bonus_EXP + Premium_Bonus_EXP;
         int partyinc = 0;
-        int prevexp = getExp();
         if (pty > 1) {
             partyinc = (int) (((float) (gain / 20.0)) * (pty + 1));
             total += partyinc;
@@ -2012,39 +2067,66 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (gain > 0 && total < gain) { //just in case
             total = Integer.MAX_VALUE;
         }
-        int needed = GameConstants.getExpNeededForLevel(level);
-        if (level >= 200 || (GameConstants.isKOC(job) && level >= 120)) {
-            if (exp + total > needed) {
-                setExp(needed);
-            } else {
-                exp += total;
-            }
-        } else {
-            boolean leveled = false;
-            if (exp + total >= needed) {
-                exp += total;
-                levelUp();
-                leveled = true;
-                needed = GameConstants.getExpNeededForLevel(level);
-                if (exp > needed) {
-                    setExp(needed);
+        // C10：這裡是掉更新最密集的入口——MapleMonster.killBy 在「擊殺者」的執行緒上對
+        // 每一個攻擊者、每一個隊員呼叫這個方法，所以同一隻角色的 exp 真的會同時被好幾條
+        // 執行緒加。算術與升級判定在 expLock 底下一次做完；levelUp() 會 broadcast、
+        // familyRep() 會借資料庫連線，兩者都留在鎖外。levellingUp 旗標讓同時進來的第二條
+        // 執行緒只把經驗值疊上去而不重複升級（見欄位宣告處的說明）。
+        final int addend = total;
+        final int prevexp;
+        int needed;
+        final boolean maxLevel;
+        final boolean leveled;
+        synchronized (expLock) {
+            prevexp = exp;
+            needed = GameConstants.getExpNeededForLevel(level);
+            maxLevel = level >= 200 || (GameConstants.isKOC(job) && level >= 120);
+            if (maxLevel) {
+                if (exp + addend > needed) {
+                    exp = needed;
+                } else {
+                    exp += addend;
                 }
+                leveled = false;
             } else {
-                exp += total;
-            }
-            if (total > 0) {
-                familyRep(prevexp, needed, leveled);
+                exp += addend;
+                leveled = exp >= needed && !levellingUp;
+                if (leveled) {
+                    levellingUp = true;
+                }
             }
         }
-        if (gain != 0) {
-            if (exp < 0) { // After adding, and negative
-                if (gain > 0) {
-                    setExp(GameConstants.getExpNeededForLevel(level));
-                } else if (gain < 0) {
-                    setExp(0);
+        if (leveled) {
+            try {
+                levelUp();
+            } finally {
+                synchronized (expLock) {
+                    levellingUp = false;
                 }
             }
-            updateSingleStat(MapleStat.EXP, getExp());
+            synchronized (expLock) {
+                needed = GameConstants.getExpNeededForLevel(level);
+                if (exp > needed) {
+                    exp = needed;
+                }
+            }
+        }
+        if (!maxLevel && total > 0) {
+            familyRep(prevexp, needed, leveled);
+        }
+        if (gain != 0) {
+            final int cur;
+            synchronized (expLock) {
+                if (exp < 0) { // After adding, and negative
+                    if (gain > 0) {
+                        exp = GameConstants.getExpNeededForLevel(level);
+                    } else if (gain < 0) {
+                        exp = 0;
+                    }
+                }
+                cur = exp;
+            }
+            updateSingleStat(MapleStat.EXP, cur);
             if (show) { // still show the expgain even if it's not there
                 client.send(CharacterPacket.GainEXP_Monster(gain, white, partyinc, Class_Bonus_EXP, Equipment_Bonus_EXP, Premium_Bonus_EXP));
             }
@@ -2180,7 +2262,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public int getMeso() {
-        return meso;
+        synchronized (currencyLock) {
+            return meso;
+        }
     }
 
     public final int[] getSavedLocations() {
@@ -2212,12 +2296,23 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void gainMeso(int gain, boolean show, boolean enableActions, boolean inChat) {
-        if (meso + gain < 0) {
+        // C10：守門與加總必須是一步，否則兩條執行緒可以各自通過 meso + gain < 0 的檢查後
+        // 都寫回自己算出來的值（掉更新），或是在溢位邊界上兩邊都以為自己沒有溢位。
+        // 送封包在鎖外，而且送的是「這一次呼叫算出來的」值而不是再讀一次欄位。
+        final boolean refused;
+        final int newMeso;
+        synchronized (currencyLock) {
+            refused = meso + gain < 0;
+            if (!refused) {
+                meso += gain;
+            }
+            newMeso = meso;
+        }
+        if (refused) {
             client.send(CharacterPacket.enableActions());
             return;
         }
-        meso += gain;
-        updateSingleStat(MapleStat.MESO, meso, enableActions);
+        updateSingleStat(MapleStat.MESO, newMeso, enableActions);
         if (show) {
             client.send(CharacterPacket.showMesoGain(gain, inChat));
         }
@@ -2414,8 +2509,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             maxmp += Randomizer.rand(50, 100);
         }
         maxmp += stats.getTotalInt() / 10;
-        exp -= GameConstants.getExpNeededForLevel(level);
-        level += 1;
+        // C10：扣掉這一級的經驗值再進位，必須和 gainExp/gainExpMonster 的加總互斥，
+        // 否則同時進來的那一筆經驗會被算在錯的級距上。底下的 broadcast 與公會／家族更新
+        // 一律在鎖外。
+        synchronized (expLock) {
+            exp -= GameConstants.getExpNeededForLevel(level);
+            level += 1;
+        }
         int level = getLevel();
 
         // 成就系統
@@ -3187,28 +3287,34 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void modifyCSPoints(int type, int quantity, boolean show) {
-
-        switch (type) {
-            case 1 -> {
-                if (acash + quantity < 0) {
-                    if (show) {
-                        dropMessage(-1, "You have gained the max cash. No cash will be awarded.");
+        // C10：上限守門與加總必須是一步。商城的 handler thread（MTSCSPacket / CashShopOperation）
+        // 與面板的 Panel-Worker-N（AccountsApi 改帳號貨幣）會同時進來，中間夾一個「讀 → 判斷 →
+        // 寫」就會掉更新。dropMessage 會送封包，所以拒絕訊息也搬到鎖外送。
+        final String refusal;
+        synchronized (currencyLock) {
+            refusal = switch (type) {
+                case 1 -> {
+                    if (acash + quantity < 0) {
+                        yield "You have gained the max cash. No cash will be awarded.";
                     }
-                    return;
+                    acash += quantity;
+                    yield null;
                 }
-                acash += quantity;
-            }
-            case 2 -> {
-                if (maplepoints + quantity < 0) {
-                    if (show) {
-                        dropMessage(-1, "You have gained the max maple points. No cash will be awarded.");
+                case 2 -> {
+                    if (maplepoints + quantity < 0) {
+                        yield "You have gained the max maple points. No cash will be awarded.";
                     }
-                    return;
+                    maplepoints += quantity;
+                    yield null;
                 }
-                maplepoints += quantity;
+                default -> null;
+            };
+        }
+        if (refusal != null) {
+            if (show) {
+                dropMessage(-1, refusal);
             }
-            default -> {
-            }
+            return;
         }
         if (show && quantity != 0) {
             dropMessage(-1, "你" + (quantity > 0 ? "獲得了 " : "失去 ") + quantity + (type == 1 ? " CASH" : " 楓葉點數"));
@@ -3217,11 +3323,38 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public int getCSPoints(int type) {
-        return switch (type) {
-            case 1 -> acash;
-            case 2 -> maplepoints;
-            default -> 0;
-        };
+        synchronized (currencyLock) {
+            return switch (type) {
+                case 1 -> acash;
+                case 2 -> maplepoints;
+                default -> 0;
+            };
+        }
+    }
+
+    /**
+     * C10：面板要的是「設成這個值」，不是「加這個差額」。
+     *
+     * <p>{@code AccountsApi} 本來寫的是
+     * {@code chr.modifyCSPoints(1, 新值 - chr.getCSPoints(1))}——讀一次、算差額、再寫一次，
+     * 中間玩家在商城買一件東西，差額就是照著過期的值算出來的，資料庫那一列和線上角色物件
+     * 會停在兩個不同的數字上。面板的語意本來就是絕對值（它在這之前已經把同一個值 UPDATE
+     * 進 {@code accounts} 了），所以這裡直接指派，讓兩邊由建構方式保證一致。
+     *
+     * <p>不做 {@code modifyCSPoints} 的上限守門：那個守門是給「加值」用的溢位保護，
+     * 而這裡的值來自面板、已經是要寫進資料庫的那一個。
+     */
+    public void setCSPoints(int type, int value) {
+        synchronized (currencyLock) {
+            switch (type) {
+                case 1 ->
+                    acash = value;
+                case 2 ->
+                    maplepoints = value;
+                default -> {
+                }
+            }
+        }
     }
 
     public final boolean hasEquipped(int itemid) {

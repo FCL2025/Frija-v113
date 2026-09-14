@@ -320,12 +320,16 @@ final class AccountsApi {
             final MapleCharacter chr = o.chr();
             for (final Map.Entry<String, Object> e : values.entrySet()) {
                 switch (e.getKey()) {
+                    // C10：本來是「讀一次 getCSPoints、算差額、再 modifyCSPoints」——中間玩家
+                    // 在商城買一件東西，差額就是照過期的值算的，資料庫那一列和線上角色物件會停
+                    // 在兩個不同的數字上。面板的語意是絕對值（同一個值在上面已經 UPDATE 進
+                    // accounts 了），所以改用一次到位的 setCSPoints。
                     case "ACash" -> {
-                        chr.modifyCSPoints(1, (Integer) e.getValue() - chr.getCSPoints(1));
+                        chr.setCSPoints(1, (Integer) e.getValue());
                         applied.add("ACash");
                     }
                     case "mPoints" -> {
-                        chr.modifyCSPoints(2, (Integer) e.getValue() - chr.getCSPoints(2));
+                        chr.setCSPoints(2, (Integer) e.getValue());
                         applied.add("mPoints");
                     }
                     case "points" -> {

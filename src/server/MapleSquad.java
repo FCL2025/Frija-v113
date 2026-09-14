@@ -209,8 +209,46 @@ public class MapleSquad {
         return leaderName;
     }
 
+    /**
+     * 這個頻道的候補佇列本身，{@code left} 是角色名、{@code right} 是排進來的
+     * 時間戳（{@link #copy} 就是靠 {@code right} 挑等最久的那個）。
+     *
+     * <p><b>不要拿它做 {@code contains(角色名)}。</b>元素是
+     * {@code Pair<String, Long>}，跟 {@code String} 永遠不相等，所以那樣寫
+     * 恆為 {@code false}——本類別的 {@link #addMember} 和三支遠征隊 NPC
+     * （{@code npc/2143004}、{@code npc/2161005}、{@code npc/9270047}）
+     * 四處都犯過（A21）。要問「這個人在不在佇列裡」請用
+     * {@link #isQueuedNextPlayer}。
+     */
     public List<Pair<String, Long>> getAllNextPlayer() {
         return type.queue(ch);
+    }
+
+    /**
+     * 這個頻道的候補佇列裡有沒有這個人。
+     *
+     * <p>比對範圍刻意和 {@link #getAllNextPlayer} 一致，只看
+     * {@code type.queue(ch)}，也就是「這一個頻道」的佇列；
+     * {@link #setNextPlayer} 另外還會掃全頻道，但那是它自己的防重複邏輯，
+     * 不是這裡要回答的問題。比對用大小寫敏感的 {@code equals}，和
+     * {@link #setNextPlayer}、{@link #copy} 對佇列的做法相同
+     * （{@link #containsMember} 的忽略大小寫是 {@code members} 的規矩，
+     * 兩邊本來就不一樣）。
+     *
+     * <p>不上鎖是對的：佇列是 {@code CopyOnWriteArrayList}，
+     * {@link #setNextPlayer}、{@link #getNextPlayer} 和 {@link #copy} 也都
+     * 直接走訪它。{@code memberLock} 只管 {@code members} /
+     * {@code bannedMembers}，不要把它帶進來。答案在回傳的瞬間就可能過期
+     * ——另一條 handler 執行緒隨時可能 {@code setNextPlayer}——所以呼叫端
+     * 只能拿它做提示，不能拿它當「接下來那個動作一定會成功」的保證。
+     */
+    public boolean isQueuedNextPlayer(final String name) {
+        for (Pair<String, Long> queued : type.queue(ch)) {
+            if (queued.left.equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public String getNextPlayer() {
@@ -227,6 +265,18 @@ public class MapleSquad {
         return sb.toString();
     }
 
+    /**
+     * <b>這是個開關，不是「加入佇列」。</b>三條路：人已經在本頻道的佇列裡就
+     * 把他移出去；不在本頻道、但在別的頻道的佇列裡就什麼都不做；兩者皆非才
+     * 排進本頻道的佇列。
+     *
+     * <p>{@link #getNextPlayer} 印給玩家看的那段提示文字（「當下一個…或者
+     * 移除…」）講的就是前兩條，所以移除那一半是設計的一部分，不是副作用。
+     * 三支遠征隊 NPC 的 {@code case 3} 原本在呼叫前擋了一個恆為 false 的
+     * {@code getAllNextPlayer().contains(name)}，等於那個擋沒作用、開關照常
+     * 運作，只是訊息永遠印「You have reserved the spot.」；現在改成先用
+     * {@link #isQueuedNextPlayer} 問一次再決定要印哪一句。
+     */
     public void setNextPlayer(String i) {
         final List<Pair<String, Long>> waiting = type.queue(ch);
         Pair<String, Long> toRemove = null;
@@ -318,14 +368,26 @@ public class MapleSquad {
         final String name = member.getName();
         final String job = MapleCarnivalChallenge.getJobBasicNameById(member.getJob());
         if (join) {
-            // getAllNextPlayer() is a List<Pair<String, Long>>, so contains(String)
-            // can only ever be false. That is a known pre-existing bug and it is
-            // left exactly as it was: making it work would start turning away
-            // players who are queued for the next squad, which is a gameplay
-            // change and not this one's to make.
-            if (getAllNextPlayer().contains(name)) {
-                return -1;
-            }
+            // 這裡原本是 getAllNextPlayer().contains(name)：拿 String 去比
+            // List<Pair<String, Long>>，永遠是 false，所以這條規則從這份程式碼
+            // 存在以來一次都沒生效過（A21）。規則本身是「已經在候補佇列裡的人
+            // 不能再以隊員身分加入現役遠征隊」，寫成 isQueuedNextPlayer(name)
+            // 就會真的生效——但**刻意不啟用**，因為在這棵樹上會把玩家鎖死：
+            //
+            // 1. 佇列只有 copy() 會清，而 copy() 只在 scheduleRemoval() 的到期
+            //    任務裡被呼叫。EventInstanceManager.registerSquad 一旦
+            //    setStatus((byte) 2)，setStatus 就把那個任務 cancel 掉了。
+            //    也就是說「遠征隊真的打進去」這條主線永遠不會清佇列，而候補紀錄
+            //    掛在 MapleSquadType 的 enum 欄位上，是 JVM 等級的，遠征隊解散、
+            //    重開都還在，!clearsquads 也只清 ChannelServer 的 mapleSquads，
+            //    碰不到它。
+            // 2. 這裡回 -1，三支遠征隊 NPC 一律把 -1 顯示成「You are already
+            //    part of the squad.」。所以一旦啟用，帶著陳舊候補紀錄的玩家會
+            //    永遠加不進這個頻道的這一種遠征隊，而且看到的是一句和原因毫無
+            //    關係的訊息。
+            //
+            // 要啟用請先處理 (1)（例如讓遠征隊結束時也清掉自己的候補紀錄），
+            // 判斷式本身直接寫 if (isQueuedNextPlayer(name)) { return -1; } 即可。
             synchronized (memberLock) {
                 if (containsMember(name)) {
                     return -1;

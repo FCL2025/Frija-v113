@@ -737,7 +737,13 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         if (squad == null) {
             return -1;
         } else {
-            if (squad.getMembers().contains(c.getPlayer())) {
+            // A21 同族：本來是 getMembers().contains(c.getPlayer())，而 getMembers()
+            // 回的是 List<String>，拿 MapleCharacter 去比永遠是 false——真正的隊員也
+            // 會被回報成 0。改用 MapleSquad 自己的 containsMember(MapleCharacter)，
+            // 它會取名字並忽略大小寫比對，和 members 的其他用法一致。
+            // 目前三支遠征隊腳本的 memberType == 1 與 else 兩條分支內容相同，所以這個
+            // 修正在遊戲內看不出差別；站主自訂腳本才會看得到。
+            if (squad.containsMember(c.getPlayer())) {
                 return 1;
             } else if (squad.isBanned(c.getPlayer())) {
                 return 2;

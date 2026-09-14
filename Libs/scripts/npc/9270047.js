@@ -144,9 +144,15 @@ function action(mode, type, selection) {
 	case 3:
 		if (mode == 1) {
 			var squd = cm.getSquad("ScarTar");
-			if (squd != null && !squd.getAllNextPlayer().contains(cm.getPlayer().getName())) {
-				squd.setNextPlayer(cm.getPlayer().getName());
-				cm.sendOk("You have reserved the spot.");
+			if (squd != null) {
+				// setNextPlayer 是開關而不是「加入候補」：人已經在本頻道的候補佇列裡，
+				// 這一呼叫就是把他移出去。原本擋在前面的 getAllNextPlayer().contains(...)
+				// 拿字串去比 Pair<String, Long>，恆為 false，等於沒擋——移除那一半照常
+				// 會跑，只是訊息永遠印「已預約」。現在先問 isQueuedNextPlayer 再決定訊息。
+				var pName = cm.getPlayer().getName();
+				var wasQueued = squd.isQueuedNextPlayer(pName);
+				squd.setNextPlayer(pName);
+				cm.sendOk(wasQueued ? "You have been removed from the reservation queue." : "You have reserved the spot.");
 			}
 		}
 		cm.dispose();

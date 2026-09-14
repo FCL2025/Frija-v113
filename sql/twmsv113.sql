@@ -44,10 +44,27 @@
 -- 資料庫名稱要和 Settings.ini 的 tms.Url 一致。字元集是 big5，因為連線字串帶的是
 -- characterEncoding=BIG5，而遊戲送出去的每一個字串也都是 BIG5。
 --
--- 注意：accounts 的 birthday / tempban 帶著 '0000-00-00' 預設值，MySQL 8 預設的
--- sql_mode（NO_ZERO_DATE）不接受。上面那行 SET SQL_MODE 就是為了讓這個檔案能匯入。
--- 伺服器執行時不會下任何 DDL 所以不受影響，但如果你要手動 ALTER TABLE accounts，
--- 得先 SET SESSION sql_mode='NO_AUTO_VALUE_ON_ZERO'; 否則會被擋下來。
+-- 2026-09（I3）：accounts 的 birthday / tempban 不再帶零日期預設值。它們本來是
+--     `birthday` date      NOT NULL DEFAULT '0000-00-00'
+--     `tempban`  timestamp NOT NULL DEFAULT '0000-00-00 00:00:00'
+-- 現在是 NULL DEFAULT NULL。零日期是 MySQL 8 預設 sql_mode（NO_ZERO_DATE）與
+-- Connector/J 8 預設 zeroDateTimeBehavior=EXCEPTION 兩邊都不收的值：讀它會丟
+-- "Zero date value prohibited"，而且只要表上還掛著那兩個預設值，整張 accounts 在
+-- 預設 sql_mode 下連 ALTER TABLE 都下不動（Invalid default value for 'birthday'，
+-- 連加一個無關的欄位都會被擋）。
+--
+-- **改這個檔案不會動到已經在跑的資料庫。** 這份 dump 只 CREATE TABLE、不 DROP
+-- TABLE，重新匯入到已存在的資料庫只會在 accounts 那一行報 "table already exists"
+-- 然後跳過。既有資料庫請執行：
+--
+--     mysql -u root -p twmsv113 < sql/migrations/i3-zero-dates.sql
+--
+-- 沒跑也還是能用：程式碼側（MapleClient.getTempBanTime、server/panel/AccountsApi）
+-- 刻意同時認得零日期與 NULL，而且寫入端仍然避開 SQL NULL，所以「新匯入的資料庫」
+-- 與「還沒遷移的舊資料庫」跑同一份 jar 的行為完全一致。
+--
+-- 下面那行 SET SQL_MODE 保留不動：它同時管 AUTO_INCREMENT 欄位寫 0 的行為，
+-- 也讓這份檔案在任何 sql_mode 設定下都匯得進去。
 -- ---------------------------------------------------------------------------
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -80,13 +97,20 @@ CREATE TABLE `accounts` (
   `loggedin` tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
   `lastlogin` timestamp NULL DEFAULT NULL,
   `createdat` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `birthday` date NOT NULL DEFAULT '0000-00-00',
+  -- I3：本來是 NOT NULL DEFAULT '0000-00-00'。見檔頭的說明與
+  -- sql/migrations/i3-zero-dates.sql。
+  `birthday` date NULL DEFAULT NULL,
   `banned` tinyint(1) NOT NULL DEFAULT '0',
   `banreason` text,
   `gm` tinyint(1) NOT NULL DEFAULT '0',
   `email` tinytext,
   `macs` tinytext,
-  `tempban` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  -- I3：本來是 NOT NULL DEFAULT '0000-00-00 00:00:00'。`NULL DEFAULT NULL` 這兩個
+  -- 字都要寫出來：在 explicit_defaults_for_timestamp 關閉的舊設定下，一個沒寫 NULL
+  -- 屬性的 TIMESTAMP 欄位會被自動補上 DEFAULT CURRENT_TIMESTAMP ON UPDATE
+  -- CURRENT_TIMESTAMP，那會讓 tempban 在每次 UPDATE accounts 時跳成現在時間 ——
+  -- 等於全服被暫時封鎖。
+  `tempban` timestamp NULL DEFAULT NULL,
   `greason` tinyint(4) UNSIGNED DEFAULT NULL,
   `ACash` int(11) DEFAULT NULL,
   `mPoints` int(11) DEFAULT NULL,

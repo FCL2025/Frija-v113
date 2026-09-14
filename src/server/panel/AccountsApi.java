@@ -40,8 +40,16 @@ import server.MapleCarnivalChallenge;
  *
  * <p>Password material - {@code password}, {@code salt}, {@code 2ndpassword},
  * {@code salt2} - is left out of every {@code SELECT} list, not merely hidden
- * by the UI. {@code tempban} and {@code birthday} carry zero dates that
+ * by the UI. {@code tempban} and {@code birthday} can carry zero dates that
  * Connector/J refuses to convert, so they are read as strings.
+ *
+ * <p>I3：那兩個欄位有兩種可能的 schema，這個檔案兩種都要吃得下。跑過
+ * {@code sql/migrations/i3-zero-dates.sql}（或用現在的 {@code sql/twmsv113.sql}
+ * 新匯入）的資料庫是 {@code NULL DEFAULT NULL}；還沒遷移的是 2016 年 dump 留下的
+ * {@code NOT NULL DEFAULT '0000-00-00'}。讀取端（{@link #accountRow},
+ * {@code zeroToNull}）對 {@code null} 與零日期字串一視同仁；寫入端刻意**不**寫
+ * SQL {@code NULL}，因為未遷移的欄位是 NOT NULL，寫進去會是
+ * {@code Column 'tempban' cannot be null}。細節見 {@code TEMPBAN_NONE}。
  *
  * <p>A kick is {@code session.close()}: MINA then runs
  * {@code MapleServerHandler.sessionClosed}, which calls
@@ -69,7 +77,22 @@ final class AccountsApi {
     /** Column → integer? for {@code PUT /api/accounts}; the currency ones also go through memory. */
     private static final Map<String, Boolean> ACCOUNT_EDITABLE = new LinkedHashMap<>();
     private static final Set<String> ACCOUNT_CURRENCY = Set.of("ACash", "mPoints", "points", "vpoints");
-    /** "Never" for {@code tempban}: the column is NOT NULL and a zero date cannot be written under NO_ZERO_DATE. */
+    /**
+     * "Never" for {@code tempban}: the column is NOT NULL and a zero date cannot be written under NO_ZERO_DATE.
+     *
+     * <p>I3：{@code sql/migrations/i3-zero-dates.sql} 之後欄位可以吃 {@code NULL}
+     * 了，這個哨兵值卻**刻意保留**。理由是相容性不對稱 —— 一個 NULL-able 欄位收得下
+     * {@code 1970-01-02}，但一個還沒遷移的 NOT NULL 欄位收不下 {@code NULL}
+     * （{@code Column 'tempban' cannot be null}）。改寫 {@code NULL} 等於逼所有人
+     * 在更新 jar 的同一刻跑完遷移，否則面板的「解除暫時封鎖」直接 500。
+     *
+     * <p>語意上兩者完全一樣：{@code MapleClient.getTempBanTime} 看到一個已經過去的
+     * 時間就回 {@link java.time.Instant#EPOCH}，跟看到 NULL 的結果一模一樣。
+     *
+     * <p>要改成寫 {@code NULL} 的話，三件事得一起做：這個常數、下面
+     * {@code accountRow} 裡的 {@code "1970-01-0"} 前綴判斷（資料庫裡已經有帳號
+     * 被寫成這個值了，遷移檔的第 4 步才會把它們正規化掉），以及確認所有資料庫都遷移完。
+     */
     private static final String TEMPBAN_NONE = "1970-01-02 00:00:00";
 
     static {
@@ -224,6 +247,11 @@ final class AccountsApi {
     private static Map<String, Object> accountRow(final ResultSet rs, final OnlineIndex online) throws SQLException {
         final int id = rs.getInt("id");
         final Online o = online.byAccount.get(id);
+        // getString, not getTimestamp: an un-migrated row holds the column's
+        // 0000-00-00 default and Connector/J 8 refuses to convert it. A migrated
+        // row simply reads back null here, which the ternary below already
+        // treats as "no temp ban" - the three cases (null／零日期／1970-01-0x
+        // 哨兵) all collapse to a JSON null. 見 TEMPBAN_NONE 的說明。
         final String tempban = rs.getString("tempban");
         return Json.obj(
                 "id", id,
@@ -287,6 +315,10 @@ final class AccountsApi {
                 throw new Router.HttpError(400, "birthday 格式是 yyyy-MM-dd");
             }
             if (b == null) {
+                // 「清空生日」是丟掉這個欄位不寫，而不是寫 SQL NULL：未遷移的資料庫
+                // 那個欄位是 NOT NULL，寫 NULL 會整個 UPDATE 失敗，連同一次請求裡
+                // 其他欄位（封鎖狀態、點數）一起沒寫進去。I3 遷移全部完成之後，這裡
+                // 可以改成真的寫 NULL。
                 values.remove("birthday");
             }
         }
@@ -624,6 +656,11 @@ final class AccountsApi {
         return ts == null ? null : ts.getTime();
     }
 
+    /**
+     * 把一個日期欄位的字串值正規化成「有值或 null」。兩種 schema 都吃得下：遷移後
+     * 讀到的是 {@code null}，未遷移讀到的是 {@code "0000-00-00"}。I3 遷移全部完成
+     * 之後，{@code startsWith} 那一半可以拿掉（{@link #millis} 裡的同一個判斷也是）。
+     */
     private static String zeroToNull(final String s) {
         return s == null || s.startsWith("0000-00-00") ? null : s;
     }

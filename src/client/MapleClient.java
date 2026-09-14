@@ -218,6 +218,18 @@ public class MapleClient {
      * for "not temp-banned" - that sentinel is what the caller tests, and it is
      * the same zero the column itself uses, so it is kept rather than swapped
      * for {@code null}.
+     *
+     * <p>「沒有暫時封鎖」在資料庫裡有三種寫法，這裡三種都要認得，因為這段在登入
+     * 路徑上，認錯一種就是所有人都進不來：
+     * <ul>
+     * <li>SQL {@code NULL} - 跑過 {@code sql/migrations/i3-zero-dates.sql} 之後
+     * 的樣子，也是現在 {@code sql/twmsv113.sql} 新匯入時的樣子。</li>
+     * <li>零日期 {@code 0000-00-00 00:00:00} - 2016 年那份 dump 留下的
+     * {@code NOT NULL DEFAULT} 值，還沒遷移的資料庫裡每個沒被封過的帳號都是它。</li>
+     * <li>任何已經過去的時間 - 例如管理面板的
+     * {@code AccountsApi.TEMPBAN_NONE}（{@code 1970-01-02}）。這一種是靠下面
+     * 「到期了就回 EPOCH」的判斷吃掉的，不需要另外列舉。</li>
+     * </ul>
      */
     private Instant getTempBanTime(ResultSet rs) throws SQLException {
         // Read the column as text before anything else touches it. An account
@@ -228,6 +240,12 @@ public class MapleClient {
         // This test used to read getLong("tempban") == 0, which worked only on
         // the pre-8 connector. Do not replace it with a java.time accessor -
         // getObject(.., LocalDateTime.class) refuses a zero date just as loudly.
+        //
+        // I3：等到「所有」資料庫都跑過 sql/migrations/i3-zero-dates.sql，欄位就只會
+        // 是 NULL 或一個合法時間，屆時整段 getString 迂迴可以換回
+        // rs.getTimestamp("tempban")（null 代表沒有封鎖）。在那之前不要拿掉
+        // startsWith("0000-00-00")：少了它，未遷移的資料庫會在 getTimestamp 上丟
+        // SQLException，login() 整個失敗，等於全服鎖在登入畫面外。
         final String rawTempban = rs.getString("tempban");
         if (rawTempban == null || rawTempban.startsWith("0000-00-00")) {
             return Instant.EPOCH;
@@ -743,6 +761,18 @@ public class MapleClient {
         }
     }
 
+    /**
+     * <p>{@code `birthday` + 0} 做兩件事，別把它「簡化」掉：
+     * <ul>
+     * <li>迴避零日期 - {@code accounts.birthday} 在還沒遷移的資料庫裡是
+     * {@code NOT NULL DEFAULT '0000-00-00'}，直接 {@code getDate}／
+     * {@code getTimestamp} 會被 Connector/J 以 "Zero date value prohibited" 擋掉。</li>
+     * <li>順手轉成 {@code yyyyMMdd} 整數 - 這正是 {@link #checkBirthDate} 比對的格式。</li>
+     * </ul>
+     * 兩種 schema 算出來的東西一樣：零日期 {@code + 0} 是 {@code 0}，而遷移後的
+     * {@code NULL + 0} 是 {@code NULL}，{@code getInt} 讀 {@code NULL} 也是 {@code 0}。
+     * 所以第二件事才是它非留不可的理由 - I3 遷移完成後也不必動這一行。
+     */
     public final byte getLoginState() { // TODO hide?
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT loggedin, lastlogin, `birthday` + 0 AS `bday` FROM accounts WHERE id = ?")) {

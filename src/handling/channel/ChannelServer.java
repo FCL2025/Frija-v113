@@ -38,10 +38,12 @@ import handling.login.LoginServer;
 import handling.mina.MapleAcceptor;
 import handling.world.CheaterData;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import scripting.EventScriptManager;
 import server.MapleSquad;
 import server.MapleSquad.MapleSquadType;
+import server.Timer.EtcTimer;
 import server.maps.MapleMapFactory;
 import server.shops.HiredMerchant;
 import server.life.PlayerNPC;
@@ -94,6 +96,8 @@ public class ChannelServer {
     private int eventmap = -1;
     private final Map<MapleEventType, MapleEvent> events = new EnumMap<>(MapleEventType.class);
     private boolean debugMode = false;
+    /** 自動存檔排程；{@code tms.AutoSaveMinutes} 為 0（預設）時一直是 null。 */
+    private volatile ScheduledFuture<?> autoSaveTask;
 
     private ChannelServer(final int channel) {
         this.channel = channel;
@@ -145,6 +149,7 @@ public class ChannelServer {
             this.boundAddress = MapleAcceptor.bind(port, serverHandler);
             LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": Listening on port " + port + "");
             eventSM.init();
+            startAutoSave();
         } catch (IOException e) {
             // ERROR, not INFO: the channel never bound, so it is not serving
             // anyone. Terse on purpose - this one only ever concatenated the
@@ -160,6 +165,10 @@ public class ChannelServer {
         broadcastPacket(ChatPacket.serverNotice(0, "這個頻道正在關閉中."));
         // dc all clients by hand so we get sessionClosed...
         shutdown = true;
+
+        // 先停掉自動存檔：關機流程自己會走 disconnectAll() 存一次，沒必要讓排程在
+        // 玩家一個個被踢下線的過程中再插一輪進來搶連線。
+        stopAutoSave();
 
         LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Saving hired merchants...");
 
@@ -640,14 +649,81 @@ public class ChannelServer {
         broadcastGMPacket(new ByteArrayMaplePacket(message));
     }
 
-
-   public void saveAll() {
-    int ppl = 0;
-    for (MapleCharacter chr : this.players.getAllCharacters()) {
-      ++ppl;
-      chr.saveToDB(false, false);
+    /**
+     * 把這個頻道上線中的角色逐一寫回資料庫，回傳實際存了幾個。
+     *
+     * <p><b>為什麼這樣是安全的</b>：{@code getAllCharacters()} 回傳的是快照（複製完
+     * 就放掉 {@code PlayerStorage} 的讀鎖），所以整個迴圈跑完都不持有任何鎖——這正是
+     * CLAUDE.md「不要在借資料庫連線時握著鎖」那條規則要的形狀。迴圈是循序的：一次只
+     * 借一條連線、存完還回去再借下一條，所以 N 個頻道同時跑最多也只佔用 N 條連線
+     * （{@code tms.DbPoolSize} 預設 64），不會把連線池吃乾。
+     *
+     * <p>快照的代價是：存檔途中登出的角色會被多存一次（{@code saveToDB} 是冪等的
+     * UPDATE，無害），存檔途中登入的角色這一輪會被跳過，等下一輪。
+     *
+     * <p>{@code saveToDB(false, false)} 的第二個參數是 {@code fromcs}：傳 false 才會
+     * 寫入角色「現在所在地圖」，傳 true 寫的是 {@code chr.mapid} 這個只在換頻道／進
+     * 商城時才更新的欄位。頻道上的角色一律用 false。
+     */
+    public int saveAll() {
+        int ppl = 0;
+        for (MapleCharacter chr : this.players.getAllCharacters()) {
+            ++ppl;
+            chr.saveToDB(false, false);
+        }
+        LOG.log(System.Logger.Level.INFO, "[存檔] 已經將頻道 " + this.channel + " 的 " + ppl + " 個玩家保存到數據中.");
+        return ppl;
     }
-    LOG.log(System.Logger.Level.INFO, "[自動存檔] 已經將頻道 " + this.channel + " 的 " + ppl + " 個玩家保存到數據中.");
-  }
+
+    /**
+     * 依 {@code tms.AutoSaveMinutes} 掛上定期存檔，0（預設）代表不啟用。
+     *
+     * <p>這個機制以前只存在於 {@code Libs/scripts/event/AutoSave.js}：它靠
+     * {@code tms.Events} 被載入、用 {@code em.scheduleAtTimestamp} 排在每個小時的
+     * 10 分，間隔寫死也不可設定，而且 {@code tms.Events} 裡寫的是 {@code autoSave}、
+     * 檔名卻是 {@code AutoSave.js}——在 Windows 上大小寫不敏感所以剛好載得到，換到
+     * 大小寫敏感的檔案系統就會被「找不到就靜靜跳過」的規則吃掉，自動存檔隨之消失而
+     * 且沒有任何訊息。這裡把同一件事搬回 Java，並且預設關閉，以免和還在跑的
+     * AutoSave.js 疊成一分鐘內存兩次。
+     *
+     * <p>用 {@code EtcTimer} 而不是 {@code WorldTimer}：{@code WorldTimer} 上目前只有
+     * 每 3 秒一次的 {@code Respawn}，而存檔是會阻塞在資料庫上的長工作，塞進去會排擠
+     * 怪物重生；{@code EtcTimer} 本來就是放釣魚、精靈吊墜、雇傭商人到期這類雜項長尾
+     * 工作的池子。
+     */
+    private void startAutoSave() {
+        final int minutes = autoSaveMinutes();
+        if (minutes <= 0) {
+            return;
+        }
+        final long period = minutes * 60000L;
+        // 第一次延遲一個完整週期：伺服器剛起來時沒有人在線上，立刻存一次沒有意義。
+        autoSaveTask = EtcTimer.getInstance().register(this::saveAll, period, period);
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": 自動存檔每 " + minutes + " 分鐘一次.");
+    }
+
+    private void stopAutoSave() {
+        final ScheduledFuture<?> task = autoSaveTask;
+        if (task != null) {
+            autoSaveTask = null;
+            // false：正在寫資料庫的那一輪讓它寫完，不要從中間打斷。
+            task.cancel(false);
+        }
+    }
+
+    private static int autoSaveMinutes() {
+        final String configured = ServerProperties.getProperty("tms.AutoSaveMinutes", "0");
+        if (configured == null || configured.isBlank()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(configured.trim());
+        } catch (final NumberFormatException e) {
+            // WARNING：伺服器照跑，只是自動存檔維持關閉——而「靜靜地沒有自動存檔」
+            // 正是這個項目要修掉的毛病，所以要講出來。
+            LOG.log(System.Logger.Level.WARNING, "tms.AutoSaveMinutes 不是數字（" + configured + "），自動存檔維持關閉.");
+            return 0;
+        }
+    }
  }
 

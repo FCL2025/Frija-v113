@@ -103,13 +103,22 @@ public class AdminServerCommands {
     }
 
     public static class saveall extends CommandExecute {
-        private int p = 0;
-        public int execute(MapleClient c, String[] splitted) {      
+        /**
+         * 計數以前是這個指令類別的 private 欄位。{@code CommandProcessor} 反射時每個
+         * 指令類別只 new 一個實例並存進 map 重複使用，所以那個欄位從來不歸零——第二次
+         * 打 {@code !saveall} 印出來的是累計值——而且兩個 GM 同時打還會互相加到對方的
+         * 數字上。改成區域變數，一次呼叫一份計數。
+         *
+         * <p>迴圈本身也收斂到 {@link ChannelServer#saveAll()}：那是自動存檔走的同一條
+         * 路，以前這裡自己抄了一份，而且第二個參數傳的是 {@code fromcs = true}，會把
+         * 角色位置寫成 {@code chr.mapid}——那個欄位只在換頻道／進商城時更新，對頻道上
+         * 的角色來說就是「登入時的地圖」。GM 看到的訊息不變。
+         */
+        @Override
+        public int execute(MapleClient c, String[] splitted) {
+            int p = 0;
             for (ChannelServer cserv : ChannelServer.getAllInstances()) {
-                for (MapleCharacter chr : cserv.getPlayerStorage().getAllCharacters()) {
-                    p++;
-                    chr.saveToDB(false, true);
-                }
+                p += cserv.saveAll();
             }
             c.getPlayer().dropMessage("[保存] "+p+"個玩家數據保存到數據中.");
             return 0;

@@ -57,3 +57,12 @@ tms.Debug =
 #固定的登入 Token。不設定時每次啟動隨機產生一組並印在 console；
 #開發期間常重啟的話可以固定一組，省得每次重貼。
 #tms.PanelToken     = 
+
+#Auto Save Setting
+#自動存檔間隔（分鐘），0 或留空 = 關閉（預設值）。
+#啟用後每個頻道各自排程在 server.Timer 的 EtcTimer 上，到點把該頻道線上的角色
+#逐一寫回資料庫；存檔期間不持有任何鎖，一個頻道一次只借一條資料庫連線。
+#注意 Libs/scripts/event/AutoSave.js 也在做同一件事（每小時 10 分一次），
+#它是靠上面 tms.Events 裡的 autoSave 載入的。兩邊只該留一個，
+#否則同一批角色會在短時間內被存兩次。
+#tms.AutoSaveMinutes = 15

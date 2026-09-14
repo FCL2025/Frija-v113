@@ -102,8 +102,25 @@ public class GameConstants {
         return 60 + (level * 5);
     }
 
+    /** 視野半徑的平方，換算半徑 ≈ 894.4。詳見 {@link #maxViewRangeSq()}。 */
+    private static final int MAX_VIEW_RANGE_SQ = 800000;
+
+    /**
+     * 視野半徑的平方，值刻意維持 800000。
+     *
+     * <p>這裡原本掛著一行 {@code // 800 * 800} 的註解，而 800 * 800 是
+     * 640000，不是 800000——註解是錯的，值不是。七個呼叫端（全部在
+     * {@code server.maps.MapleMap}）都拿它跟 {@code Point.distanceSq} 比，
+     * 所以這台伺服器的實際視野半徑是 sqrt(800000) ≈ 894.4，比那行註解
+     * 宣稱的 800 大約多了 11.8%。
+     *
+     * <p>要讓它符合舊註解就是把值改成 {@code 640000}，但那是<b>遊戲行為
+     * 變更</b>不是修 bug：視野半徑會縮小約 11%（面積少 20%），玩家能看見
+     * 的怪物／其他玩家／掉落物會變少，範圍廣播（攻擊動作、技能特效、
+     * 聊天氣泡）的收件人也會跟著變少。要動請當成一次平衡調整來評估。
+     */
     public static int maxViewRangeSq() {
-        return 800000; // 800 * 800
+        return MAX_VIEW_RANGE_SQ;
     }
 
     public static boolean isJobFamily(final int baseJob, final int currentJob) {

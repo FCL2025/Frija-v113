@@ -178,6 +178,34 @@ public enum ItemLoader {
         }
     }
 
+    /**
+     * 寫回一批道具：先整批刪掉舊列，再插回去。維持「DELETE + 逐列 INSERT」的形狀，
+     * 不改成 upsert，欄位的值與寫入順序也一律不動。
+     *
+     * <p><b>為什麼不能整個批次化</b>（規則見 CLAUDE.md 的 Persistence 一節）：
+     * {@code tms.Url} 帶著 {@code rewriteBatchedStatements=true}，Connector/J 會把一串
+     * INSERT 併成一條多 VALUES 的語句，而那種語句拿不到逐列的 generated key。偏偏
+     * {@code inventoryitems.inventoryitemid} 這個 auto-increment 就是
+     * {@code inventoryequipment.inventoryitemid} 的外來鍵 —— 裝備的屬性列靠它接回母列，
+     * {@code loadItems} 的 {@code LEFT JOIN … USING(inventoryitemid)} 走的正是這條線。
+     * 所以這裡和 {@code CharacterRepository} 裡的 {@code queststatus} 是同一個形狀：
+     * <ul>
+     *   <li><b>裝備的母列</b>維持逐列 {@code executeUpdate()}，因為下一行就要
+     *       {@code getGeneratedKeys()}；
+     *   <li><b>非裝備的母列</b>沒有人要它的 key，收成批次；
+     *   <li><b>{@code table_equip} 的子列</b>也收成批次 —— key 在 {@code setInt(1, …)}
+     *       當下就已經取出來了，累積到最後才送出不會改變任何一列的內容。
+     * </ul>
+     *
+     * <p>母列的 INSERT 是同一段 SQL 準備了兩份，差別只在有沒有要 generated key。
+     * 這樣「會被改寫成批次的那一份，永遠沒有要求 generated key」從型別就看得出來，
+     * 不必靠註解保證。非裝備的批次在碰到裝備列之前一定先送出（見迴圈裡的 flush），
+     * 因此 auto-increment 的配發順序與逐列寫入時逐字相同 —— 雇傭商店的貨架順序
+     * 就是由這個順序決定的。
+     *
+     * <p>被改寫的批次只會回 {@code SUCCESS_NO_INFO}，所以 {@code executeBatch()} 的
+     * 回傳值一律不讀。{@code con} 是<em>參數</em>，絕對不能關。
+     */
     public void saveItems(List<Pair<IItem, MapleInventoryType>> items, final Connection con, Integer... id) throws SQLException {
         List<Integer> lulz = Arrays.asList(id);
         if (lulz.size() != arg.size()) {
@@ -198,13 +226,13 @@ public enum ItemLoader {
         }
         query.append(")");
 
-        PreparedStatement ps = con.prepareStatement(query.toString());
-        ps.setInt(1, value);
-        for (int i = 0; i < lulz.size(); i++) {
-            ps.setInt(i + 2, lulz.get(i));
+        try (PreparedStatement ps = con.prepareStatement(query.toString())) {
+            ps.setInt(1, value);
+            for (int i = 0; i < lulz.size(); i++) {
+                ps.setInt(i + 2, lulz.get(i));
+            }
+            ps.executeUpdate();
         }
-        ps.executeUpdate();
-        ps.close();
         if (items == null) {
             return;
         }
@@ -220,41 +248,57 @@ public enum ItemLoader {
             query_2.append(", ?");
         }
         query_2.append(")");
-        ps = con.prepareStatement(query_2.toString(), Statement.RETURN_GENERATED_KEYS);
-        PreparedStatement pse = con.prepareStatement("INSERT INTO " + table_equip + " VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        final Iterator<Pair<IItem, MapleInventoryType>> iter = items.iterator();
-        Pair<IItem, MapleInventoryType> pair;
-        while (iter.hasNext()) {
-            pair = iter.next();
-            IItem item = pair.getLeft();
-            MapleInventoryType mit = pair.getRight();
-            int i = 1;
-            for (int x = 0; x < lulz.size(); x++) {
-                ps.setInt(i, lulz.get(x));
-                i++;
-            }
-            ps.setInt(i, item.getItemId());
-            ps.setInt(i + 1, mit.getType());
-            ps.setInt(i + 2, item.getPosition());
-            ps.setInt(i + 3, item.getQuantity());
-            ps.setString(i + 4, item.getOwner());
-            ps.setString(i + 5, item.getGMLog());
-            ps.setInt(i + 6, item.getUniqueId());
-            ps.setLong(i + 7, item.getExpiration());
-            ps.setByte(i + 8, item.getFlag());
-            ps.setByte(i + 9, (byte) value);
-            ps.setString(i + 10, item.getGiftFrom());
-            ps.executeUpdate();
-
-            if (mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED)) {
-                ResultSet rs = ps.getGeneratedKeys();
-
-                if (!rs.next()) {
-                    throw new RuntimeException("Inserting item failed.");
+        // ps 會要 generated key，所以它永遠逐列送；psNoKeys 是同一段 SQL 的另一份，
+        // 沒有要 key，所以它才是那個可以被 rewriteBatchedStatements 併起來的。
+        try (PreparedStatement ps = con.prepareStatement(query_2.toString(), Statement.RETURN_GENERATED_KEYS);
+                PreparedStatement psNoKeys = con.prepareStatement(query_2.toString());
+                PreparedStatement pse = con.prepareStatement("INSERT INTO " + table_equip + " VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+            final Iterator<Pair<IItem, MapleInventoryType>> iter = items.iterator();
+            Pair<IItem, MapleInventoryType> pair;
+            boolean pending = false;
+            while (iter.hasNext()) {
+                pair = iter.next();
+                IItem item = pair.getLeft();
+                MapleInventoryType mit = pair.getRight();
+                final boolean isEquip = mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED);
+                if (isEquip && pending) {
+                    // 排在這一列前面的非裝備列必須先落地，auto-increment 才會照
+                    // items 的順序配發，和逐列寫入時完全一樣。這也順便保證了下面
+                    // 丟 RuntimeException 時手上不會有還沒送出的批次。
+                    psNoKeys.executeBatch();
+                    pending = false;
                 }
+                final PreparedStatement pst = isEquip ? ps : psNoKeys;
+                int i = 1;
+                for (int x = 0; x < lulz.size(); x++) {
+                    pst.setInt(i, lulz.get(x));
+                    i++;
+                }
+                pst.setInt(i, item.getItemId());
+                pst.setInt(i + 1, mit.getType());
+                pst.setInt(i + 2, item.getPosition());
+                pst.setInt(i + 3, item.getQuantity());
+                pst.setString(i + 4, item.getOwner());
+                pst.setString(i + 5, item.getGMLog());
+                pst.setInt(i + 6, item.getUniqueId());
+                pst.setLong(i + 7, item.getExpiration());
+                pst.setByte(i + 8, item.getFlag());
+                pst.setByte(i + 9, (byte) value);
+                pst.setString(i + 10, item.getGiftFrom());
 
-                pse.setInt(1, rs.getInt(1));
-                rs.close();
+                if (!isEquip) {
+                    psNoKeys.addBatch();
+                    pending = true;
+                    continue;
+                }
+                ps.executeUpdate();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (!rs.next()) {
+                        throw new RuntimeException("Inserting item failed.");
+                    }
+                    pse.setInt(1, rs.getInt(1));
+                }
                 IEquip equip = (IEquip) item;
                 pse.setInt(2, equip.getUpgradeSlots());
                 pse.setInt(3, equip.getLevel());
@@ -282,10 +326,12 @@ public enum ItemLoader {
                 pse.setInt(25, equip.getPotential3());
                 pse.setInt(26, equip.getHpR());
                 pse.setInt(27, equip.getMpR());
-                pse.executeUpdate();
+                pse.addBatch();
             }
+            if (pending) {
+                psNoKeys.executeBatch();
+            }
+            pse.executeBatch();
         }
-        pse.close();
-        ps.close();
     }
 }

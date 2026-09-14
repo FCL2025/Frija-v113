@@ -635,11 +635,13 @@ public class CharacterRepository {
             try {
                 con.rollback();
             } catch (SQLException ex) {
-                // Reports `e`, the save failure, and not `ex`, the rollback
-                // failure - that is what both lines here always did, so it is
-                // kept verbatim rather than quietly corrected. The rollback
-                // failing means the transaction state is unknown, so ERROR.
-                LOG.log(System.Logger.Level.ERROR, "[charsave] Error Rolling Back", e);
+                // A24：這裡本來回報的是 e（存檔失敗）而不是 ex（rollback 失敗）。
+                // 存檔失敗上面那一行已經連堆疊完整記過一次了，所以舊寫法的淨效果是
+                // 「同一份堆疊印兩次，而 rollback 為什麼失敗從來沒人知道」——這是最需要
+                // 知道的那一個，因為 rollback 失敗代表交易狀態不明。
+                // 原本的存檔例外掛成 suppressed，兩者留在同一筆紀錄裡，資訊一點沒少。
+                ex.addSuppressed(e);
+                LOG.log(System.Logger.Level.ERROR, "[charsave] Error Rolling Back", ex);
             }
         } finally {
             try {
@@ -1024,9 +1026,11 @@ public class CharacterRepository {
             try {
                 con.rollback();
             } catch (SQLException ex) {
-                // Again reports `e`, the save failure, not `ex`, the rollback
-                // failure - kept verbatim. Terse, as it was: no trace here.
-                LOG.log(System.Logger.Level.ERROR, MapleClient.getLogMessage(chr, "[charsave] Error Rolling Back") + e);
+                // A24：同上，本來回報的是 e（存檔失敗）而且完全沒有堆疊。訊息尾端原本
+                // 串的那個 e.toString() 也拿掉了——它現在以 suppressed 的形式跟在 ex
+                // 後面，而且帶著自己的堆疊，比一行 toString 有用。
+                ex.addSuppressed(e);
+                LOG.log(System.Logger.Level.ERROR, MapleClient.getLogMessage(chr, "[charsave] Error Rolling Back"), ex);
             }
         } finally {
             try {

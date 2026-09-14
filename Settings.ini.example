@@ -25,7 +25,7 @@ tms.Cash          = 1
 tms.ServerName    = 測試服v113
 tms.EventMessage  = 測試中
 tms.ServerMessage = 歡迎來到v113測試
-tms.Events        = PinkBeanBattle,Romeo,Juliet,ScarTarBattle,autoSave,automsg,3rdCake,3rdjob,Boats,ZakumPQ,Hak,KerningPQ,GuildQuest,LudiMazePQ,Dollhouse,Subway,Amoria,HenesysPQ,HorntailBattle,LudiPQ,OrbisPQ,Pirate,ZakumBattle,cpq,cpq2,ChineseBoss,English,English0,English1,English2,elevator,Trains,Flight,Geenie,HontalePQ,s4aWorld,ElementThanatos,ProtectTylus,4jrush,KyrinTrainingGroundC,KyrinTrainingGroundV,s4resurrection,s4resurrection2,s4nest,4jberserk,DLPracticeField,Ellin,AirPlane,BossBalrog_EASY,BossBalrog_NORMAL,BossQuest,BossQuestEASY,BossQuestHARD,BossQuestHELL,BossQuestMed,Brawler,KyrinTrainingGroundC,KyrinTrainingGroundV,ChaosHorntail,ChaosZakum
+tms.Events        = PinkBeanBattle,Romeo,Juliet,ScarTarBattle,automsg,3rdCake,3rdjob,Boats,ZakumPQ,Hak,KerningPQ,GuildQuest,LudiMazePQ,Dollhouse,Subway,Amoria,HenesysPQ,HorntailBattle,LudiPQ,OrbisPQ,Pirate,ZakumBattle,cpq,cpq2,ChineseBoss,English,English0,English1,English2,elevator,Trains,Flight,Geenie,HontalePQ,s4aWorld,ElementThanatos,ProtectTylus,4jrush,KyrinTrainingGroundC,KyrinTrainingGroundV,s4resurrection,s4resurrection2,s4nest,4jberserk,DLPracticeField,Ellin,AirPlane,BossBalrog_EASY,BossBalrog_NORMAL,BossQuest,BossQuestEASY,BossQuestHARD,BossQuestHELL,BossQuestMed,Brawler,KyrinTrainingGroundC,KyrinTrainingGroundV,ChaosHorntail,ChaosZakum
 tms.Flag          = 3
 tms.AutoRegister  = true
 tms.WFlags        = 0
@@ -59,10 +59,11 @@ tms.Debug =
 #tms.PanelToken     = 
 
 #Auto Save Setting
-#自動存檔間隔（分鐘），0 或留空 = 關閉（預設值）。
-#啟用後每個頻道各自排程在 server.Timer 的 EtcTimer 上，到點把該頻道線上的角色
+#自動存檔間隔（分鐘），0 或留空 = 關閉。
+#每個頻道各自排程在 server.Timer 的 EtcTimer 上，到點把該頻道線上的角色
 #逐一寫回資料庫；存檔期間不持有任何鎖，一個頻道一次只借一條資料庫連線。
-#注意 Libs/scripts/event/AutoSave.js 也在做同一件事（每小時 10 分一次），
-#它是靠上面 tms.Events 裡的 autoSave 載入的。兩邊只該留一個，
+#這取代了 Libs/scripts/event/AutoSave.js（每小時 10 分一次、間隔寫死，而且靠
+#Windows 檔名大小寫不敏感才配得到 AutoSave.js，換到大小寫敏感的系統會靜默失效）。
+#那支腳本已經從上面的 tms.Events 拿掉。**不要把 autoSave 加回去**，
 #否則同一批角色會在短時間內被存兩次。
-#tms.AutoSaveMinutes = 15
+tms.AutoSaveMinutes = 15

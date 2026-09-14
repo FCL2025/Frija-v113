@@ -218,10 +218,19 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     // 也就是在擊殺者的 handler thread 上走訪別人的 quests；!saveall 還會在 GM 的執行緒上存檔走訪。
     // 原本是 LinkedHashMap，確認過寫封包與存檔都不依賴插入順序（客戶端與資料庫都以 quest id 為鍵）。
     Map<MapleQuest, MapleQuestStatus> quests;
-    // 不確定，故維持原狀：唯一的跨執行緒走訪是 CharacterRepository.saveToDB（!saveall / unlockAcc），
-    // 但 customData 允許 null 值（QuestInfoPacket 與存檔都特別處理 null），ConcurrentHashMap
-    // 不收 null，換過去會從「寫出空字串」變成 NPE。留給人決定。
-    Map<Integer, String> questinfo;
+    // C4 當時標為「不確定，維持原狀」，因為 customData 允許 null 而 ConcurrentHashMap 不收 null。
+    // I7 把那個 null 語意查清楚了：**null 不是有意義的值，是一個沒人處理乾淨的洞**。
+    // questinfo.customData 的資料庫欄位是 varchar(555) DEFAULT NULL，但全樹沒有任何一條寫入路徑
+    // 會放 null 進來（updateInfoQuest 的三十幾個呼叫端一律傳字面字串）；null 只可能從舊資料列
+    // 或手動改資料庫來。而讀出來之後的處理是不一致的：QuestInfoPacket 有 `== null ? ""` 的保護，
+    // getInfoQuest() 沒有——它會把 null 原封不動回給腳本，而十幾支腳本接著就 .equals("") 或
+    // .indexOf(…)，也就是 NPE。所以正確的決定是「在邊界把 null 正規化成空字串」，
+    // 而不是讓 null 一路滲進來。正規化之後這個 Map 就可以是 ConcurrentHashMap。
+    //
+    // 跨執行緒走訪：CharacterRepository.saveToDB（!saveall／自動存檔／unlockAcc 都在別人的執行緒上）。
+    // 插入順序不具語意（和 killedMobs 不同）：封包每一筆都自己帶 questid，客戶端以 id 為鍵；
+    // 存檔的 INSERT 也有明確的 quest 欄位。所以這裡可以換容器，不必像 C11 那樣改用 monitor。
+    Map<Integer, String> questinfo = new ConcurrentHashMap<>();
     // 共用（唯讀方向）：PlayerStats.recalcLocalStats 會在施放隊伍 buff 的那個玩家執行緒上
     // 讀被施放者的 skills，!saveall 也會在別人的執行緒上走訪；寫入只有本人。
     // 換 ConcurrentHashMap 後 get(null) 會丟 NPE，故 getSkillLevel/getMasterLevel 補了 null 判斷，
@@ -326,7 +335,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             for (int i = 0; i < SavedLocationType.values().length; i++) {
                 savedLocations[i] = -1;
             }
-            questinfo = new LinkedHashMap<>();
+            questinfo = new ConcurrentHashMap<>(); // I7，見欄位宣告處
             anticheat = new CheatTracker(this);
             pets = new CopyOnWriteArrayList<>();
         }
@@ -579,15 +588,18 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public final void updateInfoQuest(final int questid, final String data) {
-        questinfo.put(questid, data);
-        client.send(QuestPacket.updateInfoQuest(questid, data));
+        // I7：把 null 擋在入口。全樹三十幾個呼叫端目前一律傳字面字串，但這是維持
+        // 「questinfo 不含 null」這個不變量的地方——少了它，ConcurrentHashMap 會 NPE。
+        final String value = data == null ? "" : data;
+        questinfo.put(questid, value);
+        client.send(QuestPacket.updateInfoQuest(questid, value));
     }
 
     public final String getInfoQuest(final int questid) {
-        if (questinfo.containsKey(questid)) {
-            return questinfo.get(questid);
-        }
-        return "";
+        // I7：本來是 containsKey 再 get 的兩段式，而且「有這個 key、值卻是 null」時會
+        // 把 null 原封不動回給呼叫端——十幾支腳本接著就 .equals("") 或 .indexOf(…)。
+        // 正規化之後不可能有 null，getOrDefault 也順便把兩段式收成一步。
+        return questinfo.getOrDefault(questid, "");
     }
 
     public final int getNumQuest() {

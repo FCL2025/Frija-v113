@@ -304,7 +304,13 @@ public class CharacterRepository {
                 rs = ps.executeQuery();
 
                 while (rs.next()) {
-                    ret.questinfo.put(rs.getInt("quest"), rs.getString("customData"));
+                    // I7：questinfo.customData 是 varchar(555) DEFAULT NULL，所以舊資料列
+                    // 或手動改過的列讀出來可能是 null。這裡是 null 唯一進得來的入口，
+                    // 在這裡正規化成空字串，之後整個 questinfo 就保證不含 null——
+                    // getInfoQuest() 不會再把 null 丟給腳本（那些腳本接著就 .equals("")），
+                    // Map 也才能是 ConcurrentHashMap。見 MapleCharacter.questinfo 的說明。
+                    final String customData = rs.getString("customData");
+                    ret.questinfo.put(rs.getInt("quest"), customData == null ? "" : customData);
                 }
                 rs.close();
                 ps.close();

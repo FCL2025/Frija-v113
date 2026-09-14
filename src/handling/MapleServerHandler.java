@@ -318,25 +318,30 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
     }
 
     public void writeLog() {
-        try {
-            FileWriter fw = new FileWriter(Packet_Log_Output, Encodings.NATIVE, true);
+        // 寫檔機制刻意維持 FileWriter（見 tools.Logging 的「不准轉換」清單）；這裡只動
+        // 兩件事：資源管理與錯誤回報。
+        //
+        // 舊寫法把 fw.close() 放在 try 裡、finally 只解鎖，所以只要任何一次 fw.write
+        // 丟出 IOException，那個檔案代號就永遠不會關——在 Windows 上還會讓 PacketLog.txt
+        // 一直被鎖住。改成 try-with-resources 之後，鎖的範圍與原本一模一樣：開檔在鎖外，
+        // 讀鎖只圍住走訪環，close() 發生在解鎖之後。
+        try (FileWriter fw = new FileWriter(Packet_Log_Output, Encodings.NATIVE, true)) {
+            Packet_Log_Lock.readLock().lock();
             try {
-                Packet_Log_Lock.readLock().lock();
-                String nl = System.getProperty("line.separator");
                 for (LoggedPacket loggedPacket : Packet_Log) {
                     fw.write(loggedPacket.toString());
                     fw.write(nl);
                 }
                 fw.flush();
-                fw.close();
             } finally {
                 Packet_Log_Lock.readLock().unlock();
             }
         } catch (IOException ex) {
-            // Terse on purpose, and unchanged: this has never reported `ex` at
-            // all, and attaching it now would change what the MBean's caller
-            // sees. The dump was abandoned, so ERROR.
-            LOG.log(System.Logger.Level.ERROR, "Error writing log to file.");
+            // writeLog() 是 handling:type=MapleServerHandler 這個 MBean 的操作，回傳
+            // void 也不宣告受檢例外，IOException 從來不會傳出去——JMX 呼叫端無論如何
+            // 都只看到「執行成功」。所以附上 ex 只是讓日誌多一份堆疊，MBean 那端看到的
+            // 東西完全沒變。整份傾印被放棄了，所以是 ERROR。
+            LOG.log(System.Logger.Level.ERROR, "Error writing log to file.", ex);
         }
     }
 

@@ -81,7 +81,6 @@ import handling.world.family.MapleFamilyCharacter;
 import handling.world.guild.MapleGuild;
 import handling.world.guild.MapleGuildCharacter;
 import java.lang.ref.WeakReference;
-import java.util.EnumMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import tools.MockIOSession;
 import scripting.EventInstanceManager;
@@ -838,8 +837,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public List<MapleBuffStat> getBuffStats(final MapleStatEffect effect, final long startTime) {
         final List<MapleBuffStat> bstats = new ArrayList<>();
-        final Map<MapleBuffStat, MapleBuffStatValueHolder> allBuffs = new EnumMap<>(effects);
-        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> stateffect : allBuffs.entrySet()) {
+        // C12：不能寫 new EnumMap<>(effects)。EnumMap 的複製建構子對「來源也是 EnumMap」
+        // 走的是直接複製對方 vals/size 欄位的快速路徑，完全不經過 ConcurrentEnumMap 覆寫的
+        // 方法，讀鎖形同不存在，會拿到 size 與陣列對不上的複本。entrySet() 現在本身就是
+        // 鎖內做好的不可變快照，直接走訪它即可。
+        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> stateffect : effects.entrySet()) {
             final MapleBuffStatValueHolder mbsvh = stateffect.getValue();
             if (mbsvh.effect.sameSource(effect) && (startTime == -1 || startTime == mbsvh.startTime)) {
                 bstats.add(stateffect.getKey());
@@ -3462,7 +3464,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public final boolean hasDisease(final MapleDisease dis) {
-        return diseases.keySet().contains(dis);
+        // C12：keySet() 現在會在鎖內複製一份快照，拿它做一次 contains 等於白配置一個 Set。
+        // containsKey 同樣在讀鎖底下、語意完全相同、零配置。
+        return diseases.containsKey(dis);
     }
 
     public void giveDebuff(final MapleDisease disease, MobSkill skill) {
@@ -4298,7 +4302,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         ret.currentrep = currentrep;
         ret.totalrep = totalrep;
         ret.stats = stats;
-        ret.effects.putAll(effects);
+        // C12：同上——putAll 對 EnumMap 來源也走那條繞過讀鎖的快速路徑，所以逐筆從
+        // entrySet() 的快照複製。分身只有一隻、buff 數量是個位數，成本可以忽略。
+        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> buff : effects.entrySet()) {
+            ret.effects.put(buff.getKey(), buff.getValue());
+        }
         if (ret.effects.get(MapleBuffStat.ILLUSION) != null) {
             ret.effects.remove(MapleBuffStat.ILLUSION);
         }

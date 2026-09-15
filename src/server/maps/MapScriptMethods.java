@@ -497,6 +497,7 @@ public class MapScriptMethods {
                 //if (c.getPlayer().getPyramidSubway() == null) {
                 c.send(MapPacket.showEffect("killing/fail"));
                 //} else {
+                // D9：成功時的 killing/clear 特效，本樹只送上面的 killing/fail。
                 //	c.send(MapPacket.showEffect("killing/clear"));
                 //}
                 //left blank because pyramidsubway handles this.

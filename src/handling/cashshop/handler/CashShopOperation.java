@@ -81,6 +81,9 @@ public class CashShopOperation {
         }
         c.updateLoginState(MapleClient.LOGIN_LOGGEDIN, c.getSessionIPAddress());
         if (mts) {
+ // D9：MTS（拍賣場）入口。MTSStorage 與 MTSOperation.MTSUpdate 都還在，但 Start 從來
+ // 沒有呼叫 MTSStorage.load()（那兩行啟動項在 E12 被刪掉了），所以直接解開只會拿到一個
+ // 空的 storage。要啟用得連初始化一起補——這正是 CLAUDE.md 說「接上了但從未啟動」的那一組。
  //           CashShopServer.getPlayerStorageMTS().registerPlayer(chr);
  //           c.send(MTSCSPacket.startMTS(chr, c));
  //           MTSOperation.MTSUpdate(MTSStorage.getInstance().getCart(c.getPlayer().getId()), c);

@@ -28,7 +28,6 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -574,6 +573,8 @@ public class MapleClient {
         for (final MapleClient c: Client.getClients()) {
             if (c.getAccID() == accId && c.isLoggedIn()) {
                 if (!c.getSession().isConnected()) {
+// D9：用途不明，保留待查。同帳號已有一條失連 session 時，這裡原本直接 disconnect；
+// 現在改為往下走 loadCharacterNames。哪一種才是想要的行為無從考證。
 //					c.disconnect(true, c.getChannel() == -10);
                     List<String> charName = c.loadCharacterNames(c.getWorld());
                     for (final String cha : charName) {
@@ -687,14 +688,8 @@ public class MapleClient {
         for (String mac : macData.split(", ")) {
             macs.add(mac);
         }
-        StringBuilder newMacData = new StringBuilder();
-        Iterator<String> iter = macs.iterator();
-        while (iter.hasNext()) {
-            newMacData.append(iter.next());
-            if (iter.hasNext()) {
-                newMacData.append(", ");
-            }
-        }
+        // D3：唯讀走訪，只是把集合用 ", " 串起來——那就是 String.join。
+        final String newMacData = String.join(", ", macs);
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("UPDATE accounts SET macs = ? WHERE id = ?")) {
             ps.setString(1, newMacData.toString());
@@ -1072,7 +1067,6 @@ public class MapleClient {
             MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM hiredmerch WHERE characterid = ?", cid);
             MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM mts_cart WHERE characterid = ?", cid);
             MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM mts_items WHERE characterid = ?", cid);
-            //MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM cheatlog WHERE characterid = ?", cid);
             MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM mountdata WHERE characterid = ?", cid);
             MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM inventoryitems WHERE characterid = ?", cid);
             MapleCharacter.deleteWhereCharacterId(con, "DELETE FROM famelog WHERE characterid = ?", cid);

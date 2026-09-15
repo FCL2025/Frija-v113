@@ -528,6 +528,8 @@ public class DamageParse {
         if (attack.real) {
             player.getCheatTracker().checkAttack(attack.skill, attack.lastAttackTickCount);
         }
+// D9：以下幾段被註解掉的都是「其他版本的傷害公式與蓄力技處理」，是逆向出來的筆記，
+// 刪掉就再也回不來，所以保留。它們都不是「忘了打開的功能」。
 //	if (attack.skill != 2301002) { // heal is both an attack and a special move (healing) so we'll let the whole applying magic live in the special move part
 //	    effect.applyTo(player);
 //	}
@@ -558,6 +560,7 @@ public class DamageParse {
             }
         }
         final PlayerStats stats = player.getStat();
+// D9：最小傷害在本樹沒有用到，只算最大值。逆向筆記，見上面 applyAttack 的說明。
 //	double minDamagePerHit;
         double maxDamagePerHit;
         if (attack.skill == 2301002) {
@@ -568,6 +571,7 @@ public class DamageParse {
             maxDamagePerHit = 1;
         } else {
             final double v75 = (effect.getMatk() * 0.058);
+// D9：最小傷害公式（含精通項），下面那行是實際採用的最大傷害公式。
 //	    minDamagePerHit = stats.getTotalMagic() * (stats.getInt() * 0.5 + (v75 * v75) + (effect.getMastery() * 0.9 * effect.getMatk()) * 3.3) / 100;
             maxDamagePerHit = stats.getTotalMagic() * (stats.getInt() * 0.5 + (v75 * v75) + effect.getMatk() * 3.3) / 100;
         }
@@ -723,6 +727,7 @@ public class DamageParse {
         elemMaxDamagePerMob -= mobstats.getMagicDefense() * 0.5;
         // Calculate Sharp eye bonus
         elemMaxDamagePerMob += (elemMaxDamagePerMob / 100) * sharpEye;
+// D9：蓄力技的傷害加成公式；本樹改用下面那條 getKeyDownSkill_Time() == 0 的判斷。
 //	if (skill.isChargeSkill()) {
 //	    elemMaxDamagePerMob = (float) ((90 * ((System.currentTimeMillis() - chr.getKeyDownSkill_Time()) / 1000) + 10) * elemMaxDamagePerMob * 0.01);
 //	}
@@ -915,6 +920,7 @@ public class DamageParse {
         // Calculate passive bonuses + Sharp Eye
         elementalMaxDamagePerMonster += (elementalMaxDamagePerMonster / 100.0) * CriticalDamagePercent;
 
+// D9：同上，魔法側的蓄力技加成公式。
 //	if (theSkill.isChargeSkill()) {
 //	    elementalMaxDamagePerMonster = (double) (90 * (System.currentTimeMillis() - player.getKeyDownSkill_Time()) / 2000 + 10) * elementalMaxDamagePerMonster * 0.01;
 //	}

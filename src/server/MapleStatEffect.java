@@ -53,7 +53,6 @@ public class MapleStatEffect {
     private Point lt, rb;
     private int expBuff, itemup, mesoup, cashup, berserk, illusion, booster, berserk2, cp, nuffSkill,exp;
     private byte level;
-//    private List<Pair<Integer, Integer>> randomMorph;
     private List<MapleDisease> cureDebuffs;
 
     public static final MapleStatEffect loadSkillEffectFromData(final MapleData source, final int skillid, final boolean overtime, final byte level) {
@@ -713,6 +712,7 @@ public class MapleStatEffect {
             case 33121006: //feline berserk
                 statups.add(new Pair<>(MapleBuffStat.MAXHP, ret.x));
                 statups.add(new Pair<>(MapleBuffStat.WATK, ret.y));//temp
+                // D9：其他版本的貓熊狂暴會多給 DASH_SPEED；v113 不給。
                 //statups.add(new Pair<MapleBuffStat, Integer>(MapleBuffStat.DASH_SPEED, ret.z));
                 break;
             case 32001003: //dark aura
@@ -808,6 +808,7 @@ public class MapleStatEffect {
     public final boolean applyTo(final MapleCharacter applyfrom, final MapleCharacter applyto, final boolean primary, final Point pos, int newDuration) {
         if (isHeal() && (applyfrom.getMapId() == 749040100 || applyto.getMapId() == 749040100)) {
             return false; //z
+            // D9：滑翔在不允許的地圖上本來要擋下來；本樹不擋。isSoaring() 與 canSoar() 都還在。
             //} else if (isSoaring() && !applyfrom.getMap().canSoar()) {
             //	return false;
         } else if (sourceid == 4341006 && applyfrom.getBuffedValue(MapleBuffStat.MIRROR_IMAGE) == null) {
@@ -869,6 +870,7 @@ public class MapleStatEffect {
 
         if (expinc != 0) {
             applyto.gainExp(expinc, true, true, false);
+// D9：取得經驗時的特效，刻意關掉。
 //            applyto.getClient().send(CharacterPacket.showSpecialEffect(19));
         } else if (GameConstants.isMonsterCard(sourceid)) {
             applyto.getMonsterBook().addCard(applyto.getClient(), sourceid);
@@ -1063,6 +1065,7 @@ public class MapleStatEffect {
             case 1111007:
                 cancel.add(MonsterStatus.WDEF);
                 cancel.add(MonsterStatus.WEAPON_DEFENSE_UP);
+                // D9：其他版本的解除技會一併解除無敵；v113 只解除防禦上升。MAGIC_IMMUNITY 同理。
                 //cancel.add(MonsterStatus.WEAPON_IMMUNITY);
                 break;
             case 1211009:
@@ -1223,6 +1226,7 @@ public class MapleStatEffect {
                 applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
                 break;
             }
+            // D9：魔法護盾（22131001）的「別人看得到」buff 廣播，本樹未啟用。
             //case 22131001: {//magic shield
             //final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.MAGIC_SHIELD, x));
             //applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);
@@ -1339,6 +1343,7 @@ public class MapleStatEffect {
                     applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), localstatups, this), false);
                     applyto.getClient().send(BuffPacket.giveBuff(sourceid, localDuration, localstatups, this));
                     normal = false;
+                    // D9：金字塔 PQ 的 berserk「別人看得到」buff 廣播，本樹未啟用。
                     //} else if (berserk > 0) {
                     //    final List<Pair<MapleBuffStat, Integer>> stat = Collections.singletonList(new Pair<MapleBuffStat, Integer>(MapleBuffStat.PYRAMID_PQ, berserk));
                     //    applyto.getMap().broadcastMessage(applyto, BuffPacket.giveForeignBuff(applyto.getId(), stat, this), false);

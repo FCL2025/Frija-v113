@@ -780,16 +780,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 case 0: // Meso
                     final int money = Randomizer.rand(expMulti ? 15 : 10, expMulti ? 7500 : 5000);
                     gainMeso(money, true);
-                    //client.send(UIPacket.fishingUpdate((byte) 1, money));
                     break;
                 case 1: // EXP
                     final int experi = Randomizer.nextInt(Math.abs(GameConstants.getExpNeededForLevel(level) / 400) + 1);
                     gainExp(expMulti ? (experi * 3 / 2) : experi, true, false, true);
-                    //client.send(UIPacket.fishingUpdate((byte) 2, experi));
                     break;
                 default:
                     MapleInventoryManipulator.addById(client, randval, (short) 1);
-                    //client.send(UIPacket.fishingUpdate((byte) 0, randval));
                     break;
             }
             map.broadcastMessage(UIPacket.fishingCaught(id));
@@ -847,7 +844,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             }
         }
         stats.recalcLocalStats();
-        //System.out.println("Effect registered. Effect: " + effect.getSourceId());
     }
 
     public List<MapleBuffStat> getBuffStats(final MapleStatEffect effect, final long startTime) {
@@ -994,7 +990,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 }
             }
         }
-        //System.out.println("Effect deregistered. Effect: " + effect.getSourceId());
     }
 
     public void cancelBuffStats(MapleBuffStat... stat) {
@@ -1564,6 +1559,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void leaveMap() {
+        // D9：不在這裡清 controlled。控制權是 MapleMap.removePlayer 一隻一隻交還出去的，
+        // 而它交還完才呼叫 leaveMap()，所以這裡再清一次只會讓那一步無怪可還。
         //controlled.clear();
         visibleMapObjectsLock.writeLock().lock();
         try {
@@ -1904,14 +1901,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void healHP(int delta) {
         addHP(delta);
-//        client.send(CharacterPacket.showOwnHpHealed(delta));
-//        getMap().broadcastMessage(this, CharacterPacket.showHpHealed(getId(), delta), false);
     }
 
     public void healMP(int delta) {
         addMP(delta);
-//        client.send(CharacterPacket.showOwnHpHealed(delta));
-//        getMap().broadcastMessage(this, CharacterPacket.showHpHealed(getId(), delta), false);
     }
 
     /**
@@ -3348,6 +3341,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         if (show && quantity != 0) {
             dropMessage(-1, "你" + (quantity > 0 ? "獲得了 " : "失去 ") + quantity + (type == 1 ? " CASH" : " 楓葉點數"));
+            // D9：點數增減時的特效，刻意只留上面那行文字訊息。showSpecialEffect 仍在，解開即可用。
             //client.send(CharacterPacket.showSpecialEffect(19));
         }
     }
@@ -4996,10 +4990,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     public void fakeRelog() {
         client.send(CharacterPacket.getCharInfo(this));
         final MapleMap mapp = getMap();
-//        mapp.setCheckStates(false);
         mapp.removePlayer(this);
         mapp.addPlayer(this);
-//        mapp.setCheckStates(true);
     }
 
     public String getcharmessage() {

@@ -208,6 +208,8 @@ public class PlayerStorage {
     public final void disconnectAll(final boolean checkGM) {
         wL.lock();
         try {
+            // D3：維持顯式 Iterator。本體在移除之前要斷線、關 session 並從 Find 反註冊，
+            // 這些副作用不該被塞進 removeIf 的 predicate。
             final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
             MapleCharacter chr;
             while (itr.hasNext()) {
@@ -298,13 +300,8 @@ public class PlayerStorage {
             wL2.lock();
             try {
                 final long currenttime = System.currentTimeMillis();
-                final Iterator<Map.Entry<Integer, CharacterTransfer>> itr = PendingCharacter.entrySet().iterator();
-
-                while (itr.hasNext()) {
-                    if (currenttime - itr.next().getValue().TranferTime > 40000) { // 40 sec
-                        itr.remove();
-                    }
-                }
+                // D3：本體只有移除，而且沒有提前跳出，所以 removeIf 完全等價。
+                PendingCharacter.values().removeIf(ct -> currenttime - ct.TranferTime > 40000); // 40 sec
                 Timer.PING.schedule(new PersistingTask(), 900000);
             } finally {
                 wL2.unlock();

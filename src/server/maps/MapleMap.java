@@ -1246,6 +1246,8 @@ public final class MapleMap {
     public final void removeNpc(final int npcid) {
         mapobjectlocks.get(MapleMapObjectType.NPC).writeLock().lock();
         try {
+            // D3：維持顯式 Iterator。迴圈本體在移除之前先廣播了一個封包，把它塞進
+            // removeIf 的 predicate 等於讓 predicate 有副作用——那比現在的寫法糟。
             Iterator<MapleMapObject> itr = mapobjects.get(MapleMapObjectType.NPC).values().iterator();
             while (itr.hasNext()) {
                 MapleNPC npc = (MapleNPC) itr.next();
@@ -1419,6 +1421,7 @@ public final class MapleMap {
             @Override
             public final void sendPackets(MapleClient c) {
                 c.send(MobPacket.spawnMonster(monster, -2, 0xfc, 0));
+// D9：其他版本在這裡會多送一個假怪；v113 不送。spawnFakeMonster 仍在。
 //		c.send(MobPacket.spawnFakeMonster(monster, 0));
             }
         }, null);
@@ -1535,7 +1538,6 @@ public final class MapleMap {
                 break;
         }
         tMan.schedule(() -> {
-            //broadcastMessage(MapPacket.removeMist(mist.getObjectId()));
             broadcastMessage(MapPacket.removeMist(mist.getObjectId(), false));
             removeMapObject(mist);
             if (poisonSchedule != null) {
@@ -1598,6 +1600,7 @@ public final class MapleMap {
                 }
             }
         }, null);
+// D9：用途不明，保留待查。其他版本在這裡直接廣播掉落物，本樹走上面那條路徑。
 //	broadcastMessage(MapPacket.dropItemFromMapObject(mdrop, mob.getPosition(), dropPos, (byte) 0));
 
         mdrop.registerExpire(120000);
@@ -1859,6 +1862,7 @@ public final class MapleMap {
                 summon.setFh(0); //lol, it can be fixed by movement
             }
             chr.addVisibleMapObject(summon);
+// D9：用途不明，保留待查。召喚獸只加進該玩家的可見物件，沒有再走一次 spawnSummon。
 //          this.spawnSummon(summon);
         }
         if (mapEffect != null) {
@@ -1942,9 +1946,6 @@ public final class MapleMap {
             }
         }
         if ((mapid == 10000 && chr.getJob() == 0) || (mapid == 130030000 && chr.getJob() == 1000) || (mapid == 914000000 && chr.getJob() == 2000) || (mapid == 900010000 && chr.getJob() == 2001)) {
-//            chr.getClient().send(MapPacket.startMapEffect("Welcome to " + chr.getClient().getChannelServer().getServerName() + "!", 5122000, true));
-//            chr.dropMessage(1, "Welcome to " + chr.getClient().getChannelServer().getServerName() + ", " + chr.getName() + " ! \r\nUse @joyce to collect your Item Of Appreciation once you're level 10! \r\nUse @help for commands. \r\nGood luck and have fun!");
-//            chr.dropMessage(5, "Use @joyce to collect your Item Of Appreciation once you're level 10! Use @help for commands. Good luck and have fun!");
 
         }
         if (permanentWeather > 0) {
@@ -2225,24 +2226,18 @@ public final class MapleMap {
             case 955000300:
                 em = "AswanOffSeason";
                 break;
-/*      */     case 280030100:
-/* 2829 */       em = "ZakumBattle";
-/* 2830 */       break;
-/*      */     case 272020200:
-/* 2862 */       em = "Akayile";
-/* 2863 */       break;
-/*      */     case 689013000:
-/* 2888 */       em = "PinkZakum";
-/* 2889 */       break;
-/*      */     case 703200400:
-/* 2891 */       em = "0AllBoss";
-/* 2892 */       break;
-            //case 689010000:
-            //    em = "PinkZakumEntrance";
-            //    break;
-            //case 689013000:
-            //    em = "PinkZakumFight";
-            //    break;
+            case 280030100:
+                em = "ZakumBattle";
+                break;
+            case 272020200:
+                em = "Akayile";
+                break;
+            case 689013000:
+                em = "PinkZakum";
+                break;
+            case 703200400:
+                em = "0AllBoss";
+                break;
             default:
                 return null;
         }
@@ -2251,7 +2246,6 @@ public final class MapleMap {
 
 
     public final void removePlayer(final MapleCharacter chr) {
-        //log.warn("[dc] [level2] Player {} leaves map {}", new Object[] { chr.getName(), mapid });
 
         if (everlast) {
             returnEverLastItem(chr);
@@ -2268,6 +2262,8 @@ public final class MapleMap {
         broadcastMessage(CharacterPacket.removePlayerFromMap(chr.getId()));
         if (!chr.isClone()) {
             final List<MapleMonster> update = new ArrayList<>();
+            // D3：維持顯式 Iterator。本體不只是移除——它把三個 controller 欄位歸零，
+            // 還要把怪收進 update 好在迴圈之後重新指派控制權。
             final Iterator<MapleMonster> controlled = chr.getControlled().iterator();
 
             while (controlled.hasNext()) {
@@ -2980,14 +2976,8 @@ public final class MapleMap {
     }
 
     public final void resetSpawns() {
-        boolean changed = false;
-        Iterator<Spawns> sss = monsterSpawn.iterator();
-        while (sss.hasNext()) {
-            if (sss.next().getCarnivalId() > -1) {
-                sss.remove();
-                changed = true;
-            }
-        }
+        // D3：removeIf 回傳「有沒有移除過東西」，正好就是原本那個 changed 旗標。
+        final boolean changed = monsterSpawn.removeIf(spawn -> spawn.getCarnivalId() > -1);
         setSpawns(true);
         if (changed) {
             loadMonsterRate(true);
@@ -3193,10 +3183,8 @@ public final class MapleMap {
 
         charactersLock.readLock().lock();
         try {
-            final Iterator<MapleCharacter> ltr = characters.iterator();
-            MapleCharacter a;
-            while (ltr.hasNext()) {
-                if (getArea(index).contains(ltr.next().getPosition())) {
+            for (final MapleCharacter chr : characters) {
+                if (getArea(index).contains(chr.getPosition())) {
                     ret++;
                 }
             }

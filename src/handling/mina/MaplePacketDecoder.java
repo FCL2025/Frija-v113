@@ -77,6 +77,8 @@ public class MaplePacketDecoder extends CumulativeProtocolDecoder {
             decoderState.packetlength = -1;
 
             client.getReceiveCrypto().crypt(decryptedPacket);
+// D9：v113 不套第二層 MapleCustomEncryption，只有 AES-OFB。MaplePacketEncoder 有
+// 對稱的一行。兩行一起記錄了這個版本的線路格式，不要以為是忘了打開。
 //	    MapleCustomEncryption.decryptData(decryptedPacket);
             out.write(decryptedPacket);
             return true;

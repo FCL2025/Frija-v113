@@ -272,62 +272,14 @@ public class PlayerStats {
             watk = 30; //stars
         }
         StructPotentialItem pot;
-        dam_r = 0.0;
-        bossdam_r = 0.0;
-        expBuff = 100.0;
-        cashBuff = 100.0;
-        dropBuff = 100.0;
-        mesoBuff = 100.0;
-        recoverHP = 0;
-        recoverMP = 0;
-        mpconReduce = 0;
-        incMesoProp = 0;
-        incRewardProp = 0;
-        DAMreflect = 0;
-        DAMreflect_rate = 0;
-        hpRecover = 0;
-        hpRecoverProp = 0;
-        mpRecover = 0;
-        mpRecoverProp = 0;
-        mpRestore = 0;
-        equippedWelcomeBackRing = false;
-        equippedFairy = false;
-        hasMeso = false;
-        hasItem = false;
-        hasPartyBonus = false;
-        hasVac = false;
-        hasClone = false;
+        resetDamageAndRateFields();
         final boolean canEquipLevel = chra.getLevel() >= 120 && !GameConstants.isKOC(chra.getJob());
-        equipmentBonusExp = 0;
-        RecoveryUP = 0;
-        dropMod = 1;
-        expMod = 1;
-        cashMod = 1;
-        levelBonus = 0;
-        incAllskill = 0;
-        durabilityHandling.clear();
-        equipLevelHandling.clear();
-        setHandling.clear();
-        element_fire = 100;
-        element_ice = 100;
-        element_light = 100;
-        element_psn = 100;
-        def = 100;
+        resetEquipAccumulators();
 
         for (IItem item : chra.getInventory(MapleInventoryType.EQUIPPED)) {
             final IEquip equip = (IEquip) item;
 
-            if (equip.getPosition() == -11) {
-                if (GameConstants.isMagicWeapon(equip.getItemId())) {
-                    final Map<String, Integer> eqstat = MapleItemInformationProvider.getInstance().getEquipStats(equip.getItemId());
-
-                    element_fire = eqstat.get("incRMAF");
-                    element_ice = eqstat.get("incRMAI");
-                    element_light = eqstat.get("incRMAL");
-                    element_psn = eqstat.get("incRMAS");
-                    def = eqstat.get("elemDefault");
-                }
-            }
+            applyMagicWeaponElements(equip);
             accuracy += equip.getAcc();
             localmaxhp_ += equip.getHp();
             localmaxmp_ += equip.getMp();
@@ -375,14 +327,7 @@ public class PlayerStats {
             } //slow, poison, darkness, seal, freeze
             percent_hp += equip.getHpR();
             percent_mp += equip.getMpR();
-            int set = ii.getSetItemID(equip.getItemId());
-            if (set > 0) {
-                int value = 1;
-                if (setHandling.get(set) != null) {
-                    value += setHandling.get(set);
-                }
-                setHandling.put(set, value); //id of Set, number of items to go with the set
-            }
+            recordSetItemCount(ii, equip);
             /*
             if (equip.getState() > 1) {
                 int[] potentials = {equip.getPotential1(), equip.getPotential2(), equip.getPotential3()};
@@ -475,6 +420,186 @@ public class PlayerStats {
                 }
             }
         }
+        applyCashItemRateBonuses(chra);
+        applyEtcItemFlags(chra);
+        magic += chra.getSkillLevel(SkillFactory.getSkill(22000000));
+        //dam_r += (chra.getJob() >= 430 && chra.getJob() <= 434 ? 70 : 0); //leniency on upper stab
+        this.localstr = (int) (this.localstr + (percent_str * localstr) / 100f); // 百分比加成：浮點算完後截斷取整，與原本 += 的隱含截斷完全相同
+        this.localdex = (int) (this.localdex + (percent_dex * localdex) / 100f);
+        final int before_ = localint_;
+        this.localint_ = (int) (this.localint_ + (percent_int * localint_) / 100f);
+        this.magic += localint_ - before_;
+        this.localluk = (int) (this.localluk + (percent_luk * localluk) / 100f);
+        this.accuracy = (int) (this.accuracy + (percent_acc * accuracy) / 100f);
+        this.watk = (int) (this.watk + (percent_atk * watk) / 100f);
+        this.magic = (int) (this.magic + (percent_matk * magic) / 100f); //or should this go before
+        localmaxhp_ = (int) (localmaxhp_ + (percent_hp * localmaxhp_) / 100f);
+        localmaxmp_ = (int) (localmaxmp_ + (percent_mp * localmaxmp_) / 100f);
+        magic = Math.min(magic, 1999); //buffs can make it higher
+
+        applyBaseStatBuffs(chra);
+        Integer buff = chra.getBuffedValue(MapleBuffStat.MAXHP);
+        if (buff != null) {
+            localmaxhp_ = (int) (localmaxhp_ + (buff.doubleValue() / 100.0) * localmaxhp_);
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.CONVERSION);
+        if (buff != null) {
+            localmaxhp_ = (int) (localmaxhp_ + (buff.doubleValue() / 100.0) * localmaxhp_);
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.MAXMP);
+        if (buff != null) {
+            localmaxmp_ = (int) (localmaxmp_ + (buff.doubleValue() / 100.0) * localmaxmp_);
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.MP_BUFF);
+        if (buff != null) {
+            localmaxmp_ = (int) (localmaxmp_ + (buff.doubleValue() / 100.0) * localmaxmp_);
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.ENHANCED_MAXHP);
+        if (buff != null) {
+            localmaxhp_ += buff.intValue();
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.ENHANCED_MAXMP);
+        if (buff != null) {
+            localmaxmp_ += buff.intValue();
+        }
+        applyJobMasterySkills(chra);
+        applyBlessOfFairy(chra);
+        applyRateAndAttackBuffs(chra);
+        buff = chra.getBuffedValue(MapleBuffStat.SPEED);
+        if (buff != null) {
+            speed += buff.intValue();
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.JUMP);
+        if (buff != null) {
+            jump += buff.intValue();
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.DASH_SPEED);
+        if (buff != null) {
+            speed += buff.intValue();
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.DASH_JUMP);
+        if (buff != null) {
+            jump += buff.intValue();
+        }
+        applyDamageRateBuffs(chra);
+        buff = chra.getBuffedSkill_X(MapleBuffStat.THORNS);
+        if (buff != null) {
+            added_sharpeye_rate += buff.intValue();
+        }
+        buff = chra.getBuffedSkill_Y(MapleBuffStat.THORNS);
+        if (buff != null) {
+            added_sharpeye_dmg += buff.intValue() - 100;
+        }
+        buff = chra.getBuffedSkill_X(MapleBuffStat.SHARP_EYES);
+        if (buff != null) {
+            added_sharpeye_rate += buff.intValue();
+        }
+        buff = chra.getBuffedSkill_Y(MapleBuffStat.SHARP_EYES);
+        if (buff != null) {
+            added_sharpeye_dmg += buff.intValue() - 100;
+        }
+        buff = chra.getBuffedValue(MapleBuffStat.CRITICAL_RATE_BUFF);
+        if (buff != null) {
+            added_sharpeye_rate += buff.intValue();
+        }
+        applyMovementModifiers(chra, speed, jump);
+        hands = this.localdex + this.localint_ + this.localluk;
+
+        localmaxhp = (short) Math.min(30000, Math.abs(Math.max(-30000, localmaxhp_)));
+        localmaxmp = (short) Math.min(30000, Math.abs(Math.max(-30000, localmaxmp_)));
+
+        CalcPassive_SharpEye(chra, added_sharpeye_rate, added_sharpeye_dmg);
+        CalcPassive_Mastery(chra);
+        if (first_login) {
+            chra.silentEnforceMaxHpMp();
+        } else {
+            chra.enforceMaxHpMp();
+        }
+
+        localmaxbasedamage = calculateMaxBaseDamage(watk);
+        if (oldmaxhp != 0 && oldmaxhp != localmaxhp) {
+            chra.updatePartyMemberHP();
+        }
+        lock.lock();
+        try {
+            isRecalc = false;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void resetDamageAndRateFields() {
+        dam_r = 0.0;
+        bossdam_r = 0.0;
+        expBuff = 100.0;
+        cashBuff = 100.0;
+        dropBuff = 100.0;
+        mesoBuff = 100.0;
+        recoverHP = 0;
+        recoverMP = 0;
+        mpconReduce = 0;
+        incMesoProp = 0;
+        incRewardProp = 0;
+        DAMreflect = 0;
+        DAMreflect_rate = 0;
+        hpRecover = 0;
+        hpRecoverProp = 0;
+        mpRecover = 0;
+        mpRecoverProp = 0;
+        mpRestore = 0;
+        equippedWelcomeBackRing = false;
+        equippedFairy = false;
+        hasMeso = false;
+        hasItem = false;
+        hasPartyBonus = false;
+        hasVac = false;
+        hasClone = false;
+    }
+
+    private void resetEquipAccumulators() {
+        equipmentBonusExp = 0;
+        RecoveryUP = 0;
+        dropMod = 1;
+        expMod = 1;
+        cashMod = 1;
+        levelBonus = 0;
+        incAllskill = 0;
+        durabilityHandling.clear();
+        equipLevelHandling.clear();
+        setHandling.clear();
+        element_fire = 100;
+        element_ice = 100;
+        element_light = 100;
+        element_psn = 100;
+        def = 100;
+    }
+
+    private void applyMagicWeaponElements(final IEquip equip) {
+        if (equip.getPosition() == -11) {
+            if (GameConstants.isMagicWeapon(equip.getItemId())) {
+                final Map<String, Integer> eqstat = MapleItemInformationProvider.getInstance().getEquipStats(equip.getItemId());
+
+                element_fire = eqstat.get("incRMAF");
+                element_ice = eqstat.get("incRMAI");
+                element_light = eqstat.get("incRMAL");
+                element_psn = eqstat.get("incRMAS");
+                def = eqstat.get("elemDefault");
+            }
+        }
+    }
+
+    private void recordSetItemCount(final MapleItemInformationProvider ii, final IEquip equip) {
+        int set = ii.getSetItemID(equip.getItemId());
+        if (set > 0) {
+            int value = 1;
+            if (setHandling.get(set) != null) {
+                value += setHandling.get(set);
+            }
+            setHandling.put(set, value); //id of Set, number of items to go with the set
+        }
+    }
+
+    private void applyCashItemRateBonuses(final MapleCharacter chra) {
         // Server local time, as before: the time-of-day EXP coupons below are
         // sold against the wall clock the player sees, not UTC.
         int hour = LocalTime.now(ZoneId.systemDefault()).getHour();
@@ -514,6 +639,9 @@ public class PlayerStats {
                 levelBonus = 5;
             }
         }
+    }
+
+    private void applyEtcItemFlags(final MapleCharacter chra) {
         for (IItem item : chra.getInventory(MapleInventoryType.ETC)) { //omfg;
             switch (item.getItemId()) {
                 case 4030003:
@@ -527,21 +655,9 @@ public class PlayerStats {
                     break;
             }
         }
-        magic += chra.getSkillLevel(SkillFactory.getSkill(22000000));
-        //dam_r += (chra.getJob() >= 430 && chra.getJob() <= 434 ? 70 : 0); //leniency on upper stab
-        this.localstr = (int) (this.localstr + (percent_str * localstr) / 100f); // 百分比加成：浮點算完後截斷取整，與原本 += 的隱含截斷完全相同
-        this.localdex = (int) (this.localdex + (percent_dex * localdex) / 100f);
-        final int before_ = localint_;
-        this.localint_ = (int) (this.localint_ + (percent_int * localint_) / 100f);
-        this.magic += localint_ - before_;
-        this.localluk = (int) (this.localluk + (percent_luk * localluk) / 100f);
-        this.accuracy = (int) (this.accuracy + (percent_acc * accuracy) / 100f);
-        this.watk = (int) (this.watk + (percent_atk * watk) / 100f);
-        this.magic = (int) (this.magic + (percent_matk * magic) / 100f); //or should this go before
-        localmaxhp_ = (int) (localmaxhp_ + (percent_hp * localmaxhp_) / 100f);
-        localmaxmp_ = (int) (localmaxmp_ + (percent_mp * localmaxmp_) / 100f);
-        magic = Math.min(magic, 1999); //buffs can make it higher
+    }
 
+    private void applyBaseStatBuffs(final MapleCharacter chra) {
         Integer buff = chra.getBuffedValue(MapleBuffStat.MAPLE_WARRIOR);
         if (buff != null) {
             final double d = buff.doubleValue() / 100.0;
@@ -563,30 +679,9 @@ public class PlayerStats {
         if (buff != null) {
             watk += buff.intValue() / 10;
         }
-        buff = chra.getBuffedValue(MapleBuffStat.MAXHP);
-        if (buff != null) {
-            localmaxhp_ = (int) (localmaxhp_ + (buff.doubleValue() / 100.0) * localmaxhp_);
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.CONVERSION);
-        if (buff != null) {
-            localmaxhp_ = (int) (localmaxhp_ + (buff.doubleValue() / 100.0) * localmaxhp_);
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.MAXMP);
-        if (buff != null) {
-            localmaxmp_ = (int) (localmaxmp_ + (buff.doubleValue() / 100.0) * localmaxmp_);
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.MP_BUFF);
-        if (buff != null) {
-            localmaxmp_ = (int) (localmaxmp_ + (buff.doubleValue() / 100.0) * localmaxmp_);
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.ENHANCED_MAXHP);
-        if (buff != null) {
-            localmaxhp_ += buff.intValue();
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.ENHANCED_MAXMP);
-        if (buff != null) {
-            localmaxmp_ += buff.intValue();
-        }
+    }
+
+    private void applyJobMasterySkills(final MapleCharacter chra) {
         switch (chra.getJob()) {
             case 322: { // Crossbowman
                 final ISkill expert = SkillFactory.getSkill(3220004);
@@ -655,6 +750,9 @@ public class PlayerStats {
                 break;
             }
         }
+    }
+
+    private void applyBlessOfFairy(final MapleCharacter chra) {
         final ISkill blessoffairy = SkillFactory.getSkill(GameConstants.getBOF_ForJob(chra.getJob()));
         final int boflevel = chra.getSkillLevel(blessoffairy);
         if (boflevel > 0) {
@@ -662,7 +760,10 @@ public class PlayerStats {
             magic += blessoffairy.getEffect(boflevel).getY();
             accuracy += blessoffairy.getEffect(boflevel).getX();
         }
-        buff = chra.getBuffedValue(MapleBuffStat.EXPRATE);
+    }
+
+    private void applyRateAndAttackBuffs(final MapleCharacter chra) {
+        Integer buff = chra.getBuffedValue(MapleBuffStat.EXPRATE);
         if (buff != null) {
             expBuff *= buff.doubleValue() / 100.0;
         }
@@ -698,23 +799,10 @@ public class PlayerStats {
         if (buff != null) {
             magic += buff.intValue();
         }
-        buff = chra.getBuffedValue(MapleBuffStat.SPEED);
-        if (buff != null) {
-            speed += buff.intValue();
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.JUMP);
-        if (buff != null) {
-            jump += buff.intValue();
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.DASH_SPEED);
-        if (buff != null) {
-            speed += buff.intValue();
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.DASH_JUMP);
-        if (buff != null) {
-            jump += buff.intValue();
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.DAMAGE_BUFF);
+    }
+
+    private void applyDamageRateBuffs(final MapleCharacter chra) {
+        Integer buff = chra.getBuffedValue(MapleBuffStat.DAMAGE_BUFF);
         if (buff != null) {
             dam_r += buff.doubleValue();
             bossdam_r += buff.doubleValue();
@@ -757,26 +845,9 @@ public class PlayerStats {
             dam_r *= eff.getDamage() / 100.0;
             bossdam_r *= eff.getDamage() / 100.0;
         }
-        buff = chra.getBuffedSkill_X(MapleBuffStat.THORNS);
-        if (buff != null) {
-            added_sharpeye_rate += buff.intValue();
-        }
-        buff = chra.getBuffedSkill_Y(MapleBuffStat.THORNS);
-        if (buff != null) {
-            added_sharpeye_dmg += buff.intValue() - 100;
-        }
-        buff = chra.getBuffedSkill_X(MapleBuffStat.SHARP_EYES);
-        if (buff != null) {
-            added_sharpeye_rate += buff.intValue();
-        }
-        buff = chra.getBuffedSkill_Y(MapleBuffStat.SHARP_EYES);
-        if (buff != null) {
-            added_sharpeye_dmg += buff.intValue() - 100;
-        }
-        buff = chra.getBuffedValue(MapleBuffStat.CRITICAL_RATE_BUFF);
-        if (buff != null) {
-            added_sharpeye_rate += buff.intValue();
-        }
+    }
+
+    private void applyMovementModifiers(final MapleCharacter chra, int speed, int jump) {
         if (speed > 140) {
             speed = 140;
         }
@@ -804,29 +875,6 @@ public class PlayerStats {
                     // built on the anomaly path and never on the common one.
                     LOG.log(System.Logger.Level.WARNING, "Unhandeled monster riding level, Speedmod = " + speedMod + "");
             }
-        }
-        hands = this.localdex + this.localint_ + this.localluk;
-
-        localmaxhp = (short) Math.min(30000, Math.abs(Math.max(-30000, localmaxhp_)));
-        localmaxmp = (short) Math.min(30000, Math.abs(Math.max(-30000, localmaxmp_)));
-
-        CalcPassive_SharpEye(chra, added_sharpeye_rate, added_sharpeye_dmg);
-        CalcPassive_Mastery(chra);
-        if (first_login) {
-            chra.silentEnforceMaxHpMp();
-        } else {
-            chra.enforceMaxHpMp();
-        }
-
-        localmaxbasedamage = calculateMaxBaseDamage(watk);
-        if (oldmaxhp != 0 && oldmaxhp != localmaxhp) {
-            chra.updatePartyMemberHP();
-        }
-        lock.lock();
-        try {
-            isRecalc = false;
-        } finally {
-            lock.unlock();
         }
     }
 

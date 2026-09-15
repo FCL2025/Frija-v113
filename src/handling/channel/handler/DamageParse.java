@@ -58,84 +58,15 @@ public class DamageParse {
     private final static int[] charges = {1211005, 1211006};
 
     public static void applyAttack(final AttackInfo attack, final ISkill theSkill, final MapleCharacter player, int attackCount, final double maxDamagePerMonster, final MapleStatEffect effect, final AttackType attack_type) {
-        if (!player.isAlive()) {
-            player.getCheatTracker().registerOffense(CheatingOffense.ATTACKING_WHILE_DEAD);
+        if (!checkAttackPreconditions(attack, player, attackCount, effect)) {
             return;
-        }
-        if (attack.real) {
-            player.getCheatTracker().checkAttack(attack.skill, attack.lastAttackTickCount);
-        }
-        if (attack.skill != 0) {
-            if (effect == null) {
-                player.getClient().send(CharacterPacket.enableActions());
-                return;
-            }
-            if (GameConstants.isMulungSkill(attack.skill)) {
-                if (player.getMapId() / 10000 != 92502) {
-                    return;
-                } else {
-                    player.mulung_EnergyModify(false);
-                }
-            }
-            if (GameConstants.isPyramidSkill(attack.skill)) {
-                if (player.getMapId() / 1000000 != 926) {
-                    return;
-                } else {
-                    if (player.getPyramidSubway() == null || !player.getPyramidSubway().onSkillUse(player)) {
-                        return;
-                    }
-                }
-            }
-            if (attack.targets > effect.getMobCount()) { // Must be done here, since NPE with normal atk
-                player.getCheatTracker().registerOffense(CheatingOffense.MISMATCHING_BULLETCOUNT);
-                return;
-            }
-        }
-        if (attack.hits > attackCount) {
-            if (attack.skill != 4211006) {
-                player.getCheatTracker().registerOffense(CheatingOffense.MISMATCHING_BULLETCOUNT);
-                return;
-            }
-        }
-        if (attack.hits > 0 && attack.targets > 0) {
-            // Don't ever do this. it's too expensive.
-            if (!player.getStat().checkEquipDurabilitys(player, -1)) { //i guess this is how it works ?
-                player.dropMessage(5, "An item has run out of durability but has no inventory room to go to.");
-                return;
-            } //lol
         }
         int totDamage = 0;
         final MapleMap map = player.getMap();
 
         if (attack.skill == 4211006) { // meso explosion
-            for (AttackPair oned : attack.allDamage) {
-                if (oned.attack != null) {
-                    continue;
-                }
-                final MapleMapObject mapobject = map.getMapObject(oned.objectid, MapleMapObjectType.ITEM);
-
-                if (mapobject != null) {
-                    final MapleMapItem mapitem = (MapleMapItem) mapobject;
-                    mapitem.getLock().lock();
-                    try {
-                        if (mapitem.getMeso() > 0) {
-                            if (mapitem.isPickedUp()) {
-                                return;
-                            }
-                            map.removeMapObject(mapitem);
-                            map.broadcastMessage(MapPacket.explodeDrop(mapitem.getObjectId()));
-                            mapitem.setPickedUp(true);
-                        } else {
-                            player.getCheatTracker().registerOffense(CheatingOffense.ETC_EXPLOSION);
-                            return;
-                        }
-                    } finally {
-                        mapitem.getLock().unlock();
-                    }
-                } else {
-                    player.getCheatTracker().registerOffense(CheatingOffense.EXPLODING_NONEXISTANT);
-                    return; // etc explosion, exploding nonexistant things, etc.
-                }
+            if (!explodeMesoDrops(attack, player, map)) {
+                return;
             }
         }
         int fixeddmg, totDamageToOneMonster = 0;
@@ -160,15 +91,7 @@ public class DamageParse {
             }
             attackCount /= 2; // hack xD
         }
-        //combo reset 
-        switch(attack.skill){
-            case 21100004:
-            case 21110004:
-            case 21120006:
-                player.setLastCombo(System.currentTimeMillis());
-                player.setCombo((short)0);
-                break;
-        }
+        resetAranComboOnSkill(player, attack);
 
         byte overallAttackCount; // Tracking of Shadow Partner additional damage.
         double maxDamagePerHit = 0;
@@ -251,26 +174,8 @@ public class DamageParse {
                 if (player.getPosition().distanceSq(monster.getPosition()) > 700000.0) { // 815^2 <-- the most ranged attack in the game is Flame Wheel at 815 range
                     player.getCheatTracker().registerOffense(CheatingOffense.ATTACK_FARAWAY_MONSTER); // , Double.toString(Math.sqrt(distance))
                 }
-                // pickpocket
-                if (player.getBuffedValue(MapleBuffStat.PICKPOCKET) != null) {
-                    switch (attack.skill) {
-                        case 0:
-                        case 4001334:
-                        case 4201005:
-                        case 4211002:
-                        case 4211004:
-                        case 4221003:
-                        case 4221007:
-                            handlePickPocket(player, monster, oned);
-                            break;
-                    }
-                }
-                final MapleStatEffect ds = player.getStatForBuff(MapleBuffStat.DARKSIGHT);
-                if (ds != null && !player.isGM()) {
-                    if (ds.getSourceId() != 4330001 || !ds.makeChanceResult()) {
-                        player.cancelEffectFromBuffStat(MapleBuffStat.DARKSIGHT);
-                    }
-                }
+                applyPickPocketIfBuffed(player, monster, oned, attack);
+                cancelDarksightAfterAttack(player);
 
                 if (totDamageToOneMonster > 0) {
                     if (attack.skill != 1221011) {
@@ -278,22 +183,7 @@ public class DamageParse {
                     } else {
                         monster.damage(player, (monster.getStats().isBoss() ? 199999 : (monster.getHp() - 1)), true, attack.skill);
                     }
-                    if (monster.isBuffed(MonsterStatus.WEAPON_DAMAGE_REFLECT)) { //test
-                        player.addHP(-(7000 + Randomizer.nextInt(8000))); //this is what it seems to be?
-                    }
-                    if (stats.hpRecoverProp > 0) {
-                        if (Randomizer.nextInt(100) <= stats.hpRecoverProp) {//i think its out of 100, anyway
-                            player.healHP(stats.hpRecover);
-                        }
-                    }
-                    if (stats.mpRecoverProp > 0) {
-                        if (Randomizer.nextInt(100) <= stats.mpRecoverProp) {//i think its out of 100, anyway
-                            player.healMP(stats.mpRecover);
-                        }
-                    }
-                    if (player.getBuffedValue(MapleBuffStat.COMBO_DRAIN) != null) {
-                        stats.setHp((stats.getHp() + ((int) Math.min(monster.getMobMaxHp(), Math.min(((int) ((double) totDamage * (double) player.getStatForBuff(MapleBuffStat.COMBO_DRAIN).getX() / 100.0)), stats.getMaxHp() / 2)))), true);
-                    }
+                    applyPostDamageRecovery(player, monster, stats, totDamage);
                     // effects
                     switch (attack.skill) {
                         case 4101005: //drain
@@ -329,50 +219,7 @@ public class DamageParse {
                         case 4121007: // Triple Throw
                         case 4111005: // Avenger
                         case 4001344: { // Lucky Seven
-                            // Venom
-                            final ISkill skill = SkillFactory.getSkill(4120005);
-                            final ISkill skill2 = SkillFactory.getSkill(4220005);
-                            final ISkill skill3 = SkillFactory.getSkill(4340001);
-                            if (player.getSkillLevel(skill) > 0) {
-                                final MapleStatEffect venomEffect = skill.getEffect(player.getSkillLevel(skill));
-                                MonsterStatusEffect monsterStatusEffect;
-
-                                for (int i = 0; i < attackCount; i++) {
-                                    if (venomEffect.makeChanceResult()) {
-                                        if (monster.getVenomMulti() < 3) {
-                                            monster.setVenomMulti((byte) (monster.getVenomMulti() + 1));
-                                            monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.POISON, 1, 4120005, null, false);
-                                            monster.applyStatus(player, monsterStatusEffect, false, venomEffect.getDuration() + d, true);
-                                        }
-                                    }
-                                }
-                            } else if (player.getSkillLevel(skill2) > 0) {
-                                final MapleStatEffect venomEffect = skill2.getEffect(player.getSkillLevel(skill2));
-                                MonsterStatusEffect monsterStatusEffect;
-
-                                for (int i = 0; i < attackCount; i++) {
-                                    if (venomEffect.makeChanceResult()) {
-                                        if (monster.getVenomMulti() < 3) {
-                                            monster.setVenomMulti((byte) (monster.getVenomMulti() + 1));
-                                            monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.POISON, 1, 4220005, null, false);
-                                            monster.applyStatus(player, monsterStatusEffect, false, venomEffect.getDuration() + d, true);
-                                        }
-                                    }
-                                }
-                            } else if (player.getSkillLevel(skill3) > 0) {
-                                final MapleStatEffect venomEffect = skill3.getEffect(player.getSkillLevel(skill3));
-                                MonsterStatusEffect monsterStatusEffect;
-
-                                for (int i = 0; i < attackCount; i++) {
-                                    if (venomEffect.makeChanceResult()) {
-                                        if (monster.getVenomMulti() < 3) {
-                                            monster.setVenomMulti((byte) (monster.getVenomMulti() + 1));
-                                            monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.POISON, 1, 4340001, null, false);
-                                            monster.applyStatus(player, monsterStatusEffect, false, venomEffect.getDuration() + d, true);
-                                        }
-                                    }
-                                }
-                            }
+                            applyVenomStacks(player, monster, attackCount, d);
                             break;
                         }
                         case 4201004: { //steal
@@ -394,62 +241,14 @@ public class DamageParse {
                         case 21120006: // Tempest
                         case 21120009: // (hidden) Overswing - Double Attack
                         case 21120010: { // (hidden) Overswing - Triple Attack
-                            if (player.getBuffedValue(MapleBuffStat.WK_CHARGE) != null && !monster.getStats().isBoss()) {
-                                final MapleStatEffect eff = player.getStatForBuff(MapleBuffStat.WK_CHARGE);
-                                if (eff != null && eff.getSourceId() == 21111005) {
-                                    monster.applyStatus(player, new MonsterStatusEffect(MonsterStatus.SPEED, eff.getX(), eff.getSourceId(), null, false), false, eff.getY() * 1000 + d, false);
-                                }
-                            }
-                            if (player.getBuffedValue(MapleBuffStat.BODY_PRESSURE) != null && !monster.getStats().isBoss()) {
-                                final MapleStatEffect eff = player.getStatForBuff(MapleBuffStat.BODY_PRESSURE);
-
-                                if (eff != null && eff.makeChanceResult() && !monster.isBuffed(MonsterStatus.NEUTRALISE)) {
-                                    monster.applyStatus(player, new MonsterStatusEffect(MonsterStatus.NEUTRALISE, 1, eff.getSourceId(), null, false), false, eff.getX() * 1000 + d, false);
-                                }
-                            }
+                            applyAranComboMonsterStatus(player, monster, d);
                             break;
                         }
                         default: //passives attack bonuses
                             break;
                     }
                     if (totDamageToOneMonster > 0) {
-                        IItem weapon_ = player.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11);
-                        if (weapon_ != null) {
-                            MonsterStatus stat = GameConstants.getStatFromWeapon(weapon_.getItemId()); //10001 = acc/darkness. 10005 = speed/slow.
-                            if (stat != null && Randomizer.nextInt(100) < GameConstants.getStatChance()) {
-                                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(stat, GameConstants.getXForStat(stat), GameConstants.getSkillForStat(stat), null, false);
-                                monster.applyStatus(player, monsterStatusEffect, false, 10000 + d , false, false);
-                            }
-                        }
-
-                        if (player.getBuffedValue(MapleBuffStat.BLIND) != null) {
-                            final MapleStatEffect eff = player.getStatForBuff(MapleBuffStat.BLIND);
-
-                            if (eff.makeChanceResult()) {
-                                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.ACC, eff.getX(), eff.getSourceId(), null, false);
-                                monster.applyStatus(player, monsterStatusEffect, false, eff.getY() * 1000 + d , false);
-                            }
-
-                        }
-                        if (player.getBuffedValue(MapleBuffStat.HAMSTRING) != null) {
-                            final ISkill skill = SkillFactory.getSkill(3121007);
-                            final MapleStatEffect eff = skill.getEffect(player.getSkillLevel(skill));
-
-                            if (eff.makeChanceResult()) {
-                                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.SPEED, eff.getX(), 3121007, null, false);
-                                monster.applyStatus(player, monsterStatusEffect, false, eff.getY() * 1000 + d , false);
-                            }
-                        }
-                        if (player.getJob() == 121) { // WHITEKNIGHT
-                            for (int charge : charges) {
-                                final ISkill skill = SkillFactory.getSkill(charge);
-                                if (player.isBuffFrom(MapleBuffStat.WK_CHARGE, skill)) {
-                                    final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.FREEZE, 1, charge, null, false);
-                                    monster.applyStatus(player, monsterStatusEffect, false, skill.getEffect(player.getSkillLevel(skill)).getY() * 2000  + d , false);
-                                    break;
-                                }
-                            }
-                        }
+                        applyWeaponAndBuffMonsterStatus(player, monster, d);
                     }
                     if (effect != null && effect.getMonsterStati().size() > 0) {
                         if (effect.makeChanceResult()) {
@@ -474,6 +273,249 @@ public class DamageParse {
             tracker.setAttacksWithoutHit(true);
             if (tracker.getAttacksWithoutHit() > 1000) {
                 tracker.registerOffense(CheatingOffense.ATTACK_WITHOUT_GETTING_HIT, Integer.toString(tracker.getAttacksWithoutHit()));
+            }
+        }
+    }
+
+    private static boolean checkAttackPreconditions(final AttackInfo attack, final MapleCharacter player, final int attackCount, final MapleStatEffect effect) {
+        if (!player.isAlive()) {
+            player.getCheatTracker().registerOffense(CheatingOffense.ATTACKING_WHILE_DEAD);
+            return false;
+        }
+        if (attack.real) {
+            player.getCheatTracker().checkAttack(attack.skill, attack.lastAttackTickCount);
+        }
+        if (attack.skill != 0) {
+            if (effect == null) {
+                player.getClient().send(CharacterPacket.enableActions());
+                return false;
+            }
+            if (GameConstants.isMulungSkill(attack.skill)) {
+                if (player.getMapId() / 10000 != 92502) {
+                    return false;
+                } else {
+                    player.mulung_EnergyModify(false);
+                }
+            }
+            if (GameConstants.isPyramidSkill(attack.skill)) {
+                if (player.getMapId() / 1000000 != 926) {
+                    return false;
+                } else {
+                    if (player.getPyramidSubway() == null || !player.getPyramidSubway().onSkillUse(player)) {
+                        return false;
+                    }
+                }
+            }
+            if (attack.targets > effect.getMobCount()) { // Must be done here, since NPE with normal atk
+                player.getCheatTracker().registerOffense(CheatingOffense.MISMATCHING_BULLETCOUNT);
+                return false;
+            }
+        }
+        if (attack.hits > attackCount) {
+            if (attack.skill != 4211006) {
+                player.getCheatTracker().registerOffense(CheatingOffense.MISMATCHING_BULLETCOUNT);
+                return false;
+            }
+        }
+        if (attack.hits > 0 && attack.targets > 0) {
+            // Don't ever do this. it's too expensive.
+            if (!player.getStat().checkEquipDurabilitys(player, -1)) { //i guess this is how it works ?
+                player.dropMessage(5, "An item has run out of durability but has no inventory room to go to.");
+                return false;
+            } //lol
+        }
+        return true;
+    }
+
+    private static boolean explodeMesoDrops(final AttackInfo attack, final MapleCharacter player, final MapleMap map) {
+        for (AttackPair oned : attack.allDamage) {
+            if (oned.attack != null) {
+                continue;
+            }
+            final MapleMapObject mapobject = map.getMapObject(oned.objectid, MapleMapObjectType.ITEM);
+
+            if (mapobject != null) {
+                final MapleMapItem mapitem = (MapleMapItem) mapobject;
+                mapitem.getLock().lock();
+                try {
+                    if (mapitem.getMeso() > 0) {
+                        if (mapitem.isPickedUp()) {
+                            return false;
+                        }
+                        map.removeMapObject(mapitem);
+                        map.broadcastMessage(MapPacket.explodeDrop(mapitem.getObjectId()));
+                        mapitem.setPickedUp(true);
+                    } else {
+                        player.getCheatTracker().registerOffense(CheatingOffense.ETC_EXPLOSION);
+                        return false;
+                    }
+                } finally {
+                    mapitem.getLock().unlock();
+                }
+            } else {
+                player.getCheatTracker().registerOffense(CheatingOffense.EXPLODING_NONEXISTANT);
+                return false; // etc explosion, exploding nonexistant things, etc.
+            }
+        }
+        return true;
+    }
+
+    private static void resetAranComboOnSkill(final MapleCharacter player, final AttackInfo attack) {
+        //combo reset 
+        switch(attack.skill){
+            case 21100004:
+            case 21110004:
+            case 21120006:
+                player.setLastCombo(System.currentTimeMillis());
+                player.setCombo((short)0);
+                break;
+        }
+    }
+
+    private static void applyPickPocketIfBuffed(final MapleCharacter player, final MapleMonster monster, final AttackPair oned, final AttackInfo attack) {
+        // pickpocket
+        if (player.getBuffedValue(MapleBuffStat.PICKPOCKET) != null) {
+            switch (attack.skill) {
+                case 0:
+                case 4001334:
+                case 4201005:
+                case 4211002:
+                case 4211004:
+                case 4221003:
+                case 4221007:
+                    handlePickPocket(player, monster, oned);
+                    break;
+            }
+        }
+    }
+
+    private static void cancelDarksightAfterAttack(final MapleCharacter player) {
+        final MapleStatEffect ds = player.getStatForBuff(MapleBuffStat.DARKSIGHT);
+        if (ds != null && !player.isGM()) {
+            if (ds.getSourceId() != 4330001 || !ds.makeChanceResult()) {
+                player.cancelEffectFromBuffStat(MapleBuffStat.DARKSIGHT);
+            }
+        }
+    }
+
+    private static void applyPostDamageRecovery(final MapleCharacter player, final MapleMonster monster, final PlayerStats stats, final int totDamage) {
+        if (monster.isBuffed(MonsterStatus.WEAPON_DAMAGE_REFLECT)) { //test
+            player.addHP(-(7000 + Randomizer.nextInt(8000))); //this is what it seems to be?
+        }
+        if (stats.hpRecoverProp > 0) {
+            if (Randomizer.nextInt(100) <= stats.hpRecoverProp) {//i think its out of 100, anyway
+                player.healHP(stats.hpRecover);
+            }
+        }
+        if (stats.mpRecoverProp > 0) {
+            if (Randomizer.nextInt(100) <= stats.mpRecoverProp) {//i think its out of 100, anyway
+                player.healMP(stats.mpRecover);
+            }
+        }
+        if (player.getBuffedValue(MapleBuffStat.COMBO_DRAIN) != null) {
+            stats.setHp((stats.getHp() + ((int) Math.min(monster.getMobMaxHp(), Math.min(((int) ((double) totDamage * (double) player.getStatForBuff(MapleBuffStat.COMBO_DRAIN).getX() / 100.0)), stats.getMaxHp() / 2)))), true);
+        }
+    }
+
+    private static void applyVenomStacks(final MapleCharacter player, final MapleMonster monster, final int attackCount, final int d) {
+        // Venom
+        final ISkill skill = SkillFactory.getSkill(4120005);
+        final ISkill skill2 = SkillFactory.getSkill(4220005);
+        final ISkill skill3 = SkillFactory.getSkill(4340001);
+        if (player.getSkillLevel(skill) > 0) {
+            final MapleStatEffect venomEffect = skill.getEffect(player.getSkillLevel(skill));
+            MonsterStatusEffect monsterStatusEffect;
+
+            for (int i = 0; i < attackCount; i++) {
+                if (venomEffect.makeChanceResult()) {
+                    if (monster.getVenomMulti() < 3) {
+                        monster.setVenomMulti((byte) (monster.getVenomMulti() + 1));
+                        monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.POISON, 1, 4120005, null, false);
+                        monster.applyStatus(player, monsterStatusEffect, false, venomEffect.getDuration() + d, true);
+                    }
+                }
+            }
+        } else if (player.getSkillLevel(skill2) > 0) {
+            final MapleStatEffect venomEffect = skill2.getEffect(player.getSkillLevel(skill2));
+            MonsterStatusEffect monsterStatusEffect;
+
+            for (int i = 0; i < attackCount; i++) {
+                if (venomEffect.makeChanceResult()) {
+                    if (monster.getVenomMulti() < 3) {
+                        monster.setVenomMulti((byte) (monster.getVenomMulti() + 1));
+                        monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.POISON, 1, 4220005, null, false);
+                        monster.applyStatus(player, monsterStatusEffect, false, venomEffect.getDuration() + d, true);
+                    }
+                }
+            }
+        } else if (player.getSkillLevel(skill3) > 0) {
+            final MapleStatEffect venomEffect = skill3.getEffect(player.getSkillLevel(skill3));
+            MonsterStatusEffect monsterStatusEffect;
+
+            for (int i = 0; i < attackCount; i++) {
+                if (venomEffect.makeChanceResult()) {
+                    if (monster.getVenomMulti() < 3) {
+                        monster.setVenomMulti((byte) (monster.getVenomMulti() + 1));
+                        monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.POISON, 1, 4340001, null, false);
+                        monster.applyStatus(player, monsterStatusEffect, false, venomEffect.getDuration() + d, true);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void applyAranComboMonsterStatus(final MapleCharacter player, final MapleMonster monster, final int d) {
+        if (player.getBuffedValue(MapleBuffStat.WK_CHARGE) != null && !monster.getStats().isBoss()) {
+            final MapleStatEffect eff = player.getStatForBuff(MapleBuffStat.WK_CHARGE);
+            if (eff != null && eff.getSourceId() == 21111005) {
+                monster.applyStatus(player, new MonsterStatusEffect(MonsterStatus.SPEED, eff.getX(), eff.getSourceId(), null, false), false, eff.getY() * 1000 + d, false);
+            }
+        }
+        if (player.getBuffedValue(MapleBuffStat.BODY_PRESSURE) != null && !monster.getStats().isBoss()) {
+            final MapleStatEffect eff = player.getStatForBuff(MapleBuffStat.BODY_PRESSURE);
+
+            if (eff != null && eff.makeChanceResult() && !monster.isBuffed(MonsterStatus.NEUTRALISE)) {
+                monster.applyStatus(player, new MonsterStatusEffect(MonsterStatus.NEUTRALISE, 1, eff.getSourceId(), null, false), false, eff.getX() * 1000 + d, false);
+            }
+        }
+    }
+
+    private static void applyWeaponAndBuffMonsterStatus(final MapleCharacter player, final MapleMonster monster, final int d) {
+        IItem weapon_ = player.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11);
+        if (weapon_ != null) {
+            MonsterStatus stat = GameConstants.getStatFromWeapon(weapon_.getItemId()); //10001 = acc/darkness. 10005 = speed/slow.
+            if (stat != null && Randomizer.nextInt(100) < GameConstants.getStatChance()) {
+                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(stat, GameConstants.getXForStat(stat), GameConstants.getSkillForStat(stat), null, false);
+                monster.applyStatus(player, monsterStatusEffect, false, 10000 + d , false, false);
+            }
+        }
+
+        if (player.getBuffedValue(MapleBuffStat.BLIND) != null) {
+            final MapleStatEffect eff = player.getStatForBuff(MapleBuffStat.BLIND);
+
+            if (eff.makeChanceResult()) {
+                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.ACC, eff.getX(), eff.getSourceId(), null, false);
+                monster.applyStatus(player, monsterStatusEffect, false, eff.getY() * 1000 + d , false);
+            }
+
+        }
+        if (player.getBuffedValue(MapleBuffStat.HAMSTRING) != null) {
+            final ISkill skill = SkillFactory.getSkill(3121007);
+            final MapleStatEffect eff = skill.getEffect(player.getSkillLevel(skill));
+
+            if (eff.makeChanceResult()) {
+                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.SPEED, eff.getX(), 3121007, null, false);
+                monster.applyStatus(player, monsterStatusEffect, false, eff.getY() * 1000 + d , false);
+            }
+        }
+        if (player.getJob() == 121) { // WHITEKNIGHT
+            for (int charge : charges) {
+                final ISkill skill = SkillFactory.getSkill(charge);
+                if (player.isBuffFrom(MapleBuffStat.WK_CHARGE, skill)) {
+                    final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(MonsterStatus.FREEZE, 1, charge, null, false);
+                    monster.applyStatus(player, monsterStatusEffect, false, skill.getEffect(player.getSkillLevel(skill)).getY() * 2000  + d , false);
+                    break;
+                }
             }
         }
     }

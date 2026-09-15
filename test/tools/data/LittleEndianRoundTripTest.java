@@ -2,6 +2,7 @@ package tools.data;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Point;
@@ -13,8 +14,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import tools.Encodings;
+import tools.HexTool;
 import tools.data.input.ByteArrayByteStream;
 import tools.data.input.GenericLittleEndianAccessor;
+import tools.data.input.GenericSeekableLittleEndianAccessor;
 import tools.data.output.BAOSByteOutputStream;
 import tools.data.output.GenericLittleEndianWriter;
 
@@ -40,8 +43,26 @@ class LittleEndianRoundTripTest {
         return writer;
     }
 
+    /**
+     * A writer over a sink of a chosen starting size, for the growth tests.
+     */
+    private GenericLittleEndianWriter writer(final int initialCapacity) {
+        sink = new ByteArrayOutputStream(initialCapacity);
+        writer = new GenericLittleEndianWriter(new BAOSByteOutputStream(sink));
+        return writer;
+    }
+
     private GenericLittleEndianAccessor reader() {
         return new GenericLittleEndianAccessor(new ByteArrayByteStream(sink.toByteArray()));
+    }
+
+    /**
+     * The accessor a packet handler is really handed: {@code
+     * handling.MapleServerHandler.messageReceived} builds one of these per
+     * inbound packet.
+     */
+    private GenericSeekableLittleEndianAccessor seekableReader() {
+        return new GenericSeekableLittleEndianAccessor(new ByteArrayByteStream(sink.toByteArray()));
     }
 
     @Test
@@ -261,5 +282,245 @@ class LittleEndianRoundTripTest {
         r.readByte();
         assertEquals(3, r.available());
         assertTrue(r.toString().startsWith("Data: "));
+    }
+
+    @Test
+    @DisplayName("readChar is the unsigned 16-bit view of readShort")
+    void readCharRoundTrips() {
+        writer().writeShort(0xFFFE);
+        assertEquals((char) 0xFFFE, reader().readChar());
+    }
+
+    @Test
+    @DisplayName("toString(true) shows the whole packet and the unread tail")
+    void toStringShowsAllAndNow() {
+        writer().writeInt(0x04030201);
+        final GenericLittleEndianAccessor r = reader();
+        r.readShort();
+        final String dump = r.toString(true);
+        assertTrue(dump.startsWith("All: " + HexTool.toString(new byte[]{0x01, 0x02, 0x03, 0x04})), dump);
+        assertTrue(dump.contains("\nNow: "), dump);
+        assertEquals("Data: " + HexTool.toString(new byte[]{0x03, 0x04}), r.toString());
+    }
+
+    // ---------------------------------------------------------------------
+    // Growth. A packet's size is not known up front - the character list and
+    // the cash shop catalogue run to tens of kilobytes - so the sink has to
+    // grow as it is written. This is why the writer's backing store stays a
+    // ByteArrayOutputStream instead of becoming a fixed-capacity buffer.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("a packet far larger than the initial capacity round trips intact")
+    void writerGrowsPastItsInitialCapacity() {
+        final int count = 40_000; // 160 KB out of a four-byte sink
+        final GenericLittleEndianWriter w = writer(4);
+        for (int i = 0; i < count; i++) {
+            w.writeInt(i);
+        }
+        assertEquals(count * 4, sink.size());
+
+        final GenericLittleEndianAccessor r = reader();
+        for (int i = 0; i < count; i++) {
+            assertEquals(i, r.readInt(), "int " + i);
+        }
+        assertEquals(0, r.available());
+    }
+
+    @Test
+    @DisplayName("a value that straddles a resize boundary keeps its byte order")
+    void growthKeepsByteOrderAcrossAResize() {
+        // 32 is MaplePacketLittleEndianWriter's default starting size, so this
+        // long has four bytes on each side of the first resize.
+        final GenericLittleEndianWriter w = writer(32);
+        w.writeZeroBytes(28);
+        w.writeLong(0x0102030405060708L);
+        assertEquals(36, sink.size());
+
+        final GenericLittleEndianAccessor r = reader();
+        r.skip(28);
+        assertEquals(0x0102030405060708L, r.readLong());
+    }
+
+    @Test
+    @DisplayName("a long BIG5 string survives several resizes")
+    void longBig5StringRoundTrips() {
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 2000; i++) {
+            sb.append("楓之谷");
+        }
+        final String s = sb.toString();
+        assertEquals(12000, s.getBytes(Encodings.BIG5).length);
+
+        writer(8).writeMapleAsciiString(s);
+        assertEquals(2 + 12000, sink.size());
+        assertEquals(s, reader().readMapleAsciiString());
+    }
+
+    // ---------------------------------------------------------------------
+    // Seeking. GenericSeekableLittleEndianAccessor differs from its parent in
+    // exactly one way, and that difference is the reason it still exists.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("seek rewinds and the same bytes read again")
+    void seekRewinds() {
+        final GenericLittleEndianWriter w = writer();
+        w.writeInt(0x11223344);
+        w.writeInt(0x55667788);
+
+        final GenericSeekableLittleEndianAccessor r = seekableReader();
+        assertEquals(0, r.getPosition());
+        assertEquals(0x11223344, r.readInt());
+        assertEquals(4, r.getPosition());
+
+        // MobHandler's pattern: back up by the bytes just consumed.
+        r.seek(r.getPosition() - 4);
+        assertEquals(0, r.getPosition());
+        assertEquals(0x11223344, r.readInt());
+        assertEquals(0x55667788, r.readInt());
+        assertEquals(8, r.getPosition());
+        assertEquals(0, r.available());
+    }
+
+    @Test
+    @DisplayName("seek to either end of the packet, and to the last byte")
+    void seekToTheBoundaries() {
+        writer().writeInt(0x11223344);
+        final GenericSeekableLittleEndianAccessor r = seekableReader();
+
+        r.seek(4);
+        assertEquals(4, r.getPosition());
+        assertEquals(0, r.available());
+
+        r.seek(0);
+        assertEquals(0, r.getPosition());
+        assertEquals(4, r.available());
+        assertEquals(0x11223344, r.readInt());
+
+        r.seek(3);
+        assertEquals(1, r.available());
+        assertEquals((byte) 0x11, r.readByte());
+        assertEquals(0, r.available());
+    }
+
+    @Test
+    @DisplayName("the seekable accessor skips by jumping, the plain one by reading")
+    void skipDiffersBetweenTheTwoAccessors() {
+        // The one behavioural difference between the two classes: a jump does
+        // not count the bytes it passes over towards getBytesRead().
+        final GenericLittleEndianWriter w = writer();
+        w.writeInt(1);
+        w.writeInt(2);
+
+        final GenericSeekableLittleEndianAccessor seekable = seekableReader();
+        seekable.skip(4);
+        assertEquals(4, seekable.getPosition());
+        assertEquals(2, seekable.readInt());
+        assertEquals(4, seekable.getBytesRead());
+
+        final GenericLittleEndianAccessor plain = reader();
+        plain.skip(4);
+        assertEquals(2, plain.readInt());
+        assertEquals(8, plain.getBytesRead());
+    }
+
+    @Test
+    @DisplayName("reading past the end throws ArrayIndexOutOfBoundsException")
+    void readingPastTheEndThrows() {
+        // PlayerHandler and MobHandler wrap MovementParse in a catch of exactly
+        // this type to reject a truncated packet, so neither read(n) nor skip(n)
+        // may be rewritten into an unchecked bulk copy or an arithmetic jump.
+        writer().writeShort(1);
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> reader().readInt());
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> reader().read(3));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> reader().skip(3));
+        assertThrows(ArrayIndexOutOfBoundsException.class, () -> reader().readLong());
+    }
+
+    // ---------------------------------------------------------------------
+    // readLong and readDouble, bit by bit.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("every single bit of a long survives the round trip")
+    void everyBitOfALongRoundTrips() {
+        // One bit set per iteration over all 64 positions. This fails on any
+        // shift that is off by a byte, including the int-width folding readLong
+        // used to do to everything above bit 31.
+        for (int bit = 0; bit < 64; bit++) {
+            final long value = 1L << bit;
+            writer().writeLong(value);
+            assertEquals(value, reader().readLong(), "bit " + bit);
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(longs = {Long.MIN_VALUE + 1, -2L, 0x00000000FFFFFFFFL, 0x0000000100000000L,
+        0xFF00000000000000L, 0x00FF000000000000L, Long.MAX_VALUE - 1})
+    @DisplayName("readLong reproduces the boundary values around the 32-bit seam")
+    void readLongBoundaryValues(final long value) {
+        writer().writeLong(value);
+        assertEquals(value, reader().readLong());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(doubles = {-0.0d, Double.MIN_NORMAL, -Double.MAX_VALUE, Double.NaN, 1.0d / 3.0d})
+    @DisplayName("readDouble reproduces the remaining boundary values")
+    void readDoubleBoundaryValues(final double value) {
+        // JUnit compares doubles by their bits, so -0.0 does not equal 0.0 here
+        // and NaN does equal NaN - which is exactly the comparison that matters
+        // for a round trip.
+        writer().writeLong(Double.doubleToLongBits(value));
+        assertEquals(value, reader().readDouble());
+    }
+
+    // ---------------------------------------------------------------------
+    // The remaining BIG5 and fixed-width string corners.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("an empty maple string is just a zero length prefix")
+    void emptyMapleStringIsTwoZeroBytes() {
+        writer().writeMapleAsciiString("");
+        assertArrayEquals(new byte[]{0, 0}, sink.toByteArray());
+        assertEquals("", reader().readMapleAsciiString());
+    }
+
+    @Test
+    @DisplayName("readAsciiString(0) reads nothing and leaves the cursor alone")
+    void readAsciiStringOfZeroLength() {
+        writer().writeInt(7);
+        final GenericLittleEndianAccessor r = reader();
+        assertEquals("", r.readAsciiString(0));
+        assertEquals(7, r.readInt());
+    }
+
+    @Test
+    @DisplayName("writeAsciiString(s, max) truncates when the string overflows the field")
+    void fixedWidthAsciiStringTruncates() {
+        // Six ASCII bytes into a four-byte field: cut to four, nothing padded.
+        writer().writeAsciiString("abcdef", 4);
+        assertArrayEquals(new byte[]{'a', 'b', 'c', 'd'}, sink.toByteArray());
+    }
+
+    @Test
+    @DisplayName("a BIG5 name fills a fixed-width field byte for byte")
+    void fixedWidthAsciiStringPadsBig5() {
+        // 15 is the party/buddy name field. 楓之谷 is six BIG5 bytes, so nine
+        // zeroes follow - the padding is counted in bytes, not characters.
+        writer().writeAsciiString("楓之谷", 15);
+        final byte[] wire = sink.toByteArray();
+        assertEquals(15, wire.length);
+        assertArrayEquals("楓之谷".getBytes(Encodings.BIG5), java.util.Arrays.copyOfRange(wire, 0, 6));
+        assertArrayEquals(new byte[9], java.util.Arrays.copyOfRange(wire, 6, 15));
+    }
+
+    @Test
+    @DisplayName("writeAsciiString(s) writes BIG5 bytes with no length prefix")
+    void unprefixedAsciiStringIsBig5() {
+        writer().writeAsciiString("台服 v113");
+        assertArrayEquals("台服 v113".getBytes(Encodings.BIG5), sink.toByteArray());
+        assertEquals("台服 v113", reader().readAsciiString(9));
     }
 }

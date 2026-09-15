@@ -1,6 +1,6 @@
 /*
  This file is part of the OdinMS Maple Story Server
- Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
+ Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc>
  Matthias Butz <matze@odinms.de>
  Jan Christian Meyer <vimes@odinms.de>
 
@@ -28,21 +28,22 @@ import server.ServerProperties;
 import tools.HexTool;
 
 /**
- * Writes a maplestory-packet little-endian stream of bytes.
+ * Writes a maplestory-packet little-endian stream of bytes. Every outbound
+ * packet in the tree is built with one of these.
  *
  * @author Frz
  * @version 1.0
  * @since Revision 352
  */
-// final (-Xlint:this-escape): the constructor installs the byte sink through
-// the inherited, overridable setByteOutputStream. Nothing extends this writer -
-// packet builders instantiate it directly.
+// final: nothing extends this writer - the classes in tools/packet instantiate
+// it directly - and being final also keeps -Xlint:this-escape out of the
+// picture for good.
 public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWriter {
 
     private static final System.Logger LOG = System.getLogger(MaplePacketLittleEndianWriter.class.getName());
+    private static final boolean DEBUG_MODE = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
 
     private final ByteArrayOutputStream baos;
-    private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
 
     /**
      * Constructor - initializes this stream with a default size.
@@ -54,11 +55,16 @@ public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWrit
     /**
      * Constructor - initializes this stream with size <code>size</code>.
      *
-     * @param size The size of the underlying stream.
+     * @param size The initial size of the underlying stream. It grows as
+     * needed; this is a starting guess, not a limit.
      */
     public MaplePacketLittleEndianWriter(final int size) {
-        this.baos = new ByteArrayOutputStream(size);
-        setByteOutputStream(new BAOSByteOutputStream(baos));
+        this(new ByteArrayOutputStream(size));
+    }
+
+    private MaplePacketLittleEndianWriter(final ByteArrayOutputStream baos) {
+        super(baos);
+        this.baos = baos;
     }
 
     /**
@@ -67,13 +73,13 @@ public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWrit
      *
      * @return A <code>MaplePacket</code> with the bytes in this stream.
      */
-    public final MaplePacket getPacket() {
+    public MaplePacket getPacket() {
         // Every outbound packet comes through here, so the hex dump is behind
         // both of its switches: tms.Debug as before, and the logger's own level
         // - a DEBUG record is dropped unless someone lowers
         // tools.data.output.MaplePacketLittleEndianWriter.level to FINE in
         // Libs/logging.properties. Neither one builds the string.
-        if (debugMode && LOG.isLoggable(System.Logger.Level.DEBUG)) {
+        if (DEBUG_MODE && LOG.isLoggable(System.Logger.Level.DEBUG)) {
             MaplePacket packet = new ByteArrayMaplePacket(baos.toByteArray());
             LOG.log(System.Logger.Level.DEBUG, "Packet to be sent:\n" + packet.toString());
         }
@@ -86,7 +92,7 @@ public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWrit
      * @return This packet as hex digits.
      */
     @Override
-    public final String toString() {
+    public String toString() {
         return HexTool.toString(baos.toByteArray());
     }
 }

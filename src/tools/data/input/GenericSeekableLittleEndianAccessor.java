@@ -1,6 +1,6 @@
 /*
  This file is part of the OdinMS Maple Story Server
- Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
+ Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc>
  Matthias Butz <matze@odinms.de>
  Jan Christian Meyer <vimes@odinms.de>
 
@@ -20,64 +20,32 @@
  */
 package tools.data.input;
 
-import java.io.IOException;
-
 /**
- * Provides an abstract accessor to a generic Little Endian byte stream. This
- * accessor is seekable.
+ * The accessor every packet handler gets, via
+ * {@code handling.MapleServerHandler.messageReceived}.
+ *
+ * <p>Seeking and {@code getPosition} are {@link GenericLittleEndianAccessor}'s
+ * own now - a cursor into a {@code byte[]} can always be moved - so all that is
+ * left here is the one thing this subclass ever really changed: {@code skip}
+ * jumps the cursor instead of reading its way forward, which means skipped
+ * bytes do not count towards {@code getBytesRead()}. That counter has no caller
+ * outside the tests, but the two forms are kept apart rather than quietly
+ * merged.
  *
  * @author Frz
  * @version 1.0
  * @since Revision 323
- * @see net.sf.odinms.tools.data.input.GenericLittleEndianAccessor
+ * @see GenericLittleEndianAccessor
  */
-public class GenericSeekableLittleEndianAccessor extends GenericLittleEndianAccessor implements SeekableLittleEndianAccessor {
-
-    private static final System.Logger LOG = System.getLogger(GenericSeekableLittleEndianAccessor.class.getName());
-
-    private final SeekableInputStreamBytestream bs;
+public final class GenericSeekableLittleEndianAccessor extends GenericLittleEndianAccessor implements SeekableLittleEndianAccessor {
 
     /**
-     * Class constructor Provide a seekable input stream to wrap this object
-     * around.
+     * Class constructor.
      *
      * @param bs The byte stream to wrap this around.
      */
-    public GenericSeekableLittleEndianAccessor(final SeekableInputStreamBytestream bs) {
+    public GenericSeekableLittleEndianAccessor(final ByteArrayByteStream bs) {
         super(bs);
-        this.bs = bs;
-    }
-
-    /**
-     * Seek the pointer to <code>offset</code>
-     *
-     * @param offset The offset to seek to.
-     * @see net.sf.odinms.tools.data.input.SeekableInputStreamBytestream#seek
-     */
-    @Override
-    public final void seek(final long offset) {
-        try {
-            bs.seek(offset);
-        } catch (IOException e) {
-            LOG.log(System.Logger.Level.ERROR, "Seek failed" + e);
-        }
-    }
-
-    /**
-     * Get the current position of the pointer.
-     *
-     * @return The current position of the pointer as a long integer.
-     * @see
-     * net.sf.odinms.tools.data.input.SeekableInputStreamBytestream#getPosition
-     */
-    @Override
-    public final long getPosition() {
-        try {
-            return bs.getPosition();
-        } catch (IOException e) {
-            LOG.log(System.Logger.Level.ERROR, "getPosition failed" + e);
-            return -1;
-        }
     }
 
     /**
@@ -86,7 +54,7 @@ public class GenericSeekableLittleEndianAccessor extends GenericLittleEndianAcce
      * @param num The number of bytes to skip.
      */
     @Override
-    public final void skip(final int num) {
+    public void skip(final int num) {
         seek(getPosition() + num);
     }
 }

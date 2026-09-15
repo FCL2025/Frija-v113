@@ -74,8 +74,23 @@ public class EventInstanceManager {
     private Properties props = new Properties();
     private long timeStarted = 0;
     private long eventTime = 0;
-    private List<Integer> mapIds = new LinkedList<>();
-    private List<Boolean> isInstanced = new LinkedList<>();
+    /**
+     * One map this instance has registered. {@code instanced} says whether the
+     * instance created the map for itself - in which case dispose has to hand
+     * it back to the map factory - or merely borrowed a plain channel map.
+     */
+    private record EventMap(int mapId, boolean instanced) {
+    }
+
+    /*
+     * C8: this used to be two parallel LinkedLists, mapIds and isInstanced,
+     * addressed by a shared index, unlocked, and nulled on dispose. One record
+     * per map removes any possibility of the two lengths disagreeing. COW is
+     * the right collection for the traffic: the only writers are the three
+     * "a script registered a map" calls, against a read on every getMapInstance.
+     * Cleared and never nulled, for the reason given above dced/mobs.
+     */
+    private final List<EventMap> eventMaps = new CopyOnWriteArrayList<>();
     private ScheduledFuture<?> eventTimer;
     private final ReentrantReadWriteLock mutex = new ReentrantReadWriteLock();
     private final Lock rL = mutex.readLock(), wL = mutex.writeLock();
@@ -498,15 +513,12 @@ public class EventInstanceManager {
             eventTime = 0;
             props.clear();
             props = null;
-            for (int i = 0; i < mapIds.size(); i++) {
-                if (isInstanced.get(i)) {
-                    this.getMapFactory().removeInstanceMap(mapIds.get(i));
+            for (EventMap eventMap : eventMaps) {
+                if (eventMap.instanced()) {
+                    this.getMapFactory().removeInstanceMap(eventMap.mapId());
                 }
             }
-            mapIds.clear();
-            mapIds = null;
-            isInstanced.clear();
-            isInstanced = null;
+            eventMaps.clear();
             em.disposeInstance(name);
         } catch (Exception e) {
             LOG.log(System.Logger.Level.ERROR, "Caused by : " + emN + " instance name: " + name + " method: dispose: " + e);
@@ -555,8 +567,7 @@ public class EventInstanceManager {
             return null;
         }
         final int assignedid = getChannelServer().getEventSM().getNewInstanceMapId();
-        mapIds.add(assignedid);
-        isInstanced.add(true);
+        eventMaps.add(new EventMap(assignedid, true));
         return this.getMapFactory().CreateInstanceMap(mapid, true, true, true, assignedid);
     }
 
@@ -565,8 +576,7 @@ public class EventInstanceManager {
             return null;
         }
         final int assignedid = getChannelServer().getEventSM().getNewInstanceMapId();
-        mapIds.add(assignedid);
-        isInstanced.add(true);
+        eventMaps.add(new EventMap(assignedid, true));
         return this.getMapFactory().CreateInstanceMap(mapid, false, false, false, assignedid);
     }
 
@@ -574,8 +584,7 @@ public class EventInstanceManager {
         if (disposed) {
             return this.getMapFactory().getMap(mapid);
         }
-        mapIds.add(mapid);
-        isInstanced.add(false);
+        eventMaps.add(new EventMap(mapid, false));
         return this.getMapFactory().getMap(mapid);
     }
 
@@ -590,12 +599,20 @@ public class EventInstanceManager {
         try {
             boolean instanced = false;
             int trueMapID = -1;
-            if (args >= mapIds.size()) {
+            // One snapshot for both steps. "is args an index into the list" and
+            // "what is at that index" have to answer about the same list, and a
+            // script on another thread can register a map - or dispose can clear
+            // the list - between the two. A negative args still walks into the
+            // else branch and throws IndexOutOfBoundsException, exactly as the
+            // two parallel lists did.
+            final List<EventMap> maps = List.copyOf(eventMaps);
+            if (args >= maps.size()) {
                 //assume real map
                 trueMapID = args;
             } else {
-                trueMapID = mapIds.get(args);
-                instanced = isInstanced.get(args);
+                final EventMap entry = maps.get(args);
+                trueMapID = entry.mapId();
+                instanced = entry.instanced();
             }
             MapleMap map = null;
             if (!instanced) {

@@ -57,7 +57,7 @@ public class DueyHandler {
      * 15 = Same account
      * 14 = Name does not exist
      */
-    public static final void DueyOperation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void dueyOperation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
 
         final byte operation = slea.readByte();
 

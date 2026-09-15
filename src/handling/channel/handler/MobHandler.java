@@ -44,7 +44,7 @@ public class MobHandler {
 
     private static final System.Logger LOG = System.getLogger(MobHandler.class.getName());
 
-    public static final void MoveMonster(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void moveMonster(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null || chr.getMap() == null) {
             return; //?
         }
@@ -155,7 +155,7 @@ public class MobHandler {
         }
     }
 
-    public static final void FriendlyDamage(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void friendlyDamage(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMap map = chr.getMap();
         if (map == null) {
             return;
@@ -194,7 +194,7 @@ public class MobHandler {
         }
     }
 
-    public static final void MonsterBomb(final int oid, final MapleCharacter chr) {
+    public static final void monsterBomb(final int oid, final MapleCharacter chr) {
         final MapleMonster monster = chr.getMap().getMonsterByOid(oid);
 
         if (monster == null || !chr.isAlive() || chr.isHidden()) {
@@ -206,7 +206,7 @@ public class MobHandler {
         }
     }
 
-    public static final void AutoAggro(final int monsteroid, final MapleCharacter chr) {
+    public static final void autoAggro(final int monsteroid, final MapleCharacter chr) {
         if (chr == null || chr.getMap() == null || chr.isHidden()) { //no evidence :)
             return;
         }
@@ -225,7 +225,7 @@ public class MobHandler {
         }
     }
 
-    public static final void HypnotizeDmg(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void hypnotizeDmg(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         slea.skip(4); // Player ID
         final int to = slea.readInt(); // mobto
@@ -245,14 +245,14 @@ public class MobHandler {
         }
     }
 
-    public static final void DisplayNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void displayNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         if (mob_from != null) {
             chr.getClient().send(MapPacket.getNodeProperties(mob_from, chr.getMap()));
         }
     }
 
-    public static final void MobNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void mobNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         final int newNode = slea.readInt();
         final int nodeSize = chr.getMap().getNodes().size();

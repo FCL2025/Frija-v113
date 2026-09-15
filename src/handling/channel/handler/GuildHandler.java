@@ -35,7 +35,7 @@ import tools.packet.GuildPacket;
 
 public class GuildHandler {
 
-    public static final void DenyGuildRequest(final String from, final MapleClient c) {
+    public static final void denyGuildRequest(final String from, final MapleClient c) {
         final MapleCharacter cfrom = c.getChannelServer().getPlayerStorage().getCharacterByName(from);
         if (cfrom != null) {
             cfrom.getClient().send(GuildPacket.denyGuildInvitation(c.getPlayer().getName()));

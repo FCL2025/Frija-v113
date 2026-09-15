@@ -377,7 +377,7 @@ public class CharacterRepository {
                 ps.setInt(1, charid);
                 rs = ps.executeQuery();
 
-                final Map<Integer, Pair<Byte, Integer>> keyb = ret.keylayout.Layout();
+                final Map<Integer, Pair<Byte, Integer>> keyb = ret.keylayout.layout();
                 while (rs.next()) {
                     keyb.put(Integer.valueOf(rs.getInt("key")), new Pair<>(rs.getByte("type"), rs.getInt("action")));
                 }

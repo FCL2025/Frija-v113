@@ -320,7 +320,7 @@ public class PlayerStats {
                 default:
                     for (int eb_bonus : ItemConstants.Equipments_Bonus) {
                         if (equip.getItemId() == eb_bonus) {
-                            equipmentBonusExp += ItemConstants.Equipment_Bonus_EXP(eb_bonus);
+                            equipmentBonusExp += ItemConstants.equipment_Bonus_EXP(eb_bonus);
                             break;
                         }
                     }
@@ -509,8 +509,8 @@ public class PlayerStats {
         localmaxhp = (short) Math.min(30000, Math.abs(Math.max(-30000, localmaxhp_)));
         localmaxmp = (short) Math.min(30000, Math.abs(Math.max(-30000, localmaxmp_)));
 
-        CalcPassive_SharpEye(chra, added_sharpeye_rate, added_sharpeye_dmg);
-        CalcPassive_Mastery(chra);
+        calcPassive_SharpEye(chra, added_sharpeye_rate, added_sharpeye_dmg);
+        calcPassive_Mastery(chra);
         if (first_login) {
             chra.silentEnforceMaxHpMp();
         } else {
@@ -947,7 +947,7 @@ public class PlayerStats {
         return true;
     }
 
-    private final void CalcPassive_Mastery(final MapleCharacter player) {
+    private final void calcPassive_Mastery(final MapleCharacter player) {
         if (player.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11) == null) {
             passive_mastery = 0;
             return;
@@ -1006,7 +1006,7 @@ public class PlayerStats {
         passive_mastery = (byte) ((player.getSkillLevel(skil) / 2) + (player.getSkillLevel(skil) % 2)); //after bb, simpler?
     }
 
-    private final void CalcPassive_SharpEye(final MapleCharacter player, final int added_sharpeye_rate, final int added_sharpeye_dmg) {
+    private final void calcPassive_SharpEye(final MapleCharacter player, final int added_sharpeye_rate, final int added_sharpeye_dmg) {
         switch (player.getJob()) { // Apply passive Critical bonus
             case 410:
             case 411:

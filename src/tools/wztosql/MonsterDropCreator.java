@@ -82,7 +82,7 @@ public class MonsterDropCreator {
                     sb.append(itemid).append(", ");
                     sb.append("1, 1,");
                     sb.append("0, ");
-                    int num = IncrementRate(itemid, i);
+                    int num = incrementRate(itemid, i);
                     sb.append(num == -1 ? rate : num);
                     sb.append(")");
                     first = false;
@@ -188,7 +188,7 @@ public class MonsterDropCreator {
                         sb.append(itemid).append(", ");
                         sb.append("1, 1,");
                         sb.append("0, ");
-                        int num = IncrementRate(itemid, i);
+                        int num = incrementRate(itemid, i);
                         sb.append(num == -1 ? rate : num);
                         sb.append(")");
                         first = false;
@@ -287,7 +287,7 @@ public class MonsterDropCreator {
         sb.append(id);
     }
 
-    private static int IncrementRate(int itemid, int times) {
+    private static int incrementRate(int itemid, int times) {
         if (times == 0) {
             if ((itemid == 1002357) || (itemid == 1002926) || (itemid == 1002927)) {
                 return 999999;

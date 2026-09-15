@@ -772,7 +772,7 @@ public class ItemConstants {
     }
     public static int[] Equipments_Bonus = {1122017};
 
-    public static int Equipment_Bonus_EXP(final int itemid) { // TODO : Add Time for more exp increase
+    public static int equipment_Bonus_EXP(final int itemid) { // TODO : Add Time for more exp increase
         switch (itemid) {
             case 1122017:
                 return 10;

@@ -387,7 +387,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         return ret;
     }
 
-    public final static MapleCharacter ReconstructChr(final CharacterTransfer ct, final MapleClient client, final boolean isChannel) {
+    public final static MapleCharacter reconstructChr(final CharacterTransfer ct, final MapleClient client, final boolean isChannel) {
         final MapleCharacter ret = new MapleCharacter(true); // Always true, it's change channel
         ret.client = client;
         if (!isChannel) {
@@ -579,11 +579,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         return stats;
     }
 
-    public final PlayerRandomStream CRand() {
+    public final PlayerRandomStream cRand() {
         return CRand;
     }
 
-    public final void QuestInfoPacket(final tools.data.output.MaplePacketLittleEndianWriter mplew) {
+    public final void questInfoPacket(final tools.data.output.MaplePacketLittleEndianWriter mplew) {
         mplew.writeShort(questinfo.size());
 
         for (final Entry<Integer, String> q : questinfo.entrySet()) {
@@ -2041,7 +2041,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 }
                 updateSingleStat(MapleStat.EXP, cur);
                 if (show) { // still show the expgain even if it's not there
-                    client.send(CharacterPacket.GainEXP_Others(total, inChat, white));
+                    client.send(CharacterPacket.gainEXP_Others(total, inChat, white));
                 }
                 if (total > 0) {
                     stats.checkEquipLevels(this, total); //gms like
@@ -2140,7 +2140,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             }
             updateSingleStat(MapleStat.EXP, cur);
             if (show) { // still show the expgain even if it's not there
-                client.send(CharacterPacket.GainEXP_Monster(gain, white, partyinc, Class_Bonus_EXP, Equipment_Bonus_EXP, Premium_Bonus_EXP));
+                client.send(CharacterPacket.gainEXP_Monster(gain, white, partyinc, Class_Bonus_EXP, Equipment_Bonus_EXP, Premium_Bonus_EXP));
             }
             stats.checkEquipLevels(this, total);
         }
@@ -2619,9 +2619,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void changeKeybinding(int key, byte type, int action) {
         if (type != 0) {
-            keylayout.Layout().put(Integer.valueOf(key), new Pair<>(type, action));
+            keylayout.layout().put(Integer.valueOf(key), new Pair<>(type, action));
         } else {
-            keylayout.Layout().remove(Integer.valueOf(key));
+            keylayout.layout().remove(Integer.valueOf(key));
         }
     }
 
@@ -2879,7 +2879,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             for (final MaplePet pet : pets) {
                 if (pet.getSummoned()) {
                     client.send(PetPacket.showPet(this, pet, false, false));
-                    client.send(PetPacket.PetComplete(this, pet));
+                    client.send(PetPacket.petComplete(this, pet));
                 }
             }
             for (final WeakReference<MapleCharacter> chr : clones) {
@@ -3607,11 +3607,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         } else {
             mulung_energy = 0;
         }
-        client.send(EventPacket.MulungEnergy(mulung_energy));
+        client.send(EventPacket.mulungEnergy(mulung_energy));
     }
 
     public void writeMulungEnergy() {
-        client.send(EventPacket.MulungEnergy(mulung_energy));
+        client.send(EventPacket.mulungEnergy(mulung_energy));
     }
 
     public void writeEnergy(String type, String inc) {
@@ -3944,8 +3944,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         client.send(MonsterCarnivalPacket.startMonsterCarnival(this, enemyavailable, enemytotal));
     }
 
-    public void CPUpdate(final boolean party, final int available, final int total, final int team) {
-        client.send(MonsterCarnivalPacket.CPUpdate(party, available, total, team));
+    public void cpUpdate(final boolean party, final int available, final int total, final int team) {
+        client.send(MonsterCarnivalPacket.cpUpdate(party, available, total, team));
     }
 
     public void playerDiedCPQ(final String name, final int lostCP, final int team) {
@@ -4233,7 +4233,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                         
                         if (broadcast) {
                             getMap().broadcastMessage(this, PetPacket.showPet(this, pet, false, false), true);
-                            client.send(PetPacket.PetComplete(this, pet));
+                            client.send(PetPacket.petComplete(this, pet));
                             client.send(PetPacket.petStatUpdate(this));
                         }
                     }
@@ -4538,7 +4538,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         PlayerBuffStorage.addBuffsToStorage(getId(), getAllBuffs());
         PlayerBuffStorage.addCooldownsToStorage(getId(), getCooldowns());
         PlayerBuffStorage.addDiseaseToStorage(getId(), getAllDiseases());
-        World.ChannelChange_Data(new CharacterTransfer(this), getId(), channel);
+        World.channelChange_Data(new CharacterTransfer(this), getId(), channel);
         ch.removePlayer(this);
         client.updateLoginState(MapleClient.CHANGE_CHANNEL, client.getSessionIPAddress());
 
@@ -4760,7 +4760,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 if (mins2 <= 0 || mins < mins2) {
                     updateOneInfo(questid, "min", String.valueOf(mins));
                     updateOneInfo(questid, "sec", String.valueOf(secs));
-                    updateOneInfo(questid, "date", FileoutputUtil.CurrentReadable_Date());
+                    updateOneInfo(questid, "date", FileoutputUtil.currentReadable_Date());
                 }
                 final int newCmp = Integer.parseInt(getOneInfo(questid, "cmp")) + 1;
                 updateOneInfo(questid, "cmp", String.valueOf(newCmp));

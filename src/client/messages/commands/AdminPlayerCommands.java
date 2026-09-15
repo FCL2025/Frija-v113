@@ -730,7 +730,7 @@ public class AdminPlayerCommands {
             builder.append(other.getClient().getLastPong());
             builder.append(" || remoteAddress: ");
 
-            other.getClient().DebugMessage(builder);
+            other.getClient().debugMessage(builder);
 
             c.getPlayer().dropMessage(6, builder.toString());
             return 1;

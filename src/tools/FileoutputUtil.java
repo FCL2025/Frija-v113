@@ -184,11 +184,11 @@ public class FileoutputUtil {
         topic(file).log(System.Logger.Level.ERROR, "", t);
     }
 
-    public static String CurrentReadable_Date() {
+    public static String currentReadable_Date() {
         return DATE.format(LocalDateTime.now());
     }
 
-    public static String CurrentReadable_Time() {
+    public static String currentReadable_Time() {
         return TIME.format(LocalDateTime.now());
     }
 

@@ -599,7 +599,7 @@ public final class MapleMap {
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(16);
              }*/
-            FileoutputUtil.log(FileoutputUtil.Horntail_Log, MapDebug_Log());
+            FileoutputUtil.log(FileoutputUtil.Horntail_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.Horntail;
             }
@@ -611,7 +611,7 @@ public final class MapleMap {
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(24);
              }*/
-            FileoutputUtil.log(FileoutputUtil.Horntail_Log, MapDebug_Log());
+            FileoutputUtil.log(FileoutputUtil.Horntail_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.ChaosHT;
             }
@@ -691,12 +691,12 @@ public final class MapleMap {
             if (sqd != null) {
                 doShrine(true);
             }
-            FileoutputUtil.log(FileoutputUtil.Pinkbean_Log, MapDebug_Log());
+            FileoutputUtil.log(FileoutputUtil.Pinkbean_Log, mapDebug_Log());
         } else if (mobid == 8800002 && mapid == 280030000) {
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(15);
              }*/
-            FileoutputUtil.log(FileoutputUtil.Zakum_Log, MapDebug_Log());
+            FileoutputUtil.log(FileoutputUtil.Zakum_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.Zakum;
             }
@@ -707,7 +707,7 @@ public final class MapleMap {
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
              c.finishAchievement(23);
              }*/
-            FileoutputUtil.log(FileoutputUtil.Zakum_Log, MapDebug_Log());
+            FileoutputUtil.log(FileoutputUtil.Zakum_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.Chaos_Zakum;
             }
@@ -902,9 +902,9 @@ public final class MapleMap {
         }
     }
 
-    private String MapDebug_Log() {
+    private String mapDebug_Log() {
         final StringBuilder sb = new StringBuilder("Defeat time : ");
-        sb.append(FileoutputUtil.CurrentReadable_Time());
+        sb.append(FileoutputUtil.currentReadable_Time());
 
         sb.append(" | Mapid : ").append(this.mapid);
 

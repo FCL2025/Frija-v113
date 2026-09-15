@@ -623,7 +623,7 @@ public class MapleClient {
         // and none of them were named, daemons, or cancellable.
         Timer.ETC.schedule(() -> getSession().close(), 3000);
     }
-    public boolean CheckSecondPassword(String in) {
+    public boolean checkSecondPassword(String in) {
         // Check if the passwords are correct here. :B
         // No master password here either - GameConstants.MASTER used to satisfy
         // this check outright, so the second password protected nothing.
@@ -990,7 +990,7 @@ public class MapleClient {
         return session.getRemoteAddress().toString().split(":")[0];
     }
 
-    public final boolean CheckIPAddress() {
+    public final boolean checkIPAddress() {
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT SessionIP FROM accounts WHERE id = ?")) {
             ps.setInt(1, this.accId);
@@ -1019,7 +1019,7 @@ public class MapleClient {
         return true;
     }
 
-    public final void DebugMessage(final StringBuilder sb) {
+    public final void debugMessage(final StringBuilder sb) {
         sb.append(getSession().getRemoteAddress());
         sb.append("Connected: ");
         sb.append(getSession().isConnected());

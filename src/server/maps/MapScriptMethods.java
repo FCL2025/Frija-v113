@@ -356,8 +356,8 @@ public class MapScriptMethods {
             case mirrorCave:
             case babyPigMap:
             case evanleaveD: {
-                c.send(UIPacket.IntroDisableUI(false));
-                c.send(UIPacket.IntroLock(false));
+                c.send(UIPacket.introDisableUI(false));
+                c.send(UIPacket.introLock(false));
                 c.send(CharacterPacket.enableActions());
                 break;
             }
@@ -395,10 +395,10 @@ public class MapScriptMethods {
                 showEvanPromotionIntro(c);
                 break;
             case TD_MC_title: {
-                c.send(UIPacket.IntroDisableUI(false));
-                c.send(UIPacket.IntroLock(false));
+                c.send(UIPacket.introDisableUI(false));
+                c.send(UIPacket.introLock(false));
                 c.send(CharacterPacket.enableActions());
-                c.send(UIPacket.MapEff("temaD/enter/mushCatle"));
+                c.send(UIPacket.mapEff("temaD/enter/mushCatle"));
                 break;
             }
             case explorationPoint: {
@@ -407,8 +407,8 @@ public class MapScriptMethods {
             }
             case go10000:
             case go1020000:
-                c.send(UIPacket.IntroDisableUI(false));
-                c.send(UIPacket.IntroLock(false));
+                c.send(UIPacket.introDisableUI(false));
+                c.send(UIPacket.introLock(false));
                 c.send(CharacterPacket.enableActions());
             // falls through —— 解鎖之後照樣要送下面那組 MapNameDisplay
             case go20000:
@@ -422,7 +422,7 @@ public class MapScriptMethods {
             case go1010200:
             case go1010300:
             case go1010400: {
-                c.send(UIPacket.MapNameDisplay(c.getPlayer().getMapId()));
+                c.send(UIPacket.mapNameDisplay(c.getPlayer().getMapId()));
                 break;
             }
             case goArcher: {
@@ -468,7 +468,7 @@ public class MapScriptMethods {
             case rienArrow: {
                 if (c.getPlayer().getInfoQuest(21019).equals("miss=o;helper=clear")) {
                     c.getPlayer().updateInfoQuest(21019, "miss=o;arr=o;helper=clear");
-                    c.send(UIPacket.AranTutInstructionalBalloon("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow3"));
+                    c.send(UIPacket.aranTutInstructionalBalloon("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow3"));
                 }
                 break;
             }
@@ -476,8 +476,8 @@ public class MapScriptMethods {
                 if (c.getPlayer().getQuestStatus(21101) == 2 && c.getPlayer().getInfoQuest(21019).equals("miss=o;arr=o;helper=clear")) {
                     c.getPlayer().updateInfoQuest(21019, "miss=o;arr=o;ck=1;helper=clear");
                 }
-                c.send(UIPacket.IntroDisableUI(false));
-                c.send(UIPacket.IntroLock(false));
+                c.send(UIPacket.introDisableUI(false));
+                c.send(UIPacket.introLock(false));
                 break;
             }
             case check_count: {
@@ -756,8 +756,8 @@ public class MapScriptMethods {
                 data = "Effect/Direction4.img/promotion/Scene3";
                 break;
             case 900090004:
-                c.send(UIPacket.IntroDisableUI(false));
-                c.send(UIPacket.IntroLock(false));
+                c.send(UIPacket.introDisableUI(false));
+                c.send(UIPacket.introLock(false));
                 c.send(CharacterPacket.enableActions());
                 final MapleMap mapto = c.getChannelServer().getMapFactory().getMap(900010000);
                 c.getPlayer().changeMap(mapto, mapto.getPortal(0));
@@ -768,10 +768,10 @@ public class MapScriptMethods {
 
     private static void trackExplorationMedal(final MapleClient c) {
         if (c.getPlayer().getMapId() == 104000000) {
-            c.send(UIPacket.IntroDisableUI(false));
-            c.send(UIPacket.IntroLock(false));
+            c.send(UIPacket.introDisableUI(false));
+            c.send(UIPacket.introLock(false));
             c.send(CharacterPacket.enableActions());
-            c.send(UIPacket.MapNameDisplay(c.getPlayer().getMapId()));
+            c.send(UIPacket.mapNameDisplay(c.getPlayer().getMapId()));
         }
         MedalQuest m = null;
         for (MedalQuest mq : MedalQuest.values()) {
@@ -859,8 +859,8 @@ public class MapScriptMethods {
         c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000017), (byte) -1, (byte) 0);
         c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000018), (byte) -1, (byte) 0);
         c.send(UIPacket.ShowWZEffect("Effect/Direction1.img/aranTutorial/ClickLirin"));
-        c.send(UIPacket.IntroDisableUI(false));
-        c.send(UIPacket.IntroLock(false));
+        c.send(UIPacket.introDisableUI(false));
+        c.send(UIPacket.introLock(false));
         c.send(CharacterPacket.enableActions());
     }
 
@@ -903,8 +903,8 @@ public class MapScriptMethods {
     }
 
     private static void showIntro(final MapleClient c, final String data) {
-        c.send(UIPacket.IntroDisableUI(true));
-        c.send(UIPacket.IntroLock(true));
+        c.send(UIPacket.introDisableUI(true));
+        c.send(UIPacket.introLock(true));
         c.send(UIPacket.ShowWZEffect(data));
     }
 

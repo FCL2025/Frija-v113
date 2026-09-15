@@ -44,7 +44,7 @@ public interface PacketHandler {
      * @param c the session's client. Never null and always receiving:
      * {@code MapleServerHandler.messageReceived} has already dropped the packet
      * otherwise, and has already enforced {@link
-     * RecvPacketOpcode#NeedsChecking()} against {@code c.isLoggedIn()}.
+     * RecvPacketOpcode#needsChecking()} against {@code c.isLoggedIn()}.
      * {@code c.getPlayer()} may still be null, exactly as before.
      * @param cs true when the packet arrived on the cash-shop port. Login and
      * channel both pass false. Only {@code PLAYER_LOGGEDIN} and {@code

@@ -35,25 +35,25 @@ function end(mode, type, selection) {
 	if (status == 0)
 		qm.sendNext("Did you defeat the Cunning Foxes?");
 	if (status == 1)
-		qm.PlayerToNpc("#bWhat happened to slaying the Foxes left behind?");
+		qm.playerToNpc("#bWhat happened to slaying the Foxes left behind?");
 	if (status == 2)
 		qm.sendNextPrev("Oh, that? Haha. I did chase them, sort of, but I wanted to make sure that they do not catch up to you. I wouldn't want you eaten by a #o9300385# or anything. So I just let them be.");
 	if (status == 3)
-		qm.PlayerToNpc("#bAre you sure you weren't just hiding because you were scared of the Foxes?");
+		qm.playerToNpc("#bAre you sure you weren't just hiding because you were scared of the Foxes?");
 	if (status == 4)
 		qm.sendNextPrev("What? No way! Sheesh, I fear nothing!");
 	if (status == 5)
-		qm.PlayerToNpc("#bWatch out! There's a #o9300385# right behind you!");
+		qm.playerToNpc("#bWatch out! There's a #o9300385# right behind you!");
 	if (status == 6)
 		qm.sendNextPrev("Eeeek! Mommy!");
 	if (status == 7)
-		qm.PlayerToNpc("#b...");
+		qm.playerToNpc("#b...");
 	if (status == 8)
 		qm.sendNextPrev("...");
 	if (status == 9)
 		qm.sendNextPrev("You little brat! I'm your older brother. Don't you mess with me! Your brother has a weak heart, you know. Don't surprise me like that!");
 	if (status == 10)
-		qm.PlayerToNpc("#b(This is why I don't want to call you Older Brother...)");
+		qm.playerToNpc("#b(This is why I don't want to call you Older Brother...)");
 	if (status == 11)
 		qm.sendNextPrev("Hmph! Anyway, I'm glad you were able to defeat the #o9300385#es. As a reward, I'll give you something an adventurer gave me a long time ago. Here you are. \r\n\r\n#fUI/UIWindow.img/QuestIcon/4/0# \r\n#i1372043# 1 #t1372043# \r\n#i2022621# 25 #t2022621# \r\n#i2022622# 25 #t2022622#s \r\n\r\n#fUI/UIWindow.img/QuestIcon/8/0# 910 exp");
 	if (status == 12){

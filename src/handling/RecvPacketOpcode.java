@@ -214,7 +214,7 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
         this.CheckState = CheckState;
     }
 
-    public final boolean NeedsChecking() {
+    public final boolean needsChecking() {
         return CheckState;
     }
 

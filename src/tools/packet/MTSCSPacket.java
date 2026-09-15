@@ -134,7 +134,7 @@ public class MTSCSPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket ViciousHammer(boolean start, int hammered) {
+    public static MaplePacket viciousHammer(boolean start, int hammered) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.VICIOUS_HAMMER.getValue());

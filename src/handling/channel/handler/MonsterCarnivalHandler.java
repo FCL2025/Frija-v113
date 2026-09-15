@@ -36,7 +36,7 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class MonsterCarnivalHandler {
 
-    public static final void MonsterCarnival(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void monsterCarnival(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (c.getPlayer().getCarnivalParty() == null) {
             c.send(CharacterPacket.enableActions());
             return;
@@ -54,9 +54,9 @@ public class MonsterCarnivalHandler {
             final MapleMonster mons = MapleLifeFactory.getMonster(mobs.get(num).left);
             if (mons != null && c.getPlayer().getMap().makeCarnivalSpawn(c.getPlayer().getCarnivalParty().getTeam(), mons, num)) {
                 c.getPlayer().getCarnivalParty().useCP(c.getPlayer(), mobs.get(num).right);
-                c.getPlayer().CPUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
+                c.getPlayer().cpUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
                 for (MapleCharacter chr : c.getPlayer().getMap().getCharactersThreadsafe()) {
-                    chr.CPUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
+                    chr.cpUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
                 }
                 c.getPlayer().getMap().broadcastMessage(MonsterCarnivalPacket.playerSummoned(c.getPlayer().getName(), tab, num));
                 c.send(CharacterPacket.enableActions());
@@ -99,9 +99,9 @@ public class MonsterCarnivalHandler {
             }
             if (found) {
                 c.getPlayer().getCarnivalParty().useCP(c.getPlayer(), skil.cpLoss);
-                c.getPlayer().CPUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
+                c.getPlayer().cpUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
                 for (MapleCharacter chr : c.getPlayer().getMap().getCharactersThreadsafe()) {
-                    chr.CPUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
+                    chr.cpUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
                 }
                 c.getPlayer().getMap().broadcastMessage(MonsterCarnivalPacket.playerSummoned(c.getPlayer().getName(), tab, num));
                 c.send(CharacterPacket.enableActions());
@@ -118,9 +118,9 @@ public class MonsterCarnivalHandler {
             }
             if (c.getPlayer().getMap().makeCarnivalReactor(c.getPlayer().getCarnivalParty().getTeam(), num)) {
                 c.getPlayer().getCarnivalParty().useCP(c.getPlayer(), skil.cpLoss);
-                c.getPlayer().CPUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
+                c.getPlayer().cpUpdate(false, c.getPlayer().getAvailableCP(), c.getPlayer().getTotalCP(), 0);
                 for (MapleCharacter chr : c.getPlayer().getMap().getCharactersThreadsafe()) {
-                    chr.CPUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
+                    chr.cpUpdate(true, c.getPlayer().getCarnivalParty().getAvailableCP(), c.getPlayer().getCarnivalParty().getTotalCP(), c.getPlayer().getCarnivalParty().getTeam());
                 }
                 c.getPlayer().getMap().broadcastMessage(MonsterCarnivalPacket.playerSummoned(c.getPlayer().getName(), tab, num));
                 c.send(CharacterPacket.enableActions());

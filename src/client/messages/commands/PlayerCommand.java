@@ -74,7 +74,7 @@ public class PlayerCommand {
             NPCScriptManager.getInstance().dispose(c);
             c.send(CharacterPacket.enableActions());
             c.getPlayer().dropMessage(1, "解卡完畢.");
-            c.getPlayer().dropMessage(6, "當前時間是" + FileoutputUtil.CurrentReadable_Time() + " GMT+8 | 經驗值倍率 " + (Math.round(c.getPlayer().getEXPMod()) * 100) * Math.round(c.getPlayer().getStat().expBuff / 100.0) + "%, 掉寶倍率 " + (Math.round(c.getPlayer().getDropMod()) * 100) * Math.round(c.getPlayer().getStat().dropBuff / 100.0) + "%, 楓幣倍率 " + Math.round(c.getPlayer().getStat().mesoBuff / 100.0) * 100 + "%");
+            c.getPlayer().dropMessage(6, "當前時間是" + FileoutputUtil.currentReadable_Time() + " GMT+8 | 經驗值倍率 " + (Math.round(c.getPlayer().getEXPMod()) * 100) * Math.round(c.getPlayer().getStat().expBuff / 100.0) + "%, 掉寶倍率 " + (Math.round(c.getPlayer().getDropMod()) * 100) * Math.round(c.getPlayer().getStat().dropBuff / 100.0) + "%, 楓幣倍率 " + Math.round(c.getPlayer().getStat().mesoBuff / 100.0) * 100 + "%");
             c.getPlayer().dropMessage(6, "當前延遲 " + c.getPlayer().getClient().getLatency() + " 毫秒");
             return 1;
         }
@@ -113,7 +113,7 @@ public class PlayerCommand {
                 c.getPlayer().dropMessage(6, "因為你自己是GM所法使用此指令,可以嘗試!cngm <訊息> 來建立GM聊天頻道~");
                 return 1;
             }
-            if (!c.getPlayer().getCheatTracker().GMSpam(100000, 1)) { // 5 minutes.
+            if (!c.getPlayer().getCheatTracker().gmSpam(100000, 1)) { // 5 minutes.
                 Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
                 c.getPlayer().dropMessage(6, "訊息已經寄送給GM了!");
             } else {

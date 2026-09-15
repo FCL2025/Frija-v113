@@ -45,7 +45,7 @@ import java.util.Map;
  * 走訪 EQUIPPED／CASH／ETC 三格。</li>
  * <li>別的玩家的 handler thread —— 交易成立時 {@code MapleTrade.completeTrade}
  * 在「後鎖定的那一方」的執行緒上呼叫 {@code partner.check()}（{@code findById}、
- * {@code getNumFreeSlot}）與 {@code partner.CompleteTrade()}
+ * {@code getNumFreeSlot}）與 {@code partner.completeTrade()}
  * （{@code MapleInventoryManipulator.addFromDrop}），也就是在別人的執行緒上讀寫
  * 對方的背包；別人進地圖時 {@code PacketHelper.addCharLook} 與
  * {@code MapleCharacter.getRings} 也會在進場者的執行緒上走訪被看到那個人的 EQUIPPED。</li>

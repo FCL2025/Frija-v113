@@ -36,7 +36,7 @@ public class BBSHandler {
         return in;
     }
 
-    public static final void BBSOperatopn(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void bbsOperatopn(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (c.getPlayer().getGuildId() <= 0) {
             return; // expelled while viewing bbs or hax
         }
@@ -94,7 +94,7 @@ public class BBSHandler {
         if (c.getPlayer().getGuildId() <= 0) {
             return;
         }
-        c.send(GuildPacket.BBSThreadList(Guild.getBBS(c.getPlayer().getGuildId()), start));
+        c.send(GuildPacket.bbsThreadList(Guild.getBBS(c.getPlayer().getGuildId()), start));
     }
 
     private static final void newBBSReply(final MapleClient c, final int localthreadid, final String text) {

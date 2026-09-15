@@ -76,7 +76,7 @@ import java.util.logging.StreamHandler;
  * {@link FileoutputUtil} owns that namespace and is the only thing that should
  * ever create a logger in it. The three boss files really are one family - all
  * three are written from the one {@code MapleMap.killMonster} branch set, with
- * the same {@code MapDebug_Log()} body - so {@code tms.boss.level = OFF} turns
+ * the same {@code mapDebug_Log()} body - so {@code tms.boss.level = OFF} turns
  * off boss bookkeeping without touching the exception logs, which is the split
  * an operator actually wants.
  *

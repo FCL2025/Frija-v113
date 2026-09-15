@@ -27,7 +27,7 @@ import constants.ServerConstants;
 
 public class UIPacket {
 
-    public static final MaplePacket EarnTitleMsg(final String msg) {
+    public static final MaplePacket earnTitleMsg(final String msg) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
 // "You have acquired the Pig's Weakness skill."
@@ -79,19 +79,19 @@ public class UIPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket MapEff(final String path) {
+    public static final MaplePacket mapEff(final String path) {
         return MapPacket.environmentChange(path, 3);
     }
 
-    public static final MaplePacket MapNameDisplay(final int mapid) {
+    public static final MaplePacket mapNameDisplay(final int mapid) {
         return MapPacket.environmentChange("maplemap/enter/" + mapid, 3);
     }
 
-    public static final MaplePacket Aran_Start() {
+    public static final MaplePacket aran_Start() {
         return MapPacket.environmentChange("Aran/balloon", 4);
     }
 
-    public static final MaplePacket AranTutInstructionalBalloon(final String data) {
+    public static final MaplePacket aranTutInstructionalBalloon(final String data) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_ITEM_GAIN_INCHAT.getValue());
@@ -145,7 +145,7 @@ public class UIPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket IntroLock(boolean enable) {
+    public static MaplePacket introLock(boolean enable) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.CYGNUS_INTRO_LOCK.getValue());
@@ -154,7 +154,7 @@ public class UIPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket IntroDisableUI(boolean enable) {
+    public static MaplePacket introDisableUI(boolean enable) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.CYGNUS_INTRO_DISABLE_UI.getValue());

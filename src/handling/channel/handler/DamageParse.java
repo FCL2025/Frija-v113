@@ -113,7 +113,7 @@ public class DamageParse {
 
                 if (!Tempest && !player.isGM()) {
                     if (!monster.isBuffed(MonsterStatus.DAMAGE_IMMUNITY) && !monster.isBuffed(MonsterStatus.WEAPON_IMMUNITY) && !monster.isBuffed(MonsterStatus.WEAPON_DAMAGE_REFLECT)) {
-                        maxDamagePerHit = CalculateMaxWeaponDamagePerHit(player, monster, attack, theSkill, effect, maxDamagePerMonster, CriticalDamage);
+                        maxDamagePerHit = calculateMaxWeaponDamagePerHit(player, monster, attack, theSkill, effect, maxDamagePerMonster, CriticalDamage);
                     } else {
                         maxDamagePerHit = 1;
                     }
@@ -602,7 +602,7 @@ public class DamageParse {
                 fixeddmg = monsterstats.getFixedDamage();
                 if (!Tempest && !player.isGM()) {
                     if (!monster.isBuffed(MonsterStatus.DAMAGE_IMMUNITY) && !monster.isBuffed(MonsterStatus.MAGIC_IMMUNITY) && !monster.isBuffed(MonsterStatus.MAGIC_DAMAGE_REFLECT)) {
-                        MaxDamagePerHit = CalculateMaxMagicDamagePerHit(player, theSkill, monster, monsterstats, stats, element, CriticalDamage, maxDamagePerHit);
+                        MaxDamagePerHit = calculateMaxMagicDamagePerHit(player, theSkill, monster, monsterstats, stats, element, CriticalDamage, maxDamagePerHit);
                     } else {
                         MaxDamagePerHit = 1;
                     }
@@ -695,7 +695,7 @@ public class DamageParse {
         }
     }
 
-    private static final double CalculateMaxMagicDamagePerHit(final MapleCharacter chr, final ISkill skill, final MapleMonster monster, final MapleMonsterStats mobstats, final PlayerStats stats, final Element elem, final Integer sharpEye, final double maxDamagePerMonster) {
+    private static final double calculateMaxMagicDamagePerHit(final MapleCharacter chr, final ISkill skill, final MapleMonster monster, final MapleMonsterStats mobstats, final PlayerStats stats, final Element elem, final Integer sharpEye, final double maxDamagePerMonster) {
         final int dLevel = Math.max(mobstats.getLevel() - chr.getLevel(), 0);
         final int Accuracy = (int) (Math.floor((stats.getTotalInt() / 10.0)) + Math.floor((stats.getTotalLuk() / 10.0)));
         final int MinAccuracy = mobstats.getEva() * (dLevel * 2 + 51) / 120;
@@ -711,13 +711,13 @@ public class DamageParse {
                 elemMaxDamagePerMob = 1;
                 break;
             case NORMAL:
-                elemMaxDamagePerMob = ElementalStaffAttackBonus(elem, maxDamagePerMonster, stats);
+                elemMaxDamagePerMob = elementalStaffAttackBonus(elem, maxDamagePerMonster, stats);
                 break;
             case WEAK:
-                elemMaxDamagePerMob = ElementalStaffAttackBonus(elem, maxDamagePerMonster * 1.5, stats);
+                elemMaxDamagePerMob = elementalStaffAttackBonus(elem, maxDamagePerMonster * 1.5, stats);
                 break;
             case STRONG:
-                elemMaxDamagePerMob = ElementalStaffAttackBonus(elem, maxDamagePerMonster * 0.5, stats);
+                elemMaxDamagePerMob = elementalStaffAttackBonus(elem, maxDamagePerMonster * 0.5, stats);
                 break;
             default:
                 throw new RuntimeException("Unknown enum constant");
@@ -760,7 +760,7 @@ public class DamageParse {
         return elemMaxDamagePerMob;
     }
 
-    private static final double ElementalStaffAttackBonus(final Element elem, double elemMaxDamagePerMob, final PlayerStats stats) {
+    private static final double elementalStaffAttackBonus(final Element elem, double elemMaxDamagePerMob, final PlayerStats stats) {
         switch (elem) {
             case FIRE:
                 return (elemMaxDamagePerMob / 100) * stats.element_fire;
@@ -791,7 +791,7 @@ public class DamageParse {
         }
     }
 
-    private static double CalculateMaxWeaponDamagePerHit(final MapleCharacter player, final MapleMonster monster, final AttackInfo attack, final ISkill theSkill, final MapleStatEffect attackEffect, double maximumDamageToMonster, final Integer CriticalDamagePercent) {
+    private static double calculateMaxWeaponDamagePerHit(final MapleCharacter player, final MapleMonster monster, final AttackInfo attack, final ISkill theSkill, final MapleStatEffect attackEffect, double maximumDamageToMonster, final Integer CriticalDamagePercent) {
         if (player.getMapId() / 1000000 == 914) { //aran
             return 199999;
         }
@@ -945,7 +945,7 @@ public class DamageParse {
         return elementalMaxDamagePerMonster;
     }
 
-    public static final AttackInfo DivideAttack(final AttackInfo attack, final int rate) {
+    public static final AttackInfo divideAttack(final AttackInfo attack, final int rate) {
         attack.real = false;
         if (rate <= 1) {
             return attack; //lol
@@ -960,7 +960,7 @@ public class DamageParse {
         return attack;
     }
 
-    public static final AttackInfo Modify_AttackCrit(final AttackInfo attack, final MapleCharacter chr, final int type) {
+    public static final AttackInfo modify_AttackCrit(final AttackInfo attack, final MapleCharacter chr, final int type) {
         final int CriticalRate = chr.getStat().passive_sharpeye_rate();
         final boolean shadow = (type == 2 && chr.getBuffedValue(MapleBuffStat.SHADOWPARTNER) != null) || (type == 1 && chr.getBuffedValue(MapleBuffStat.MIRROR_IMAGE) != null);
         if (attack.skill != 4211006 && attack.skill != 3211003 && attack.skill != 4111004 && (CriticalRate > 0 || attack.skill == 4221001 || attack.skill == 3221007)) { //blizz + shadow meso + m.e no crits
@@ -980,7 +980,7 @@ public class DamageParse {
                                 eachd.right = eachd_copy.get(hit - 1 - mid_att).right;
                             } else {
                                 //rough calculation
-                                eachd.right = (Randomizer.nextInt(100)/*chr.CRand().CRand32__Random_ForMonster() % 100*/) < CriticalRate;
+                                eachd.right = (Randomizer.nextInt(100)/*chr.cRand().cRand32__Random_ForMonster() % 100*/) < CriticalRate;
                             }
                             eachd_copy.get(hit - 1).right = eachd.right;
                         }

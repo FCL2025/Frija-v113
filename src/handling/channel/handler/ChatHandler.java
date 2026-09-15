@@ -40,7 +40,7 @@ import tools.packet.MessengerPacket;
 
 public class ChatHandler {
 
-    public static final void GeneralChat(final String text, final byte unk, final MapleClient c, final MapleCharacter chr) {
+    public static final void generalChat(final String text, final byte unk, final MapleClient c, final MapleCharacter chr) {
         if (chr != null && !CommandProcessor.processCommand(c, text, CommandType.NORMAL)) {
             if (!chr.isGM() && text.length() >= 80) {
                 return;
@@ -62,7 +62,7 @@ public class ChatHandler {
         }
     }
 
-    public static final void Others(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void others(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final int type = slea.readByte();
         final byte numRecipients = slea.readByte();
         int recipients[] = new int[numRecipients];
@@ -185,7 +185,7 @@ public class ChatHandler {
         }
     }
 
-    public static final void Whisper_Find(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void whisper_Find(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final byte mode = slea.readByte();
 //        slea.readInt(); //ticks
         switch (mode) {

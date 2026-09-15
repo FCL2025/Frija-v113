@@ -889,9 +889,9 @@ public class MapleStatEffect {
             }
         } else if (cp != 0 && applyto.getCarnivalParty() != null) {
             applyto.getCarnivalParty().addCP(applyto, cp);
-            applyto.CPUpdate(false, applyto.getAvailableCP(), applyto.getTotalCP(), 0);
+            applyto.cpUpdate(false, applyto.getAvailableCP(), applyto.getTotalCP(), 0);
             for (MapleCharacter chr : applyto.getMap().getCharactersThreadsafe()) {
-                chr.CPUpdate(true, applyto.getCarnivalParty().getAvailableCP(), applyto.getCarnivalParty().getTotalCP(), applyto.getCarnivalParty().getTeam());
+                chr.cpUpdate(true, applyto.getCarnivalParty().getAvailableCP(), applyto.getCarnivalParty().getTotalCP(), applyto.getCarnivalParty().getTeam());
             }
         } else if (nuffSkill != 0 && applyto.getParty() != null) {
             final MCSkill skil = MapleCarnivalFactory.getInstance().getSkill(nuffSkill);

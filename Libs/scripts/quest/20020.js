@@ -23,7 +23,7 @@ function start(mode, type, selection) {
     } else if (status == 4) {
 	qm.forceStartQuest();
 	qm.playerSummonHint(false);
-	qm.MovieClipIntroUI(true);
+	qm.movieClipIntroUI(true);
 	qm.warp(913040100, 0);
 	qm.dispose();
     }

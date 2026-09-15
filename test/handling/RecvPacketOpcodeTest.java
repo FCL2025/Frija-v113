@@ -150,11 +150,11 @@ class RecvPacketOpcodeTest {
         // The false ones are the packets that legitimately arrive before there is a
         // character on the session; MapleServerHandler uses this to decide whether
         // to reject a packet outright.
-        assertFalse(RecvPacketOpcode.PONG.NeedsChecking());
-        assertFalse(RecvPacketOpcode.LOGIN_PASSWORD.NeedsChecking());
-        assertFalse(RecvPacketOpcode.PLAYER_LOGGEDIN.NeedsChecking());
-        assertTrue(RecvPacketOpcode.CHANGE_MAP.NeedsChecking());
-        assertTrue(RecvPacketOpcode.GENERAL_CHAT.NeedsChecking());
+        assertFalse(RecvPacketOpcode.PONG.needsChecking());
+        assertFalse(RecvPacketOpcode.LOGIN_PASSWORD.needsChecking());
+        assertFalse(RecvPacketOpcode.PLAYER_LOGGEDIN.needsChecking());
+        assertTrue(RecvPacketOpcode.CHANGE_MAP.needsChecking());
+        assertTrue(RecvPacketOpcode.GENERAL_CHAT.needsChecking());
     }
 
     @Test

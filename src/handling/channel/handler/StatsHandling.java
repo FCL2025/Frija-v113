@@ -40,7 +40,7 @@ public class StatsHandling {
 
     private static final System.Logger LOG = System.getLogger(StatsHandling.class.getName());
 
-    public static final void DistributeAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void distributeAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
         c.send(CharacterPacket.updatePlayerStats(statupdate, true, chr.getJob()));
         chr.updateTick(slea.readInt());
@@ -176,7 +176,7 @@ public class StatsHandling {
         }
     }
 
-    public static final void DistributeSP(final int skillid, final MapleClient c, final MapleCharacter chr) {
+    public static final void distributeSP(final int skillid, final MapleClient c, final MapleCharacter chr) {
         boolean isBeginnerSkill = false;
         final int remainingSp;
 
@@ -279,7 +279,7 @@ public class StatsHandling {
         }
     }
 
-    public static final void AutoAssignAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void autoAssignAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         chr.updateTick(slea.readInt());
         slea.skip(4);
         if (slea.available() < 16) {

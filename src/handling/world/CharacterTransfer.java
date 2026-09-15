@@ -214,7 +214,7 @@ public class CharacterTransfer {
         this.BlessOfFairy = chr.getBlessOfFairyOrigin();
         this.chalkboard = chr.getChalkboard();
         this.skillmacro = chr.getMacros();
-        this.keymap = chr.getKeyLayout().Layout();
+        this.keymap = chr.getKeyLayout().layout();
         this.savedlocation = chr.getSavedLocations();
         this.wishlist = chr.getWishlist();
         this.rocks = chr.getRocks();

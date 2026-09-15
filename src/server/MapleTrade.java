@@ -32,7 +32,7 @@ public class MapleTrade {
         this.chr = new WeakReference<>(chr);
     }
 
-    public final void CompleteTrade() {
+    public final void completeTrade() {
         if (exchangeItems != null) { // just to be on the safe side...
             for (final IItem item : exchangeItems) {
                 byte flag = item.getFlag();
@@ -51,7 +51,7 @@ public class MapleTrade {
         }
         exchangeMeso = 0;
 
-        chr.get().getClient().send(NPCPacket.TradeMessage(tradingslot, (byte) 0x08));
+        chr.get().getClient().send(NPCPacket.tradeMessage(tradingslot, (byte) 0x08));
     }
 
     public final void cancel(final MapleClient c) {
@@ -229,8 +229,8 @@ public class MapleTrade {
         if (partner.isLocked()) { // Both locked
             int lz = local.check(), lz2 = partner.check();
             if (lz == 0 && lz2 == 0) {
-                local.CompleteTrade();
-                partner.CompleteTrade();
+                local.completeTrade();
+                partner.completeTrade();
             } else {
                 // NOTE : IF accepted = other party but inventory is full, the item is lost.
                 partner.cancel(partner.getChr().getClient(), lz == 0 ? lz2 : lz);

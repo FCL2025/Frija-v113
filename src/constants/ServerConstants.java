@@ -26,7 +26,7 @@ public class ServerConstants {
      * Specifics which job gives an additional EXP to party
      * returns the percentage of EXP to increase
      */
-    public static final byte Class_Bonus_EXP(final int job) {
+    public static final byte class_Bonus_EXP(final int job) {
         switch (job) {
             case 3000: //whenever these arrive, they'll give bonus
             case 3200:

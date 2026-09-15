@@ -98,7 +98,7 @@ public class MapleCharacterUtil {
         return -1;
     }
 
-    public static final boolean PromptPoll(final int accountid) {
+    public static final boolean promptPoll(final int accountid) {
         boolean prompt = false;
         try (Connection con = DatabaseConnection.getConnection();
                 PreparedStatement ps = con.prepareStatement("SELECT * from game_poll_reply where AccountId = ?")) {
@@ -114,8 +114,8 @@ public class MapleCharacterUtil {
         return prompt;
     }
 
-    public static final boolean SetPoll(final int accountid, final int selection) {
-        if (!PromptPoll(accountid)) { // Hacking OR spamming the db.
+    public static final boolean setPoll(final int accountid, final int selection) {
+        if (!promptPoll(accountid)) { // Hacking OR spamming the db.
             return false;
         }
 
@@ -138,7 +138,7 @@ public class MapleCharacterUtil {
     // 0 = You do not have a second password set currently.
     // 1 = The password you have input is wrong
     // 2 = Password Changed successfully
-    public static final int Change_SecondPassword(final int accid, final String password, final String newpassword) {
+    public static final int change_SecondPassword(final int accid, final String password, final String newpassword) {
         try (Connection con = DatabaseConnection.getConnection()) {
             String secondPassword;
             final String salt2;

@@ -201,7 +201,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         lastMsg = 0;
     }
 
-    public void PlayerToNpc(String text) {
+    public void playerToNpc(String text) {
         sendNextPrevS(text, (byte) 3);
     }
 

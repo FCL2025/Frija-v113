@@ -53,7 +53,7 @@ public class CharLoginHandler {
         return false;
     }
 
-    public static final void Welcome(final MapleClient c) {
+    public static final void welcome(final MapleClient c) {
         // 保留作為紀錄：這個進場招呼原本會送一則公告，被關掉之後整個方法就是空的。
         // PacketHandlerRegistry 仍然把 HELLO / HELLO_CHANNEL 導到這裡，所以方法本身不能刪。
        // c.send(ChatPacket.serverNotice(1, "歡迎來到尻尻谷"));
@@ -109,7 +109,7 @@ public class CharLoginHandler {
         }
     }
 
-    public static final void SetGenderRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void setGenderRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         String username = slea.readMapleAsciiString();
         String password = slea.readMapleAsciiString();
         if (c.getAccountName().equals(username) && c.getSecondPassword() == null) {
@@ -125,12 +125,12 @@ public class CharLoginHandler {
         }
     }
 
-    public static final void ServerListRequest(final MapleClient c) {
+    public static final void serverListRequest(final MapleClient c) {
         c.send(LoginPacket.getServerList(0, LoginServer.getServerName(), LoginServer.getLoad()));
         c.send(LoginPacket.getEndOfServerList());
     }
 
-    public static final void ServerStatusRequest(final MapleClient c) {
+    public static final void serverStatusRequest(final MapleClient c) {
         // 0 = Select world normally
         // 1 = "Since there are many users, you may encounter some..."
         // 2 = "The concurrent users in this world have reached the max"
@@ -145,7 +145,7 @@ public class CharLoginHandler {
         }
     }
 
-    public static final void CharlistRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void charlistRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         slea.readByte();
         final int server = slea.readByte();
         final int channel = slea.readByte() + 1;
@@ -161,12 +161,12 @@ public class CharLoginHandler {
         }
     }
 
-    public static final void CheckCharName(final String name, final MapleClient c) {
+    public static final void checkCharName(final String name, final MapleClient c) {
         c.send(LoginPacket.charNameResponse(name,
                 !MapleCharacterUtil.canCreateChar(name) || LoginInformationProvider.getInstance().isForbiddenName(name)));
     }
 
-    public static final void CreateChar(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void createChar(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final String name = slea.readMapleAsciiString();
         final int JobType = slea.readInt(); // 1 = Adventurer, 0 = Cygnus, 2 = Aran
         /*
@@ -281,7 +281,7 @@ public class CharLoginHandler {
         }
     }
 
-    public static final void DeleteChar(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void deleteChar(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         slea.readByte();
         String Secondpw_Client = null;
         // 保留作為紀錄：其他版本這裡先讀一個 byte 判斷有沒有二次密碼，後面還多一個字串；
@@ -304,7 +304,7 @@ public class CharLoginHandler {
                 c.getSession().close();
                 return;
             } else {
-                if (!c.CheckSecondPassword(Secondpw_Client)) { // Wrong Password
+                if (!c.checkSecondPassword(Secondpw_Client)) { // Wrong Password
                     // 保留作為紀錄：二次密碼錯誤原本回 12，本服改回 16，兩者是不同的客戶端訊息。
                     //state = 12;
                     state = 16;
@@ -319,7 +319,7 @@ public class CharLoginHandler {
         c.send(LoginPacket.deleteCharResponse(Character_ID, state));
     }
 
-    public static final void Character_WithoutSecondPassword(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void character_WithoutSecondPassword(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final int charId = slea.readInt();
 
          if (!c.login_Auth(charId)) {
@@ -333,7 +333,7 @@ public class CharLoginHandler {
         c.send(ServerPacket.getServerIP(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1]), charId));
     }
 
-    public static final void Character_WithSecondPassword(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void character_WithSecondPassword(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final String password = slea.readMapleAsciiString();
         final int charId = slea.readInt();
 
@@ -341,7 +341,7 @@ public class CharLoginHandler {
             c.getSession().close();
             return;
         }
-        if (c.CheckSecondPassword(password)) {
+        if (c.checkSecondPassword(password)) {
             c.updateMacs(slea.readMapleAsciiString());
             if (c.getIdleTask() != null) {
                 c.getIdleTask().cancel(true);

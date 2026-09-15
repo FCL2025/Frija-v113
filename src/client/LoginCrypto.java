@@ -27,7 +27,7 @@ public class LoginCrypto {
      */
     private final static Random rand = new SecureRandom();
 
-    public static String Generate_13DigitAsiasoftPassport() {
+    public static String generate_13DigitAsiasoftPassport() {
         StringBuilder sb = new StringBuilder();
         sb.append(Alphabet[rand.nextInt(Alphabet.length)]); // First Letter
 

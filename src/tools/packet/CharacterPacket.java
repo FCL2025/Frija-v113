@@ -66,7 +66,7 @@ public class CharacterPacket {
         mplew.write(1);
         mplew.writeShort(0);
 
-        chr.CRand().connectData(mplew); // Random number generator
+        chr.cRand().connectData(mplew); // Random number generator
 
         PacketHelper.addCharacterInfo(mplew, chr);
 
@@ -153,7 +153,7 @@ public class CharacterPacket {
 
     }
 
-    public static MaplePacket GameMaster_Func(int value) {
+    public static MaplePacket gameMaster_Func(int value) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.GM_EFFECT.getValue());
@@ -172,7 +172,7 @@ public class CharacterPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket GainEXP_Monster(final int gain, final boolean white, final int partyinc, final int Class_Bonus_EXP, final int Equipment_Bonus_EXP, final int Premium_Bonus_EXP) {
+    public static final MaplePacket gainEXP_Monster(final int gain, final boolean white, final int partyinc, final int Class_Bonus_EXP, final int Equipment_Bonus_EXP, final int Premium_Bonus_EXP) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_STATUS_INFO.getValue());
@@ -197,7 +197,7 @@ public class CharacterPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket GainEXP_Others(final int gain, final boolean inChat, final boolean white) {
+    public static final MaplePacket gainEXP_Others(final int gain, final boolean inChat, final boolean white) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_STATUS_INFO.getValue());

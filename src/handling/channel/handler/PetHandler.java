@@ -48,7 +48,7 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class PetHandler {
 
-    public static final void SpawnPet(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void spawnPet(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         chr.updateTick(slea.readInt());
         final byte slot = slea.readByte();
         slea.skip(1);
@@ -56,7 +56,7 @@ public class PetHandler {
 
     }
 
-    public static final void Pet_AutoPotion(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void pet_AutoPotion(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         slea.skip(13);
         final byte slot = slea.readByte();
         if (chr == null || !chr.isAlive() || chr.getMapId() == 749040100 || chr.getMap() == null || chr.hasDisease(MapleDisease.POTION)) {
@@ -86,7 +86,7 @@ public class PetHandler {
         }
     }
 
-    public static final void PetChat(final int petid, final short command, final String text, MapleCharacter chr) {
+    public static final void petChat(final int petid, final short command, final String text, MapleCharacter chr) {
         if (chr == null || chr.getMap() == null || chr.getPetIndex(petid) < 0) {
             return;
         }
@@ -126,7 +126,7 @@ public class PetHandler {
         chr.getMap().broadcastMessage(chr, PetPacket.commandResponse(chr.getId(), command, petIndex, success, false), true);
     }
 
-    public static final void PetFood(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void petFood(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         int previousFullness = 100;
         MaplePet pet = null;
         if (chr == null) {
@@ -194,7 +194,7 @@ public class PetHandler {
         c.send(CharacterPacket.enableActions());
     }
 
-    public static final void MovePet(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void movePet(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final int petId = slea.readInt();
         slea.skip(8);
         final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 3);

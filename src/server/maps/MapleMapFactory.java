@@ -261,7 +261,7 @@ public class MapleMapFactory {
         }
     }
 
-    public MapleMap CreateInstanceMap(int mapid, boolean respawns, boolean npcs, boolean reactors, int instanceid) {
+    public MapleMap createInstanceMap(int mapid, boolean respawns, boolean npcs, boolean reactors, int instanceid) {
         if (isInstanceMapLoaded(instanceid)) {
             return getInstanceMap(instanceid);
         }

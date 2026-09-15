@@ -55,7 +55,7 @@ public class PetPacket {
         return mplew.getPacket();
     }
     
-    public static MaplePacket PetComplete(MapleCharacter chr, MaplePet pet) {
+    public static MaplePacket petComplete(MapleCharacter chr, MaplePet pet) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.COMPLETE_PET.getValue());

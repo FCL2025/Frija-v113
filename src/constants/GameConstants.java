@@ -103,7 +103,7 @@ public class GameConstants {
         return 0;
     }
 
-    public static int EntrustedStoreTax(final int meso) {
+    public static int entrustedStoreTax(final int meso) {
         if (meso >= 100000000) {
             return (int) Math.round(0.03 * meso);
         } else if (meso >= 25000000) {

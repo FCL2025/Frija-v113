@@ -56,7 +56,7 @@ public class LoginPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket StrangeDATA() {
+    public static final MaplePacket strangeDATA() {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter(16);
 
         mplew.writeShort(0x12);

@@ -93,7 +93,7 @@ public class MapleQuestAction {
         return true;
     }
 
-    public final boolean RestoreLostItem(final MapleCharacter c, final int itemid) {
+    public final boolean restoreLostItem(final MapleCharacter c, final int itemid) {
         if (type == MapleQuestActionType.item) {
             int retitem;
 

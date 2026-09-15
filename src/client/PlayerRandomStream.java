@@ -32,10 +32,10 @@ public class PlayerRandomStream {
 
     public PlayerRandomStream() {
         final int v4 = 5;
-        this.CRand32__Seed(Randomizer.nextLong(), 1170746341 * v4 - 755606699, 1170746341 * v4 - 755606699);
+        this.cRand32__Seed(Randomizer.nextLong(), 1170746341 * v4 - 755606699, 1170746341 * v4 - 755606699);
     }
 
-    public final void CRand32__Seed(final long s1, final long s2, final long s3) {
+    public final void cRand32__Seed(final long s1, final long s2, final long s3) {
         seed1 = s1 | 0x100000;
         seed2 = s2 | 0x1000;
         seed3 = s3 | 0x10;
@@ -49,7 +49,7 @@ public class PlayerRandomStream {
         seed3__ = s3 | 0x10;
     }
 
-    public final long CRand32__Random() {
+    public final long cRand32__Random() {
         long v4 = this.seed1;
         long v5 = this.seed2;
         long v6 = this.seed3;
@@ -64,7 +64,7 @@ public class PlayerRandomStream {
         return (v8 ^ v9 ^ v10) & 0xffffffffL; // to be confirmed, I am not experienced in converting signed > unsigned
     }
 
-    public final long CRand32__Random_Character() {
+    public final long cRand32__Random_Character() {
         long v4 = this.seed1_;
         long v5 = this.seed2_;
         long v6 = this.seed3_;
@@ -79,7 +79,7 @@ public class PlayerRandomStream {
         return (v8 ^ v9 ^ v10) & 0xffffffffL;
     }
 
-    public final long CRand32__Random_CheckDamageMiss() {
+    public final long cRand32__Random_CheckDamageMiss() {
         long v4 = this.seed1__;
         long v5 = this.seed2__;
         long v6 = this.seed3__;
@@ -94,7 +94,7 @@ public class PlayerRandomStream {
         return (v8 ^ v9 ^ v10) & 0xffffffffL;
     }
 
-    public final long CRand32__Random_ForMonster() {
+    public final long cRand32__Random_ForMonster() {
         long v4 = this.seed1___;
         long v5 = this.seed2___;
         long v6 = this.seed3___;
@@ -110,11 +110,11 @@ public class PlayerRandomStream {
     }
 
     public final void connectData(final MaplePacketLittleEndianWriter mplew) {
-        long v5 = CRand32__Random();
-        long s2 = CRand32__Random();
-        long v6 = CRand32__Random();
+        long v5 = cRand32__Random();
+        long s2 = cRand32__Random();
+        long v6 = cRand32__Random();
 
-        CRand32__Seed(v5, s2, v6);
+        cRand32__Seed(v5, s2, v6);
 
         mplew.writeInt((int) v5);
         mplew.writeInt((int) s2);

@@ -30,14 +30,14 @@ public class CashShopOperation {
 
     private static final System.Logger LOG = System.getLogger(CashShopOperation.class.getName());
 
-    public static void LeaveCS(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static void leaveCS(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         CashShopServer.getPlayerStorageMTS().deregisterPlayer(chr);
         CashShopServer.getPlayerStorage().deregisterPlayer(chr);
         c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION, c.getSessionIPAddress());
 
         try {
 
-            World.ChannelChange_Data(new CharacterTransfer(chr), chr.getId(), c.getChannel());
+            World.channelChange_Data(new CharacterTransfer(chr), chr.getId(), c.getChannel());
             c.send(ServerPacket.getChannelChange(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1])));
         } finally {
             chr.saveToDB(false, true);
@@ -46,7 +46,7 @@ public class CashShopOperation {
         }
     }
 
-    public static void EnterCS(final int playerid, final MapleClient c) {
+    public static void enterCS(final int playerid, final MapleClient c) {
         CharacterTransfer transfer = CashShopServer.getPlayerStorage().getPendingCharacter(playerid);
         boolean mts = false;
         if (transfer == null) {
@@ -57,12 +57,12 @@ public class CashShopOperation {
                 return;
             }
         }
-        MapleCharacter chr = MapleCharacter.ReconstructChr(transfer, c, false);
+        MapleCharacter chr = MapleCharacter.reconstructChr(transfer, c, false);
 
         c.setPlayer(chr);
         c.setAccID(chr.getAccountID());
 
-        if (!c.CheckIPAddress()) { // Remote hack
+        if (!c.checkIPAddress()) { // Remote hack
             c.getSession().close();
             return;
         }
@@ -86,22 +86,22 @@ public class CashShopOperation {
  // 空的 storage。要啟用得連初始化一起補——這正是 CLAUDE.md 說「接上了但從未啟動」的那一組。
  //           CashShopServer.getPlayerStorageMTS().registerPlayer(chr);
  //           c.send(MTSCSPacket.startMTS(chr, c));
- //           MTSOperation.MTSUpdate(MTSStorage.getInstance().getCart(c.getPlayer().getId()), c);
+ //           MTSOperation.mtsUpdate(MTSStorage.getInstance().getCart(c.getPlayer().getId()), c);
         } else {
             CashShopServer.getPlayerStorage().registerPlayer(chr);
             c.send(MTSCSPacket.warpCS(c));
-            CSUpdate(c);
+            csUpdate(c);
         }
     }
 
-    public static void CSUpdate(final MapleClient c) {
+    public static void csUpdate(final MapleClient c) {
         c.send(MTSCSPacket.getCSGifts(c));
         c.send(MTSCSPacket.showAcc(c));
         doCSPackets(c);
         c.send(MTSCSPacket.sendWishList(c.getPlayer(), false));
     }
 
-    public static void CouponCode(final String code, final MapleClient c) {
+    public static void couponCode(final String code, final MapleClient c) {
         boolean validcode = false;
         int type = -1;
         int item = -1;
@@ -177,11 +177,11 @@ public class CashShopOperation {
         doCSPackets(c);
     }
 
-    public static final void BuyCashItem(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void buyCashItem(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final int action = slea.readByte();
         if (action == 0) {
             slea.skip(2);
-            CouponCode(slea.readMapleAsciiString(), c);
+            couponCode(slea.readMapleAsciiString(), c);
         } else if (action == 3) {
             final byte type = slea.readByte() ==0 ?(byte)1 : (byte)2;
             final CashItemInfo item = CashItemFactory.getInstance().getItem(slea.readInt());

@@ -34,7 +34,7 @@ public class PartyHandler {
 
     private static final System.Logger LOG = System.getLogger(PartyHandler.class.getName());
 
-    public static final void DenyPartyRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void denyPartyRequest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final int action = slea.readByte();
         final int partyid = slea.readInt();
         if (c.getPlayer().getParty() == null) {
@@ -63,7 +63,7 @@ public class PartyHandler {
 
     }
 
-    public static final void PartyOperatopn(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void partyOperatopn(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final int operation = slea.readByte();
         MapleParty party = c.getPlayer().getParty();
         MaplePartyCharacter partyplayer = new MaplePartyCharacter(c.getPlayer());

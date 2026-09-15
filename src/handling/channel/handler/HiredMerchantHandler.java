@@ -46,7 +46,7 @@ public class HiredMerchantHandler {
 
     private static final System.Logger LOG = System.getLogger(HiredMerchantHandler.class.getName());
 
-    public static final void UseHiredMerchant(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void useHiredMerchant(final SeekableLittleEndianAccessor slea, final MapleClient c) {
 //	slea.readInt(); // TimeStamp
 
         if (c.getPlayer().getMap().allowPersonalShop()) {
@@ -89,7 +89,7 @@ public class HiredMerchantHandler {
         }
     }
 
-    public static final void MerchantItemStore(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void merchantItemStore(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (c.getPlayer() == null) {
             return;
         }

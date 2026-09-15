@@ -35,7 +35,7 @@ public class AllianceHandler {
 
     private static final System.Logger LOG = System.getLogger(AllianceHandler.class.getName());
 
-    public static final void HandleAlliance(final SeekableLittleEndianAccessor slea, final MapleClient c, boolean denied) {
+    public static final void handleAlliance(final SeekableLittleEndianAccessor slea, final MapleClient c, boolean denied) {
         if (c.getPlayer().getGuildId() <= 0) {
             c.send(CharacterPacket.enableActions());
             return;
@@ -65,7 +65,7 @@ public class AllianceHandler {
             return;
         }
         if (denied) {
-            DenyInvite(c, gs);
+            denyInvite(c, gs);
             return;
         }
         MapleCharacter chr;
@@ -153,7 +153,7 @@ public class AllianceHandler {
         }
     }
 
-    public static final void DenyInvite(MapleClient c, final MapleGuild gs) { //playername that invited -> guildname that was invited but we also don't care
+    public static final void denyInvite(MapleClient c, final MapleGuild gs) { //playername that invited -> guildname that was invited but we also don't care
         final int inviteid = Guild.getInvitedId(c.getPlayer().getGuildId());
         if (inviteid > 0) {
             final int newAlliance = Alliance.getAllianceLeader(inviteid);

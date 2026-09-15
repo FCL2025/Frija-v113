@@ -55,7 +55,7 @@ public class NPCHandler {
 
     private static final System.Logger LOG = System.getLogger(NPCHandler.class.getName());
 
-    public static final void NPCAnimation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void npcAnimation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         mplew.writeShort(SendPacketOpcode.NPC_ACTION.getValue());
         final int length = (int) slea.available();
@@ -72,7 +72,7 @@ public class NPCHandler {
         c.send(mplew.getPacket());
     }
 
-    public static final void NPCShop(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void npcShop(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final byte bmode = slea.readByte();
         if (chr == null) {
             return;
@@ -116,7 +116,7 @@ public class NPCHandler {
         }
     }
 
-    public static final void NPCTalk(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void npcTalk(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null || chr.getMap() == null) {
             return;
         }
@@ -138,7 +138,7 @@ public class NPCHandler {
         }
     }
 
-    public static final void QuestAction(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void questAction(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final byte action = slea.readByte();
         // 客戶端送的 questid 是 16 位元「無號」值，所以 32768 以上讀成 short 會是負數。
         // 原本的修法是 `short quest = slea.readShort(); if (quest < 0) quest += 65536;`，
@@ -155,7 +155,7 @@ public class NPCHandler {
             case 0: { // Restore lost item
                 chr.updateTick(slea.readInt());
                 final int itemid = slea.readInt();
-                MapleQuest.getInstance(quest).RestoreLostItem(chr, itemid);
+                MapleQuest.getInstance(quest).restoreLostItem(chr, itemid);
                 break;
             }
             case 1: { // Start Quest
@@ -206,7 +206,7 @@ public class NPCHandler {
         }
     }
 
-    public static final void Storage(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void storage(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final byte mode = slea.readByte();
         if (chr == null) {
             return;
@@ -329,7 +329,7 @@ public class NPCHandler {
         }
     }
 
-    public static final void NPCMoreTalk(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void npcMoreTalk(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final byte lastMsg = slea.readByte(); // 00 (last msg type I think)
         final byte action = slea.readByte(); // 00 = end chat, 01 == follow
 
@@ -444,14 +444,14 @@ public class NPCHandler {
         c.getPlayer().forceReAddItem(eq.copy(), type);
     }
 
-    public static final void UpdateQuest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void updateQuest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final MapleQuest quest = MapleQuest.getInstance(slea.readShort() & 0xFFFF); // 無號，見 QuestAction
         if (quest != null) {
             c.getPlayer().updateQuest(c.getPlayer().getQuest(quest), true);
         }
     }
 
-    public static final void UseItemQuest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void useItemQuest(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final short slot = slea.readShort();
         final int itemId = slea.readInt();
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.ETC).getItem(slot);
@@ -481,7 +481,7 @@ public class NPCHandler {
         }
     }
 
-    public static final void RPSGame(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void rpsGame(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (slea.available() == 0 || !c.getPlayer().getMap().containsNPC(9000019)) {
             if (c.getPlayer().getRPS() != null) {
                 c.getPlayer().getRPS().dispose(c);

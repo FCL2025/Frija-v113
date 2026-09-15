@@ -473,7 +473,7 @@ public class PacketHelper {
         addRingInfo(mplew, chr);
         addRocksInfo(mplew, chr);
         addMonsterBookInfo(mplew, chr);
-        chr.QuestInfoPacket(mplew); // for every questinfo: int16_t questid, string questdata
+        chr.questInfoPacket(mplew); // for every questinfo: int16_t questid, string questdata
         mplew.writeInt(0); // PQ rank
         mplew.writeShort(0);
     }

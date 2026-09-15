@@ -51,7 +51,7 @@ public class EventPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket Mulung_DojoUp2() {
+    public static MaplePacket mulung_DojoUp2() {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_ITEM_GAIN_INCHAT.getValue());
@@ -60,7 +60,7 @@ public class EventPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket Mulung_Pts(int recv, int total) {
+    public static MaplePacket mulung_Pts(int recv, int total) {
         return QuestPacket.showQuestMsg("你獲得 " + recv + " 修煉點數, 目前累積了 " + total + " 點修煉點數");
     }
 
@@ -210,7 +210,7 @@ public class EventPacket {
         return sendString(3, type, amount); //Red_Stage(1-5), Blue_Stage, blueTeamDamage, redTeamDamage
     }
 
-    public static MaplePacket MulungEnergy(int energy) {
+    public static MaplePacket mulungEnergy(int energy) {
         return sendPyramidEnergy("energy", String.valueOf(energy));
     }
 

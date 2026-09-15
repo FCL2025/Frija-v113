@@ -820,7 +820,7 @@ public abstract class AbstractPlayerInteraction {
 
     public final void dojo_getUp() {
         c.send(QuestPacket.updateInfoQuest(1207, "pt=1;min=4;belt=1;tuto=1")); //todo
-        c.send(EventPacket.Mulung_DojoUp2());
+        c.send(EventPacket.mulung_DojoUp2());
         c.send(MapPacket.instantMapWarp((byte) 6));
     }
 
@@ -900,33 +900,33 @@ public abstract class AbstractPlayerInteraction {
         updateInfoQuest(22013, data);
     }
 
-    public final void Aran_Start() {
-        c.send(UIPacket.Aran_Start());
+    public final void aran_Start() {
+        c.send(UIPacket.aran_Start());
     }
 
     public final void evanTutorial(final String data, final int v1) {
         c.send(UIPacket.getEvanTutorial(data));
     }
 
-    public final void AranTutInstructionalBubble(final String data) {
-        c.send(UIPacket.AranTutInstructionalBalloon(data));
+    public final void aranTutInstructionalBubble(final String data) {
+        c.send(UIPacket.aranTutInstructionalBalloon(data));
     }
 
     public final void ShowWZEffect(final String data) {
-        c.send(UIPacket.AranTutInstructionalBalloon(data));
+        c.send(UIPacket.aranTutInstructionalBalloon(data));
     }
 
     public final void showWZEffect(final String data) {
         c.send(UIPacket.ShowWZEffect(data));
     }
 
-    public final void EarnTitleMsg(final String data) {
-        c.send(UIPacket.EarnTitleMsg(data));
+    public final void earnTitleMsg(final String data) {
+        c.send(UIPacket.earnTitleMsg(data));
     }
 
-    public final void MovieClipIntroUI(final boolean enabled) {
-        c.send(UIPacket.IntroDisableUI(enabled));
-        c.send(UIPacket.IntroLock(enabled));
+    public final void movieClipIntroUI(final boolean enabled) {
+        c.send(UIPacket.introDisableUI(enabled));
+        c.send(UIPacket.introLock(enabled));
     }
 
     public MapleInventoryType getInvType(int i) {
@@ -976,7 +976,7 @@ public abstract class AbstractPlayerInteraction {
     }
 
     public void showMapEffect(String path) {
-        getClient().send(UIPacket.MapEff(path));
+        getClient().send(UIPacket.mapEff(path));
     }
 
     public int itemQuantity(int itemid) {

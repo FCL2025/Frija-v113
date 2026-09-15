@@ -97,7 +97,7 @@ public class PlayerInteractionHandler {
      * calls it. An arm's reads from {@code slea} carry on from that one byte, so what
      * it reads - and in what order - is part of the protocol.
      */
-    public static final void PlayerInteraction(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void playerInteraction(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null) {
             return;
         }

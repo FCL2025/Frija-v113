@@ -17,7 +17,7 @@ function start(mode, type, selection) {
 		qm.sendAcceptDecline("Here, I'll give you this #bSandwich#k, so #bgo talk to mom when you finish eating#k. She says she has something to tell you.");
 	else if (status == 2){
 		qm.forceStartQuest();
-		qm.PlayerToNpc("#b(Mom has something to say? Eat your #t2022620# and head back inside the house.)#k");
+		qm.playerToNpc("#b(Mom has something to say? Eat your #t2022620# and head back inside the house.)#k");
 		qm.gainItem(2022620, 1);
 	}else if (status == 3){
 		qm.evanTutorial("UI/tutorial/evan/3/0" , 1);

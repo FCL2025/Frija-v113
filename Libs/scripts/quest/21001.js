@@ -35,7 +35,7 @@ function end(mode, type, selection) {
 	    if (qm.haveItem(4001271)) {
 		qm.gainItem(4001271, -1);
 	    }
-	    qm.MovieClipIntroUI(true);
+	    qm.movieClipIntroUI(true);
 	    qm.forceCompleteQuest();
 	    qm.warp(914090010, 0);
 	    qm.dispose();

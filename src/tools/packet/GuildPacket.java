@@ -557,7 +557,7 @@ public class GuildPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket BBSThreadList(final List<MapleBBSThread> bbs, int start) {
+    public static MaplePacket bbsThreadList(final List<MapleBBSThread> bbs, int start) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.BBS_OPERATION.getValue());

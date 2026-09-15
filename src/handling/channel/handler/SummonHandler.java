@@ -53,7 +53,7 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class SummonHandler {
 
-    public static final void MoveDragon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void moveDragon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         slea.skip(8); //POS
         final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 5);
         if (chr != null && chr.getDragon() != null) {
@@ -89,7 +89,7 @@ public class SummonHandler {
         }
     }
 
-    public static final void MoveSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void moveSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final int oid = slea.readInt();
         Point startPos = new Point(slea.readShort(), slea.readShort());
         List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 4);
@@ -108,7 +108,7 @@ public class SummonHandler {
         }
     }
 
-    public static final void DamageSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void damageSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final int unkByte = slea.readByte();
         final int damage = slea.readInt();
         final int monsterIdFrom = slea.readInt();
@@ -126,7 +126,7 @@ public class SummonHandler {
         }
     }
 
-    public static void SummonAttack(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static void summonAttack(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null || !chr.isAlive()) {
             return;
         }
@@ -146,7 +146,7 @@ public class SummonHandler {
         slea.skip(8);
         int tick = slea.readInt();
         chr.updateTick(tick);
-        summon.CheckSummonAttackFrequency(chr, tick);
+        summon.checkSummonAttackFrequency(chr, tick);
         slea.skip(8);
         final byte animation = slea.readByte();
         slea.skip(8);

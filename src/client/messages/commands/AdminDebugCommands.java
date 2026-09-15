@@ -331,7 +331,7 @@ public class AdminDebugCommands {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            c.send(PlayerShopPacket.Merchant_Buy_Error(Byte.parseByte(splitted[1])));
+            c.send(PlayerShopPacket.merchant_Buy_Error(Byte.parseByte(splitted[1])));
             return 1;
 
         }

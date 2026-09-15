@@ -696,7 +696,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             if (c == null || !c.isReceiving()) {
                 return;
             }
-            if (recv.NeedsChecking() && !c.isLoggedIn()) {
+            if (recv.needsChecking() && !c.isLoggedIn()) {
                 return;
             }
             if (c.getPlayer() != null && c.isMonitored() && !blocked.contains(recv)) {
@@ -718,7 +718,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                             + "] | [IGN: "
                             + (c.getPlayer() == null || c.getPlayer().getName() == null ? "null" : c.getPlayer().getName())
                             + "] | [Time: "
-                            + FileoutputUtil.CurrentReadable_Time()
+                            + FileoutputUtil.currentReadable_Time()
                             + "]");
                 }
                 writeMonitorLog(fw, "[" + recv.toString() + "]" + slea.toString(true));

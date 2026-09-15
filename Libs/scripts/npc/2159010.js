@@ -27,7 +27,7 @@ function action(mode, type, selection) {
 	cm.gainItem(2000000,3);
 	cm.gainItem(2000003,3);
 	cm.gainExp(90);
-	cm.MovieClipIntroUI(false);
+	cm.movieClipIntroUI(false);
 	cm.warp(310000000,8);
     	cm.dispose();
     }

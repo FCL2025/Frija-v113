@@ -568,7 +568,7 @@ public class EventInstanceManager {
         }
         final int assignedid = getChannelServer().getEventSM().getNewInstanceMapId();
         eventMaps.add(new EventMap(assignedid, true));
-        return this.getMapFactory().CreateInstanceMap(mapid, true, true, true, assignedid);
+        return this.getMapFactory().createInstanceMap(mapid, true, true, true, assignedid);
     }
 
     public final MapleMap createInstanceMapS(final int mapid) {
@@ -577,7 +577,7 @@ public class EventInstanceManager {
         }
         final int assignedid = getChannelServer().getEventSM().getNewInstanceMapId();
         eventMaps.add(new EventMap(assignedid, true));
-        return this.getMapFactory().CreateInstanceMap(mapid, false, false, false, assignedid);
+        return this.getMapFactory().createInstanceMap(mapid, false, false, false, assignedid);
     }
 
     public final MapleMap setInstanceMap(final int mapid) { //gets instance map from the channelserv

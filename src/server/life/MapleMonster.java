@@ -1382,7 +1382,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
                                 averagePartyLevel += pchr.getLevel();
 
                                 if (Class_Bonus_EXP == 0) {
-                                    Class_Bonus_EXP = ServerConstants.Class_Bonus_EXP(pchr.getJob());
+                                    Class_Bonus_EXP = ServerConstants.class_Bonus_EXP(pchr.getJob());
                                 }
                                 if (pchr.getStat().equippedWelcomeBackRing && Premium_Bonus_EXP == 0) {
                                     Premium_Bonus_EXP = 80;

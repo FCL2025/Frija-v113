@@ -34,11 +34,11 @@ class GameConstantsTest {
     @Test
     @DisplayName("EntrustedStoreTax is the cheaper schedule")
     void entrustedStoreTax() {
-        assertEquals(0, GameConstants.EntrustedStoreTax(99_999));
-        assertEquals(400, GameConstants.EntrustedStoreTax(100_000));
-        assertEquals(3_000_000, GameConstants.EntrustedStoreTax(100_000_000));
+        assertEquals(0, GameConstants.entrustedStoreTax(99_999));
+        assertEquals(400, GameConstants.entrustedStoreTax(100_000));
+        assertEquals(3_000_000, GameConstants.entrustedStoreTax(100_000_000));
         for (final int meso : new int[]{100_000, 1_000_000, 5_000_000, 10_000_000, 25_000_000, 100_000_000}) {
-            assertTrue(GameConstants.EntrustedStoreTax(meso) < GameConstants.getTaxAmount(meso),
+            assertTrue(GameConstants.entrustedStoreTax(meso) < GameConstants.getTaxAmount(meso),
                     "the entrusted-store rate should undercut the trade rate at " + meso);
         }
     }

@@ -163,7 +163,7 @@ public class MTSOperation {
         doMTSPackets(cart, c);
     }
 
-    public static void MTSUpdate(final MTSCart cart, final MapleClient c) {
+    public static void mtsUpdate(final MTSCart cart, final MapleClient c) {
         c.getPlayer().modifyCSPoints(1, MTSStorage.getInstance().getCart(c.getPlayer().getId()).getSetOwedNX(), false);
         c.send(MTSCSPacket.getMTSWantedListingOver(0, 0));
         doMTSPackets(cart, c);

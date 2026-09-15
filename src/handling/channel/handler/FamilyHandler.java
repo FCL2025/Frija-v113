@@ -39,18 +39,18 @@ import tools.packet.FamilyPacket;
 
 public class FamilyHandler {
 
-    public static final void RequestFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void requestFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
         MapleCharacter chr = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
         if (chr != null) {
             c.send(FamilyPacket.getFamilyPedigree(chr));
         }
     }
 
-    public static final void OpenFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void openFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
         c.send(FamilyPacket.getFamilyInfo(c.getPlayer()));
     }
 
-    public static final void UseFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void useFamily(final SeekableLittleEndianAccessor slea, MapleClient c) {
         int type = slea.readInt();
         MapleFamilyBuffEntry entry = MapleFamilyBuff.getBuffEntry(type);
         if (entry == null) {
@@ -141,7 +141,7 @@ public class FamilyHandler {
         }
     }
 
-    public static final void FamilyOperation(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void familyOperation(final SeekableLittleEndianAccessor slea, MapleClient c) {
         if (c.getPlayer() == null) {
             return;
         }
@@ -168,7 +168,7 @@ public class FamilyHandler {
         c.send(CharacterPacket.enableActions());
     }
 
-    public static final void FamilyPrecept(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void familyPrecept(final SeekableLittleEndianAccessor slea, MapleClient c) {
         MapleFamily fam = Family.getFamily(c.getPlayer().getFamilyId());
         if (fam == null || fam.getLeaderId() != c.getPlayer().getId()) {
             return;
@@ -177,7 +177,7 @@ public class FamilyHandler {
         c.getPlayer().dropMessage(1, "重開家族視窗即可套用.");
     }
 
-    public static final void FamilySummon(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void familySummon(final SeekableLittleEndianAccessor slea, MapleClient c) {
         int TYPE = 1; //the type of the summon request.
         MapleFamilyBuffEntry cost = MapleFamilyBuff.getBuffEntry(TYPE);
         MapleCharacter tt = c.getChannelServer().getPlayerStorage().getCharacterByName(slea.readMapleAsciiString());
@@ -200,7 +200,7 @@ public class FamilyHandler {
         c.getPlayer().setTeleportName("");
     }
 
-    public static final void DeleteJunior(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void deleteJunior(final SeekableLittleEndianAccessor slea, MapleClient c) {
         int juniorid = slea.readInt();
         if (c.getPlayer().getFamilyId() <= 0 || juniorid <= 0 || (c.getPlayer().getJunior1() != juniorid && c.getPlayer().getJunior2() != juniorid)) {
             return;
@@ -232,7 +232,7 @@ public class FamilyHandler {
         c.send(CharacterPacket.enableActions());
     }
 
-    public static final void DeleteSenior(final SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void deleteSenior(final SeekableLittleEndianAccessor slea, MapleClient c) {
         if (c.getPlayer().getFamilyId() <= 0 || c.getPlayer().getSeniorId() <= 0) {
             return;
         }
@@ -260,7 +260,7 @@ public class FamilyHandler {
         c.send(CharacterPacket.enableActions());
     }
 
-    public static final void AcceptFamily(SeekableLittleEndianAccessor slea, MapleClient c) {
+    public static final void acceptFamily(SeekableLittleEndianAccessor slea, MapleClient c) {
         MapleCharacter inviter = c.getPlayer().getMap().getCharacterById(slea.readInt());
         if (inviter != null && c.getPlayer().getSeniorId() == 0 && (c.getPlayer().isGM() || !inviter.isHidden()) && inviter.getLevel() - 20 <= c.getPlayer().getLevel() && inviter.getLevel() >= 10 && inviter.getName().equals(slea.readMapleAsciiString()) && inviter.getNoJuniors() < 2 /*&& inviter.getFamily().getGens() < 1000*/ && c.getPlayer().getLevel() >= 10) {
             boolean accepted = slea.readByte() > 0;

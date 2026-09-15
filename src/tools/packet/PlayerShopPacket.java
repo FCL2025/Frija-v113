@@ -267,7 +267,7 @@ public class PlayerShopPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket Merchant_Buy_Error(final byte message) {
+    public static final MaplePacket merchant_Buy_Error(final byte message) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         // 2 = You have not enough meso
@@ -531,7 +531,7 @@ public class PlayerShopPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket MerchantVisitorView(List<String> visitor) {
+    public static final MaplePacket merchantVisitorView(List<String> visitor) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
@@ -544,7 +544,7 @@ public class PlayerShopPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket MerchantBlackListView(final List<String> blackList) {
+    public static final MaplePacket merchantBlackListView(final List<String> blackList) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());

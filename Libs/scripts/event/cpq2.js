@@ -115,8 +115,8 @@ function start(eim) {
 
 function monsterKilled(eim, chr, cp) {
 	chr.getCarnivalParty().addCP(chr, cp); // this is for the specific party (red/blue)
-    chr.CPUpdate(false, chr.getAvailableCP(), chr.getTotalCP(), 0); // this will update for the player who killed the mob
-	chr.CPUpdate(true, chr.getAvailableCP(), chr.getTotalCP(), 0); // this will update for the player's carnival team (their party)
+    chr.cpUpdate(false, chr.getAvailableCP(), chr.getTotalCP(), 0); // this will update for the player who killed the mob
+	chr.cpUpdate(true, chr.getAvailableCP(), chr.getTotalCP(), 0); // this will update for the player's carnival team (their party)
 } 
 
 function monsterValue(eim, mobId) {
@@ -178,7 +178,7 @@ function playerRevive(eim, player) {
     player.getCarnivalParty().useCP(player, 10);
     var iter = eim.getPlayers().iterator();
     while (iter.hasNext()) {
-        iter.next().CPUpdate(true, player.getCarnivalParty().getAvailableCP(), player.getCarnivalParty().getTotalCP(), player.getCarnivalParty().getTeam());
+        iter.next().cpUpdate(true, player.getCarnivalParty().getAvailableCP(), player.getCarnivalParty().getTotalCP(), player.getCarnivalParty().getTeam());
     }
 	player.addHP(50);
 	player.changeMap(eim.getMapInstance(reviveMap), eim.getMapInstance(reviveMap).getPortal(0));

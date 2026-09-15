@@ -151,7 +151,7 @@ class LoginCryptoTest {
     @DisplayName("Generate_13DigitAsiasoftPassport is letter + 11 digits + letter, and never uses 0")
     void passport() {
         for (int i = 0; i < 32; i++) {
-            final String passport = LoginCrypto.Generate_13DigitAsiasoftPassport();
+            final String passport = LoginCrypto.generate_13DigitAsiasoftPassport();
             assertEquals(13, passport.length());
             // The digit table is "1".."9" - there is no zero in it.
             assertTrue(passport.matches("[A-Z][1-9]{11}[A-Z]"), passport);

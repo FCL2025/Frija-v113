@@ -154,14 +154,14 @@ public class Event_DojoAgent {
                             final int point = (points) * 5 ;
                             chr.modifyCSPoints(1, point, true);
                             chr.setDojo(chr.getDojo() + point);
-                            chr.getClient().send(EventPacket.Mulung_Pts(point, chr.getDojo()));
+                            chr.getClient().send(EventPacket.mulung_Pts(point, chr.getDojo()));
                         }
                     }
                 } else {
                     final int point = (points + 1) * 5 ;
                     c.modifyCSPoints(1, point, true);
                     c.setDojo(c.getDojo() + point);
-                    c.getClient().send(EventPacket.Mulung_Pts(point, c.getDojo()));
+                    c.getClient().send(EventPacket.mulung_Pts(point, c.getDojo()));
                 }
 
             }

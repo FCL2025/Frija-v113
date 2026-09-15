@@ -45,7 +45,7 @@ public class MapleKeyLayout {
         keymap = keys;
     }
 
-    public final Map<Integer, Pair<Byte, Integer>> Layout() {
+    public final Map<Integer, Pair<Byte, Integer>> layout() {
         changed = true;
         return keymap;
     }

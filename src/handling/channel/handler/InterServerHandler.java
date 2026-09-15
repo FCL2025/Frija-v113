@@ -59,7 +59,7 @@ import tools.data.input.SeekableLittleEndianAccessor;
 
 public class InterServerHandler {
 
-    public static final void EnterCS(final MapleClient c, final MapleCharacter chr, final boolean mts) {
+    public static final void enterCS(final MapleClient c, final MapleCharacter chr, final boolean mts) {
         if (!chr.isAlive() || chr.getEventInstance() != null || c.getChannelServer() == null) {
             c.send(ServerPacket.serverBlocked(2));
             c.send(CharacterPacket.enableActions());
@@ -76,7 +76,7 @@ public class InterServerHandler {
         PlayerBuffStorage.addBuffsToStorage(chr.getId(), chr.getAllBuffs());
         PlayerBuffStorage.addCooldownsToStorage(chr.getId(), chr.getCooldowns());
         PlayerBuffStorage.addDiseaseToStorage(chr.getId(), chr.getAllDiseases());
-        World.ChannelChange_Data(new CharacterTransfer(chr), chr.getId(), mts ? -20 : -10);
+        World.channelChange_Data(new CharacterTransfer(chr), chr.getId(), mts ? -20 : -10);
         ch.removePlayer(chr);
         c.updateLoginState(MapleClient.CHANGE_CHANNEL, c.getSessionIPAddress());
 
@@ -87,7 +87,7 @@ public class InterServerHandler {
         c.setReceiving(false);
     }
 
-    public static final void Loggedin(final int playerid, final MapleClient c) {
+    public static final void loggedin(final int playerid, final MapleClient c) {
         final ChannelServer channelServer = c.getChannelServer();
         MapleCharacter player;
         final CharacterTransfer transfer = channelServer.getPlayerStorage().getPendingCharacter(playerid);
@@ -95,12 +95,12 @@ public class InterServerHandler {
         if (transfer == null) { // Player isn't in storage, probably isn't CC
             player = MapleCharacter.loadCharFromDB(playerid, c, true);
         } else {
-            player = MapleCharacter.ReconstructChr(transfer, c, true);
+            player = MapleCharacter.reconstructChr(transfer, c, true);
         }
         c.setPlayer(player);
         c.setAccID(player.getAccountID());
 
-        if (!c.CheckIPAddress()) { // Remote hack
+        if (!c.checkIPAddress()) { // Remote hack
             c.getSession().close();
             return;
         }
@@ -212,7 +212,7 @@ public class InterServerHandler {
         player.spawnSavedPets();
     }
 
-    public static final void ChangeChannel(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void changeChannel(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (!chr.isAlive() || chr.getEventInstance() != null || chr.getMap() == null || FieldLimitType.ChannelSwitch.check(chr.getMap().getFieldLimit())) {
             c.send(CharacterPacket.enableActions());
             return;

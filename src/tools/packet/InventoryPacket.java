@@ -321,7 +321,7 @@ public class InventoryPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket ItemMaker_Success() {
+    public static final MaplePacket itemMaker_Success() {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 //D6 00 00 00 00 00 01 00 00 00 00 DC DD 40 00 01 00 00 00 01 00 00 00 8A 1C 3D 00 01 00 00 00 00 00 00 00 00 B0 AD 01 00
         mplew.writeShort(SendPacketOpcode.SHOW_ITEM_GAIN_INCHAT.getValue());
@@ -331,7 +331,7 @@ public class InventoryPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket ItemMaker_Success_3rdParty(final int from_playerid) {
+    public static final MaplePacket itemMaker_Success_3rdParty(final int from_playerid) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_FOREIGN_EFFECT.getValue());

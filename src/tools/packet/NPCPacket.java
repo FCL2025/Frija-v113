@@ -159,7 +159,7 @@ public class NPCPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket TradeMessage(final byte UserSlot, final byte message) {
+    public static MaplePacket tradeMessage(final byte UserSlot, final byte message) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());

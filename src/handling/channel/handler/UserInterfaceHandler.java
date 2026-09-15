@@ -33,7 +33,7 @@ public class UserInterfaceHandler {
 
     private static final System.Logger LOG = System.getLogger(UserInterfaceHandler.class.getName());
 
-    public static final void CygnusSummon_NPCRequest(final MapleClient c) {
+    public static final void cygnusSummon_NPCRequest(final MapleClient c) {
         if (c.getPlayer().getJob() == 2000) {
             NPCScriptManager.getInstance().start(c, 1202000);
         } else if (c.getPlayer().getJob() == 1000) {
@@ -41,13 +41,13 @@ public class UserInterfaceHandler {
         }
     }
 
-    public static final void InGame_Poll(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void inGame_Poll(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (ServerConstants.PollEnabled) {
             c.getPlayer().updateTick(slea.readInt());
             final int selection = slea.readInt();
 
             if (selection >= 0 && selection <= ServerConstants.Poll_Answers.length) {
-                if (MapleCharacterUtil.SetPoll(c.getAccID(), selection)) {
+                if (MapleCharacterUtil.setPoll(c.getAccID(), selection)) {
                     c.send(UIPacket.getPollReply("Thank you."));
                     //idk what goes here lol
                 }
@@ -55,7 +55,7 @@ public class UserInterfaceHandler {
         }
     }
 
-    public static final void ShipObjectRequest(final int mapid, final MapleClient c) {
+    public static final void shipObjectRequest(final int mapid, final MapleClient c) {
         // BB 00 6C 24 05 06 00 - Ellinia
         // BB 00 6E 1C 4E 0E 00 - Leafre
 

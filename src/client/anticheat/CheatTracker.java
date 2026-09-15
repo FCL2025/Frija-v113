@@ -209,7 +209,7 @@ public class CheatTracker {
     lastASmegaTime = System.currentTimeMillis();
     return true;
     }
-        public synchronized boolean GMSpam(int limit, int type) {
+        public synchronized boolean gmSpam(int limit, int type) {
         if (type < 0 || lastTime.length < type) {
             type = 1; // default xD
         }

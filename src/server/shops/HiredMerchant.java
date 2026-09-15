@@ -95,7 +95,7 @@ public final class HiredMerchant extends AbstractPlayerStore {
         }
 
          if (MapleInventoryManipulator.checkSpace(c, newItem.getItemId(), newItem.getQuantity(), newItem.getOwner())) {
-            final int gainmeso = getMeso() + theQuantity - GameConstants.EntrustedStoreTax(theQuantity);
+            final int gainmeso = getMeso() + theQuantity - GameConstants.entrustedStoreTax(theQuantity);
             if (gainmeso > 0) {
                 if(MapleInventoryManipulator.addFromDrop(c, newItem, false)){
                     setMeso(gainmeso);
@@ -179,10 +179,10 @@ public final class HiredMerchant extends AbstractPlayerStore {
     }
 
     public final void sendBlackList(final MapleClient c) {
-        c.send(PlayerShopPacket.MerchantBlackListView(blacklist));
+        c.send(PlayerShopPacket.merchantBlackListView(blacklist));
     }
 
     public final void sendVisitor(final MapleClient c) {
-        c.send(PlayerShopPacket.MerchantVisitorView(visitors));
+        c.send(PlayerShopPacket.merchantVisitorView(visitors));
     }
 }

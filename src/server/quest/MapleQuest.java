@@ -240,9 +240,9 @@ public class MapleQuest {
         return true;
     }
 
-    public final void RestoreLostItem(final MapleCharacter c, final int itemid) {
+    public final void restoreLostItem(final MapleCharacter c, final int itemid) {
         for (final MapleQuestAction a : startActs) {
-            if (a.RestoreLostItem(c, itemid)) {
+            if (a.restoreLostItem(c, itemid)) {
                 break;
             }
         }

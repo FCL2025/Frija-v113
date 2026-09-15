@@ -26,7 +26,7 @@ function action(mode, type, selection) {
     } else if (status == 1) {
 	cm.sendYesNo("Would you like to experience what it's like to be a Thief?");
     } else if (status == 2) {
-	cm.MovieClipIntroUI(true);
+	cm.movieClipIntroUI(true);
 	cm.warp(1020400, 0); // Effect/Direction3.img/rouge/Scene00
 	cm.dispose();
     }

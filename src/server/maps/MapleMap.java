@@ -552,6 +552,18 @@ public final class MapleMap {
         int dropOwner = monster.killBy(chr, lastSkill);
         broadcastMessage(MobPacket.killMonster(monster.getObjectId(), animation));
 
+        applyMonsterDeathBuff(monster);
+        final int mobid = monster.getId();
+        final MapleSquad sqd = getSquadByMap();
+        final SpeedRunType type = resolveSpeedRunType(mobid, chr, sqd);
+        announceSpeedRunResult(type, sqd);
+        killLinkedStatues(mobid, monster, chr, animation);
+        if (withDrops) {
+            dropFromMonsterForOwner(monster, chr, dropOwner);
+        }
+    }
+
+    private void applyMonsterDeathBuff(final MapleMonster monster) {
         if (monster.getBuffToGive() > -1) {
             final int buffid = monster.getBuffToGive();
             final MapleStatEffect buff = MapleItemInformationProvider.getInstance().getItemEffect(buffid);
@@ -576,9 +588,10 @@ public final class MapleMap {
                 charactersLock.readLock().unlock();
             }
         }
-        final int mobid = monster.getId();
+    }
+
+    private SpeedRunType resolveSpeedRunType(final int mobid, final MapleCharacter chr, final MapleSquad sqd) {
         SpeedRunType type = SpeedRunType.NULL;
-        final MapleSquad sqd = getSquadByMap();
         if (mobid == 8810018 && mapid == 240060200) { // Horntail
           Broadcast.broadcastMessage(ChatPacket.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍終於擊破了闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
             /*for (MapleCharacter c : getCharactersThreadsafe()) {
@@ -701,47 +714,59 @@ public final class MapleMap {
                 doShrine(true);
             }
         } else if (mobid >= 8800003 && mobid <= 8800010) {
-            boolean makeZakReal = true;
-            final Collection<MapleMonster> monsters = getAllMonstersThreadsafe();
-
-            for (final MapleMonster mons : monsters) {
-                if (mons.getId() >= 8800003 && mons.getId() <= 8800010) {
-                    makeZakReal = false;
-                    break;
-                }
-            }
-            if (makeZakReal) {
-                for (final MapleMapObject object : monsters) {
-                    final MapleMonster mons = ((MapleMonster) object);
-                    if (mons.getId() == 8800000) {
-                        final Point pos = mons.getPosition();
-                        this.killAllMonsters(true);
-                        spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8800000), pos);
-                        break;
-                    }
-                }
-            }
+            respawnZakumIfArmsCleared();
         } else if (mobid >= 8800103 && mobid <= 8800110) {
-            boolean makeZakReal = true;
-            final Collection<MapleMonster> monsters = getAllMonstersThreadsafe();
+            respawnChaosZakumIfArmsCleared();
+        }
+        return type;
+    }
 
-            for (final MapleMonster mons : monsters) {
-                if (mons.getId() >= 8800103 && mons.getId() <= 8800110) {
-                    makeZakReal = false;
-                    break;
-                }
+    private void respawnZakumIfArmsCleared() {
+        boolean makeZakReal = true;
+        final Collection<MapleMonster> monsters = getAllMonstersThreadsafe();
+
+        for (final MapleMonster mons : monsters) {
+            if (mons.getId() >= 8800003 && mons.getId() <= 8800010) {
+                makeZakReal = false;
+                break;
             }
-            if (makeZakReal) {
-                for (final MapleMonster mons : monsters) {
-                    if (mons.getId() == 8800100) {
-                        final Point pos = mons.getPosition();
-                        this.killAllMonsters(true);
-                        spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8800100), pos);
-                        break;
-                    }
+        }
+        if (makeZakReal) {
+            for (final MapleMapObject object : monsters) {
+                final MapleMonster mons = ((MapleMonster) object);
+                if (mons.getId() == 8800000) {
+                    final Point pos = mons.getPosition();
+                    this.killAllMonsters(true);
+                    spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8800000), pos);
+                    break;
                 }
             }
         }
+    }
+
+    private void respawnChaosZakumIfArmsCleared() {
+        boolean makeZakReal = true;
+        final Collection<MapleMonster> monsters = getAllMonstersThreadsafe();
+
+        for (final MapleMonster mons : monsters) {
+            if (mons.getId() >= 8800103 && mons.getId() <= 8800110) {
+                makeZakReal = false;
+                break;
+            }
+        }
+        if (makeZakReal) {
+            for (final MapleMonster mons : monsters) {
+                if (mons.getId() == 8800100) {
+                    final Point pos = mons.getPosition();
+                    this.killAllMonsters(true);
+                    spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(8800100), pos);
+                    break;
+                }
+            }
+        }
+    }
+
+    private void announceSpeedRunResult(final SpeedRunType type, final MapleSquad sqd) {
         if (type != SpeedRunType.NULL) {
             if (speedRunStart > 0 && speedRunLeader.length() > 0) {
                 long endTime = System.currentTimeMillis();
@@ -752,6 +777,9 @@ public final class MapleMap {
             }
 
         }
+    }
+
+    private void killLinkedStatues(final int mobid, final MapleMonster monster, final MapleCharacter chr, final byte animation) {
         if (mobid == 8820008) { //wipe out statues and respawn
             for (final MapleMapObject mmo : getAllMonstersThreadsafe()) {
                 MapleMonster mons = (MapleMonster) mmo;
@@ -767,18 +795,19 @@ public final class MapleMap {
                 }
             }
         }
-        if (withDrops) {
-            MapleCharacter drop = null;
-            if (dropOwner <= 0) {
+    }
+
+    private void dropFromMonsterForOwner(final MapleMonster monster, final MapleCharacter chr, final int dropOwner) {
+        MapleCharacter drop = null;
+        if (dropOwner <= 0) {
+            drop = chr;
+        } else {
+            drop = getCharacterById(dropOwner);
+            if (drop == null) {
                 drop = chr;
-            } else {
-                drop = getCharacterById(dropOwner);
-                if (drop == null) {
-                    drop = chr;
-                }
             }
-            dropFromMonster(drop, monster);
         }
+        dropFromMonster(drop, monster);
     }
 
     public List<MapleReactor> getAllReactor() {

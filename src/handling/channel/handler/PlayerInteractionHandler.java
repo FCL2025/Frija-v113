@@ -98,7 +98,6 @@ public class PlayerInteractionHandler {
      * it reads - and in what order - is part of the protocol.
      */
     public static final void PlayerInteraction(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
-        //System.out.println(slea.toString());
         if (chr == null) {
             return;
         }
@@ -150,7 +149,6 @@ public class PlayerInteractionHandler {
             case CANCEL_EXIT -> cancelExit(chr);
             default -> {
                 //some idiots try to send huge amounts of data to this (:
-                //System.out.println("Unhandled interaction action by " + chr.getName() + " : " + action + ", " + slea.toString());
                 //19 (0x13) - 00 OR 01 -> itemid(maple leaf) ? who knows what this is
             }
         }
@@ -293,7 +291,8 @@ public class PlayerInteractionHandler {
     }
 
     private static void chat(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
-//                slea.readInt();
+        // 保留作為紀錄：其他版本這個分支開頭還有一個 int，v113 沒有。
+        // 陷阱：這一行是 slea.readInt()，直接取消註解會多吃 4 bytes，底下的字串就讀錯位置。
         if (chr.getTrade() != null) {
             chr.getTrade().chat(slea.readMapleAsciiString());
         } else if (chr.getPlayerShop() != null) {
@@ -403,9 +402,6 @@ public class PlayerInteractionHandler {
                 return;
             }
             final short bundles_perbundle = (short) (bundles * perBundle);
-//                    if (bundles_perbundle < 0) { // int_16 overflow
-//                        return;
-//                    }
             if (ivItem.getQuantity() >= bundles_perbundle || ( !GameConstants.isRechargable(ivItem.getItemId()) && bundles_perbundle == 1  ) ) {
                 final byte flag = ivItem.getFlag();
                 if (ItemFlag.UNTRADEABLE.check(flag) || ItemFlag.LOCK.check(flag)) {
@@ -440,40 +436,14 @@ public class PlayerInteractionHandler {
     }
 
     private static void buyItem(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
-        /*final int item = slea.readByte();
-         final short quantity = slea.readShort();
-         //slea.skip(4);
-         final IMaplePlayerShop shop = chr.getPlayerShop();
-
-         if (shop == null || shop.isOwner(chr) || shop instanceof MapleMiniGame) {
-         return;
-         }
-         final MaplePlayerShopItem tobuy = shop.getItems().get(item);
-         if (tobuy == null) {
-         return;
-         }
-         long check = tobuy.bundles * quantity;
-         long check2 = tobuy.price * quantity;
-         long check3 = tobuy.item.getQuantity() * quantity;
-         if (check > 32767 || check <= 0 || check2 > 2147483647 || check2 <= 0 || check3 > 32767 || check3 <= 0) { //This is the better way to check.
-         return;
-         }
-         if (quantity <= 0 || tobuy.bundles < quantity || (tobuy.bundles % quantity != 0 && GameConstants.isEquip(tobuy.item.getItemId())) // Buying
-         || chr.getMeso() - (check2) < 0 || shop.getMeso() + (check2) < 0) {
-         return;
-         }
-         if (quantity >= 50 && GameConstants.isUpgradeScroll(tobuy.item.getItemId())) {
-         c.setMonitored(true); //hack check
-         }
-         shop.buy(c, item, quantity);
-         shop.broadcastToVisitors(PlayerShopPacket.shopItemUpdate(shop));
-         break;*/
         if (chr.getTrade() != null) {
             MapleTrade.completeTrade(chr);
             return;
         }
         final int item = slea.readByte();
         final short quantity = slea.readShort();
+        // 保留作為紀錄：其他版本在數量之後還有 4 bytes，v113 沒有；
+        // 取消註解會讓後面的讀取位置整個跑掉。
         //slea.skip(4);
         final IMaplePlayerShop shop = chr.getPlayerShop();
 
@@ -549,6 +519,8 @@ public class PlayerInteractionHandler {
                 shop.removeAllVisitors((byte) 16, (byte) 0);
                 shop.closeShop(save, true);
             }else{
+                // 保留作為紀錄：架上還有東西時原本也走 closeShop(save, true) 收攤存檔，
+                // 本服改成只把商店重新開放、解除綁定，讓玩家回頭繼續賣。
                 //boolean save = false;
                 shop.setOpen(true);
                 chr.setPlayerShop(null);
@@ -576,17 +548,10 @@ public class PlayerInteractionHandler {
     }
 
     private static void closeMerchant(final MapleClient c, final MapleCharacter chr) {
-        /* final IMaplePlayerShop merchant = chr.getPlayerShop();
-         if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr) && merchant.isAvailable()) {
-         c.send(ChatPacket.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
-         c.send(CharacterPacket.enableActions());
-         merchant.removeAllVisitors(-1, -1);
-         chr.setPlayerShop(null);
-         merchant.closeShop(true, true);
-         }
-         break;*/
         final IMaplePlayerShop merchant = chr.getPlayerShop();
         if (merchant != null && merchant.getShopType() == 1 && merchant.isOwner(chr)) {
+            // 保留作為紀錄：收攤時原本會提示玩家去找富蘭德里領回裝備與楓幣，
+            // 本服改成在下面直接把東西退回背包，所以這則提示被關掉。
             //c.send(ChatPacket.serverNotice(1, "請去找富蘭德里領取你的裝備和楓幣"));
             boolean save = false;
 

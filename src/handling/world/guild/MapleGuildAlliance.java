@@ -300,7 +300,6 @@ public class MapleGuildAlliance {
         if (leaderid == c) {
             return false;
         }
-        //MapleCharacter cb = c;
         //re-arrange the guilds so guild1 is always the leader guild
         int g = -1; //this shall be leader
         String leaderName = null;

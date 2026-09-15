@@ -80,6 +80,8 @@ public class CashShopDumper {
                     final int period = MapleDataTool.getIntConvert("Period", field, 0);
                     final int gender = MapleDataTool.getIntConvert("Gender", field, -1);
                     final int meso = MapleDataTool.getIntConvert("Meso", field, 0);
+                    // 保留作為紀錄：原本會用 qq 把同一個 itemId 的重複 SN 跳過，這個去重被關掉了，
+                    // 所以同一個 itemId 的每個 SN 都會各自產生一列。qq 現在只被寫入、沒人讀。
                     //if(qq.contains(itemId))
                     //    continue;
                     if (itemId == 0) {

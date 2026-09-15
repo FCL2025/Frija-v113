@@ -41,9 +41,8 @@ public class ServerPacket {
         mplew.writeShort(0);
         try {
             mplew.write(InetAddress.getByName(ServerProperties.getProperty("tms.IP")).getAddress());
-            //mplew.write(InetAddress.getByName(ServerConstants.Gateway_IP_String).getAddress());
         } catch (UnknownHostException e) {
-            //mplew.write(ServerConstants.Gateway_IP);
+            // tms.IP 無法解析時就不寫這 4 bytes，封包會短一截；這個分支沒有備援來源。
         }
         mplew.writeShort(port);
         mplew.writeInt(clientId);
@@ -59,9 +58,8 @@ public class ServerPacket {
         mplew.write(1);
         try {
             mplew.write(InetAddress.getByName(ServerProperties.getProperty("tms.IP")).getAddress());
-            //mplew.write(InetAddress.getByName(ServerConstants.Gateway_IP_String).getAddress());
         } catch (UnknownHostException e) {
-            //mplew.write(ServerConstants.Gateway_IP);
+            // tms.IP 無法解析時就不寫這 4 bytes，封包會短一截；這個分支沒有備援來源。
         }
         mplew.writeShort(port);
 

@@ -116,6 +116,7 @@ public class PacketHelper {
         for (final Entry<ISkill, SkillEntry> skill : skills.entrySet()) {
             mplew.writeInt(skill.getKey().getId());
             mplew.writeInt(skill.getValue().skillevel);
+            // 逆向出來的線路格式筆記：其他版本在此還送技能到期時間，v113 沒有。
 //            addExpirationTime(mplew, skill.getValue().expiration);
 
             if (skill.getKey().isFourthJob()) {

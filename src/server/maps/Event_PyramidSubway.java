@@ -52,6 +52,8 @@ public class Event_PyramidSubway {
             energyBarDecrease = MapTimer.getInstance().register(() -> {
                 energybar -= (c.getParty() != null && c.getParty().getMembers().size() > 1 ? 10 : 5);
                 if (broaded) {
+                    // 保留作為紀錄：能量條每次遞減原本也會同步推一次 UI 更新，這裡被關掉了，
+                    // 只重生怪；玩家看到的能量條要等下一次 broadcastUpdate（換圖／結算）才會對上。
                     //broadcastUpdate(c);
                     c.getMap().respawn(true);
                 } else {

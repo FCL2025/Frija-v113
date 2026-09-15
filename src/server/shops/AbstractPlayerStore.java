@@ -303,7 +303,6 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
 
     @Override
     public void addItem(MaplePlayerShopItem item) {
-        //System.out.println("Adding item ... 2");
         items.add(item);
     }
 

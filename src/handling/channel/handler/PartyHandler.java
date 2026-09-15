@@ -130,6 +130,8 @@ public class PartyHandler {
                 if (invited != null) {
                     if (invited.getParty() == null && party != null) {
                         if (party.getMembers().size() < 6) {
+                            // 保留作為紀錄：原本用 partyStatusMessage(22, name) 這個系統訊息，
+                            // 本服改成自己送一則中文公告；兩者擇一，不要同時送。
                             //c.send(PartyPacket.partyStatusMessage(22, invited.getName()));
                             c.send(ChatPacket.serverNotice(5,"發出隊伍邀請給'" + invited.getName()+"'"));
                             invited.getClient().send(PartyPacket.partyInvite(c.getPlayer()));

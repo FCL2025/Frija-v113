@@ -202,6 +202,8 @@ public final class MapleFamily {
                 changed = false;
             } else {
                 //members is less than 2, this shall be executed
+                // 保留作為紀錄：解散家族時原本會先廣播一次 DISBAND 通知線上成員，
+                // 這個廣播被關掉了，現在只直接刪 DB 的 families 列。
                /* if (leadername == null || members.size() < 2) {
                  broadcast(null, -1, FCOp.DISBAND, null);
                  }*/
@@ -311,8 +313,9 @@ public final class MapleFamily {
             if (oldLevel > mgc.getLevel()) {
                 addrep /= 2; //:D
             }
-            //mgc.setCurrentRep(mgc.getCurrentRep()+addrep);
-            //mgc.setTotalRep(mgc.getTotalRep()+addrep);
+            // 保留作為紀錄：原本會直接把記憶體裡的成員聲望加上去，這兩行被關掉之後，
+            // 只有 isOnline() 的分支會透過 Family.setFamily(...) 帶上新值；
+            // 離線成員的 MapleFamilyCharacter 在記憶體裡不會更新（DB 側另外走 setOfflineFamilyStatus）。
             if (mgc.isOnline()) {
                 List<Integer> dummy = new ArrayList<>();
                 dummy.add(mgc.getId());
@@ -364,75 +367,6 @@ public final class MapleFamily {
         leaveFamily(getMFC(id), true);
     }
 
-    /* public final void leaveFamily(final int id) {
-     leaveFamily(getMFC(id), true);
-     }*/
-
-    /*public final void leaveFamily(final MapleFamilyCharacter mgc, final boolean skipLeader) {
-     bDirty = true;
-     if (mgc.getId() == leaderid && !skipLeader) {
-     //disband
-     leadername = null; //to disband family completely
-     World.Family.disbandFamily(id);
-     } else {
-     //we also have to update anyone below us
-
-     if (mgc.getJunior1() > 0) {
-     MapleFamilyCharacter j = getMFC(mgc.getJunior1());
-     if (j != null) {
-     j.setSeniorId(0);
-     splitFamily(mgc.getJunior1());
-     }
-     }
-     if (mgc.getJunior2() > 0) {
-     MapleFamilyCharacter j = getMFC(mgc.getJunior2());
-     if (j != null) {
-     j.setSeniorId(0);
-     splitFamily(mgc.getJunior2());
-     }
-     }
-     if (mgc.getSeniorId() > 0) {
-     MapleFamilyCharacter mfc = getMFC(mgc.getSeniorId());
-     if (mfc != null) {
-     if (mfc.getJunior1() == mgc.getId()) {
-     mfc.setJunior1(0);
-     } else {
-     mfc.setJunior2(0);
-     }
-     }
-     }
-     List<Integer> dummy = new ArrayList<Integer>();
-     dummy.add(mgc.getId());
-     broadcast(null, -1, FCOp.DISBAND, dummy);
-     resetPedigree(); //ex but eh
-     }
-     members.remove(mgc.getId());
-     bDirty = true;
-     }*/
-    /*public final void leaveFamily(final MapleFamilyCharacter mgc, final boolean skipLeader) {
-     bDirty = true;
-     if (mgc.getId() == leaderid && !skipLeader) {
-     //disband
-     leadername = null; //to disband family completely
-     World.Family.disbandFamily(id);
-     } else {
-     //we also have to update anyone below us
-     if (mgc.getJunior1() > 0) {
-     splitFamily(mgc.getJunior1()); //junior1 makes his own family
-     }
-     if (mgc.getJunior2() > 0) {
-     splitFamily(mgc.getJunior2()); //junior2 makes his own family
-     }
-     List<Integer> dummy = new ArrayList<Integer>();
-     dummy.add(mgc.getId());
-     broadcast(null, -1, FCOp.DISBAND, dummy);
-     resetPedigree(); //ex but eh
-     }
-     members.remove(mgc.getId());
-     }
-     public final void setNotice(final String notice) {
-     this.notice = notice;
-     }*/
     public final void leaveFamily(final MapleFamilyCharacter mgc, final boolean skipLeader) {
         bDirty = true;
         if (mgc.getId() == leaderid && !skipLeader) {
@@ -446,7 +380,6 @@ public final class MapleFamily {
                 MapleFamilyCharacter j = getMFC(mgc.getJunior1());
                 if (j != null) {
                     j.setSeniorId(0);
-                    //splitFamily(mgc.getJunior1());
                     splitFamily(j.getId(), j); //junior1 makes his own family
                 }
             }
@@ -454,7 +387,6 @@ public final class MapleFamily {
                 MapleFamilyCharacter j = getMFC(mgc.getJunior2());
                 if (j != null) {
                     j.setSeniorId(0);
-                    //splitFamily(mgc.getJunior2());
                     splitFamily(j.getId(), j); //junior1 makes his own family
                 }
             }
@@ -558,51 +490,6 @@ public final class MapleFamily {
         Family.disbandFamily(oldfam.getId()); //and remove it
     }
 
-    /* //return disbanded or not.
-     public boolean splitFamily(int splitId, MapleFamilyCharacter def) {
-     //toSplit = initiator who either broke off with their junior/senior, splitId is the ID of the one broken off
-     //if it's junior, splitId will be the new leaderID, if its senior it's toSplit thats the new leader
-     //happens when someone in fam breaks off with anyone else, either junior/senior
-     //update all the members.
-     MapleFamilyCharacter leader = getMFC(splitId);
-     if (leader == null) {
-     leader = def;
-     if (leader == null) {
-     return false;
-     }
-     }
-     try {
-     List<MapleFamilyCharacter> all = leader.getAllJuniors(this); //leader is included in this collection
-     if (all.size() <= 1) { //but if leader is the only person, then we're done
-     leaveFamily(leader, false);
-     return true;
-     }
-     final int newId = createFamily(leader.getId());
-     if (newId <= 0) {
-     return false;
-     }
-     for (MapleFamilyCharacter mgc : all) {
-     // need it for sql
-     mgc.setFamilyId(newId);
-     setOfflineFamilyStatus(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
-     members.remove(mgc.getId()); //clean remove
-     }
-     final MapleFamily newfam = World.Family.getFamily(newId);
-     for (MapleFamilyCharacter mgc : all) {
-     if (mgc.isOnline()) { //NOW we change the char info
-     World.Family.setFamily(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
-     }
-     newfam.setOnline(mgc.getId(), mgc.isOnline(), mgc.getChannel());
-     }
-     } finally {
-     if (members.size() <= 1) { //only one person is left :|
-     World.Family.disbandFamily(id); //disband us.
-     return true;
-     }
-     }
-     bDirty = true;
-     return false;
-     }*/
     //return disbanded or not.
     public boolean splitFamily(int splitId, MapleFamilyCharacter def) {
         //toSplit = initiator who either broke off with their junior/senior, splitId is the ID of the one broken off

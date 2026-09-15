@@ -65,6 +65,8 @@ public class ServerConstants {
         INTERN('!', 1),
         GM('!', 2),
         ADMIN('!', 3);
+        // 保留作為紀錄：其他分支有第四個等級 SUPERADMIN，這棵樹沒有。
+        // 它與 ADMIN 同為 level 3、同一個字首，加回來不會多出任何權限。
         //SUPERADMIN('!', 3);
         private char commandPrefix;
         private int level;

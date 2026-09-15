@@ -240,6 +240,8 @@ public class StatsHandling {
 
         if (skill.hasRequiredSkill()) {
             if (chr.getSkillLevel(SkillFactory.getSkill(skill.getRequiredSkillId())) < skill.getRequiredSkillLevel()) {
+                // 刻意保留：記錄「加點到前置技能不足的技能」這個自動封鎖檢查存在，
+                // 但被關掉了，現在只是安靜地 return。
 //                AutobanManager.getInstance().addPoints(c, 1000, 0, "Trying to learn a skill without the required skill (" + skillid + ")");
                 return;
             }
@@ -249,6 +251,8 @@ public class StatsHandling {
 
         if (skill.isInvisible() && chr.getSkillLevel(skill) == 0) {
             if ((skill.isFourthJob() && chr.getMasterLevel(skill) == 0) || (!skill.isFourthJob() && maxlevel < 10 && !isBeginnerSkill)) {
+                // 刻意保留：記錄「加點到隱藏技能」這個自動封鎖檢查存在，但被關掉了，
+                // 現在只是安靜地 return。
                 //AutobanManager.getInstance().addPoints(c, 1000, 0, "Illegal distribution of SP to invisible skills (" + skillid + ")");
                 return;
             }
@@ -260,7 +264,6 @@ public class StatsHandling {
                 return;
             }
         }
-//        System.out.println(skill.canBeLearnedBy(chr.getJob()));
         if ((remainingSp > 0 && curLevel + 1 <= maxlevel) && skill.canBeLearnedBy(chr.getJob())) {
             if (!isBeginnerSkill) {
                 final int skillbook = GameConstants.getSkillBookForSkill(skillid);
@@ -269,6 +272,8 @@ public class StatsHandling {
             c.send(CharacterPacket.updateSp(chr, false));
             chr.changeSkillLevel(skill, (byte) (curLevel + 1), chr.getMasterLevel(skill));
         } else if (!skill.canBeLearnedBy(chr.getJob())) {
+            // 刻意保留：記錄「加點到別的職業的技能」這個自動封鎖檢查存在，但被關掉了，
+            // 現在只是安靜地 return。
 //            AutobanManager.getInstance().addPoints(c, 1000, 0, "Trying to learn a skill for a different job (" + skillid + ")");
             return;
         }

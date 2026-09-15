@@ -51,6 +51,8 @@ public class NPCPacket {
         for (MapleShopItem item : items) {
             mplew.writeInt(item.getItemId());
             mplew.writeInt(item.getPrice());
+            // 逆向出來的線路格式筆記：其他版本的商店項目還帶「以物易物」的道具 id / 數量與一個 long，
+            // v113 不送這三個欄位（reqItem 在 v113 只由 MapleShop.buy 在伺服器端檢查）。
 //            mplew.writeInt(item.getReqItem());
 //            mplew.writeInt(item.getReqItemQ());
 //            mplew.writeLong(0);
@@ -83,6 +85,7 @@ public class NPCPacket {
         mplew.write(1);
         PacketHelper.addCharLook(mplew, c, false);
         mplew.writeMapleAsciiString(c.getName());
+        // 逆向出來的線路格式筆記：其他版本在名字後還送職業，v113 沒有。
 //        mplew.writeShort(c.getJob());
 
         return mplew.getPacket();
@@ -131,6 +134,7 @@ public class NPCPacket {
         mplew.write(2);
         mplew.write(number);
 
+        // 以下兩行是逆向出來的線路格式筆記：其他版本在交易視窗的名字後還送職業，v113 沒有。
         if (number == 1) {
             mplew.write(0);
             PacketHelper.addCharLook(mplew, trade.getPartner().getChr(), false);
@@ -296,7 +300,6 @@ public class NPCPacket {
                     } else {
                         mplew.write(0);
                     }
-                    //System.out.println("Package has been sent in packet: " + dp.getPackageId());
                 }
                 mplew.write(0);
                 break;

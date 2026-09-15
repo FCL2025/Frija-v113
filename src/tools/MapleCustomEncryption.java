@@ -66,7 +66,6 @@ public class MapleCustomEncryption {
                     data[i] = cur;
                 }
             }
-            //System.out.println("enc after iteration " + j + ": " + HexTool.toString(data) + " al: " + al);
         }
         return data;
     }
@@ -115,7 +114,6 @@ public class MapleCustomEncryption {
                     dataLength--;
                 }
             }
-            //System.out.println("dec after iteration " + j + ": " + HexTool.toString(data));
         }
         return data;
     }

@@ -40,6 +40,9 @@ public class PortalFactory {
             myPortal.setId(Integer.parseInt(portal.getName()));
         }
         //portalState
+        // 保留作為紀錄：原本載入地圖時就會把這四張活動地圖的 join00 傳送點預設關閉，
+        // 這段被關掉了；現在改由 MapleOla / MapleOxQuiz / MapleFitness 在活動開始與結束時
+        // 自己呼叫 setPortalState(false/true)。
         //if (myPortal.getName().equals("join00") && !myPortal.getPortalState()) { //ola ola, ox quiz, maplefitness
         //	if (myPortal.getTargetMapId() == 109030001 || myPortal.getTargetMapId() == 109030101 || myPortal.getTargetMapId() == 109050000 || myPortal.getTargetMapId() == 109040000) { //ola ola, ox quiz
         //		myPortal.setPortalState(false);

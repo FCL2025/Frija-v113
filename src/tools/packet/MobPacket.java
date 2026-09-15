@@ -166,6 +166,7 @@ public class MobPacket {
         mplew.write(skill2);
         mplew.write(skill3);
         mplew.write(skill4);
+        // 以下三行是逆向出來的線路格式筆記：其他版本在座標前後另有欄位，v113 都不送。
 //        mplew.writeZeroBytes(8); //o.o?
         mplew.writePos(startPos);
 //        mplew.writeShort(8); //? sometimes 0? sometimes 22? sometimes random numbers?

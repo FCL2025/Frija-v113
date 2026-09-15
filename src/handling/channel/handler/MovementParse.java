@@ -85,8 +85,6 @@ public class MovementParse {
                     final StaticLifeMovement mov = new StaticLifeMovement(command, new Point(xwobble, ywobble), duration, newstate, 0);
                     mov.setPixelsPerSecond(new Point(xwobble, ywobble));
                     res.add(mov);
-            // log.trace("Relative move {},{} state {}, duration {}", new Object[] { xmod, ymod, newstate,
-                    // duration });
                     break;
                 }
                 case 3:

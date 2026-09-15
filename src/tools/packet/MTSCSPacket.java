@@ -318,6 +318,7 @@ public class MTSCSPacket {
         mplew.writeAsciiString(sender, 15); //owner for the lulzlzlzl
         PacketHelper.addExpirationTime(mplew, expire);
         mplew.writeLong(isFirst ? 0 : sn);
+        // 逆向出來的線路格式筆記：其他版本在購物袋道具後面接一段友情戒指的伴侶資料，v113 不送這一段。
         //if (isFirst && uniqueid > 0 && GameConstants.isEffectRing(itemid)) {
         //	MapleRing ring = MapleRing.loadFromDb(uniqueid);
         //	if (ring != null) { //or is this only for friendship rings, i wonder. and does isFirst even matter
@@ -611,6 +612,7 @@ public class MTSCSPacket {
     public static final MaplePacket showMTSCash(final MapleCharacter p) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         mplew.writeShort(SendPacketOpcode.GET_MTS_TOKENS.getValue());
+        // 逆向出來的線路格式筆記：其他版本在此還先送一次 NX(type 1)，v113 只送楓幣點數(type 2)。
 //        mplew.writeInt(p.getCSPoints(1));
         mplew.writeInt(p.getCSPoints(2));
         return mplew.getPacket();

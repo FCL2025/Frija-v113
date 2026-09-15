@@ -47,6 +47,8 @@ public class MapleShop {
         rechargeableItems.add(2070011);
         rechargeableItems.add(2070012);
         rechargeableItems.add(2070013);
+        // 保留作為紀錄：這五個飛鏢 id 刻意不列入可補充清單（列進去玩家就能在商店買補充）。
+        // 2070016 當初沒寫原因，其餘四個的原因寫在各行行尾。
 //	rechargeableItems.add(2070014); // Doesn't Exist [Devil Rain]
 //	rechargeableItems.add(2070015); // Beginner Star
 //        rechargeableItems.add(2070016);

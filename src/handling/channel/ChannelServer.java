@@ -187,6 +187,8 @@ public class ChannelServer {
         instances.remove(channel);
         LoginServer.removeChannel(channel);
         setFinishShutdown();
+        // 保留作為紀錄：shutdown(Object) 的 threadToNotify 參數原本是要在關閉完成後喚醒呼叫端，
+        // 這段被關掉之後參數就沒人用了；現在呼叫端改看 setFinishShutdown()。
 //        if (threadToNotify != null) {
 //            synchronized (threadToNotify) {
 //                threadToNotify.notify();

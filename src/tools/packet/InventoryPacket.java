@@ -112,6 +112,8 @@ public class InventoryPacket {
 
         mplew.writeShort(SendPacketOpcode.MODIFY_INVENTORY_ITEM.getValue());
         mplew.write(fromDrop ? 1 : 0);
+        // 逆向出來的線路格式筆記：其他版本此處是「操作筆數」，可一次更新兩格（見下方
+        // 被註解掉的 slot2 區塊）；v113 只送單格，固定寫 1。
 //	mplew.write((slot2 > 0 ? 1 : 0) + 1);
         mplew.write(1);
         mplew.write(1);
@@ -228,6 +230,8 @@ public class InventoryPacket {
         mplew.write(1); // always 2
         mplew.write(0); // quantity > 0 (?)
         mplew.write(invType); // Inventory type
+        // 逆向出來的線路格式筆記：其他版本的欄位寬度依 item type 而定（裝備 short、其餘 byte），
+        // v113 一律是 short。
 //        if (item.getType() == 1) {
             mplew.writeShort(pos);
 //        } else {

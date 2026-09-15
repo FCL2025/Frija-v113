@@ -49,19 +49,6 @@ public class MapleDueyActions {
         return packageId;
     }
 
-    /*    public boolean isExpired() {
-     Calendar cal1 = Calendar.getInstance();
-     cal1.set(year, month - 1, day);
-     long diff = System.currentTimeMillis() - cal1.getTimeInMillis();
-     int diffDays = (int) Math.abs(diff / (24 * 60 * 60 * 1000));
-     return diffDays > 30;
-     }
-
-     public long sentTimeInMilliseconds() {
-     Calendar cal = Calendar.getInstance();
-     cal.set(year, month, day);
-     return cal.getTimeInMillis();
-     }*/
     public void setSentTime(long sentTime) {
         this.sentTime = sentTime;
     }

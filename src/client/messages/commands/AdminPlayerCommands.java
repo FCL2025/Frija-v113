@@ -311,6 +311,8 @@ public class AdminPlayerCommands {
                 return 0;
             }
             if (victim != null && player.allowedToTarget(victim)) {
+                // 用途不明，保留待查：addFame 仍存在，但被註解掉後這個指令只會重送一次現有人氣，
+                // 等於沒有作用。是刻意停用還是漏掉，無從判斷，先不動。
                 //victim.addFame(fame);
                 victim.updateSingleStat(MapleStat.FAME, victim.getFame());
             }

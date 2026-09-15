@@ -187,6 +187,8 @@ public class Guild {
     public static void deleteGuildCharacter(int guildid, int charid) {
 
         //ensure it's loaded on world server
+        // 保留作為紀錄：刪除公會成員前原本會先把他標成離線（順便確保公會已載入），
+        // 這一步被關掉了，現在直接靠底下的 getGuild(guildid) 觸發載入。
         //setGuildMemberOnline(mc, false, -1);
         MapleGuild g = getGuild(guildid);
         if (g != null) {
@@ -312,7 +314,6 @@ public class Guild {
     public static void setGuildAndRank(int cid, int guildid, int rank, int alliancerank) {
         int ch = Find.findChannel(cid);
         if (ch == -1) {
-            // System.out.println("ERROR: cannot find player in given channel");
             return;
         }
         MapleCharacter mc = World.getStorage(ch).getCharacterById(cid);

@@ -187,8 +187,10 @@ public class CharacterPacket {
         mplew.writeInt(partyinc); // Party size
         mplew.writeInt(Equipment_Bonus_EXP); //Equipment Bonus EXP
         mplew.writeInt(Premium_Bonus_EXP); // Premium bonus EXP
+        // 逆向出來的線路格式筆記：其他版本在此還有 Rainbow Week 加成欄位，v113 沒有，取消註解會多送 4 bytes。
 //        mplew.writeInt(0); //Rainbow Week Bonus EXP
         mplew.writeInt(Class_Bonus_EXP); // Class bonus EXP
+        // 同上：其他版本在結尾多一個 byte，v113 沒有。
 //        mplew.write(0);
 
         return mplew.getPacket();
@@ -216,6 +218,7 @@ public class CharacterPacket {
         }
         mplew.writeZeroBytes(4); // Premium bonus EXP
         mplew.writeZeroBytes(4); // Class bonus EXP
+        // 逆向出來的線路格式筆記：其他版本在此還有兩個尾欄位，v113 沒有。
 //        mplew.writeInt(0);
 //        mplew.write(0);
 
@@ -296,6 +299,8 @@ public class CharacterPacket {
         //mplew.writeInt(3); after aftershock
         List<Pair<Integer, Boolean>> buffvalue = new ArrayList<>();
         long fbuffmask = 0xFFFC0000000000L; //becomes F8000000 after bb?
+        // 以下四段被註解掉的 buff 位元是逆向出來的線路格式筆記：這些 buff 在其他版本
+        // 會進 fbuffmask（並在 buffvalue 補一個值），v113 的 CHAR_INFO 不送它們。
         //if (chr.getBuffedValue(MapleBuffStat.FINAL_CUT) != null) {
         //    fbuffmask |= MapleBuffStat.FINAL_CUT.getValue();
         //    buffvalue.add(new Pair<Integer, Boolean>(Integer.valueOf(chr.getBuffedValue(MapleBuffStat.FINAL_CUT).intValue()), false));
@@ -472,6 +477,7 @@ public class CharacterPacket {
         mplew.writeShort(SendPacketOpcode.FACIAL_EXPRESSION.getValue());
         mplew.writeInt(from.getId());
         mplew.writeInt(expression);
+        // 逆向出來的線路格式筆記：其他版本在此還送表情道具 id 與一個 byte，v113 沒有。
         /*        mplew.writeInt(-1); //itemid of expression use
          mplew.write(0);*/
 
@@ -483,6 +489,7 @@ public class CharacterPacket {
 
         mplew.writeShort(SendPacketOpcode.MOVE_PLAYER.getValue());
         mplew.writeInt(cid);
+        // 逆向出來的線路格式筆記：其他版本在此送起點座標，v113 送一個 int 0（長度相同，內容不同）。
 //        mplew.writePos(startPos);
         mplew.writeInt(0);
         PacketHelper.serializeMovementList(mplew, moves);
@@ -732,6 +739,7 @@ public class CharacterPacket {
                  }
             }
         }
+        // 逆向出來的線路格式筆記：其他版本在此送一個「是否為自己」的 byte，v113 沒有。
 //        mplew.write(isSelf ? 1 : 0);
         mplew.writeMapleAsciiString(chr.getcharmessage()); // 角色訊息
         mplew.write(chr.getexpression());// 表情
@@ -780,6 +788,7 @@ public class CharacterPacket {
                 mplew.writeInt(wishlist[x]);
             }
         }
+        // 逆向出來的線路格式筆記：其他版本在願望清單後多一個 byte，v113 沒有。
 //        mplew.write(0);
         chr.getMonsterBook().addCharInfoPacket(chr.getMonsterBookCover(), mplew);
 

@@ -35,6 +35,8 @@ public class MonsterDropCreator {
         System.console().readLine();
 
         long currtime = System.currentTimeMillis();
+        // 保留作為紀錄：addFlagData 原本由第一個命令列參數決定，現在寫死成 false；
+        // 這也是這個 main 唯一會用到 args 的地方。
         // addFlagData = Boolean.parseBoolean(args[0]);
         addFlagData = false;
         System.out.println("載入: 物品名稱.");

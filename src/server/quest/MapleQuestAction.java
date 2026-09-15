@@ -235,7 +235,8 @@ public class MapleQuestAction {
                 MapleItemInformationProvider.getInstance().getItemEffect(tobuff).applyTo(c);
                 break;
             case infoNumber: {
-//		System.out.println("quest : "+MapleDataTool.getInt(data, 0)+"");
+                // 刻意保留：infoNumber 這個動作原本會去強制完成 data 指到的那張任務，
+                // 被關掉之後這個 case 什麼都不做。forceComplete 本身還在。
 //		MapleQuest.getInstance(MapleDataTool.getInt(data, 0)).forceComplete(c, 0);
                 break;
             }
@@ -473,7 +474,8 @@ public class MapleQuestAction {
                 break;
             }
             case infoNumber: {
-//		System.out.println("quest : "+MapleDataTool.getInt(data, 0)+"");
+                // 刻意保留：infoNumber 這個動作原本會去強制完成 data 指到的那張任務，
+                // 被關掉之後這個 case 什麼都不做。forceComplete 本身還在。
 //		MapleQuest.getInstance(MapleDataTool.getInt(data, 0)).forceComplete(c, 0);
                 break;
             }

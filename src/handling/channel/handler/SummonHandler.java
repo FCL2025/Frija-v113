@@ -93,8 +93,6 @@ public class SummonHandler {
         final int oid = slea.readInt();
         Point startPos = new Point(slea.readShort(), slea.readShort());
         List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 4);
-//        slea.skip(4); //startPOS
-//        final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 4);
         if (chr == null) {
             return;
         }
@@ -155,6 +153,8 @@ public class SummonHandler {
         final byte numAttacked = slea.readByte();
         if (numAttacked > sse.mobCount) {
             chr.getCheatTracker().registerOffense(CheatingOffense.SUMMON_HACK_MOBS);
+            // 刻意保留：記錄「召喚獸攻擊超過上限隻數」原本除了記點還會自動封鎖，
+            // 自動封鎖被關掉了，現在只留 registerOffense 再 return。
             //AutobanManager.getInstance().autoban(c, "Attacking more monster that summon can do (Skillid : "+summon.getSkill()+" Count : " + numAttacked + ", allowed : " + sse.mobCount + ")");
             return;
         }

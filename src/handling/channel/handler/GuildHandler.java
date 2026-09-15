@@ -91,14 +91,7 @@ public class GuildHandler {
 
     public static final void Guild(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (System.currentTimeMillis() >= nextPruneTime) {
-            Iterator<Invited> itr = invited.iterator();
-            Invited inv;
-            while (itr.hasNext()) {
-                inv = itr.next();
-                if (System.currentTimeMillis() >= inv.expiration) {
-                    itr.remove();
-                }
-            }
+            invited.removeIf(inv -> System.currentTimeMillis() >= inv.expiration);
             nextPruneTime = System.currentTimeMillis() + 20 * 60 * 1000;
         }
 
@@ -158,6 +151,9 @@ public class GuildHandler {
                     return;
                 }
                 name = c.getPlayer().getName().toLowerCase();
+                // 這裡不能用 removeIf：迴圈本體除了移除之外還會設公會 id／階級、
+                // 呼叫 Guild.addGuildMember、送封包、存檔，而且會 return 或 break 提前跳出；
+                // removeIf 一定走完整個集合，語意不同。
                 Iterator<Invited> itr = invited.iterator();
 
                 while (itr.hasNext()) {

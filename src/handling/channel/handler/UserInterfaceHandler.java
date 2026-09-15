@@ -101,7 +101,6 @@ public class UserInterfaceHandler {
                 } else {
                     return; // shyt, fixme!
                 }
-                //break;
             default:
                 LOG.log(System.Logger.Level.INFO, "Unhandled ship object, MapID : " + mapid);
                 break;

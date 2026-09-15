@@ -59,6 +59,7 @@ public class GuildPacket {
         mplew.write(1); //bInGuild
         mplew.writeInt(0);
         mplew.writeMapleAsciiString(Prefix);
+        // 逆向出來的線路格式筆記：其他版本在此多一個字串欄位，v113 沒有。
         //mplew.writeMapleAsciiString("");
         mplew.write(0);//members.size()
         mplew.writeInt(0);//mgc.getId()
@@ -74,6 +75,7 @@ public class GuildPacket {
         mplew.write(0);
         mplew.writeShort(0);
         mplew.write(0);
+        // 逆向出來的線路格式筆記：其他版本在此多一個字串欄位，v113 沒有。
         //mplew.writeMapleAsciiString("");
         mplew.writeInt(0);
         mplew.writeInt(0);
@@ -106,7 +108,6 @@ public class GuildPacket {
 
     private static void getGuildInfo(MaplePacketLittleEndianWriter mplew, MapleGuild guild) {
 
-        //System.out.println("writegetGuildInfo");
         mplew.writeInt(guild.getId());
         mplew.writeMapleAsciiString(guild.getName());
         for (int i = 1; i <= 5; i++) {
@@ -136,7 +137,6 @@ public class GuildPacket {
             Prefix = "[活動辦理成員]";
         }
 
-        //System.out.println("writegetGuildInfo2");
         mplew.writeInt(guild.getId());
         mplew.writeMapleAsciiString(Prefix + guild.getName());
         for (int i = 1; i <= 5; i++) {
@@ -172,6 +172,8 @@ public class GuildPacket {
         mplew.write(0x05);
         mplew.writeInt(gid);
         mplew.writeMapleAsciiString(charName);
+        // 逆向出來的線路格式筆記：其他版本的邀請封包還帶邀請者的等級與職業，v113 沒有；
+        // 參數 levelFrom / jobFrom 因此在 v113 未被使用。
 //        mplew.writeInt(levelFrom);
 //        mplew.writeInt(jobFrom);
 

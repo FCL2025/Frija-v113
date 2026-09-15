@@ -69,7 +69,6 @@ public class Party {
             MapleParty party = parties.get(partyid);
             if (party == null) {
                 return; //Don't update, just return. And definitely don't throw a damn exception.
-                //throw new IllegalArgumentException("no party with the specified partyid exists");
             }
             switch (operation) {
                 case JOIN:

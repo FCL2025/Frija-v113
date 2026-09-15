@@ -454,6 +454,11 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
             controll.getClient().send(MobPacket.stopControllingMonster(getObjectId()));
             controll.stopControllingMonster(this);
         }
+        // 刻意保留：這一整段（achievement 變數、下面的 switch、再下面被註解掉的發成就區塊）
+        // 記錄了「打倒這四隻王會給成就」這個功能存在，但整個成就系統在
+        // MapleCharacter 裡是整段註解掉的（setAchievementFinished / finishAchievement 都不存在），
+        // 所以這裡的 switch 目前是個空殼，四個 case 都不做事。
+        // 要復活的話得先把 MapleCharacter 與 MapleAchievements 那兩段解開。
         //int achievement = 0;
 
         switch (getId()) {

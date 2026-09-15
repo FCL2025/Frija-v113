@@ -194,7 +194,6 @@ public class PlayersHandler {
                 return;
             }
         }
-        //System.out.println("Coconut1");
         MapleCoconuts nut = map.getCoconut(id);
         if (nut == null || !nut.isHittable()) {
             return;
@@ -202,9 +201,7 @@ public class PlayersHandler {
         if (System.currentTimeMillis() < nut.getHitTime()) {
             return;
         }
-        //System.out.println("Coconut2");
         if (nut.getHits() > 2 && Math.random() < 0.4 && !nut.isStopped()) {
-            //System.out.println("Coconut3-1");
             nut.setHittable(false);
             if (Math.random() < 0.01 && map.getStopped() > 0) {
                 nut.setStopped(true);
@@ -213,15 +210,14 @@ public class PlayersHandler {
                 return;
             }
             nut.resetHits(); // For next event (without restarts)
-            //System.out.println("Coconut4");
             if (Math.random() < 0.05 && map.getBombings() > 0) {
-                //System.out.println("Coconut5-1");
                 c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 2));
                 map.bombCoconut();
             } else if (map.getFalling() > 0) {
-                //System.out.println("Coconut5-2");
                 c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 3));
                 map.fallCoconut();
+                // 保留作為紀錄：原本每打落一顆就廣播一則「某某為某隊得分」的英文訊息，被關掉了。
+                // 上面的區域變數 co（農夫的樂趣／可樂熊）只有這兩行在用。
                 if (c.getPlayer().getTeam() == 0) {
                     map.addMapleScore();
                     //c.getPlayer().getMap().broadcastMessage(ChatPacket.serverNotice(5, c.getPlayer().getName() + " of Team Maple knocks down a " + co + "."));
@@ -232,7 +228,6 @@ public class PlayersHandler {
                 c.getPlayer().getMap().broadcastMessage(EventPacket.coconutScore(map.getCoconutScore()));
             }
         } else {
-            //System.out.println("Coconut3-2");
             nut.hit();
             c.getPlayer().getMap().broadcastMessage(EventPacket.hitCoconut(false, id, 1));
         }
@@ -398,11 +393,9 @@ public class PlayersHandler {
         if (type == 0) { // 角色訊息
             String charmessage = slea.readMapleAsciiString();
             c.getPlayer().setcharmessage(charmessage);
-            //System.err.println("SetCharMessage");
         } else if (type == 1) { // 表情
             int expression = slea.readByte();
             c.getPlayer().setexpression(expression);
-            //System.err.println("Expression"+ expression);
         } else if (type == 2) { // 生日及星座
             int blood = slea.readByte();
             int month = slea.readByte();
@@ -412,7 +405,6 @@ public class PlayersHandler {
             c.getPlayer().setmonth(month);
             c.getPlayer().setday(day);
             c.getPlayer().setconstellation(constellation);
-            //System.err.println("Constellation");
         }
     }
 }

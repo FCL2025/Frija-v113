@@ -202,7 +202,6 @@ public class PlayerHandler {
     }
 
     public static final void TakeDamage(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
-        //System.out.println(slea.toString());
         chr.updateTick(slea.readInt());
         final byte type = slea.readByte(); //-4 is mist, -3 and -2 are map damage.
         slea.skip(1); // Element - 0x00 = elementless, 0x01 = ice, 0x02 = fire, 0x03 = lightning
@@ -343,6 +342,8 @@ public class PlayerHandler {
                         mploss = 0;
                     }
                     chr.addMPHP(-hploss, -mploss);
+                    // 保留作為紀錄：魔法護盾底下原本還有一個「純扣魔攻擊」的分支被關掉了，
+                    // 現在 mpattack > 0 的情況一律落到下面的 else 一併換算。
                     //} else if (mpattack > 0) {
                     //    chr.addMPHP(-damage, -mpattack);
                 } else {
@@ -392,6 +393,7 @@ public class PlayerHandler {
 
             if (combo > 0 && (curr - chr.getLastCombo()) > 7000) {
                 // Official MS timing is 3.5 seconds, so 7 seconds should be safe.
+                // 刻意保留：記錄「戰神連擊計時異常」這個檢查存在，但被關掉了，現在只把連擊歸零。
                 //chr.getCheatTracker().registerOffense(CheatingOffense.ARAN_COMBO_HACK);
                 combo = 0;
             }
@@ -489,6 +491,8 @@ public class PlayerHandler {
             }
             if (GameConstants.isMulungSkill(skillid)) {
                 if (chr.getMapId() / 10000 != 92502) {
+                    // 刻意保留：記錄「在武陵道場外使用道場技能」這個自動封鎖檢查存在，
+                    // 但被關掉了，現在只是安靜地 return。
                     //AutobanManager.getInstance().autoban(c, "Using Mu Lung dojo skill out of dojo maps.");
                     return;
                 } else {
@@ -496,6 +500,8 @@ public class PlayerHandler {
                 }
             } else if (GameConstants.isPyramidSkill(skillid)) {
                 if (chr.getMapId() / 10000 != 92602) {
+                    // 刻意保留：記錄「在金字塔外使用金字塔技能」這個自動封鎖檢查存在，
+                    // 但被關掉了，現在只是安靜地 return。
                     //AutobanManager.getInstance().autoban(c, "Using Pyramid skill out of pyramid maps.");
                     return;
                 }
@@ -526,6 +532,9 @@ public class PlayerHandler {
 
                     final MapleMonster mob = chr.getMap().getMonsterByOid(mobId);
                     if (mob != null) {
+                        // 保留作為紀錄：其他版本會對每一隻被吸的怪廣播 showMagnet，v113 不送。
+                        // 陷阱：這一行裡有 slea.readByte()，直接取消註解會在迴圈內每圈多吃 1 byte，
+                        // 迴圈結束後那個 slea.readByte()（下面 showBuffeffect 用的方向值）就會讀錯位置。
 //			chr.getMap().broadcastMessage(chr, MobPacket.showMagnet(mobId, slea.readByte()), chr.getPosition());
                         mob.switchController(chr, mob.isControllerHasAggro());
                     }
@@ -949,7 +958,6 @@ public class PlayerHandler {
 Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 00 EA FE D6 00 84 00 00 00 71 00 08 00 00 02 77 FF F2 FE 06 00 00 00 E1 FE C9 00 77 FF 6A FF 00 00 06 3C 00 11 00 00 40 04 00 00 00 00 00 B4 FE C9 00 EA FE D7 00
          */
 
-        // log.trace("Movement command received: unk1 {} unk2 {}", new Object[] { unk1, unk2 });
         List<LifeMovementFragment> res;
         try {
             res = MovementParse.parseMovement(slea, 1);
@@ -973,11 +981,6 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
                 c.getPlayer().getMap().broadcastMessage(c.getPlayer(), CharacterPacket.movePlayer(chr.getId(), res, Original_Pos), false);
             }
 
-//	    if (chr.isHidden()) {
-//		chr.setLastRes(res2);
-//	    } else { //original POS? or end POS?
-//		map.broadcastMessage(chr, CharacterPacket.movePlayer(chr.getId(), res, Original_Pos), false);
-//	    }
             MovementParse.updatePosition(res, chr, 0);
             final Point pos = chr.getPosition();
             map.movePlayer(chr, pos);
@@ -1031,6 +1034,8 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
 
     public static final void ChangeMapSpecial(final String portal_name, final MapleClient c, final MapleCharacter chr) {
         final MaplePortal portal = chr.getMap().getPortal(portal_name);
+        // 保留作為紀錄：這個封包在傳送點名稱之後還有 2 bytes 沒人讀。
+        // 這個方法現在只收 portal_name，拿不到 slea（讀字串的是 PacketHandlerRegistry）。
 //	slea.skip(2);
 
         if (portal != null) {
@@ -1199,39 +1204,4 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
         }
     }
 
-    /*public static final void UpdateFkCharMessages(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
-     int type  = slea.readByte();
-     //chr.UpdateCharMessageZone();
-     //c.getPlayer().setcharmessage(s);
-     // if (type == 0) { // 角色訊息
-     /*String*///int charmessage = slea.readMapleAsciiString();
-    //c.getPlayer().setcharmessage(charmessage);
-    //MapleCharacter.UpdateCharMessageZone();
-    //chr.UpdateCharMessageZone();
-    //System.err.println("SetCharMessage");
-        /*} else if (type == 1) { // 表情
-     int expression = slea.readByte();
-     c.getPlayer().setexpression(expression);
-     System.err.println("Expression");
-     } else if (type == 2) { // 生日及星座
-     int blood = slea.readByte();
-     int month = slea.readByte();
-     int day = slea.readByte();
-     int constellation = slea.readByte();
-     c.getPlayer().setblood(blood);
-     c.getPlayer().setmonth(month);
-     c.getPlayer().setday(day);
-     c.getPlayer().setconstellation(constellation);
-     System.err.println("Constellation");
-     }*/
-    //}
-        /*public String getcharmessage(final MapleClient c) {
-
-     return c.getPlayer().getcharmessage();
-
-     }
-     public void setcharmessage(final MapleClient c, String s) {
-     c.getPlayer().setcharmessage(s);
-     c.send(EventPacket.updateBeans(c.getPlayer().getId(), s));
-     }*/
 }

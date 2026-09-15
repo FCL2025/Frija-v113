@@ -38,6 +38,8 @@ public interface MapleMapObject {
 
     public void sendSpawnData(final MapleClient client);
 
+    // 保留作為紀錄：setPickedUp 刻意沒有提到介面上——只有 MapleMapItem 有這個狀態，
+    // 所有呼叫端都是先轉成 MapleMapItem 再呼叫。
     //public void setPickedUp(final boolean pickedUp);
     public void sendDestroyData(final MapleClient client);
 }

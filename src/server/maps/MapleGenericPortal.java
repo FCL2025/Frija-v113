@@ -126,6 +126,8 @@ public class MapleGenericPortal implements MaplePortal {
                         c.send(CharacterPacket.enableActions());
                         return;
                     }
+                    // 刻意保留：記錄「等級太高不准進」這個上限檢查存在，但被關掉了
+                    // （上面的下限檢查還在跑）。MapleMap.getForceMove() 仍然存在。
                     //if (to.getForceMove() > 0 && to.getForceMove() < c.getPlayer().getLevel()) {
                     //    c.getPlayer().dropMessage(-1, "You are too high of a level to enter this place.");
                     //    c.send(CharacterPacket.enableActions());

@@ -57,6 +57,7 @@ public class PartyPacket {
         mplew.write(4);
         mplew.writeInt(from.getParty().getId());
         mplew.writeMapleAsciiString(from.getName());
+        // 逆向出來的線路格式筆記：其他版本的邀請封包還帶邀請者的等級與職業，v113 沒有。
 //        mplew.writeInt(from.getLevel());
 //        mplew.writeInt(from.getJob());
         mplew.write(0);
@@ -186,6 +187,7 @@ public class PartyPacket {
         mplew.writeShort(0x23);
         mplew.writeInt(townId);
         mplew.writeInt(targetId);
+        // 逆向出來的線路格式筆記：其他版本在此還送技能 id，v113 沒有；參數 skillId 因此未被使用。
 //        mplew.writeInt(skillId);
         mplew.writePos(position);
 

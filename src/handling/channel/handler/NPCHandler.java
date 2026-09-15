@@ -171,7 +171,8 @@ public class NPCHandler {
                 } else {
                     q.complete(chr, npc);
                 }
-                // c.send(MaplePacketCreator.completeQuest(c.getPlayer(), quest));
+                // 保留作為紀錄：其他版本在完成任務後還會補送一次 updateQuestInfo（progress 14），
+                // v113 不送；下面那串數字是這個欄位的其他取值。
                 //c.send(QuestPacket.updateQuestInfo(c.getPlayer(), quest, npc, (byte)14));
                 // 6 = start quest
                 // 7 = unknown error
@@ -226,6 +227,8 @@ public class NPCHandler {
                     }
                     storage.sendTakenOut(c, GameConstants.getInventoryType(item.getItemId()));
                 } else {
+                    // 刻意保留：記錄「從倉庫取出不存在的道具」這個自動封鎖檢查存在，但被關掉了，
+                    // 現在只是安靜地 return。
                     //AutobanManager.getInstance().autoban(c, "Trying to take out item from storage which does not exist.");
                     return;
                 }
@@ -237,6 +240,8 @@ public class NPCHandler {
                 short quantity = slea.readShort();
                 final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
                 if (quantity < 1) {
+                    // 刻意保留：記錄「存入非正數數量」這個自動封鎖檢查存在，但被關掉了，
+                    // 現在只是安靜地 return。
                     //AutobanManager.getInstance().autoban(c, "Trying to store " + quantity + " of " + itemId);
                     return;
                 }

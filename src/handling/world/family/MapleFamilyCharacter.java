@@ -25,6 +25,14 @@ import client.MapleCharacter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 家族成員節點。
+ *
+ * <p>本檔案中七處被註解掉的 {@code //} else { //	junior1 = 0;} 形狀的區塊刻意保留：
+ * 它們記錄了一個已知狀況——{@code fam.getMFC(id)} 找不到人時，這個節點上的
+ * seniorid / junior1 / junior2 就是懸空的 id。原本會就地把它歸零自我修復，
+ * 這個修復被關掉了，現在只是略過。要加回去得留意它會改寫欄位而不只是讀取。
+ */
 public class MapleFamilyCharacter {
 
     private int level, id, channel = -1, jobid, familyid, seniorid, currentrep, totalrep, junior1, junior2;

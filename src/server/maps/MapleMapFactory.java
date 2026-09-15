@@ -441,8 +441,6 @@ public class MapleMapFactory {
 
         if (MapleDataTool.getInt("hide", life, 0) == 1 && myLife instanceof MapleNPC) {
             myLife.setHide(true);
-//		} else if (hide > 1) {
-//			System.err.println("Hide > 1 ("+ hide +")");
         }
         return myLife;
     }

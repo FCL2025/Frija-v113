@@ -133,9 +133,10 @@ public class NPCScriptManager extends AbstractScriptManager {
                 if (c.getPlayer().isGM()) {
                     c.getPlayer().dropMessage("[系統提示]您已經建立與任務腳本:" + quest + "的往來。");
                 }
-                //System.out.println("NPCID started: " + npc + " startquest " + quest);
                 iv.invokeFunction("start", (byte) 1, (byte) 0, 0); // start it off as something
             } else {
+                // 保留作為紀錄：已經在對話中時原本會提示玩家用 @ea 解卡，這則提示被關掉了，
+                // 所以這個 else 分支現在完全沒有回應（訊息也是英文的，BIG5 客戶端看得到但不合本服語系）。
                 // c.getPlayer().dropMessage(-1, "You already are talking to an NPC. Use @ea if this is not intended.");
             }
         } catch (final Exception e) {
@@ -177,6 +178,8 @@ public class NPCScriptManager extends AbstractScriptManager {
             return;
         }
         final Lock lock = c.getNPCLock();
+        // 保留作為紀錄：其他幾個方法（action / endQuest 以外）在鎖之後都會先取出既有的 cm，
+        // endQuest 刻意不取——它只在 cms 裡沒有東西時才自己建一個新的。
         //final NPCConversationManager cm = cms.get(c);
         lock.lock();
         try {
@@ -191,9 +194,10 @@ public class NPCScriptManager extends AbstractScriptManager {
                 iv.put("qm", cm);
 
                 c.getPlayer().setConversation(1);
-                //System.out.println("NPCID started: " + npc + " endquest " + quest);
                 iv.invokeFunction("end", (byte) 1, (byte) 0, 0); // start it off as something
             } else {
+                // 保留作為紀錄：已經在對話中時原本會提示玩家用 @ea 解卡，這則提示被關掉了，
+                // 所以這個 else 分支現在完全沒有回應（訊息也是英文的，BIG5 客戶端看得到但不合本服語系）。
                 // c.getPlayer().dropMessage(-1, "You already are talking to an NPC. Use @ea if this is not intended.");
             }
         } catch (Exception e) {

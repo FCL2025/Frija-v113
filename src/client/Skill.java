@@ -31,6 +31,7 @@ import server.life.Element;
 
 public class Skill implements ISkill {
 
+    // 用途不明，保留待查：這棵樹裡沒有任何地方參考 Skill.skills，也看不出這組技能 id 的用意。
     //public static final int[] skills = new int[]{4311003, 4321000, 4331002, 4331005, 4341004, 4341007};
     private String name = "";
     private final List<MapleStatEffect> effects = new ArrayList<>();

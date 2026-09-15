@@ -39,6 +39,11 @@ import constants.GameConstants;
 import client.inventory.MapleInventoryType;
 import handling.channel.handler.InventoryHandler;
 
+/**
+ * 本檔案中八處被註解掉的 {@code mplew.writeShort(....getJob())} 都是逆向出來的線路格式筆記，
+ * 刻意保留：其他版本在角色名字後還送一個職業欄位，v113 沒有。取消註解會讓封包多 2 bytes
+ * 而導致客戶端解析錯位。
+ */
 public class PlayerShopPacket {
 
     public static final MaplePacket addCharBox(final MapleCharacter c, final int type) {

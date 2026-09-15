@@ -168,6 +168,7 @@ public final class PacketHandlerRegistry {
         });
         put(RecvPacketOpcode.ENTER_CASH_SHOP, (slea, c, cs) -> InterServerHandler.EnterCS(c, c.getPlayer(), false));
         put(RecvPacketOpcode.ENTER_MTS, (slea, c, cs) -> {
+            // 刻意保留：拍賣場（MTS）是接好的，但本服刻意關閉，改成回一則「目前暫停使用」。
             //                InterServerHandler.EnterCS(c, c.getPlayer(), true);
             c.getPlayer().dropMessage(1, "目前暫停使用.");
         });
@@ -175,7 +176,6 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.CHAR_INFO_REQUEST, (slea, c, cs) -> {
             c.getPlayer().updateTick(slea.readInt());
             PlayerHandler.CharInfoRequest(slea.readInt(), c, c.getPlayer());
-            //System.err.println("CHAR_INFO_REQUEST");
         });
         put(RecvPacketOpcode.CLOSE_RANGE_ATTACK, (slea, c, cs) -> PlayerHandler.closeRangeAttack(slea, c, c.getPlayer(), false));
         put(RecvPacketOpcode.RANGED_ATTACK, (slea, c, cs) -> PlayerHandler.rangedAttack(slea, c, c.getPlayer()));
@@ -251,6 +251,8 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.USE_SUMMON_BAG, (slea, c, cs) -> InventoryHandler.UseSummonBag(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.USE_TREASUER_CHEST, (slea, c, cs) -> InventoryHandler.UseTreasureChest(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.USE_SKILL_BOOK, (slea, c, cs) -> {
+            // 保留作為紀錄：其他版本這個封包開頭有 tick 欄位，v113 沒有。
+            // 陷阱：這一行含 slea.readInt()，取消註解會多吃 4 bytes，後面就讀錯位置。
             //                c.getPlayer().updateTick(slea.readInt());
             InventoryHandler.UseSkillBook(slea, c, c.getPlayer());
         });
@@ -271,6 +273,8 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.QUEST_ACTION, (slea, c, cs) -> NPCHandler.QuestAction(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.STORAGE, (slea, c, cs) -> NPCHandler.Storage(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.GENERAL_CHAT, (slea, c, cs) -> {
+            // 保留作為紀錄：其他版本這個封包開頭有 tick 欄位，v113 沒有。
+            // 陷阱：這一行含 slea.readInt()，取消註解會多吃 4 bytes，聊天內容就讀錯位置。
             //                c.getPlayer().updateTick(slea.readInt());
             ChatHandler.GeneralChat(slea.readMapleAsciiString(), slea.readByte(), c, c.getPlayer());
         });
@@ -285,11 +289,7 @@ public final class PacketHandlerRegistry {
         });
         put(RecvPacketOpcode.PLAYER_INTERACTION, (slea, c, cs) -> PlayerInteractionHandler.PlayerInteraction(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.GUILD_OPERATION, (slea, c, cs) -> GuildHandler.Guild(slea, c));
-        put(RecvPacketOpcode.UPDATE_CHAR_INFO, (slea, c, cs) -> {
-            //System.err.println("UPDATE_CHAR_INFO");
-            //PlayersHandler.UpdateCharInfo(slea.readAsciiString(), c);
-            PlayersHandler.UpdateCharInfo(slea, c, c.getPlayer());
-        });
+        put(RecvPacketOpcode.UPDATE_CHAR_INFO, (slea, c, cs) -> PlayersHandler.UpdateCharInfo(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.DENY_GUILD_REQUEST, (slea, c, cs) -> {
             slea.skip(1);
             GuildHandler.DenyGuildRequest(slea.readMapleAsciiString(), c);

@@ -127,6 +127,8 @@ public final class HiredMerchant extends AbstractPlayerStore {
         }
         if (saveItems) {
             saveItems();
+            // 保留作為紀錄：存檔後原本會把架上清單清空，這一行被關掉了，
+            // items 會一直留到這個 HiredMerchant 物件本身被丟掉為止。
             //items.clear();
         }
         if (remove) {

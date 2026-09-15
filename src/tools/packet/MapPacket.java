@@ -54,6 +54,7 @@ public class MapPacket {
         mplew.writeShort(SendPacketOpcode.WARP_TO_MAP.getValue());
         mplew.writeInt(chr.getClient().getChannel() - 1);
         mplew.writeInt(0x2); // Count
+        // 逆向出來的線路格式筆記：其他版本在 Count 後多一個 byte，v113 沒有。
 //        mplew.write(0);
         mplew.writeInt(to.getId());
         mplew.write(spawnPoint);
@@ -80,6 +81,7 @@ public class MapPacket {
         mplew.writeShort(SendPacketOpcode.SPAWN_PORTAL.getValue());
         mplew.writeInt(townId);
         mplew.writeInt(targetId);
+        // 逆向出來的線路格式筆記：其他版本在此還送技能 id，v113 沒有；參數 skillId 因此未被使用。
 //        mplew.writeInt(skillId);
         if (pos != null) {
             mplew.writePos(pos);
@@ -280,6 +282,7 @@ public class MapPacket {
         mplew.writeInt(cid);
         mplew.writeInt(oid);
         mplew.writePos(startPos);
+        // 逆向出來的線路格式筆記：其他版本在座標後多一個 int，v113 沒有。
 //        mplew.writeInt(0);
         PacketHelper.serializeMovementList(mplew, moves);
 

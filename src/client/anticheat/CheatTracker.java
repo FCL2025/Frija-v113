@@ -105,6 +105,9 @@ public class CheatTracker {
         numSequentialDamage++;
         lastDamageTakenTime = System.currentTimeMillis();
 
+        // 刻意保留：這裡記錄「連續受傷過快」這個檢查存在，但被關掉了。
+        // 注意 CheatingOffense 裡沒有 FAST_TAKE_DAMAGE，只有拼錯的 AST_TAKE_DAMAG，
+        // 所以直接取消註解是編不過的。
         if (lastDamageTakenTime - takingDamageSince / 500 < numSequentialDamage) {
 //            registerOffense(CheatingOffense.FAST_TAKE_DAMAGE);
         }
@@ -186,6 +189,8 @@ public class CheatTracker {
         if ((System.currentTimeMillis() - lastDropTime) < 1000) {
             dropsPerSecond++;
             if (dropsPerSecond >= (dc ? 32 : 16) && chr.get() != null) {
+                // 刻意保留：記錄「丟東西過快時直接踢線」這個處置存在，但被關掉了，
+                // 現在無論 dc 與否都只改成監控。參數 dc 因此只剩下調整門檻的作用。
 //                if (dc) {
 //                    chr.get().getClient().getSession().close();
 //                } else {

@@ -436,7 +436,6 @@ public final class MapleGuild {
     }
 
     public int getAllianceId() {
-        //return alliance.getId();
         return this.allianceid;
     }
 

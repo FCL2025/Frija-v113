@@ -139,6 +139,9 @@ public class AutobanManager implements Runnable {
         final long now = System.currentTimeMillis();
         lock.lock();
         try {
+            // 這裡不能用 removeIf：本體除了移除之外還要把點數扣回 points，
+            // 而且靠 return 在遇到第一筆未到期的項目時提前結束（集合是照時間排序的）；
+            // removeIf 一定走完整個集合，語意不同。
             final Iterator<ExpirationEntry> it = expirations.iterator();
             while (it.hasNext()) {
                 final ExpirationEntry e = it.next();

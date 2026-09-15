@@ -964,6 +964,9 @@ public class InventoryHandler {
      * may not be reordered or shared with another arm.
      */
     public static final void UseCashItem(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        // 保留作為紀錄：其他版本的這個封包開頭有 tick 欄位，v113 沒有。
+        // 陷阱：這一行含 slea.readInt()，直接取消註解會多吃 4 bytes，
+        // 底下整個 UseCashItem 的讀取位置全部跑掉。
 //        c.getPlayer().updateTick(slea.readInt());
         final byte slot = (byte) slea.readShort();
         final int itemId = slea.readInt();

@@ -330,6 +330,7 @@ public class EventPacket {
         mplew.writeShort(Pos);
         mplew.write(Type);
         mplew.writeInt(1/*Number*/);
+        // 逆向出來的線路格式筆記：抓包抓到的原始尾段，保留作為欄位排列的對照；v113 不送這一段。
         //mplew.write(HexTool.getByteArrayFromHexString("DA 01 00 05 BD 0F 01 60 00 00 00 FF 0E 01 61 00 00 00 69 0E 01 62 00 00 00 05 0F 01 63 00 00 00 C6 0F 01 64 00 00 00"));
         return mplew.getPacket();
     }

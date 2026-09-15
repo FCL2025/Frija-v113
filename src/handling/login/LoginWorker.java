@@ -66,6 +66,8 @@ public class LoginWorker {
                 c.send(LoginPacket.getServerList(0, LoginServer.getServerName(), LoginServer.getLoad()));
                 c.send(LoginPacket.getEndOfServerList());
             }
+            // 刻意保留：這個閒置計時器原本是要在登入畫面待太久時把連線關掉，
+            // 呼叫被註解掉之後任務本體是空的，等於只佔一個排程名額。
             c.setIdleTask(PingTimer.getInstance().schedule(() -> {
 //                    c.getSession().close();
             }, 10 * 60 * 10000));

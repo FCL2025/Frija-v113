@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import database.DatabaseConnection;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import tools.Pair;
 
@@ -253,11 +252,8 @@ public enum ItemLoader {
         try (PreparedStatement ps = con.prepareStatement(query_2.toString(), Statement.RETURN_GENERATED_KEYS);
                 PreparedStatement psNoKeys = con.prepareStatement(query_2.toString());
                 PreparedStatement pse = con.prepareStatement("INSERT INTO " + table_equip + " VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
-            final Iterator<Pair<IItem, MapleInventoryType>> iter = items.iterator();
-            Pair<IItem, MapleInventoryType> pair;
             boolean pending = false;
-            while (iter.hasNext()) {
-                pair = iter.next();
+            for (Pair<IItem, MapleInventoryType> pair : items) {
                 IItem item = pair.getLeft();
                 MapleInventoryType mit = pair.getRight();
                 final boolean isEquip = mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED);

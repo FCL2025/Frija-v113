@@ -102,7 +102,6 @@ public class Family {
     public static void setFamily(int familyid, int seniorid, int junior1, int junior2, int currentrep, int totalrep, int cid) {
         int ch = Find.findChannel(cid);
         if (ch == -1) {
-            // System.out.println("ERROR: cannot find player in given channel");
             return;
         }
         MapleCharacter mc = World.getStorage(ch).getCharacterById(cid);

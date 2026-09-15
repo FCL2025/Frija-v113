@@ -115,6 +115,8 @@ public class RankingWorker {
         jobCommands.put("bowman", 3);
         jobCommands.put("thief", 4);
         jobCommands.put("pirate", 5);
+        // 保留作為紀錄：下面九個職業分類（騎士團、英雄、戰神、隱月）在本服的排行榜篩選裡
+        // 刻意不開放，只留五大基礎職業與 all；要開放就把對應的行解開。
 //        jobCommands.put("nobless", 10);
 //        jobCommands.put("soulmaster", 11);
 //        jobCommands.put("flamewizard", 12);

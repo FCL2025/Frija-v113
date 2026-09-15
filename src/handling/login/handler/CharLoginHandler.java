@@ -54,7 +54,8 @@ public class CharLoginHandler {
     }
 
     public static final void Welcome(final MapleClient c) {
-
+        // 保留作為紀錄：這個進場招呼原本會送一則公告，被關掉之後整個方法就是空的。
+        // PacketHandlerRegistry 仍然把 HELLO / HELLO_CHANNEL 導到這裡，所以方法本身不能刪。
        // c.send(ChatPacket.serverNotice(1, "歡迎來到尻尻谷"));
     }
 
@@ -126,9 +127,6 @@ public class CharLoginHandler {
 
     public static final void ServerListRequest(final MapleClient c) {
         c.send(LoginPacket.getServerList(0, LoginServer.getServerName(), LoginServer.getLoad()));
-        //c.send(MaplePacketCreator.getServerList(1, "Scania", LoginServer.getInstance().getChannels(), 1200));
-        //c.send(MaplePacketCreator.getServerList(2, "Scania", LoginServer.getInstance().getChannels(), 1200));
-        //c.send(MaplePacketCreator.getServerList(3, "Scania", LoginServer.getInstance().getChannels(), 1200));
         c.send(LoginPacket.getEndOfServerList());
     }
 
@@ -153,7 +151,6 @@ public class CharLoginHandler {
         final int channel = slea.readByte() + 1;
 
         c.setWorld(server);
-        //System.out.println("Client " + c.getSession().getRemoteAddress().toString().split(":")[0] + " is connecting to server " + server + " channel " + channel + "");
         c.setChannel(channel);
 
         final List<MapleCharacter> chars = c.loadCharacters(server);
@@ -189,7 +186,6 @@ public class CharLoginHandler {
 
         final byte gender = c.getGender();
 
-//      System.out.println("Top = " + top + " Bottom = " + bottom + " Shoes = " + shoes + " Weapon = " + weapon);
         if (gender == 0) {
             if (face != 20100 && face != 20401 && face != 20402) {
                 return;
@@ -288,6 +284,9 @@ public class CharLoginHandler {
     public static final void DeleteChar(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         slea.readByte();
         String Secondpw_Client = null;
+        // 保留作為紀錄：其他版本這裡先讀一個 byte 判斷有沒有二次密碼，後面還多一個字串；
+        // v113 一律直接讀字串。陷阱：這三行裡有 slea.readByte() 與 slea.readMapleAsciiString()，
+        // 直接取消註解會改變讀取位置，底下的 Character_ID 就會讀錯。
 //        if (slea.readByte() > 0) { // Specific if user have second password or not
         Secondpw_Client = slea.readMapleAsciiString();
 //        }
@@ -306,6 +305,7 @@ public class CharLoginHandler {
                 return;
             } else {
                 if (!c.CheckSecondPassword(Secondpw_Client)) { // Wrong Password
+                    // 保留作為紀錄：二次密碼錯誤原本回 12，本服改回 16，兩者是不同的客戶端訊息。
                     //state = 12;
                     state = 16;
                 }

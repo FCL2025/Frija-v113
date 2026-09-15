@@ -207,6 +207,8 @@ public class FamilyPacket {
 
         mplew.writeShort(SendPacketOpcode.FAMILY_INVITE.getValue());
         mplew.writeInt(cid); //the inviter
+        // 逆向出來的線路格式筆記：其他版本的邀請封包還帶邀請者的等級與職業，v113 沒有；
+        // 參數 otherLevel / otherJob 因此在 v113 未被使用。
 //	mplew.writeInt(otherLevel);
 //	mplew.writeInt(otherJob);
         mplew.writeMapleAsciiString(inviter);

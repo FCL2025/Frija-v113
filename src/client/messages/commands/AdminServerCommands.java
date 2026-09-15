@@ -389,6 +389,9 @@ public class AdminServerCommands {
         }
     }
 
+    // 刻意保留：!listsquads 這個指令被停用了（CommandProcessor 只反射沒被註解掉的內部類別，
+    // 所以整個類別註解起來就等於移除指令）。內容本身仍然成立——它用到的 MapleSquad 方法都還在——
+    // 只是要復活的話得補上 import java.util.Map.Entry。
     /*    public static class ListSquads extends CommandExecute {
 
      @Override

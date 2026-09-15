@@ -20,7 +20,8 @@
  */
 package client;
 
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.MapleInventoryType;
 import client.inventory.IItem;
 import client.inventory.Equip;
@@ -273,7 +274,7 @@ public class PlayerStats {
         }
         StructPotentialItem pot;
         resetDamageAndRateFields();
-        final boolean canEquipLevel = chra.getLevel() >= 120 && !GameConstants.isKOC(chra.getJob());
+        final boolean canEquipLevel = chra.getLevel() >= 120 && !JobConstants.isKOC(chra.getJob());
         resetEquipAccumulators();
 
         for (IItem item : chra.getInventory(MapleInventoryType.EQUIPPED)) {
@@ -317,9 +318,9 @@ public class PlayerStats {
                     hasItem = true;
                     break;
                 default:
-                    for (int eb_bonus : GameConstants.Equipments_Bonus) {
+                    for (int eb_bonus : ItemConstants.Equipments_Bonus) {
                         if (equip.getItemId() == eb_bonus) {
-                            equipmentBonusExp += GameConstants.Equipment_Bonus_EXP(eb_bonus);
+                            equipmentBonusExp += ItemConstants.Equipment_Bonus_EXP(eb_bonus);
                             break;
                         }
                     }
@@ -391,11 +392,11 @@ public class PlayerStats {
                 if (equip.getDurability() > 0) {
                     durabilityHandling.add((Equip) equip);
                 }
-                if (canEquipLevel && GameConstants.getMaxLevel(equip.getItemId()) > 0 && (GameConstants.getStatFromWeapon(equip.getItemId()) == null ? (equip.getEquipLevel() <= GameConstants.getMaxLevel(equip.getItemId())) : (equip.getEquipLevel() < GameConstants.getMaxLevel(equip.getItemId())))) {
+                if (canEquipLevel && ItemConstants.getMaxLevel(equip.getItemId()) > 0 && (ItemConstants.getStatFromWeapon(equip.getItemId()) == null ? (equip.getEquipLevel() <= ItemConstants.getMaxLevel(equip.getItemId())) : (equip.getEquipLevel() < ItemConstants.getMaxLevel(equip.getItemId())))) {
                     equipLevelHandling.add((Equip) equip);
                 }
             }*/
-            if (canEquipLevel && GameConstants.getMaxLevel(equip.getItemId()) > 0 && (GameConstants.getStatFromWeapon(equip.getItemId()) == null ? (equip.getEquipLevel() <= GameConstants.getMaxLevel(equip.getItemId())) : (equip.getEquipLevel() < GameConstants.getMaxLevel(equip.getItemId())))) {
+            if (canEquipLevel && ItemConstants.getMaxLevel(equip.getItemId()) > 0 && (ItemConstants.getStatFromWeapon(equip.getItemId()) == null ? (equip.getEquipLevel() <= ItemConstants.getMaxLevel(equip.getItemId())) : (equip.getEquipLevel() < ItemConstants.getMaxLevel(equip.getItemId())))) {
                     equipLevelHandling.add((Equip) equip);
             }
         }
@@ -576,7 +577,7 @@ public class PlayerStats {
 
     private void applyMagicWeaponElements(final IEquip equip) {
         if (equip.getPosition() == -11) {
-            if (GameConstants.isMagicWeapon(equip.getItemId())) {
+            if (ItemConstants.isMagicWeapon(equip.getItemId())) {
                 final Map<String, Integer> eqstat = MapleItemInformationProvider.getInstance().getEquipStats(equip.getItemId());
 
                 element_fire = eqstat.get("incRMAF");
@@ -753,7 +754,7 @@ public class PlayerStats {
     }
 
     private void applyBlessOfFairy(final MapleCharacter chra) {
-        final ISkill blessoffairy = SkillFactory.getSkill(GameConstants.getBOF_ForJob(chra.getJob()));
+        final ISkill blessoffairy = SkillFactory.getSkill(JobConstants.getBOF_ForJob(chra.getJob()));
         final int boflevel = chra.getSkillLevel(blessoffairy);
         if (boflevel > 0) {
             watk += blessoffairy.getEffect(boflevel).getX();
@@ -894,7 +895,7 @@ public class PlayerStats {
                         eq = ii.levelUpEquip(eq, inc.get(lvlz + i));
                     }
                     //UGH, skillz
-                    if (GameConstants.getStatFromWeapon(eq.getItemId()) == null) {
+                    if (ItemConstants.getStatFromWeapon(eq.getItemId()) == null) {
                         final Map<Integer, List<Integer>> ins = ii.getEquipSkills(eq.getItemId());
                         if (ins != null && ins.containsKey(lvlz + i)) {
                             for (Integer z : ins.get(lvlz + i)) {
@@ -952,9 +953,9 @@ public class PlayerStats {
             return;
         }
         final int skil;
-        switch (GameConstants.getWeaponType(player.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11).getItemId())) {
+        switch (ItemConstants.getWeaponType(player.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11).getItemId())) {
             case BOW:
-                skil = GameConstants.isKOC(player.getJob()) ? 13100000 : (GameConstants.isResist(player.getJob()) ? 33100000 : 3100000);
+                skil = JobConstants.isKOC(player.getJob()) ? 13100000 : (JobConstants.isResist(player.getJob()) ? 33100000 : 3100000);
                 break;
             case CLAW:
                 skil = 4100000;
@@ -972,23 +973,23 @@ public class PlayerStats {
                 break;
             case SWORD1H:
             case SWORD2H:
-                skil = GameConstants.isKOC(player.getJob()) ? 11100000 : (player.getJob() > 112 ? 1200000 : 1100000); //hero/pally
+                skil = JobConstants.isKOC(player.getJob()) ? 11100000 : (player.getJob() > 112 ? 1200000 : 1100000); //hero/pally
                 break;
             case BLUNT1H:
             case BLUNT2H:
                 skil = 1200001;
                 break;
             case POLE_ARM:
-                skil = GameConstants.isAran(player.getJob()) ? 21100000 : 1300001;
+                skil = JobConstants.isAran(player.getJob()) ? 21100000 : 1300001;
                 break;
             case SPEAR:
                 skil = 1300000;
                 break;
             case KNUCKLE:
-                skil = GameConstants.isKOC(player.getJob()) ? 15100001 : 5100001;
+                skil = JobConstants.isKOC(player.getJob()) ? 15100001 : 5100001;
                 break;
             case GUN:
-                skil = GameConstants.isResist(player.getJob()) ? 35100000 : 5200000;
+                skil = JobConstants.isResist(player.getJob()) ? 35100000 : 5200000;
                 break;
             case STAFF:
                 skil = 32100006;
@@ -1135,7 +1136,7 @@ public class PlayerStats {
         } else {
             final IItem weapon_item = chra.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11);
             final int job = chra.getJob();
-            final MapleWeaponType weapon = weapon_item == null ? MapleWeaponType.NOT_A_WEAPON : GameConstants.getWeaponType(weapon_item.getItemId());
+            final MapleWeaponType weapon = weapon_item == null ? MapleWeaponType.NOT_A_WEAPON : ItemConstants.getWeaponType(weapon_item.getItemId());
             int mainstat, secondarystat;
 
             switch (weapon) {
@@ -1200,31 +1201,31 @@ public class PlayerStats {
         shouldHealHP = 10 + recoverHP; // Reset
         shouldHealMP = 3 + mpRestore + recoverMP; // i think
 
-        if (GameConstants.isJobFamily(200, playerjob)) { // Improving MP recovery
+        if (JobConstants.isJobFamily(200, playerjob)) { // Improving MP recovery
             shouldHealMP += (((float) chra.getSkillLevel(SkillFactory.getSkill(2000000)) / 10) * chra.getLevel());
 
-        } else if (GameConstants.isJobFamily(111, playerjob)) {
+        } else if (JobConstants.isJobFamily(111, playerjob)) {
             final ISkill effect = SkillFactory.getSkill(1110000); // Improving MP Recovery
             final int lvl = chra.getSkillLevel(effect);
             if (lvl > 0) {
                 shouldHealMP += effect.getEffect(lvl).getMp();
             }
 
-        } else if (GameConstants.isJobFamily(121, playerjob)) {
+        } else if (JobConstants.isJobFamily(121, playerjob)) {
             final ISkill effect = SkillFactory.getSkill(1210000); // Improving MP Recovery
             final int lvl = chra.getSkillLevel(effect);
             if (lvl > 0) {
                 shouldHealMP += effect.getEffect(lvl).getMp();
             }
 
-        } else if (GameConstants.isJobFamily(1111, playerjob)) {
+        } else if (JobConstants.isJobFamily(1111, playerjob)) {
             final ISkill effect = SkillFactory.getSkill(11110000); // Improving MP Recovery
             final int lvl = chra.getSkillLevel(effect);
             if (lvl > 0) {
                 shouldHealMP += effect.getEffect(lvl).getMp();
             }
 
-        } else if (GameConstants.isJobFamily(410, playerjob)) {
+        } else if (JobConstants.isJobFamily(410, playerjob)) {
             final ISkill effect = SkillFactory.getSkill(4100002); // Endure
             final int lvl = chra.getSkillLevel(effect);
             if (lvl > 0) {
@@ -1232,7 +1233,7 @@ public class PlayerStats {
                 shouldHealMP += effect.getEffect(lvl).getMp();
             }
 
-        } else if (GameConstants.isJobFamily(420, playerjob)) {
+        } else if (JobConstants.isJobFamily(420, playerjob)) {
             final ISkill effect = SkillFactory.getSkill(4200001); // Endure
             final int lvl = chra.getSkillLevel(effect);
             if (lvl > 0) {
@@ -1268,13 +1269,13 @@ public class PlayerStats {
     }
 
     public final int getSkillByJob(final int skillID, final int job) {
-        if (GameConstants.isKOC(job)) {
+        if (JobConstants.isKOC(job)) {
             return skillID + 10000000;
-        } else if (GameConstants.isAran(job)) {
+        } else if (JobConstants.isAran(job)) {
             return skillID + 20000000;
-        } else if (GameConstants.isEvan(job)) {
+        } else if (JobConstants.isEvan(job)) {
             return skillID + 20010000;
-        } else if (GameConstants.isResist(job)) {
+        } else if (JobConstants.isResist(job)) {
             return skillID + 30000000;
         }
         return skillID;

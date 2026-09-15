@@ -22,7 +22,7 @@ package tools.packet;
 
 import java.util.List;
 import client.inventory.IItem;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleCharacter;
 import client.MapleClient;
 import handling.MaplePacket;
@@ -56,7 +56,7 @@ public class NPCPacket {
 //            mplew.writeInt(item.getReqItem());
 //            mplew.writeInt(item.getReqItemQ());
 //            mplew.writeLong(0);
-            if (!GameConstants.isThrowingStar(item.getItemId()) && !GameConstants.isBullet(item.getItemId())) {
+            if (!ItemConstants.isThrowingStar(item.getItemId()) && !ItemConstants.isBullet(item.getItemId())) {
                 mplew.writeShort(1); // stacksize o.o
                 mplew.writeShort(item.getBuyable());
             } else {

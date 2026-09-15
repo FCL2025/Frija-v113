@@ -10,7 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.ItemLoader;
 import client.inventory.IItem;
 import client.MapleClient;
@@ -102,7 +102,7 @@ public class MapleStorage {
 
             List<Pair<IItem, MapleInventoryType>> listing = new ArrayList<>();
             for (final IItem item : items) {
-                listing.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
+                listing.add(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId())));
             }
             ItemLoader.STORAGE.saveItems(listing, accountId);
         } catch (SQLException ex) {
@@ -118,7 +118,7 @@ public class MapleStorage {
         }
         changed = true;
         IItem ret = items.remove(slot);
-        MapleInventoryType type = GameConstants.getInventoryType(ret.getItemId());
+        MapleInventoryType type = ItemConstants.getInventoryType(ret.getItemId());
         typeItems.put(type, new ArrayList<>(filterItems(type)));
         return ret;
     }
@@ -126,7 +126,7 @@ public class MapleStorage {
     public void store(IItem item) {
         changed = true;
         items.add(item);
-        MapleInventoryType type = GameConstants.getInventoryType(item.getItemId());
+        MapleInventoryType type = ItemConstants.getInventoryType(item.getItemId());
         typeItems.put(type, new ArrayList<>(filterItems(type)));
     }
 
@@ -138,7 +138,7 @@ public class MapleStorage {
         List<IItem> ret = new LinkedList<>();
 
         for (IItem item : items) {
-            if (GameConstants.getInventoryType(item.getItemId()) == type) {
+            if (ItemConstants.getInventoryType(item.getItemId()) == type) {
                 ret.add(item);
             }
         }
@@ -163,9 +163,9 @@ public class MapleStorage {
     public void sendStorage(MapleClient c, int npcId) {
         // sort by inventorytype to avoid confusion
         Collections.sort(items, (o1, o2) -> {
-            if (GameConstants.getInventoryType(o1.getItemId()).getType() < GameConstants.getInventoryType(o2.getItemId()).getType()) {
+            if (ItemConstants.getInventoryType(o1.getItemId()).getType() < ItemConstants.getInventoryType(o2.getItemId()).getType()) {
                 return -1;
-            } else if (GameConstants.getInventoryType(o1.getItemId()) == GameConstants.getInventoryType(o2.getItemId())) {
+            } else if (ItemConstants.getInventoryType(o1.getItemId()) == ItemConstants.getInventoryType(o2.getItemId())) {
                 return 0;
             } else {
                 return 1;

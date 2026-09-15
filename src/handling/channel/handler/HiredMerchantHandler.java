@@ -31,7 +31,7 @@ import client.inventory.IItem;
 import client.inventory.MapleInventoryType;
 import client.MapleClient;
 import client.MapleCharacter;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.ItemLoader;
 import database.DatabaseConnection;
 import handling.world.World;
@@ -172,7 +172,7 @@ public class HiredMerchantHandler {
         }
         byte eq = 0, use = 0, setup = 0, etc = 0, cash = 0;
         for (IItem item : pack.getItems()) {
-            final MapleInventoryType invtype = GameConstants.getInventoryType(item.getItemId());
+            final MapleInventoryType invtype = ItemConstants.getInventoryType(item.getItemId());
             if (invtype == MapleInventoryType.EQUIP) {
                 eq++;
             } else if (invtype == MapleInventoryType.USE) {

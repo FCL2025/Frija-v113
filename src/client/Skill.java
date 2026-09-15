@@ -20,7 +20,7 @@
  */
 package client;
 
-import constants.GameConstants;
+import constants.JobConstants;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -270,21 +270,21 @@ public class Skill implements ISkill {
         int skillForJob = id / 10000;
     if( skillForJob == 0 || skillForJob == 1000 || skillForJob == 2000 || skillForJob == 2001 || skillForJob == 3000){
             return true;
-    }else if (skillForJob == 2001 && GameConstants.isEvan(job)) {
+    }else if (skillForJob == 2001 && JobConstants.isEvan(job)) {
             return true; //special exception for evan -.-
         } else if (jid / 100 != skillForJob / 100) { // wrong job
             return false;
         } else if (jid / 1000 != skillForJob / 1000) { // wrong job
             return false;
-        } else if (GameConstants.isAdventurer(skillForJob) && !GameConstants.isAdventurer(job)) {
+        } else if (JobConstants.isAdventurer(skillForJob) && !JobConstants.isAdventurer(job)) {
             return false;
-        } else if (GameConstants.isKOC(skillForJob) && !GameConstants.isKOC(job)) {
+        } else if (JobConstants.isKOC(skillForJob) && !JobConstants.isKOC(job)) {
             return false;
-        } else if (GameConstants.isAran(skillForJob) && !GameConstants.isAran(job)) {
+        } else if (JobConstants.isAran(skillForJob) && !JobConstants.isAran(job)) {
             return false;
-        } else if (GameConstants.isEvan(skillForJob) && !GameConstants.isEvan(job)) {
+        } else if (JobConstants.isEvan(skillForJob) && !JobConstants.isEvan(job)) {
             return false;
-        } else if (GameConstants.isResist(skillForJob) && !GameConstants.isResist(job)) {
+        } else if (JobConstants.isResist(skillForJob) && !JobConstants.isResist(job)) {
             return false;
         } else if ((skillForJob / 10) % 10 > (jid / 10) % 10) { // wrong 2nd job
             return false;

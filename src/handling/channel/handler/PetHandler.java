@@ -29,6 +29,7 @@ import client.MapleDisease;
 import client.inventory.MapleInventoryType;
 import client.inventory.MaplePet;
 import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.PetCommand;
 import client.inventory.PetDataFactory;
 import handling.world.MaplePartyCharacter;
@@ -247,7 +248,7 @@ public class PetHandler {
                             if (InventoryHandler.useItem(chr.getClient(), mapitem.getItemId())) {
                                 InventoryHandler.removeItem_Pet(chr, mapitem, slot);
                             } else if (MapleInventoryManipulator.checkSpace(chr.getClient(), mapitem.getItem().getItemId(), mapitem.getItem().getQuantity(), mapitem.getItem().getOwner())) {
-                                if (mapitem.getItem().getQuantity() >= 50 && GameConstants.isUpgradeScroll(mapitem.getItem().getItemId())) {
+                                if (mapitem.getItem().getQuantity() >= 50 && ItemConstants.isUpgradeScroll(mapitem.getItem().getItemId())) {
 
                                     chr.getClient().setMonitored(true); //hack check
 

@@ -29,6 +29,7 @@ import java.util.List;
 import client.inventory.IItem;
 import client.inventory.ItemFlag;
 import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.ItemLoader;
 import client.MapleCharacter;
 import client.MapleCharacterUtil;
@@ -118,7 +119,7 @@ public class DueyHandler {
                                     final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
                                     if (!ii.isDropRestricted(item.getItemId()) && !ii.isAccountShared(item.getItemId())) {
                                         if (addItemToDB(item, amount, mesos, c.getPlayer().getName(), accid, recipientOn)) {
-                                            if (GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+                                            if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
                                                 MapleInventoryManipulator.removeFromSlot(c, inv, (byte) itemPos, item.getQuantity(), true);
                                             } else {
                                                 MapleInventoryManipulator.removeFromSlot(c, inv, (byte) itemPos, amount, true, false);
@@ -237,7 +238,7 @@ public class DueyHandler {
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    ItemLoader.DUEY.saveItems(Collections.singletonList(new Pair<>(item, GameConstants.getInventoryType(item.getItemId()))), rs.getInt(1));
+                    ItemLoader.DUEY.saveItems(Collections.singletonList(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId()))), rs.getInt(1));
                 }
             }
 

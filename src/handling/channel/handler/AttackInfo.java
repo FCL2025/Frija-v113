@@ -24,7 +24,7 @@ import java.util.List;
 import java.awt.Point;
 
 import client.ISkill;
-import constants.GameConstants;
+import constants.JobConstants;
 import client.MapleCharacter;
 import client.SkillFactory;
 import server.MapleStatEffect;
@@ -40,12 +40,12 @@ public class AttackInfo {
     public boolean real = true;
 
     public final MapleStatEffect getAttackEffect(final MapleCharacter chr, int skillLevel, final ISkill skill_) {
-        if (GameConstants.isMulungSkill(skill) || GameConstants.isPyramidSkill(skill)) {
+        if (JobConstants.isMulungSkill(skill) || JobConstants.isPyramidSkill(skill)) {
             skillLevel = 1;
         } else if (skillLevel <= 0) {
             return null;
         }
-        if (GameConstants.isLinkedAranSkill(skill)) {
+        if (JobConstants.isLinkedAranSkill(skill)) {
             final ISkill skillLink = SkillFactory.getSkill(skill);
             if (display > 80) {
                 if (!skillLink.getAction()) {

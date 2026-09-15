@@ -26,6 +26,7 @@ import client.inventory.MapleInventoryType;
 import client.MapleClient;
 import client.MapleCharacter;
 import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleQuestStatus;
 import client.RockPaperScissors;
 import client.inventory.ItemFlag;
@@ -97,7 +98,7 @@ public class NPCHandler {
                 final byte slot = (byte) slea.readShort();
                 final int itemId = slea.readInt();
                 final short quantity = slea.readShort();
-                shop.sell(c, GameConstants.getInventoryType(itemId), slot, quantity);
+                shop.sell(c, ItemConstants.getInventoryType(itemId), slot, quantity);
                 break;
             }
             case 2: {
@@ -225,7 +226,7 @@ public class NPCHandler {
                     } else {
                         MapleInventoryManipulator.addFromDrop(c, item, false);
                     }
-                    storage.sendTakenOut(c, GameConstants.getInventoryType(item.getItemId()));
+                    storage.sendTakenOut(c, ItemConstants.getInventoryType(item.getItemId()));
                 } else {
                     // 刻意保留：記錄「從倉庫取出不存在的道具」這個自動封鎖檢查存在，但被關掉了，
                     // 現在只是安靜地 return。
@@ -253,10 +254,10 @@ public class NPCHandler {
                 if (chr.getMeso() < 100) {
                     chr.dropMessage(1, "你沒有足夠的楓幣.");
                 } else {
-                    MapleInventoryType type = GameConstants.getInventoryType(itemId);
+                    MapleInventoryType type = ItemConstants.getInventoryType(itemId);
                     IItem item = chr.getInventory(type).getItem(slot).copy();
 
-                    if (GameConstants.isPet(item.getItemId())) {
+                    if (ItemConstants.isPet(item.getItemId())) {
                         c.send(CharacterPacket.enableActions());
                         return;
                     }
@@ -265,7 +266,7 @@ public class NPCHandler {
                         c.send(CharacterPacket.enableActions());
                         return;
                     }
-                    if (item.getItemId() == itemId && (item.getQuantity() >= quantity || GameConstants.isThrowingStar(itemId) || GameConstants.isBullet(itemId))) {
+                    if (item.getItemId() == itemId && (item.getQuantity() >= quantity || ItemConstants.isThrowingStar(itemId) || ItemConstants.isBullet(itemId))) {
                         if (ii.isDropRestricted(item.getItemId())) {
                             if (ItemFlag.KARMA_EQ.check(flag)) {
                                 item.setFlag((byte) (flag - ItemFlag.KARMA_EQ.getValue()));
@@ -276,7 +277,7 @@ public class NPCHandler {
                                 return;
                             }
                         }
-                        if (GameConstants.isThrowingStar(itemId) || GameConstants.isBullet(itemId)) {
+                        if (ItemConstants.isThrowingStar(itemId) || ItemConstants.isBullet(itemId)) {
                             quantity = item.getQuantity();
                         }
                         chr.gainMeso(-100, false, true, false);
@@ -288,7 +289,7 @@ public class NPCHandler {
                         return;
                     }
                 }
-                storage.sendStored(c, GameConstants.getInventoryType(itemId));
+                storage.sendStored(c, ItemConstants.getInventoryType(itemId));
                 break;
             }
             case 7: {

@@ -12,7 +12,8 @@ import java.util.concurrent.ScheduledFuture;
 
 import client.inventory.IItem;
 import client.ISkill;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.MapleBuffStat;
 import client.MapleCharacter;
 import client.MapleCoolDownValueHolder;
@@ -825,7 +826,7 @@ public class MapleStatEffect {
         final PlayerStats stat = applyto.getStat();
         if (primary) {
             if (itemConNo != 0 && !applyto.isClone()) {
-                MapleInventoryManipulator.removeById(applyto.getClient(), GameConstants.getInventoryType(itemCon), itemCon, itemConNo, false, true);
+                MapleInventoryManipulator.removeById(applyto.getClient(), ItemConstants.getInventoryType(itemCon), itemCon, itemConNo, false, true);
             }
         } else if (!primary && isResurrection()) {
             hpchange = stat.getMaxHp();
@@ -872,7 +873,7 @@ public class MapleStatEffect {
             applyto.gainExp(expinc, true, true, false);
 // D9：取得經驗時的特效，刻意關掉。
 //            applyto.getClient().send(CharacterPacket.showSpecialEffect(19));
-        } else if (GameConstants.isMonsterCard(sourceid)) {
+        } else if (ItemConstants.isMonsterCard(sourceid)) {
             applyto.getMonsterBook().addCard(applyto.getClient(), sourceid);
         } else if (isSpiritClaw() && !applyto.isClone()) {
             MapleInventory use = applyto.getInventory(MapleInventoryType.USE);
@@ -880,7 +881,7 @@ public class MapleStatEffect {
             for (int i = 0; i < use.getSlotLimit(); i++) { // impose order...
                 item = use.getItem((byte) i);
                 if (item != null) {
-                    if (GameConstants.isThrowingStar(item.getItemId()) && item.getQuantity() >= 200) {
+                    if (ItemConstants.isThrowingStar(item.getItemId()) && item.getQuantity() >= 200) {
                         MapleInventoryManipulator.removeById(applyto.getClient(), MapleInventoryType.USE, item.getItemId(), 200, false, true);
                         break;
                     }
@@ -1381,7 +1382,7 @@ public class MapleStatEffect {
                 }
                 return parseMountInfo_Pure(player, skillid);
             default:
-                return GameConstants.getMountItem(skillid);
+                return ItemConstants.getMountItem(skillid);
         }
     }
 
@@ -1399,7 +1400,7 @@ public class MapleStatEffect {
                 }
                 return 0;
             default:
-                return GameConstants.getMountItem(skillid);
+                return ItemConstants.getMountItem(skillid);
         }
     }
 
@@ -1536,7 +1537,7 @@ public class MapleStatEffect {
                 }
                 return al.getEffect(chr.getSkillLevel(al));
         }
-        if (GameConstants.isResist(chr.getJob())) {
+        if (JobConstants.isResist(chr.getJob())) {
             al = SkillFactory.getSkill(30000002);
             if (chr.getSkillLevel(al) <= 0) {
                 return null;
@@ -1771,7 +1772,7 @@ public class MapleStatEffect {
     }
 
     public final boolean isMonsterRiding() {
-        return skill && (isMonsterRiding_() || GameConstants.getMountItem(sourceid) != 0);
+        return skill && (isMonsterRiding_() || ItemConstants.getMountItem(sourceid) != 0);
     }
 
     public final boolean isMagicDoor() {

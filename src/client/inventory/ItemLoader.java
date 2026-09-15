@@ -21,7 +21,7 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -133,7 +133,7 @@ public enum ItemLoader {
                         equip.setMpR(rs.getShort("mpR"));
                         equip.setGiftFrom(rs.getString("sender"));
                         if (equip.getUniqueId() > -1) {
-                            if (GameConstants.isEffectRing(rs.getInt("itemid"))) {
+                            if (ItemConstants.isEffectRing(rs.getInt("itemid"))) {
                                 MapleRing ring = MapleRing.loadFromDb(equip.getUniqueId(), mit.equals(MapleInventoryType.EQUIPPED));
                                 if (ring != null) {
                                     equip.setRing(ring);
@@ -149,7 +149,7 @@ public enum ItemLoader {
                     item.setExpiration(rs.getLong("expiredate"));
                     item.setGMLog(rs.getString("GM_Log"));
                     item.setGiftFrom(rs.getString("sender"));
-                    if (GameConstants.isPet(item.getItemId())) {
+                    if (ItemConstants.isPet(item.getItemId())) {
                         if (item.getUniqueId() > -1) {
                             MaplePet pet = MaplePet.loadFromDb(item.getItemId(), item.getUniqueId(), item.getPosition());
                             if (pet != null) {

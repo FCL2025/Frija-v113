@@ -1,7 +1,7 @@
 package handling.cashshop.handler;
 
 import client.inventory.Equip;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.IItem;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
@@ -51,11 +51,11 @@ public class MTSOperation {
 //                slea.skip(4); //skip the quantity int, equips are always 1
             } else {
                 slea.readShort(); //flag
-                if (GameConstants.isThrowingStar(itemid) || GameConstants.isBullet(itemid)) {
+                if (ItemConstants.isThrowingStar(itemid) || ItemConstants.isBullet(itemid)) {
                     slea.skip(8);//recharge ID thing
                 }
                 slot = (byte) slea.readInt();
-                if (GameConstants.isThrowingStar(itemid) || GameConstants.isBullet(itemid)) {
+                if (ItemConstants.isThrowingStar(itemid) || ItemConstants.isBullet(itemid)) {
                     quantity = stars; //this is due to stars you need to use the entire quantity, not specified
                     slea.skip(4); //so just skip the quantity int
                 } else {
@@ -64,7 +64,7 @@ public class MTSOperation {
             }
             final int price = slea.readInt();
             final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-            final MapleInventoryType type = GameConstants.getInventoryType(itemid);
+            final MapleInventoryType type = ItemConstants.getInventoryType(itemid);
             final IItem item = c.getPlayer().getInventory(type).getItem(slot).copy();
             if (ii.isCash(itemid) || quantity <= 0 || item == null || item.getQuantity() <= 0 || item.getItemId() != itemid || item.getUniqueId() > 0 || item.getQuantity() < quantity || price < ServerConstants.MIN_MTS || c.getPlayer().getMeso() < ServerConstants.MTS_MESO || cart.getNotYetSold().size() >= 10 || ii.isDropRestricted(itemid) || ii.isAccountShared(itemid) || item.getExpiration() > -1 || item.getFlag() > 0) {
                 c.send(MTSCSPacket.getMTSFailSell());
@@ -79,7 +79,7 @@ public class MTSOperation {
                     return;
                 }
             }
-            if (quantity >= 50 && GameConstants.isUpgradeScroll(item.getItemId())) {
+            if (quantity >= 50 && ItemConstants.isUpgradeScroll(item.getItemId())) {
                 c.setMonitored(true); //hack check
             }
             final long expiration = (System.currentTimeMillis() + (7L * 24 * 60 * 60 * 1000));

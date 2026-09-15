@@ -29,7 +29,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import client.inventory.IItem;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.MaplePet;
 import client.inventory.Item;
 import client.inventory.ItemLoader;
@@ -94,7 +94,7 @@ public class CashShop {
     public void checkExpire(MapleClient c) {
         List<IItem> toberemove = new ArrayList<>();
         for (IItem item : inventory) {
-            if (item != null && !GameConstants.isPet(item.getItemId()) && item.getExpiration() > 0 && item.getExpiration() < System.currentTimeMillis()) {
+            if (item != null && !ItemConstants.isPet(item.getItemId()) && item.getExpiration() > 0 && item.getExpiration() < System.currentTimeMillis()) {
                 toberemove.add(item);
             }
         }
@@ -124,18 +124,18 @@ public class CashShop {
             uniqueid = MapleInventoryIdentifier.getInstance();
         }
         long period = cItem.getPeriod();
-        if (/*period <= 0 || */GameConstants.isPet(cItem.getId())) {
+        if (/*period <= 0 || */ItemConstants.isPet(cItem.getId())) {
             period = 45;
         }
         IItem ret = null;
-        if (GameConstants.getInventoryType(cItem.getId()) == MapleInventoryType.EQUIP) {
+        if (ItemConstants.getInventoryType(cItem.getId()) == MapleInventoryType.EQUIP) {
             Equip eq = (Equip) MapleItemInformationProvider.getInstance().getEquipById(cItem.getId());
             eq.setUniqueId(uniqueid);
             if(period != 0){
                 eq.setExpiration((System.currentTimeMillis() + (period * 24 * 60 * 60 * 1000)));
             }
             eq.setGiftFrom(gift);
-            if (GameConstants.isEffectRing(cItem.getId()) && uniqueid > 0) {
+            if (ItemConstants.isEffectRing(cItem.getId()) && uniqueid > 0) {
                 MapleRing ring = MapleRing.loadFromDb(uniqueid);
                 if (ring != null) {
                     eq.setRing(ring);
@@ -148,7 +148,7 @@ public class CashShop {
                 item.setExpiration((System.currentTimeMillis() + (period * 24 * 60 * 60 * 1000)));
             }
             item.setGiftFrom(gift);
-            if (GameConstants.isPet(cItem.getId())) {
+            if (ItemConstants.isPet(cItem.getId())) {
                 final MaplePet pet = MaplePet.createPet(cItem.getId(), uniqueid);
                 if (pet != null) {
                     item.setPet(pet);
@@ -238,7 +238,7 @@ public class CashShop {
         List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<>();
 
         for (IItem item : inventory) {
-            itemsWithType.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
+            itemsWithType.add(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId())));
         }
 
         factory.saveItems(itemsWithType, accountId);

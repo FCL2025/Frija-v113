@@ -24,7 +24,7 @@ import java.awt.Point;
 
 import client.MapleCharacter;
 import client.MapleClient;
-import constants.GameConstants;
+import constants.JobConstants;
 import client.anticheat.CheatingOffense;
 import server.MapleStatEffect;
 import tools.packet.MapPacket;
@@ -206,7 +206,7 @@ public final class MapleSummon extends AbstractAnimatedMapleMapObject {
 
     public final void CheckSummonAttackFrequency(final MapleCharacter chr, final int tickcount) {
         final int tickdifference = (tickcount - lastSummonTickCount);
-        if (tickdifference < GameConstants.getSummonAttackDelay(skill)) {
+        if (tickdifference < JobConstants.getSummonAttackDelay(skill)) {
             chr.getCheatTracker().registerOffense(CheatingOffense.FAST_SUMMON_ATTACK);
         }
         final long STime_TC = System.currentTimeMillis() - tickcount;

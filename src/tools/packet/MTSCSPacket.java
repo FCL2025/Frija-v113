@@ -319,7 +319,7 @@ public class MTSCSPacket {
         PacketHelper.addExpirationTime(mplew, expire);
         mplew.writeLong(isFirst ? 0 : sn);
         // 逆向出來的線路格式筆記：其他版本在購物袋道具後面接一段友情戒指的伴侶資料，v113 不送這一段。
-        //if (isFirst && uniqueid > 0 && GameConstants.isEffectRing(itemid)) {
+        //if (isFirst && uniqueid > 0 && ItemConstants.isEffectRing(itemid)) {
         //	MapleRing ring = MapleRing.loadFromDb(uniqueid);
         //	if (ring != null) { //or is this only for friendship rings, i wonder. and does isFirst even matter
         //		mplew.writeMapleAsciiString(ring.getPartnerName());

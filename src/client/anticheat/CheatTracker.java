@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 
-import constants.GameConstants;
+import constants.JobConstants;
 import client.MapleCharacter;
 import client.MapleCharacterUtil;
 import handling.world.Broadcast;
@@ -80,7 +80,7 @@ public class CheatTracker {
     }
 
     public final void checkAttack(final int skillId, final int tickcount) {
-        final short AtkDelay = GameConstants.getAttackDelay(skillId);
+        final short AtkDelay = JobConstants.getAttackDelay(skillId);
         if ((tickcount - lastAttackTickCount) < AtkDelay) {
             registerOffense(CheatingOffense.FASTATTACK);
         }

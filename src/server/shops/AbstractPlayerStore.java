@@ -20,7 +20,7 @@
  */
 package server.shops;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
@@ -169,12 +169,12 @@ public abstract class AbstractPlayerStore extends AbstractMapleMapObject impleme
                 if (pItems.item == null || pItems.bundles <= 0) {
                     continue;
                 }
-                if (pItems.item.getQuantity() <= 0 && !GameConstants.isRechargable(pItems.item.getItemId())) {
+                if (pItems.item.getQuantity() <= 0 && !ItemConstants.isRechargable(pItems.item.getItemId())) {
                     continue;
                 }
                 item = pItems.item.copy();
                 item.setQuantity((short) (item.getQuantity() * pItems.bundles));
-                iters.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
+                iters.add(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId())));
             }
             ItemLoader.HIRED_MERCHANT.saveItems(iters, packageid, owneraccount, ownerId);
             return true;

@@ -31,7 +31,8 @@ import java.util.Map.Entry;
 import client.inventory.IEquip;
 import client.inventory.Item;
 import client.ISkill;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.MapleRing;
 import client.inventory.MaplePet;
 import client.MapleCharacter;
@@ -263,7 +264,7 @@ public class PacketHelper {
         mplew.writeShort(chr.getJob()); // job
         chr.getStat().connectData(mplew);
         mplew.writeShort(chr.getRemainingAp()); // remaining ap
-        if (GameConstants.isEvan(chr.getJob()) || GameConstants.isResist(chr.getJob())) {
+        if (JobConstants.isEvan(chr.getJob()) || JobConstants.isResist(chr.getJob())) {
             final int size = chr.getRemainingSpSize();
             mplew.write(size);
             for (int i = 0; i < chr.getRemainingSps().length; i++) {
@@ -412,7 +413,7 @@ public class PacketHelper {
                 mplew.writeMapleAsciiString(item.getOwner());
                 mplew.writeShort(item.getFlag());
 
-                if (GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+                if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
                     mplew.writeInt(2);
                     mplew.writeShort(0x54);
                     mplew.write(0);

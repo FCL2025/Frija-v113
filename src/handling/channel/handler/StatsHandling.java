@@ -20,7 +20,7 @@
  */
 package handling.channel.handler;
 
-import constants.GameConstants;
+import constants.JobConstants;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,7 +91,7 @@ public class StatsHandling {
                         if (improvingMaxHPLevel >= 1) {
                             maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getX();
                         }
-                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job))) { // Magician
+                    } else if ((job >= 200 && job <= 232) || (JobConstants.isEvan(job))) { // Magician
                         maxhp += Randomizer.rand(10, 20);
                     } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312)) { // Bowman
                         maxhp += Randomizer.rand(16, 20);
@@ -137,7 +137,7 @@ public class StatsHandling {
                         maxmp += Randomizer.rand(6, 8);
                     } else if (job >= 100 && job <= 132) { // Warrior
                         maxmp += Randomizer.rand(2, 4);
-                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
+                    } else if ((job >= 200 && job <= 232) || (JobConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
                         ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
                         int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
                         maxmp += Randomizer.rand(18, 20);
@@ -232,7 +232,7 @@ public class StatsHandling {
                 break;
             }
             default: {
-                remainingSp = chr.getRemainingSp(GameConstants.getSkillBookForSkill(skillid));
+                remainingSp = chr.getRemainingSp(JobConstants.getSkillBookForSkill(skillid));
                 break;
             }
         }
@@ -258,7 +258,7 @@ public class StatsHandling {
             }
         }
 
-        for (int i : GameConstants.blockedSkills) {
+        for (int i : JobConstants.blockedSkills) {
             if (skill.getId() == i) {
                 chr.dropMessage(1, "You may not add this skill.");
                 return;
@@ -266,7 +266,7 @@ public class StatsHandling {
         }
         if ((remainingSp > 0 && curLevel + 1 <= maxlevel) && skill.canBeLearnedBy(chr.getJob())) {
             if (!isBeginnerSkill) {
-                final int skillbook = GameConstants.getSkillBookForSkill(skillid);
+                final int skillbook = JobConstants.getSkillBookForSkill(skillid);
                 chr.setRemainingSp(chr.getRemainingSp(skillbook) - 1, skillbook);
             }
             c.send(CharacterPacket.updateSp(chr, false));

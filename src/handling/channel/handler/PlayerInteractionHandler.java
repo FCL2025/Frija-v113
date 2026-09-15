@@ -24,7 +24,7 @@ import java.util.Arrays;
 
 import client.inventory.IItem;
 import client.inventory.ItemFlag;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleClient;
 import client.MapleCharacter;
 import client.inventory.MapleInventoryType;
@@ -359,7 +359,7 @@ public class PlayerInteractionHandler {
         final byte targetSlot = slea.readByte();
 
         if (chr.getTrade() != null && item != null) {
-            if ((quantity <= item.getQuantity() && quantity >= 0) || GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+            if ((quantity <= item.getQuantity() && quantity >= 0) || ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
                 chr.getTrade().setItems(c, item, targetSlot, quantity);
             }
         }
@@ -387,7 +387,7 @@ public class PlayerInteractionHandler {
         
         final IItem ivItem = chr.getInventory(type).getItem(slot);
         
-        if (price <= 0 || (bundles <= 0 && !GameConstants.isRechargable(ivItem.getItemId())) || perBundle <= 0) {
+        if (price <= 0 || (bundles <= 0 && !ItemConstants.isRechargable(ivItem.getItemId())) || perBundle <= 0) {
             return;
         }
         final IMaplePlayerShop shop = chr.getPlayerShop();
@@ -402,7 +402,7 @@ public class PlayerInteractionHandler {
                 return;
             }
             final short bundles_perbundle = (short) (bundles * perBundle);
-            if (ivItem.getQuantity() >= bundles_perbundle || ( !GameConstants.isRechargable(ivItem.getItemId()) && bundles_perbundle == 1  ) ) {
+            if (ivItem.getQuantity() >= bundles_perbundle || ( !ItemConstants.isRechargable(ivItem.getItemId()) && bundles_perbundle == 1  ) ) {
                 final byte flag = ivItem.getFlag();
                 if (ItemFlag.UNTRADEABLE.check(flag) || ItemFlag.LOCK.check(flag)) {
                     c.send(CharacterPacket.enableActions());
@@ -414,10 +414,10 @@ public class PlayerInteractionHandler {
                         return;
                     }
                 }
-                if (bundles_perbundle >= 50 && GameConstants.isUpgradeScroll(ivItem.getItemId())) {
+                if (bundles_perbundle >= 50 && ItemConstants.isUpgradeScroll(ivItem.getItemId())) {
                     c.setMonitored(true); //hack check
                 }
-                if (GameConstants.isThrowingStar(ivItem.getItemId()) || GameConstants.isBullet(ivItem.getItemId())) {
+                if (ItemConstants.isThrowingStar(ivItem.getItemId()) || ItemConstants.isBullet(ivItem.getItemId())) {
                     // Ignore the bundles
                     MapleInventoryManipulator.removeFromSlot(c, type, slot, ivItem.getQuantity(), true);
 
@@ -460,7 +460,7 @@ public class PlayerInteractionHandler {
         if (check <= 0 || check2 > 2147483647 || check2 <= 0 || check3 > 32767 || check3 < 0) { //This is the better way to check.
             return;
         }
-        if (tobuy.bundles < quantity || (tobuy.bundles % quantity != 0 && GameConstants.isEquip(tobuy.item.getItemId())) // Buying
+        if (tobuy.bundles < quantity || (tobuy.bundles % quantity != 0 && ItemConstants.isEquip(tobuy.item.getItemId())) // Buying
                 || chr.getMeso() - (check2) < 0 || chr.getMeso() - (check2) > 2147483647 || shop.getMeso() + (check2) < 0 || shop.getMeso() + (check2) > 2147483647) {
             return;
         }
@@ -488,7 +488,7 @@ public class PlayerInteractionHandler {
                     return;
                 }
                 item_get.setQuantity((short) check);
-                if (item_get.getQuantity() >= 50 && GameConstants.isUpgradeScroll(item.item.getItemId())) {
+                if (item_get.getQuantity() >= 50 && ItemConstants.isUpgradeScroll(item.item.getItemId())) {
                     c.setMonitored(true); //hack check
                 }
                 if (MapleInventoryManipulator.checkSpace(c, item_get.getItemId(), item_get.getQuantity(), item_get.getOwner())) {

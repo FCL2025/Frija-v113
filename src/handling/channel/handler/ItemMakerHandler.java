@@ -29,7 +29,8 @@ import client.inventory.Equip;
 import client.SkillFactory;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import server.ItemMakerFactory;
 import server.ItemMakerFactory.GemCreateEntry;
 import server.ItemMakerFactory.ItemMakerCreateEntry;
@@ -50,7 +51,7 @@ public class ItemMakerHandler {
             case 1: { // Gem
                 final int toCreate = slea.readInt();
 
-                if (GameConstants.isGem(toCreate)) {
+                if (ItemConstants.isGem(toCreate)) {
                     final GemCreateEntry gem = ItemMakerFactory.getInstance().getGemInfo(toCreate);
                     if (gem == null) {
                         return;
@@ -63,7 +64,7 @@ public class ItemMakerHandler {
                     }
                     final int randGemGiven = getRandomGem(gem.getRandomReward());
 
-                    if (c.getPlayer().getInventory(GameConstants.getInventoryType(randGemGiven)).isFull()) {
+                    if (c.getPlayer().getInventory(ItemConstants.getInventoryType(randGemGiven)).isFull()) {
                         return; // We'll do handling for this later
                     }
                     final int taken = checkRequiredNRemove(c, gem.getReqRecipes());
@@ -75,7 +76,7 @@ public class ItemMakerHandler {
 
                     c.send(InventoryPacket.ItemMaker_Success());
                     c.getPlayer().getMap().broadcastMessage(c.getPlayer(), InventoryPacket.ItemMaker_Success_3rdParty(c.getPlayer().getId()), false);
-                } else if (GameConstants.isOtherGem(toCreate)) {
+                } else if (ItemConstants.isOtherGem(toCreate)) {
                     //non-gems that are gems
                     //stim and numEnchanter always 0
                     final GemCreateEntry gem = ItemMakerFactory.getInstance().getGemInfo(toCreate);
@@ -89,14 +90,14 @@ public class ItemMakerHandler {
                         return; // H4x
                     }
 
-                    if (c.getPlayer().getInventory(GameConstants.getInventoryType(toCreate)).isFull()) {
+                    if (c.getPlayer().getInventory(ItemConstants.getInventoryType(toCreate)).isFull()) {
                         return; // We'll do handling for this later
                     }
                     if (checkRequiredNRemove(c, gem.getReqRecipes()) == 0) {
                         return; // We'll do handling for this later
                     }
                     c.getPlayer().gainMeso(-gem.getCost(), false);
-                    if (GameConstants.getInventoryType(toCreate) == MapleInventoryType.EQUIP) {
+                    if (ItemConstants.getInventoryType(toCreate) == MapleInventoryType.EQUIP) {
                         MapleInventoryManipulator.addbyItem(c, MapleItemInformationProvider.getInstance().getEquipById(toCreate));
                     } else {
                         MapleInventoryManipulator.addById(c, toCreate, (byte) 1); // Gem is always 1
@@ -121,7 +122,7 @@ public class ItemMakerHandler {
                     if (c.getPlayer().getMeso() < create.getCost()) {
                         return; // H4x
                     }
-                    if (c.getPlayer().getInventory(GameConstants.getInventoryType(toCreate)).isFull()) {
+                    if (c.getPlayer().getInventory(ItemConstants.getInventoryType(toCreate)).isFull()) {
                         return; // We'll do handling for this later
                     }
                     if (checkRequiredNRemove(c, create.getReqItems()) == 0) {
@@ -240,7 +241,7 @@ public class ItemMakerHandler {
         } else {
             throw new RuntimeException("Invalid Item Maker type" + level);
         }
-        if (GameConstants.isWeapon(itemid) || GameConstants.isOverall(itemid)) {
+        if (ItemConstants.isWeapon(itemid) || ItemConstants.isOverall(itemid)) {
             all[1] = Randomizer.rand(5, 11);
         } else {
             all[1] = Randomizer.rand(3, 7);
@@ -349,19 +350,19 @@ public class ItemMakerHandler {
         }
         for (final Pair<Integer, Integer> p : recipe) {
             itemid = p.getLeft();
-            MapleInventoryManipulator.removeById(c, GameConstants.getInventoryType(itemid), itemid, p.getRight(), false, false);
+            MapleInventoryManipulator.removeById(c, ItemConstants.getInventoryType(itemid), itemid, p.getRight(), false, false);
         }
         return itemid;
     }
 
     private static final boolean hasSkill(final MapleClient c, final int reqlvl) {
-        if (GameConstants.isKOC(c.getPlayer().getJob())) { // KoC Maker skill.
+        if (JobConstants.isKOC(c.getPlayer().getJob())) { // KoC Maker skill.
             return c.getPlayer().getSkillLevel(SkillFactory.getSkill(10001007)) >= reqlvl;
-        } else if (GameConstants.isAran(c.getPlayer().getJob())) { // KoC Maker skill.
+        } else if (JobConstants.isAran(c.getPlayer().getJob())) { // KoC Maker skill.
             return c.getPlayer().getSkillLevel(SkillFactory.getSkill(20001007)) >= reqlvl;
-        } else if (GameConstants.isEvan(c.getPlayer().getJob())) { // KoC Maker skill.
+        } else if (JobConstants.isEvan(c.getPlayer().getJob())) { // KoC Maker skill.
             return c.getPlayer().getSkillLevel(SkillFactory.getSkill(20011007)) >= reqlvl;
-        } else if (GameConstants.isResist(c.getPlayer().getJob())) { // KoC Maker skill.
+        } else if (JobConstants.isResist(c.getPlayer().getJob())) { // KoC Maker skill.
             return c.getPlayer().getSkillLevel(SkillFactory.getSkill(30001007)) >= reqlvl;
         } else {
             return c.getPlayer().getSkillLevel(SkillFactory.getSkill(1007)) >= reqlvl;

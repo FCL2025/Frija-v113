@@ -111,7 +111,7 @@ public class MapleMonsterInformationProvider {
                     itemid = rs.getInt("itemid");
                     chance = rs.getInt("chance");
                     /*
-                    if (GameConstants.getInventoryType(itemid) == MapleInventoryType.EQUIP) {
+                    if (ItemConstants.getInventoryType(itemid) == MapleInventoryType.EQUIP) {
                         chance *= 10; //in GMS/SEA it was raised
                     }
                     */

@@ -34,7 +34,8 @@ import client.inventory.Equip;
 import client.ISkill;
 import client.inventory.IItem;
 import client.MapleCharacter;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.ItemFlag;
 import client.MapleClient;
 import client.inventory.MapleInventory;
@@ -456,7 +457,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             if (item == null) {
                 return -1;
             }
-            final byte rareness = GameConstants.gachaponRareItem(item.getItemId());
+            final byte rareness = ItemConstants.gachaponRareItem(item.getItemId());
             if (rareness > 0) {
                 Broadcast.broadcastMessage(ChatPacket.getGachaponMega("[" + msg + "] " + c.getPlayer().getName(), " : 從轉蛋機轉到了!", item, rareness,c.getChannel()-1).getBytes());
             }
@@ -1276,7 +1277,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     
     public final void maxAllSkills() {
         for (ISkill skil : SkillFactory.getAllSkills()) {
-            if (GameConstants.isApplicableSkill(skil.getId())) { //no db/additionals/resistance skills
+            if (JobConstants.isApplicableSkill(skil.getId())) { //no db/additionals/resistance skills
                 teachSkill(skil.getId(), skil.getMaxLevel(), skil.getMaxLevel());
             }
         }

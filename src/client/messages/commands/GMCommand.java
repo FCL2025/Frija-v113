@@ -8,7 +8,7 @@ import client.inventory.IItem;
 import client.inventory.ItemFlag;
 import client.inventory.MapleInventoryType;
 import client.messages.CommandProcessorUtil;
-import constants.GameConstants;
+import constants.ItemConstants;
 import handling.channel.ChannelServer;
 import handling.world.Broadcast;
 import handling.world.Find;
@@ -171,7 +171,7 @@ public class GMCommand {
             final short quantity = (short) CommandProcessorUtil.getOptionalIntArg(splitted, 2, 1);
 
             if (!c.getPlayer().isAdmin()) {
-                for (int i : GameConstants.itemBlock) {
+                for (int i : ItemConstants.itemBlock) {
                     if (itemId == i) {
                         c.getPlayer().dropMessage(5, "Sorry but this item is blocked for your GM level.");
                         return 0;
@@ -179,7 +179,7 @@ public class GMCommand {
                 }
             }
             MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-            if (GameConstants.isPet(itemId)) {
+            if (ItemConstants.isPet(itemId)) {
                 c.getPlayer().dropMessage(5, "Please purchase a pet from the cash shop instead.");
             } else if (!ii.itemExists(itemId)) {
                 c.getPlayer().dropMessage(5, itemId + " 為無效的物品");
@@ -188,13 +188,13 @@ public class GMCommand {
                 byte flag = 0;
                 flag = (byte) (flag | ItemFlag.LOCK.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
 
-                if (GameConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+                if (ItemConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
                     item = ii.randomizeStats((Equip) ii.getEquipById(itemId));
                     item.setFlag(flag);
 
                 } else {
                     item = new client.inventory.Item(itemId, (byte) 0, quantity, (byte) 0);
-                    if ( GameConstants.getInventoryType(itemId) != MapleInventoryType.USE)
+                    if ( ItemConstants.getInventoryType(itemId) != MapleInventoryType.USE)
                         item.setFlag(flag);
                 }
 

@@ -20,7 +20,7 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -72,7 +72,7 @@ public class MapleInventory implements Iterable<IItem> {
      * 保護 {@link #inventory} 與 {@link #slotLimit} 的葉節點鎖。
      *
      * <p>是一個私有物件而不是 {@code this}，呼叫端沒有辦法從外面把它鎖住。
-     * 鎖住期間只會碰 {@code IItem} 的欄位存取子與 {@code GameConstants} 的純函式，
+     * 鎖住期間只會碰 {@code IItem} 的欄位存取子與 {@code ItemConstants} 的純函式，
      * 不會廣播、不會進 {@code map.killMonster}、也不會借資料庫連線，
      * 而且不會再去拿第二把鎖 —— 它是葉節點，因此不可能參與死結環。
      */
@@ -221,7 +221,7 @@ public class MapleInventory implements Iterable<IItem> {
                 source.setPosition(dSlot);
                 inventory.put(dSlot, source);
                 inventory.remove(sSlot);
-            } else if (target.getItemId() == source.getItemId() && !GameConstants.isThrowingStar(source.getItemId()) && !GameConstants.isBullet(source.getItemId()) && target.getOwner().equals(source.getOwner()) && target.getExpiration() == source.getExpiration()) {
+            } else if (target.getItemId() == source.getItemId() && !ItemConstants.isThrowingStar(source.getItemId()) && !ItemConstants.isBullet(source.getItemId()) && target.getOwner().equals(source.getOwner()) && target.getExpiration() == source.getExpiration()) {
                 if (type.getType() == MapleInventoryType.EQUIP.getType() || type.getType() == MapleInventoryType.CASH.getType()) {
                     swap(target, source);
                 } else if (source.getQuantity() + target.getQuantity() > slotMax) {

@@ -20,7 +20,7 @@
  */
 package server.life;
 
-import constants.GameConstants;
+import constants.MapConstants;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Map;
@@ -266,7 +266,7 @@ public class MobSkill {
                 for (Integer mobId : getSummons()) {
                     MapleMonster toSpawn = null;
                     try {
-                        toSpawn = MapleLifeFactory.getMonster(GameConstants.getCustomSpawnID(monster.getId(), mobId));
+                        toSpawn = MapleLifeFactory.getMonster(MapConstants.getCustomSpawnID(monster.getId(), mobId));
                     } catch (RuntimeException e) { //monster doesn't exist
                         continue;
                     }

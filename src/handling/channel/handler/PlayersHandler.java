@@ -27,6 +27,7 @@ import client.inventory.MapleInventoryType;
 import client.MapleStat;
 import client.anticheat.CheatingOffense;
 import constants.GameConstants;
+import constants.ItemConstants;
 import scripting.ReactorScriptManager;
 import server.events.MapleCoconut;
 import server.events.MapleCoconut.MapleCoconuts;
@@ -357,7 +358,7 @@ public class PlayersHandler {
             chr.setMarriageItemId(0);
         } else if (mode == 3) { //drop, only works for ETC
             final int itemId = slea.readInt();
-            final MapleInventoryType type = GameConstants.getInventoryType(itemId);
+            final MapleInventoryType type = ItemConstants.getInventoryType(itemId);
             final IItem item = c.getPlayer().getInventory(type).findById(itemId);
             if (item != null && type == MapleInventoryType.ETC && itemId / 10000 == 421) {
                 MapleInventoryManipulator.drop(c, type, item.getPosition(), item.getQuantity());

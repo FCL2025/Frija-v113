@@ -20,7 +20,7 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 
 public class Item implements IItem {
 
@@ -214,7 +214,7 @@ public class Item implements IItem {
 
     @Override
     public MapleRing getRing() {
-        if (!GameConstants.isEffectRing(id) || getUniqueId() <= 0) {
+        if (!ItemConstants.isEffectRing(id) || getUniqueId() <= 0) {
             return null;
         }
         if (ring == null) {

@@ -25,7 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import client.ISkill;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.IItem;
 import client.MapleBuffStat;
 import client.MapleCharacter;
@@ -290,14 +291,14 @@ public class DamageParse {
                 player.getClient().send(CharacterPacket.enableActions());
                 return false;
             }
-            if (GameConstants.isMulungSkill(attack.skill)) {
+            if (JobConstants.isMulungSkill(attack.skill)) {
                 if (player.getMapId() / 10000 != 92502) {
                     return false;
                 } else {
                     player.mulung_EnergyModify(false);
                 }
             }
-            if (GameConstants.isPyramidSkill(attack.skill)) {
+            if (JobConstants.isPyramidSkill(attack.skill)) {
                 if (player.getMapId() / 1000000 != 926) {
                     return false;
                 } else {
@@ -483,9 +484,9 @@ public class DamageParse {
     private static void applyWeaponAndBuffMonsterStatus(final MapleCharacter player, final MapleMonster monster, final int d) {
         IItem weapon_ = player.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -11);
         if (weapon_ != null) {
-            MonsterStatus stat = GameConstants.getStatFromWeapon(weapon_.getItemId()); //10001 = acc/darkness. 10005 = speed/slow.
-            if (stat != null && Randomizer.nextInt(100) < GameConstants.getStatChance()) {
-                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(stat, GameConstants.getXForStat(stat), GameConstants.getSkillForStat(stat), null, false);
+            MonsterStatus stat = ItemConstants.getStatFromWeapon(weapon_.getItemId()); //10001 = acc/darkness. 10005 = speed/slow.
+            if (stat != null && Randomizer.nextInt(100) < ItemConstants.getStatChance()) {
+                final MonsterStatusEffect monsterStatusEffect = new MonsterStatusEffect(stat, ItemConstants.getXForStat(stat), ItemConstants.getSkillForStat(stat), null, false);
                 monster.applyStatus(player, monsterStatusEffect, false, 10000 + d , false, false);
             }
         }
@@ -543,14 +544,14 @@ public class DamageParse {
                 return;
             } //lol
         }
-        if (GameConstants.isMulungSkill(attack.skill)) {
+        if (JobConstants.isMulungSkill(attack.skill)) {
             if (player.getMapId() / 10000 != 92502) {
                 return;
             } else {
                 player.mulung_EnergyModify(false);
             }
         }
-        if (GameConstants.isPyramidSkill(attack.skill)) {
+        if (JobConstants.isPyramidSkill(attack.skill)) {
             if (player.getMapId() / 1000000 != 926) {
                 return;
             } else {
@@ -567,7 +568,7 @@ public class DamageParse {
             maxDamagePerHit = 30000;
         } else if (attack.skill == 1000 || attack.skill == 10001000 || attack.skill == 20001000 || attack.skill == 20011000 || attack.skill == 30001000) {
             maxDamagePerHit = 40;
-        } else if (GameConstants.isPyramidSkill(attack.skill)) {
+        } else if (JobConstants.isPyramidSkill(attack.skill)) {
             maxDamagePerHit = 1;
         } else {
             final double v75 = (effect.getMatk() * 0.058);
@@ -585,7 +586,7 @@ public class DamageParse {
         boolean Tempest;
         MapleMonsterStats monsterstats;
         int CriticalDamage = stats.passive_sharpeye_percent();
-        final ISkill eaterSkill = SkillFactory.getSkill(GameConstants.getMPEaterForJob(player.getJob()));
+        final ISkill eaterSkill = SkillFactory.getSkill(JobConstants.getMPEaterForJob(player.getJob()));
         final int eaterLevel = player.getSkillLevel(eaterSkill);
 
         final MapleMap map = player.getMap();
@@ -700,7 +701,7 @@ public class DamageParse {
         final int MinAccuracy = mobstats.getEva() * (dLevel * 2 + 51) / 120;
         // FullAccuracy = Avoid * (dLevel * 2 + 51) / 50
 
-        if (MinAccuracy > Accuracy && skill.getId() != 1000 && skill.getId() != 10001000 && skill.getId() != 20001000 && skill.getId() != 20011000 && skill.getId() != 30001000 && !GameConstants.isPyramidSkill(skill.getId())) { // miss :P or HACK :O
+        if (MinAccuracy > Accuracy && skill.getId() != 1000 && skill.getId() != 10001000 && skill.getId() != 20001000 && skill.getId() != 20011000 && skill.getId() != 30001000 && !JobConstants.isPyramidSkill(skill.getId())) { // miss :P or HACK :O
             return 0;
         }
         double elemMaxDamagePerMob;

@@ -21,6 +21,8 @@
 package client;
 
 import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.MapleInventoryType;
 import client.inventory.MapleInventory;
 import client.inventory.Item;
@@ -537,7 +539,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         ret.acash = ct.ACash;
         ret.maplepoints = ct.MaplePoints;
         ret.numClones = ct.clonez;
-        ret.mount = new MapleMount(ret, ct.mount_itemid, GameConstants.isKOC(ret.job) ? 10001004 : (GameConstants.isAran(ret.job) ? 20001004 : (GameConstants.isEvan(ret.job) ? 20011004 : 1004)), ct.mount_Fatigue, ct.mount_level, ct.mount_exp);
+        ret.mount = new MapleMount(ret, ct.mount_itemid, JobConstants.isKOC(ret.job) ? 10001004 : (JobConstants.isAran(ret.job) ? 20001004 : (JobConstants.isEvan(ret.job) ? 20011004 : 1004)), ct.mount_Fatigue, ct.mount_level, ct.mount_exp);
 
         ret.stats.recalcLocalStats(true);
 
@@ -713,7 +715,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public int getItemQuantity(int itemid, boolean checkEquipped) {
-        int possesed = inventory[GameConstants.getInventoryType(itemid).ordinal()].countById(itemid);
+        int possesed = inventory[ItemConstants.getInventoryType(itemid).ordinal()].countById(itemid);
         if (checkEquipped) {
             possesed += inventory[MapleInventoryType.EQUIPPED.ordinal()].countById(itemid);
         }
@@ -1372,7 +1374,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public int getRemainingSp() {
-        return remainingSp[GameConstants.getSkillBook(job)]; //default
+        return remainingSp[JobConstants.getSkillBook(job)]; //default
     }
 
     public int getRemainingSp(final int skillbook) {
@@ -1481,7 +1483,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void setRemainingSp(int remainingSp) {
-        this.remainingSp[GameConstants.getSkillBook(job)] = remainingSp; //default
+        this.remainingSp[JobConstants.getSkillBook(job)] = remainingSp; //default
     }
 
     public void setRemainingSp(int remainingSp, final int skillbook) {
@@ -1577,24 +1579,24 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void changeJob(int newJob) {
         try {
-            final boolean isEv = GameConstants.isEvan(job) || GameConstants.isResist(job);
+            final boolean isEv = JobConstants.isEvan(job) || JobConstants.isResist(job);
             this.job = (short) newJob;
             if (newJob != 0 && newJob != 1000 && newJob != 2000 && newJob != 2001 && newJob != 3000) {
                 if (isEv) {
-                    remainingSp[GameConstants.getSkillBook(newJob)] += 5;
+                    remainingSp[JobConstants.getSkillBook(newJob)] += 5;
                     client.send(UIPacket.getSPMsg((byte) 5, (short) newJob));
                 } else {
-                    remainingSp[GameConstants.getSkillBook(newJob)]++;
+                    remainingSp[JobConstants.getSkillBook(newJob)]++;
                     if (newJob % 10 >= 2) {
-                        remainingSp[GameConstants.getSkillBook(newJob)] += 2;
+                        remainingSp[JobConstants.getSkillBook(newJob)] += 2;
                     }
                 }
             }
             if (newJob > 0 && !isGM()) {
                 resetStatsByJob(true);
-                if (!GameConstants.isEvan(newJob)) {
+                if (!JobConstants.isEvan(newJob)) {
                     if (getLevel() > (newJob == 200 ? 8 : 10) && newJob % 100 == 0 && (newJob % 1000) / 100 > 0) { //first job
-                        remainingSp[GameConstants.getSkillBook(newJob)] += 3 * (getLevel() - (newJob == 200 ? 8 : 10));
+                        remainingSp[JobConstants.getSkillBook(newJob)] += 3 * (getLevel() - (newJob == 200 ? 8 : 10));
                     }
                 } else if (newJob == 2200) {
                     MapleQuest.getInstance(22100).forceStart(this, 0, null);
@@ -1714,7 +1716,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void baseSkills() {
-        if (GameConstants.getJobNumber(job) >= 3) { //third job.
+        if (JobConstants.getJobNumber(job) >= 3) { //third job.
             List<Integer> skills = SkillFactory.getSkillsByJob(job);
             if (skills != null) {
                 for (int i : skills) {
@@ -1741,7 +1743,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void gainSP(int sp) {
-        this.remainingSp[GameConstants.getSkillBook(job)] += sp; //default
+        this.remainingSp[JobConstants.getSkillBook(job)] += sp; //default
         client.send(CharacterPacket.updateSp(this, false));
         client.send(UIPacket.getSPMsg((byte) sp, job));
     }
@@ -1768,7 +1770,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void changeSkillLevel(final ISkill skill, byte newLevel, byte newMasterlevel, long expiration) {
-        if (skill == null || (!GameConstants.isApplicableSkill(skill.getId()) && !GameConstants.isApplicableSkill_(skill.getId()))) {
+        if (skill == null || (!JobConstants.isApplicableSkill(skill.getId()) && !JobConstants.isApplicableSkill_(skill.getId()))) {
             return;
         }
         client.send(CharacterPacket.updateSkill(skill.getId(), newLevel, newMasterlevel, expiration));
@@ -1781,9 +1783,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         } else {
             skills.put(skill, new SkillEntry(newLevel, newMasterlevel, expiration));
         }
-        if (GameConstants.isRecoveryIncSkill(skill.getId())) {
+        if (JobConstants.isRecoveryIncSkill(skill.getId())) {
             stats.relocHeal();
-        } else if (GameConstants.isElementAmp_Skill(skill.getId())) {
+        } else if (JobConstants.isElementAmp_Skill(skill.getId())) {
             stats.recalcLocalStats();
         }
 
@@ -1986,7 +1988,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             synchronized (expLock) {
                 prevexp = exp;
                 needed = GameConstants.getExpNeededForLevel(level);
-                maxLevel = level >= 200 || (GameConstants.isKOC(job) && level >= 120);
+                maxLevel = level >= 200 || (JobConstants.isKOC(job) && level >= 120);
                 if (maxLevel) {
                     if (exp + total > needed) {
                         exp = needed;
@@ -2090,7 +2092,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         synchronized (expLock) {
             prevexp = exp;
             needed = GameConstants.getExpNeededForLevel(level);
-            maxLevel = level >= 200 || (GameConstants.isKOC(job) && level >= 120);
+            maxLevel = level >= 200 || (JobConstants.isKOC(job) && level >= 120);
             if (maxLevel) {
                 if (exp + addend > needed) {
                     exp = needed;
@@ -2226,7 +2228,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             for (final IItem item : getInventory(inv)) {
                 expiration = item.getExpiration();
 
-                if (expiration != -1 && !GameConstants.isPet(item.getItemId()) && currenttime > expiration) {
+                if (expiration != -1 && !ItemConstants.isPet(item.getItemId()) && currenttime > expiration) {
                     if (ItemFlag.LOCK.check(item.getFlag())) {
                         tobeunlock.add(item);
                     } else if (currenttime > expiration) {
@@ -2439,7 +2441,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void levelUp() {
-        if (GameConstants.isKOC(job)) {
+        if (JobConstants.isKOC(job)) {
             if (level <= 70) {
                 remainingAp += 6;
             } else {
@@ -2566,7 +2568,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         statup.add(new Pair<>(MapleStat.LEVEL, level));
 
         if (isGM() || (job != 0 && job != 1000 && job != 2000 && job != 2001 && job != 3000)) { // Not Beginner, Nobless and Legend
-            remainingSp[GameConstants.getSkillBook(this.job)] += 3;
+            remainingSp[JobConstants.getSkillBook(this.job)] += 3;
             client.send(CharacterPacket.updateSp(this, false));
         } else {
             if (level <= 10) {
@@ -2589,7 +2591,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         silentPartyUpdate();
         guildUpdate();
         familyUpdate();
-        if (GameConstants.isAran(job)) {
+        if (JobConstants.isAran(job)) {
             switch (level) {
                 case 30 ->
                     client.send(MapPacket.startMapEffect("You have reached level 30! To job advance, go back to Lirin of Rien.", 5120000, true));
@@ -2599,10 +2601,10 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     client.send(MapPacket.startMapEffect("You have reached level 120! To job advance, talk to your job instructor in Leafre.", 5120000, true));
             }
         }
-        if (GameConstants.isKOC(job) && level == 70) {
+        if (JobConstants.isKOC(job) && level == 70) {
             client.send(MapPacket.startMapEffect("You have reached level 70! To job advance, talk to your job instructor in Erev.", 5120000, true));
         }
-        if (GameConstants.isEvan(job)) {
+        if (JobConstants.isEvan(job)) {
             switch (level) {
                 case 9 ->
                     client.send(MapPacket.startMapEffect("請確保您完成所有的任務需要達到10級之前，否則你將無法繼續.", 5120000, true));
@@ -3386,7 +3388,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public final boolean haveItem(int itemid, int quantity, boolean checkEquipped, boolean greaterOrEquals) {
-        final MapleInventoryType type = GameConstants.getInventoryType(itemid);
+        final MapleInventoryType type = ItemConstants.getInventoryType(itemid);
         int possesed = inventory[type.ordinal()].countById(itemid);
         if (checkEquipped && type == MapleInventoryType.EQUIP) {
             possesed += inventory[MapleInventoryType.EQUIPPED.ordinal()].countById(itemid);
@@ -4026,7 +4028,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void removeAll(int id) {
-        MapleInventoryType type = GameConstants.getInventoryType(id);
+        MapleInventoryType type = ItemConstants.getInventoryType(id);
         int possessed = getInventory(type).countById(id);
 
         if (possessed > 0) {
@@ -4060,17 +4062,17 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             if (item.getRing() != null) {
                 ring = item.getRing();
                 ring.setEquipped(true);
-                if (GameConstants.isFriendshipRing(item.getItemId()) || GameConstants.isCrushRing(item.getItemId())) {
+                if (ItemConstants.isFriendshipRing(item.getItemId()) || ItemConstants.isCrushRing(item.getItemId())) {
                     if (equip) {
-                        if (GameConstants.isCrushRing(item.getItemId())) {
+                        if (ItemConstants.isCrushRing(item.getItemId())) {
                             crings.add(ring);
-                        } else if (GameConstants.isFriendshipRing(item.getItemId())) {
+                        } else if (ItemConstants.isFriendshipRing(item.getItemId())) {
                             frings.add(ring);
                         }
                     } else {
-                        if (crings.size() == 0 && GameConstants.isCrushRing(item.getItemId())) {
+                        if (crings.size() == 0 && ItemConstants.isCrushRing(item.getItemId())) {
                             crings.add(ring);
-                        } else if (frings.size() == 0 && GameConstants.isFriendshipRing(item.getItemId())) {
+                        } else if (frings.size() == 0 && ItemConstants.isFriendshipRing(item.getItemId())) {
                             frings.add(ring);
                         } //for 3rd person the actual slot doesnt matter, so we'll use this to have both shirt/ring same?
                         //however there seems to be something else behind this, will have to sniff someone with shirt and ring, or more conveniently 3-4 of those
@@ -4081,12 +4083,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (equip) {
             iv = getInventory(MapleInventoryType.EQUIP);
             for (IItem item : iv.list()) {
-                if (item.getRing() != null && GameConstants.isCrushRing(item.getItemId())) {
+                if (item.getRing() != null && ItemConstants.isCrushRing(item.getItemId())) {
                     ring = item.getRing();
                     ring.setEquipped(false);
-                    if (GameConstants.isFriendshipRing(item.getItemId())) {
+                    if (ItemConstants.isFriendshipRing(item.getItemId())) {
                         frings.add(ring);
-                    } else if (GameConstants.isCrushRing(item.getItemId())) {
+                    } else if (ItemConstants.isCrushRing(item.getItemId())) {
                         crings.add(ring);
                     }
                 }
@@ -4182,13 +4184,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     } else {
                         int leadid = 8;
                         
-                        if (GameConstants.isKOC(getJob())) {
+                        if (JobConstants.isKOC(getJob())) {
                             leadid = 10000018;
-                        } else if (GameConstants.isAran(getJob())) {
+                        } else if (JobConstants.isAran(getJob())) {
                             leadid = 20000024;
-                        } else if (GameConstants.isEvan(getJob())) {
+                        } else if (JobConstants.isEvan(getJob())) {
                             leadid = 20010024;
-                        } else if (GameConstants.isResist(getJob())) {
+                        } else if (JobConstants.isResist(getJob())) {
                             leadid = 30000024;
                         }
                         if (getSkillLevel(SkillFactory.getSkill(leadid)) == 0 && getPet(0) != null) {
@@ -4485,7 +4487,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public int itemQuantity(final int itemid) {
-        return getInventory(GameConstants.getInventoryType(itemid)).countById(itemid);
+        return getInventory(ItemConstants.getInventoryType(itemid)).countById(itemid);
     }
 
     public void setRPS(RockPaperScissors rps) {

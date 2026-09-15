@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import client.inventory.Equip;
 import client.inventory.IItem;
 import client.inventory.ItemFlag;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleCharacter;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
@@ -618,7 +618,7 @@ public class MapleItemInformationProvider {
         ret.put("equipTradeBlock", MapleDataTool.getInt("equipTradeBlock", info, 0));
         ret.put("durability", MapleDataTool.getInt("durability", info, -1));
 
-        if (GameConstants.isMagicWeapon(itemId)) {
+        if (ItemConstants.isMagicWeapon(itemId)) {
             ret.put("elemDefault", MapleDataTool.getInt("elemDefault", info, 100));
             ret.put("incRMAS", MapleDataTool.getInt("incRMAS", info, 100)); // Poison
             ret.put("incRMAF", MapleDataTool.getInt("incRMAF", info, 100)); // Fire
@@ -689,10 +689,10 @@ public class MapleItemInformationProvider {
             final Equip nEquip = (Equip) equip;
             final Map<String, Integer> stats = getEquipStats(scrollId.getItemId());
             final Map<String, Integer> eqstats = getEquipStats(equip.getItemId());
-            final int succ = (GameConstants.isTablet(scrollId.getItemId()) ? GameConstants.getSuccessTablet(scrollId.getItemId(), nEquip.getLevel()) : ((GameConstants.isEquipScroll(scrollId.getItemId()) || GameConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("success"))));
-            final int curse = (GameConstants.isTablet(scrollId.getItemId()) ? GameConstants.getCurseTablet(scrollId.getItemId(), nEquip.getLevel()) : ((GameConstants.isEquipScroll(scrollId.getItemId()) || GameConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("cursed"))));
+            final int succ = (ItemConstants.isTablet(scrollId.getItemId()) ? ItemConstants.getSuccessTablet(scrollId.getItemId(), nEquip.getLevel()) : ((ItemConstants.isEquipScroll(scrollId.getItemId()) || ItemConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("success"))));
+            final int curse = (ItemConstants.isTablet(scrollId.getItemId()) ? ItemConstants.getCurseTablet(scrollId.getItemId(), nEquip.getLevel()) : ((ItemConstants.isEquipScroll(scrollId.getItemId()) || ItemConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("cursed"))));
             int success = succ + (vegas == 5610000 && succ == 10 ? 20 : (vegas == 5610001 && succ == 60 ? 30 : 0));
-            if (GameConstants.isPotentialScroll(scrollId.getItemId()) || GameConstants.isEquipScroll(scrollId.getItemId()) || Randomizer.nextInt(100) <= success) {
+            if (ItemConstants.isPotentialScroll(scrollId.getItemId()) || ItemConstants.isEquipScroll(scrollId.getItemId()) || Randomizer.nextInt(100) <= success) {
                 switch (scrollId.getItemId()) {
                     case 2049000:
                     case 2049001:
@@ -728,8 +728,8 @@ public class MapleItemInformationProvider {
                         break;
                     }
                     default: {
-                        if (GameConstants.isChaosScroll(scrollId.getItemId())) {
-                            final int z = GameConstants.getChaosNumber(scrollId.getItemId());
+                        if (ItemConstants.isChaosScroll(scrollId.getItemId())) {
+                            final int z = ItemConstants.getChaosNumber(scrollId.getItemId());
                             if (nEquip.getStr() > 0) {
                                 nEquip.setStr((short) (nEquip.getStr() + Randomizer.nextInt(z) * (Randomizer.nextBoolean() ? 1 : -1)));
                             }
@@ -773,7 +773,7 @@ public class MapleItemInformationProvider {
                                 nEquip.setMp((short) (nEquip.getMp() + Randomizer.nextInt(z) * (Randomizer.nextBoolean() ? 1 : -1)));
                             }
                             break;
-                        } else if (GameConstants.isEquipScroll(scrollId.getItemId())) {
+                        } else if (ItemConstants.isEquipScroll(scrollId.getItemId())) {
                             final int chanc = Math.max((scrollId.getItemId() == 2049300 ? 100 : 80) - (nEquip.getEnhance() * 10), 10);
                             if (Randomizer.nextInt(100) > chanc) {
                                 return null; //destroyed, nib
@@ -790,13 +790,13 @@ public class MapleItemInformationProvider {
                             if (nEquip.getLuk() > 0 || Randomizer.nextInt(50) == 1) { //1/50
                                 nEquip.setLuk((short) (nEquip.getLuk() + Randomizer.nextInt(5)));
                             }
-                            if (nEquip.getWatk() > 0 && GameConstants.isWeapon(nEquip.getItemId())) {
+                            if (nEquip.getWatk() > 0 && ItemConstants.isWeapon(nEquip.getItemId())) {
                                 nEquip.setWatk((short) (nEquip.getWatk() + Randomizer.nextInt(5)));
                             }
                             if (nEquip.getWdef() > 0 || Randomizer.nextInt(40) == 1) { //1/40
                                 nEquip.setWdef((short) (nEquip.getWdef() + Randomizer.nextInt(5)));
                             }
-                            if (nEquip.getMatk() > 0 && GameConstants.isWeapon(nEquip.getItemId())) {
+                            if (nEquip.getMatk() > 0 && ItemConstants.isWeapon(nEquip.getItemId())) {
                                 nEquip.setMatk((short) (nEquip.getMatk() + Randomizer.nextInt(5)));
                             }
                             if (nEquip.getMdef() > 0 || Randomizer.nextInt(40) == 1) { //1/40
@@ -822,7 +822,7 @@ public class MapleItemInformationProvider {
                             }
                             nEquip.setEnhance((byte) (nEquip.getEnhance() + 1));
                             break;
-                        } else if (GameConstants.isPotentialScroll(scrollId.getItemId())) {
+                        } else if (ItemConstants.isPotentialScroll(scrollId.getItemId())) {
                             if (nEquip.getState() == 0) {
                                 final int chanc = scrollId.getItemId() == 2049400 ? 90 : 70;
                                 if (Randomizer.nextInt(100) > chanc) {
@@ -873,12 +873,12 @@ public class MapleItemInformationProvider {
                         }
                     }
                 }
-                if (!GameConstants.isCleanSlate(scrollId.getItemId()) && !GameConstants.isSpecialScroll(scrollId.getItemId()) && !GameConstants.isEquipScroll(scrollId.getItemId()) && !GameConstants.isPotentialScroll(scrollId.getItemId())) {
+                if (!ItemConstants.isCleanSlate(scrollId.getItemId()) && !ItemConstants.isSpecialScroll(scrollId.getItemId()) && !ItemConstants.isEquipScroll(scrollId.getItemId()) && !ItemConstants.isPotentialScroll(scrollId.getItemId())) {
                     nEquip.setUpgradeSlots((byte) (nEquip.getUpgradeSlots() - 1));
                     nEquip.setLevel((byte) (nEquip.getLevel() + 1));
                 }
             } else {
-                if (!ws && !GameConstants.isCleanSlate(scrollId.getItemId()) && !GameConstants.isSpecialScroll(scrollId.getItemId()) && !GameConstants.isEquipScroll(scrollId.getItemId()) && !GameConstants.isPotentialScroll(scrollId.getItemId())) {
+                if (!ws && !ItemConstants.isCleanSlate(scrollId.getItemId()) && !ItemConstants.isSpecialScroll(scrollId.getItemId()) && !ItemConstants.isEquipScroll(scrollId.getItemId()) && !ItemConstants.isPotentialScroll(scrollId.getItemId())) {
                     nEquip.setUpgradeSlots((byte) (nEquip.getUpgradeSlots() - 1));
                 }
                 if (Randomizer.nextInt(99) < curse) {
@@ -1000,7 +1000,7 @@ public class MapleItemInformationProvider {
         if (cached != null) {
             return cached;
         }
-        if (!GameConstants.isSummonSack(itemId)) {
+        if (!ItemConstants.isSummonSack(itemId)) {
             return null;
         }
         final MapleData data = getItemData(itemId).getChildByPath("mob");

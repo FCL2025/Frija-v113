@@ -25,6 +25,8 @@ import java.util.Map;
 
 import client.ISkill;
 import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.InventoryException;
 import client.MapleCharacter;
 import client.inventory.MapleInventoryType;
@@ -152,7 +154,7 @@ public class MapleQuestAction {
                     final short count = (short) MapleDataTool.getInt(iEntry.getChildByPath("count"), 1);
                     if (count < 0) { // remove items
                         try {
-                            MapleInventoryManipulator.removeById(c.getClient(), GameConstants.getInventoryType(id), id, (count * -1), true, false);
+                            MapleInventoryManipulator.removeById(c.getClient(), ItemConstants.getInventoryType(id), id, (count * -1), true, false);
                         } catch (InventoryException ie) {
                             // it's better to catch this here so we'll atleast try to remove the other items
                             // WARNING, and terse on purpose: this one only ever
@@ -258,7 +260,7 @@ public class MapleQuestAction {
                         if (finalJob == 0) {
                             c.gainSP(sp_val);
                         } else {
-                            c.gainSP(sp_val, GameConstants.getSkillBook(finalJob));
+                            c.gainSP(sp_val, JobConstants.getSkillBook(finalJob));
                         }
                     } else {
                         c.gainSP(sp_val);
@@ -317,7 +319,7 @@ public class MapleQuestAction {
                             c.dropMessage(1, "You have this item already: " + MapleItemInformationProvider.getInstance().getName(id));
                             return false;
                         }
-                        switch (GameConstants.getInventoryType(id)) {
+                        switch (ItemConstants.getInventoryType(id)) {
                             case EQUIP:
                                 eq++;
                                 break;
@@ -408,7 +410,7 @@ public class MapleQuestAction {
                     }
                     final short count = (short) MapleDataTool.getInt(iEntry.getChildByPath("count"), 1);
                     if (count < 0) { // remove items
-                        MapleInventoryManipulator.removeById(c.getClient(), GameConstants.getInventoryType(id), id, (count * -1), true, false);
+                        MapleInventoryManipulator.removeById(c.getClient(), ItemConstants.getInventoryType(id), id, (count * -1), true, false);
                         c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     } else { // add items
                         final int period = MapleDataTool.getInt(iEntry.getChildByPath("period"), 0) / 1440;
@@ -490,7 +492,7 @@ public class MapleQuestAction {
                                 finalJob = job_val;
                             }
                         }
-                        c.gainSP(sp_val, GameConstants.getSkillBook(finalJob));
+                        c.gainSP(sp_val, JobConstants.getSkillBook(finalJob));
                     } else {
                         c.gainSP(sp_val);
                     }

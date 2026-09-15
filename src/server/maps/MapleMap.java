@@ -41,7 +41,9 @@ import java.time.ZoneId;
 import client.inventory.Equip;
 import client.inventory.IItem;
 import client.inventory.Item;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
+import constants.MapConstants;
 import client.MapleBuffStat;
 import client.MapleCharacter;
 import client.MapleClient;
@@ -381,7 +383,7 @@ public final class MapleMap {
         try {
             for (MapleCharacter chr : characters) {
                 if (condition == null || condition.canSpawn(chr)) {
-                    if (!chr.isClone() && chr.getPosition().distanceSq(mapobject.getPosition()) <= GameConstants.maxViewRangeSq()) {
+                    if (!chr.isClone() && chr.getPosition().distanceSq(mapobject.getPosition()) <= MapConstants.maxViewRangeSq()) {
                         packetbakery.sendPackets(chr.getClient());
                         chr.addVisibleMapObject(mapobject);
                     }
@@ -478,7 +480,7 @@ public final class MapleMap {
                         spawnMobMesoDrop((int) (mesos * (chr.getStat().mesoBuff / 100.0) * chr.getDropMod() * cmServerrate), calcDropPos(pos, mob.getPosition()), mob, chr, false, droptype);
                     }
                 } else {
-                    if (GameConstants.getInventoryType(de.itemId()) == MapleInventoryType.EQUIP) {
+                    if (ItemConstants.getInventoryType(de.itemId()) == MapleInventoryType.EQUIP) {
                         idrop = ii.randomizeStats((Equip) ii.getEquipById(de.itemId()));
                     } else {
                         final int range = Math.abs(de.Maximum() - de.Minimum());
@@ -504,7 +506,7 @@ public final class MapleMap {
                 if (de.itemId() == 0) {
                     chr.modifyCSPoints(1, (int) ((Randomizer.nextInt(cashz) + cashz + cashModifier) * (chr.getStat().cashBuff / 100.0) * chr.getCashMod()), true);
                 } else if (!gDropsDisabled) {
-                    if (GameConstants.getInventoryType(de.itemId()) == MapleInventoryType.EQUIP) {
+                    if (ItemConstants.getInventoryType(de.itemId()) == MapleInventoryType.EQUIP) {
                         idrop = ii.randomizeStats((Equip) ii.getEquipById(de.itemId()));
                     } else {
                         idrop = new Item(de.itemId(), (byte) 0, (short) (de.Maximum() != 1 ? Randomizer.nextInt(de.Maximum() - de.Minimum()) + de.Minimum() : 1), (byte) 0);
@@ -1630,11 +1632,11 @@ public final class MapleMap {
             final int theItem = Randomizer.nextInt(1000);
             int itemid = 0;
             if (theItem < 950) { //0-949 = normal, 950-989 = rare, 990-999 = super
-                itemid = GameConstants.normalDrops[Randomizer.nextInt(GameConstants.normalDrops.length)];
+                itemid = ItemConstants.normalDrops[Randomizer.nextInt(ItemConstants.normalDrops.length)];
             } else if (theItem < 990) {
-                itemid = GameConstants.rareDrops[Randomizer.nextInt(GameConstants.rareDrops.length)];
+                itemid = ItemConstants.rareDrops[Randomizer.nextInt(ItemConstants.rareDrops.length)];
             } else {
-                itemid = GameConstants.superDrops[Randomizer.nextInt(GameConstants.superDrops.length)];
+                itemid = ItemConstants.superDrops[Randomizer.nextInt(ItemConstants.superDrops.length)];
             }
             spawnAutoDrop(itemid, pos);
         }, 20000);
@@ -1643,7 +1645,7 @@ public final class MapleMap {
     public final void spawnAutoDrop(final int itemid, final Point pos) {
         IItem idrop = null;
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-        if (GameConstants.getInventoryType(itemid) == MapleInventoryType.EQUIP) {
+        if (ItemConstants.getInventoryType(itemid) == MapleInventoryType.EQUIP) {
             idrop = ii.randomizeStats((Equip) ii.getEquipById(itemid));
         } else {
             idrop = new Item(itemid, (byte) 0, (short) 1, (byte) 0);
@@ -1688,7 +1690,7 @@ public final class MapleMap {
                 final MapleReactor react = (MapleReactor) o;
 
                 if (react.getReactorType() == 100) {
-                    if (GameConstants.isCustomReactItem(react.getReactorId(), item.getItemId(), react.getReactItem().getLeft()) && react.getReactItem().getRight() == item.getQuantity()) {
+                    if (ItemConstants.isCustomReactItem(react.getReactorId(), item.getItemId(), react.getReactItem().getLeft()) && react.getReactItem().getRight() == item.getQuantity()) {
                         if (react.getArea().contains(drop.getPosition())) {
                             if (!react.isTimerActive()) {
                                 Timer.MAP.schedule(new ActivateItemReactor(drop, react, c), 5000);
@@ -1936,7 +1938,7 @@ public final class MapleMap {
                 chr.getClient().send(CharacterPacket.temporaryStats_Reset());
             }
         }
-        if (GameConstants.isEvan(chr.getJob()) && chr.getJob() >= 2200 && chr.getBuffedValue(MapleBuffStat.MONSTER_RIDING) == null) {
+        if (JobConstants.isEvan(chr.getJob()) && chr.getJob() >= 2200 && chr.getBuffedValue(MapleBuffStat.MONSTER_RIDING) == null) {
             if (chr.getDragon() == null) {
                 chr.makeDragon();
             }
@@ -2323,11 +2325,11 @@ public final class MapleMap {
      broadcastMessage(repeatToSource ? null : source, packet, ranged ? MapleCharacter.MAX_VIEW_RANGE_SQ : Double.POSITIVE_INFINITY, source.getPosition());
      }*/
     public final void broadcastMessage(final MaplePacket packet, final Point rangedFrom) {
-        broadcastMessage(null, packet, GameConstants.maxViewRangeSq(), rangedFrom);
+        broadcastMessage(null, packet, MapConstants.maxViewRangeSq(), rangedFrom);
     }
 
     public final void broadcastMessage(final MapleCharacter source, final MaplePacket packet, final Point rangedFrom) {
-        broadcastMessage(source, packet, GameConstants.maxViewRangeSq(), rangedFrom);
+        broadcastMessage(source, packet, MapConstants.maxViewRangeSq(), rangedFrom);
     }
 
     private void broadcastMessage(final MapleCharacter source, final MaplePacket packet, final double rangeSq, final Point rangedFrom) {
@@ -2356,7 +2358,7 @@ public final class MapleMap {
         for (final MapleMapObject o : this.getAllMonstersThreadsafe()) {
             updateMonsterController((MapleMonster) o);
         }
-        for (final MapleMapObject o : getMapObjectsInRange(c.getPosition(), GameConstants.maxViewRangeSq(), GameConstants.rangedMapobjectTypes)) {
+        for (final MapleMapObject o : getMapObjectsInRange(c.getPosition(), MapConstants.maxViewRangeSq(), MapConstants.rangedMapobjectTypes)) {
             if (o.getType() == MapleMapObjectType.REACTOR) {
                 if (!((MapleReactor) o).isAlive()) {
                     continue;
@@ -2498,7 +2500,7 @@ public final class MapleMap {
 
         if (first && spawnSize > 0) {
             lastSpawnTime = System.currentTimeMillis();
-            if (GameConstants.isForceRespawn(mapid)) {
+            if (MapConstants.isForceRespawn(mapid)) {
                 createMobInterval = 15000;
             }
         }
@@ -2602,12 +2604,12 @@ public final class MapleMap {
             return;
         }
         if (!chr.isMapObjectVisible(mo)) { // monster entered view range
-            if (mo.getType() == MapleMapObjectType.SUMMON || mo.getPosition().distanceSq(chr.getPosition()) <= GameConstants.maxViewRangeSq()) {
+            if (mo.getType() == MapleMapObjectType.SUMMON || mo.getPosition().distanceSq(chr.getPosition()) <= MapConstants.maxViewRangeSq()) {
                 chr.addVisibleMapObject(mo);
                 mo.sendSpawnData(chr.getClient());
             }
         } else { // monster left view range
-            if (mo.getType() != MapleMapObjectType.SUMMON && mo.getPosition().distanceSq(chr.getPosition()) > GameConstants.maxViewRangeSq()) {
+            if (mo.getType() != MapleMapObjectType.SUMMON && mo.getPosition().distanceSq(chr.getPosition()) > MapConstants.maxViewRangeSq()) {
                 chr.removeVisibleMapObject(mo);
                 mo.sendDestroyData(chr.getClient());
             }
@@ -2640,7 +2642,7 @@ public final class MapleMap {
                         visibleObjects.remove(mo);
                     }
                 }
-                for (MapleMapObject mo : getMapObjectsInRange(player.getPosition(), GameConstants.maxViewRangeSq())) {
+                for (MapleMapObject mo : getMapObjectsInRange(player.getPosition(), MapConstants.maxViewRangeSq())) {
                     if (mo != null && !player.isMapObjectVisible(mo)) {
                         mo.sendSpawnData(player.getClient());
                         visibleObjects.add(mo);
@@ -2770,7 +2772,7 @@ public final class MapleMap {
                 Collections.shuffle(randomSpawn);
 
                 for (Spawns spawnPoint : randomSpawn) {
-                    if (spawnPoint.shouldSpawn() || GameConstants.isForceRespawn(mapid)) {
+                    if (spawnPoint.shouldSpawn() || MapConstants.isForceRespawn(mapid)) {
                         spawnPoint.spawnMonster(this);
                         spawned++;
                     }

@@ -7,7 +7,7 @@ import java.util.LinkedList;
 
 import client.inventory.IItem;
 import client.SkillFactory;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleCharacter;
 import client.inventory.MaplePet;
 import client.inventory.MapleInventoryType;
@@ -186,7 +186,7 @@ public class MapleQuestRequirement {
                 for (Pair<Integer, Integer> a : dataStore) {
                     itemId = a.getLeft();
                     quantity = 0;
-                    iType = GameConstants.getInventoryType(itemId);
+                    iType = ItemConstants.getInventoryType(itemId);
                     for (IItem item : c.getInventory(iType).listById(itemId)) {
                         quantity += item.getQuantity();
                     }

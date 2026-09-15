@@ -1,6 +1,7 @@
 package server.quest;
 
 import constants.GameConstants;
+import constants.JobConstants;
 import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -323,7 +324,7 @@ public class MapleQuest {
 
     private boolean checkNPCOnMap(MapleCharacter player, int npcid) {
         //mir = 1013000
-        return (GameConstants.isEvan(player.getJob()) && npcid == 1013000) || (player.getMap() != null && player.getMap().containsNPC(npcid));
+        return (JobConstants.isEvan(player.getJob()) && npcid == 1013000) || (player.getMap() != null && player.getMap().containsNPC(npcid));
     }
 
     public int getMedalItem() {

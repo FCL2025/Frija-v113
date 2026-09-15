@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.HashMap;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleClient;
 import client.MapleCharacter;
 import client.MapleCharacterUtil;
@@ -158,7 +158,7 @@ public class CashShopOperation {
                         doCSPackets(c);
                         return;
                     } else {
-                        itemz.put(item, c.getPlayer().getInventory(GameConstants.getInventoryType(item)).getItem(slot));
+                        itemz.put(item, c.getPlayer().getInventory(ItemConstants.getInventoryType(item)).getItem(slot));
                     }
                     break;
                 case 4:
@@ -196,9 +196,9 @@ public class CashShopOperation {
                     doCSPackets(c);
                     return;
                 }
-                for (int i : GameConstants.cashBlock) {
+                for (int i : ItemConstants.cashBlock) {
                     if (item.getId() == i) {
-                        c.getPlayer().dropMessage(1, GameConstants.getCashBlockedMsg(item.getId()));
+                        c.getPlayer().dropMessage(1, ItemConstants.getCashBlockedMsg(item.getId()));
                         doCSPackets(c);
                         return;
                     }
@@ -234,9 +234,9 @@ public class CashShopOperation {
                 doCSPackets(c);
                 return;
             } else {
-                for (int i : GameConstants.cashBlock) {
+                for (int i : ItemConstants.cashBlock) {
                     if (item.getId() == i) {
-                        c.getPlayer().dropMessage(1, GameConstants.getCashBlockedMsg(item.getId()));
+                        c.getPlayer().dropMessage(1, ItemConstants.getCashBlockedMsg(item.getId()));
                         doCSPackets(c);
                         return;
                     }
@@ -362,7 +362,7 @@ public class CashShopOperation {
             final CashItemInfo item = CashItemFactory.getInstance().getItem(slea.readInt());
             final String partnerName = slea.readMapleAsciiString();
             final String msg = slea.readMapleAsciiString();
-            if (item == null || !GameConstants.isEffectRing(item.getId()) || c.getPlayer().getCSPoints(1) < item.getPrice() || msg.length() > 73 || msg.length() < 1) {
+            if (item == null || !ItemConstants.isEffectRing(item.getId()) || c.getPlayer().getCSPoints(1) < item.getPrice() || msg.length() > 73 || msg.length() < 1) {
                 c.send(MTSCSPacket.sendCSFail(0));
                 doCSPackets(c);
                 return;
@@ -375,9 +375,9 @@ public class CashShopOperation {
                 doCSPackets(c);
                 return;
             }
-            for (int i : GameConstants.cashBlock) { //just incase hacker
+            for (int i : ItemConstants.cashBlock) { //just incase hacker
                 if (item.getId() == i) {
-                    c.getPlayer().dropMessage(1, GameConstants.getCashBlockedMsg(item.getId()));
+                    c.getPlayer().dropMessage(1, ItemConstants.getCashBlockedMsg(item.getId()));
                     doCSPackets(c);
                     return;
                 }
@@ -429,16 +429,16 @@ public class CashShopOperation {
                 doCSPackets(c);
                 return;
             }
-            for (int iz : GameConstants.cashBlock) {
+            for (int iz : ItemConstants.cashBlock) {
                 if (item.getId() == iz) {
-                    c.getPlayer().dropMessage(1, GameConstants.getCashBlockedMsg(item.getId()));
+                    c.getPlayer().dropMessage(1, ItemConstants.getCashBlockedMsg(item.getId()));
                     doCSPackets(c);
                     return;
                 }
             }
             Map<Integer, IItem> ccz = new HashMap<>();
             for (CashItemInfo i : ccc) {
-                for (int iz : GameConstants.cashBlock) {
+                for (int iz : ItemConstants.cashBlock) {
                     if (i.getId() == iz) {
                         continue;
                     }
@@ -463,14 +463,14 @@ public class CashShopOperation {
                 c.send(MTSCSPacket.sendCSFail(0xB8));
                 doCSPackets(c);
                 return;
-            } else if (c.getPlayer().getInventory(GameConstants.getInventoryType(item.getId())).getNextFreeSlot() < 0) {
+            } else if (c.getPlayer().getInventory(ItemConstants.getInventoryType(item.getId())).getNextFreeSlot() < 0) {
                 c.send(MTSCSPacket.sendCSFail(0xB1));
                 doCSPackets(c);
                 return;
             }
-            for (int iz : GameConstants.cashBlock) {
+            for (int iz : ItemConstants.cashBlock) {
                 if (item.getId() == iz) {
-                    c.getPlayer().dropMessage(1, GameConstants.getCashBlockedMsg(item.getId()));
+                    c.getPlayer().dropMessage(1, ItemConstants.getCashBlockedMsg(item.getId()));
                     doCSPackets(c);
                     return;
                 }

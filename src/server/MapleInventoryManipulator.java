@@ -108,6 +108,9 @@ public class MapleInventoryManipulator {
             final List<IItem> existing = c.getPlayer().getInventory(type).listById(itemId);
             if (!GameConstants.isRechargable(itemId)) {
                 if (existing.size() > 0) { // first update all existing slots to slotMax
+                    // 這個迴圈不能改成 for-each，也不能用 removeIf：它沒有移除任何東西，
+                    // 而且驅動迴圈的是 quantity 而不是 hasNext()——數量填完就停，
+                    // 走訪只是在「還有剩餘數量」時才往下拿一格，用完 existing 就 break。
                     Iterator<IItem> i = existing.iterator();
                     while (quantity > 0) {
                         if (i.hasNext()) {
@@ -222,6 +225,7 @@ public class MapleInventoryManipulator {
                 boolean recieved = false;
 
                 if (existing.size() > 0) { // first update all existing slots to slotMax
+                    // 同上：驅動迴圈的是 quantity 而不是 hasNext()，不能改成 for-each。
                     Iterator<IItem> i = existing.iterator();
                     while (quantity > 0) {
                         if (i.hasNext()) {
@@ -322,6 +326,7 @@ public class MapleInventoryManipulator {
                     return false;
                 }
                 if (existing.size() > 0) { // first update all existing slots to slotMax
+                    // 同上：驅動迴圈的是 quantity 而不是 hasNext()，不能改成 for-each。
                     Iterator<IItem> i = existing.iterator();
                     while (quantity > 0) {
                         if (i.hasNext()) {

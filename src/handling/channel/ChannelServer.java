@@ -463,6 +463,10 @@ public class ChannelServer {
     public final void closeAllMerchant() {
         merchLock.writeLock().lock();
         try {
+            // 這裡不能用 removeIf：迴圈本體除了移除之外還要 closeShop(true, false)，
+            // 那會存檔、取消排程、廣播拆店，是實實在在的副作用，放進 predicate 會很糟。
+            // 第二個參數刻意是 false —— closeShop 若自己再呼叫 removeMerchant，
+            // 就會在走訪途中動到 merchants，這個 iterator 才是唯一的移除者。
             final Iterator<HiredMerchant> merchants_ = merchants.values().iterator();
             while (merchants_.hasNext()) {
                 merchants_.next().closeShop(true, false);
@@ -502,10 +506,8 @@ public class ChannelServer {
 
         merchLock.readLock().lock();
         try {
-            final Iterator<HiredMerchant> itr = merchants.values().iterator();
-
-            while (itr.hasNext()) {
-                if (itr.next().getOwnerAccId() == accid) {
+            for (HiredMerchant hm : merchants.values()) {
+                if (hm.getOwnerAccId() == accid) {
                     contains = true;
                     break;
                 }
@@ -520,10 +522,7 @@ public class ChannelServer {
         final List<HiredMerchant> list = new LinkedList<>();
         merchLock.readLock().lock();
         try {
-            final Iterator<HiredMerchant> itr = merchants.values().iterator();
-
-            while (itr.hasNext()) {
-                HiredMerchant hm = itr.next();
+            for (HiredMerchant hm : merchants.values()) {
                 if (hm.searchItem(itemSearch).size() > 0) {
                     list.add(hm);
                 }

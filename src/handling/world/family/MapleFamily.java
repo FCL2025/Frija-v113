@@ -272,6 +272,9 @@ public final class MapleFamily {
         if (!bDirty) {
             return;
         }
+        // 這裡不能用 removeIf：迴圈本體除了移除之外，還會就地把懸空的
+        // junior1 / junior2 / seniorid 歸零（setJunior1 等），對每一筆都有副作用，
+        // 而且那些修正必須連「不會被移除」的成員一起做。
         final Iterator<Entry<Integer, MapleFamilyCharacter>> toRemove = members.entrySet().iterator();
         while (toRemove.hasNext()) {
             MapleFamilyCharacter mfc = toRemove.next().getValue();

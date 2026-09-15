@@ -19,14 +19,6 @@ import java.sql.PreparedStatement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import scripting.ScriptEncodingCheck;
-import server.Timer.BuffTimer;
-import server.Timer.CheatTimer;
-import server.Timer.CloneTimer;
-import server.Timer.EtcTimer;
-import server.Timer.EventTimer;
-import server.Timer.MapTimer;
-import server.Timer.MobTimer;
-import server.Timer.WorldTimer;
 import server.events.MapleOxQuizFactory;
 import server.life.MapleLifeFactory;
 import server.panel.PanelServer;
@@ -146,13 +138,13 @@ public class Start {
         phase("資料庫連線");
 
         World.init();
-        WorldTimer.getInstance().start();
-        EtcTimer.getInstance().start();
-        MapTimer.getInstance().start();
-        MobTimer.getInstance().start();
-        CloneTimer.getInstance().start();
-        EventTimer.getInstance().start();
-        BuffTimer.getInstance().start();
+        Timer.WORLD.start();
+        Timer.ETC.start();
+        Timer.MAP.start();
+        Timer.MOB.start();
+        Timer.CLONE.start();
+        Timer.EVENT.start();
+        Timer.BUFF.start();
         phase("世界與計時器");
 
         LoginInformationProvider.getInstance();
@@ -186,7 +178,7 @@ public class Start {
         LOG.log(System.Logger.Level.INFO, "[購物商城伺服器啟動中]");
         CashShopServer.run_startup_configurations();
         LOG.log(System.Logger.Level.INFO, "[購物商城伺服器啟動完成]");
-        CheatTimer.getInstance().register(AutobanManager.getInstance(), 60000);
+        Timer.CHEAT.register(AutobanManager.getInstance(), 60000);
         Runtime.getRuntime().addShutdownHook(new Thread(new Shutdown()));
         try {
             SpeedRunner.getInstance().loadSpeedRuns();

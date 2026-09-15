@@ -47,6 +47,7 @@ import server.Randomizer;
 import server.MapleInventoryManipulator;
 import server.MapleShopFactory;
 import server.MapleSquad;
+import server.Timer;
 import server.maps.MapleMap;
 import server.maps.Event_DojoAgent;
 import server.maps.AramiaFireWorks;
@@ -80,7 +81,6 @@ import server.MapleStatEffect;
 import server.SpeedRunner;
 import server.maps.SpeedRunType;
 import server.StructPotentialItem;
-import server.Timer.CloneTimer;
 import server.life.MapleMonster;
 import server.maps.Event_PyramidSubway;
 import server.maps.MapleMapObject;
@@ -1329,14 +1329,14 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     public final void doWeddingEffect(final Object ch) {
         final MapleCharacter chr = (MapleCharacter) ch;
         getMap().broadcastMessage(ChatPacket.yellowChat(getPlayer().getName() + "，你願意娶 " + chr.getName() + " 作為你的妻子嗎，與她在神聖的婚約中共同生活？無論是疾病或健康、貧窮或富裕、美貌或失色、順利或失意，你都願意愛她、安慰她、尊敬她、保護她？並願意在你們一生之中對她永遠忠心不變？ "));
-        CloneTimer.getInstance().schedule(() -> {
+        Timer.CLONE.schedule(() -> {
             if (chr == null || getPlayer() == null) {
                 warpMap(680000500, 0);
             } else {
                 getMap().broadcastMessage(ChatPacket.yellowChat(chr.getName() + "，你願意嫁 " + getPlayer().getName() + " 作為你的丈夫嗎，與他在神聖的婚約中共同生活？無論是疾病或健康、貧窮或富裕、美貌或失色、順利或失意，你都願意愛他、安慰他、尊敬他、保護他？並願意在你們一生之中對他永遠忠心不變？ "));
             }
         }, 10000);
-        CloneTimer.getInstance().schedule(() -> {
+        Timer.CLONE.schedule(() -> {
             if (chr == null || getPlayer() == null) {
                 if (getPlayer() != null) {
                     setQuestRecord(getPlayer(), 160001, "3");

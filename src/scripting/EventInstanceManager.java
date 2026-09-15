@@ -41,7 +41,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import server.MapleCarnivalParty;
 import server.MapleItemInformationProvider;
 import server.MapleSquad;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.quest.MapleQuest;
 import server.life.MapleMonster;
 import server.maps.MapleMap;
@@ -147,7 +147,7 @@ public class EventInstanceManager {
         if (disposed || eim == null) {
             return;
         }
-        eventTimer = EventTimer.getInstance().schedule(() -> {
+        eventTimer = Timer.EVENT.schedule(() -> {
             if (disposed || eim == null || em == null) {
                 return;
             }
@@ -650,7 +650,7 @@ public class EventInstanceManager {
         if (disposed) {
             return;
         }
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             if (disposed || EventInstanceManager.this == null || em == null) {
                 return;
             }

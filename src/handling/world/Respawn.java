@@ -4,7 +4,7 @@ import handling.channel.ChannelServer;
 import server.maps.MapleMap;
 
 /**
- * WorldTimer 上的重生／掉落物過期／冷卻掃描工作（E7 由 World 拆出）。
+ * Timer.WORLD 上的重生／掉落物過期／冷卻掃描工作（E7 由 World 拆出）。
  */
 public class Respawn implements Runnable { //is putting it here a good idea?
 

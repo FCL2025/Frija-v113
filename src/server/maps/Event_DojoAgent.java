@@ -26,7 +26,7 @@ import client.MapleCharacter;
 import handling.channel.ChannelServer;
 import handling.world.MaplePartyCharacter;
 import server.Randomizer;
-import server.Timer.MapTimer;
+import server.Timer;
 import server.life.MapleLifeFactory;
 import tools.packet.EventPacket;
 
@@ -388,7 +388,7 @@ public class Event_DojoAgent {
         if (mobid != 0) {
             final int rand = Randomizer.nextInt(3);
 
-            MapTimer.getInstance().schedule(() -> {
+            Timer.MAP.schedule(() -> {
                 map.spawnMonsterWithEffect(MapleLifeFactory.getMonster(mobid), 15, rand == 0 ? point1 : rand == 1 ? point2 : point3);
             }, 3000);
         }

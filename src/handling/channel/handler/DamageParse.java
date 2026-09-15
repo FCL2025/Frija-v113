@@ -39,7 +39,7 @@ import client.status.MonsterStatusEffect;
 import java.util.Map;
 import server.MapleStatEffect;
 import server.Randomizer;
-import server.Timer.MapTimer;
+import server.Timer;
 import server.life.Element;
 import server.life.MapleMonster;
 import server.life.MapleMonsterStats;
@@ -778,7 +778,7 @@ public class DamageParse {
             final Integer eachd = eachde.left;
             if (s.makeChanceResult()) {
 
-                MapTimer.getInstance().schedule(() -> {
+                Timer.MAP.schedule(() -> {
                     player.getMap().spawnMesoDrop(Math.min((int) Math.max(((double) eachd / (double) 20000) * (double) maxmeso, (double) 1), maxmeso), new Point((int) (mob.getPosition().getX() + Randomizer.nextInt(100) - 50), (int) (mob.getPosition().getY())), mob, player, true, (byte) 0);
                 }, 100);
             }

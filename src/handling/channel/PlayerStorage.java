@@ -35,7 +35,7 @@ import handling.world.CharacterTransfer;
 import handling.world.CheaterData;
 import handling.world.Find;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import server.Timer.PingTimer;
+import server.Timer;
 
 public class PlayerStorage {
 
@@ -56,7 +56,7 @@ public class PlayerStorage {
      * Builds a storage and arms its stale-pending-transfer sweep.
      *
      * <p>The sweep used to be scheduled from the constructor, which handed
-     * {@code this} to a {@code PingTimer} thread - through the inner
+     * {@code this} to a {@code Timer.PING} thread - through the inner
      * {@link PersistingTask} - before the object was finished
      * (-Xlint:this-escape). The constructor is private so that it is not
      * possible to build a storage and forget to arm it: a sweep that silently
@@ -66,7 +66,7 @@ public class PlayerStorage {
     public static PlayerStorage create(final int channel) {
         final PlayerStorage ret = new PlayerStorage(channel);
         // Prune once every 15 minutes
-        PingTimer.getInstance().schedule(ret.new PersistingTask(), 900000);
+        Timer.PING.schedule(ret.new PersistingTask(), 900000);
         return ret;
     }
 
@@ -305,7 +305,7 @@ public class PlayerStorage {
                         itr.remove();
                     }
                 }
-                PingTimer.getInstance().schedule(new PersistingTask(), 900000);
+                Timer.PING.schedule(new PersistingTask(), 900000);
             } finally {
                 wL2.unlock();
             }

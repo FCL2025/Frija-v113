@@ -37,7 +37,7 @@ import java.lang.ref.WeakReference;
 import java.util.Map;
 import server.MapleStatEffect;
 import server.AutobanManager;
-import server.Timer.CloneTimer;
+import server.Timer;
 import server.movement.LifeMovementFragment;
 import server.life.MapleMonster;
 import server.life.SummonAttackEntry;
@@ -69,7 +69,7 @@ public class SummonHandler {
                     final MapleMap map = chr.getMap();
                     final MapleCharacter clone = clones[i].get();
                     final List<LifeMovementFragment> res3 = new ArrayList<>(res);
-                    CloneTimer.getInstance().schedule(() -> {
+                    Timer.CLONE.schedule(() -> {
                         try {
                             if (clone.getMap() == map && clone.getDragon() != null) {
                                 final Point startPos = clone.getDragon().getPosition();

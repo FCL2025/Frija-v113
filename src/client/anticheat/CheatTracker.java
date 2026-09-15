@@ -36,7 +36,7 @@ import handling.world.Broadcast;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import server.AutobanManager;
-import server.Timer.CheatTimer;
+import server.Timer;
 import tools.StringUtil;
 import tools.packet.ChatPacket;
 
@@ -75,7 +75,7 @@ public class CheatTracker {
 
     public CheatTracker(final MapleCharacter chr) {
         this.chr = new WeakReference<>(chr);
-        invalidationTask = CheatTimer.getInstance().register(new InvalidationTask(), 60000);
+        invalidationTask = Timer.CHEAT.register(new InvalidationTask(), 60000);
         takingDamageSince = System.currentTimeMillis();
     }
 

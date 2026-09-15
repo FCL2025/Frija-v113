@@ -43,7 +43,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import scripting.EventScriptManager;
 import server.MapleSquad;
 import server.MapleSquad.MapleSquadType;
-import server.Timer.EtcTimer;
+import server.Timer;
 import server.maps.MapleMapFactory;
 import server.shops.HiredMerchant;
 import server.life.PlayerNPC;
@@ -409,7 +409,7 @@ public class ChannelServer {
      * <p>{@link #squadLock} makes the test and the set one step. Nothing inside
      * it broadcasts or borrows a database connection, which is what CLAUDE.md
      * forbids holding a lock across: {@code scheduleRemoval()} only hands a task
-     * to {@code EtcTimer} and has been moved out of the lock anyway, and both
+     * to {@code Timer.ETC} and has been moved out of the lock anyway, and both
      * callers send their {@code broadcastMessage} pair after this method has
      * already returned. The window between the {@code put} and
      * {@code scheduleRemoval()} - a squad visible with a null {@code removal} -
@@ -687,9 +687,9 @@ public class ChannelServer {
      * 且沒有任何訊息。這裡把同一件事搬回 Java，並且預設關閉，以免和還在跑的
      * AutoSave.js 疊成一分鐘內存兩次。
      *
-     * <p>用 {@code EtcTimer} 而不是 {@code WorldTimer}：{@code WorldTimer} 上目前只有
+     * <p>用 {@code Timer.ETC} 而不是 {@code Timer.WORLD}：{@code Timer.WORLD} 上目前只有
      * 每 3 秒一次的 {@code Respawn}，而存檔是會阻塞在資料庫上的長工作，塞進去會排擠
-     * 怪物重生；{@code EtcTimer} 本來就是放釣魚、精靈吊墜、雇傭商人到期這類雜項長尾
+     * 怪物重生；{@code Timer.ETC} 本來就是放釣魚、精靈吊墜、雇傭商人到期這類雜項長尾
      * 工作的池子。
      */
     private void startAutoSave() {
@@ -699,7 +699,7 @@ public class ChannelServer {
         }
         final long period = minutes * 60000L;
         // 第一次延遲一個完整週期：伺服器剛起來時沒有人在線上，立刻存一次沒有意義。
-        autoSaveTask = EtcTimer.getInstance().register(this::saveAll, period, period);
+        autoSaveTask = Timer.ETC.register(this::saveAll, period, period);
         LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": 自動存檔每 " + minutes + " 分鐘一次.");
     }
 

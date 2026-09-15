@@ -28,9 +28,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.ScheduledFuture;
 
-import server.Timer.BuffTimer;
 import database.DatabaseConnection;
 import server.Randomizer;
+import server.Timer;
 import tools.packet.BuffPacket;
 
 public class MapleMount {
@@ -122,7 +122,7 @@ public class MapleMount {
     }
 
      public void startSchedule() {
-        final BuffTimer timerManager = BuffTimer.getInstance();
+        final Timer timerManager = Timer.BUFF;
         tirednessSchedule = timerManager.register(() -> {
             increaseFatigue();
         }, 30000, 30000);

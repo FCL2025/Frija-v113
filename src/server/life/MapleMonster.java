@@ -53,7 +53,7 @@ import java.awt.Point;
 import scripting.EventInstanceManager;
 import server.MapleItemInformationProvider;
 import server.Randomizer;
-import server.Timer.MobTimer;
+import server.Timer;
 import server.maps.MapScriptMethods;
 import server.maps.MapleMap;
 import server.maps.MapleMapObject;
@@ -878,7 +878,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
                 oldEffect.cancelPoisonSchedule();
             }
         }
-        final MobTimer timerManager = MobTimer.getInstance();
+        final Timer timerManager = Timer.MOB;
         final Runnable cancelTask = () -> {
             cancelStatus(stat);
         };
@@ -978,7 +978,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
     }
 
     public final void applyMonsterBuff(final Map<MonsterStatus, Integer> effect, final int skillId, final long duration, final MobSkill skill, final List<Integer> reflection) {
-        MobTimer timerManager = MobTimer.getInstance();
+        Timer timerManager = Timer.MOB;
         final Runnable cancelTask = () -> {
             if (reflection.size() > 0) {
                 MapleMonster.this.reflectpack = null;
@@ -1012,7 +1012,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
 
     public final void setTempEffectiveness(final Element e, final long milli) {
         stats.setEffectiveness(e, ElementalEffectiveness.WEAK);
-        MobTimer.getInstance().schedule(() -> {
+        Timer.MOB.schedule(() -> {
             stats.removeEffectiveness(e);
         }, milli);
     }
@@ -1559,7 +1559,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
                 return;
         }
         shouldDropItem = false;
-        dropItemSchedule = MobTimer.getInstance().register(() -> {
+        dropItemSchedule = Timer.MOB.register(() -> {
             if (isAlive() && map != null) {
                 if (shouldDropItem) {
                     map.spawnAutoDrop(itemId, getPosition());

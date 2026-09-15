@@ -28,7 +28,7 @@ import handling.world.Broadcast;
 import server.MapleInventoryManipulator;
 import server.RandomRewards;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.maps.MapleMap;
 import server.maps.SavedLocationType;
 import tools.packet.ChatPacket;
@@ -145,7 +145,7 @@ public abstract class MapleEvent {
                         if (cserv.getEvent() == i) {
                             e.broadcast(ChatPacket.serverNotice(0, "距離活動開始只剩一分鐘!"));
                             e.broadcast(MapPacket.getClock(60));
-                            EventTimer.getInstance().schedule(() -> {
+                            Timer.EVENT.schedule(() -> {
                                 e.startEvent();
                             }, 60000);
                             break;

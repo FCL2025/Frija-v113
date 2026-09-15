@@ -27,7 +27,7 @@ import handling.world.MaplePartyCharacter;
 import java.awt.Point;
 import java.util.concurrent.ScheduledFuture;
 import server.Randomizer;
-import server.Timer.MapTimer;
+import server.Timer;
 import server.quest.MapleQuest;
 import server.life.MapleLifeFactory;
 import tools.packet.EventPacket;
@@ -49,7 +49,7 @@ public class Event_PyramidSubway {
         }
         if (c.getParty() == null || c.getParty().getLeader().equals(new MaplePartyCharacter(c))) {
             commenceTimerNextMap(c, 1);
-            energyBarDecrease = MapTimer.getInstance().register(() -> {
+            energyBarDecrease = Timer.MAP.register(() -> {
                 energybar -= (c.getParty() != null && c.getParty().getMembers().size() > 1 ? 10 : 5);
                 if (broaded) {
                     // 保留作為紀錄：能量條每次遞減原本也會同步推一次 UI 更新，這裡被關掉了，
@@ -108,13 +108,13 @@ public class Event_PyramidSubway {
         if (type != -1 && (stage == 4 || stage == 5)) { //yetis. temporary
             final Point pos = c.getPosition();
             final MapleMap map = c.getMap();
-            yetiSchedule = MapTimer.getInstance().register(() -> {
+            yetiSchedule = Timer.MAP.register(() -> {
                 if (map.countMonsterById(9300021) <= (stage == 4 ? 1 : 2)) {
                     map.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(9300021), new Point(pos));
                 }
             }, 10000L);
         }
-        timerSchedule = MapTimer.getInstance().schedule(() -> {
+        timerSchedule = Timer.MAP.schedule(() -> {
             boolean ret = false;
             if (type == -1) {
                 ret = warpNextMap_Subway(c);

@@ -24,7 +24,7 @@ package server.events;
 import java.util.concurrent.ScheduledFuture;
 import client.MapleCharacter;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import tools.packet.ChatPacket;
 import tools.packet.MapPacket;
 
@@ -61,7 +61,7 @@ public class MapleOla extends MapleEvent {
         broadcast(MapPacket.getClock((int) (time / 1000)));
         this.timeStarted = System.currentTimeMillis();
 
-        olaSchedule = EventTimer.getInstance().schedule(() -> {
+        olaSchedule = Timer.EVENT.schedule(() -> {
             for (int i = 0; i < mapid.length; i++) {
                 for (MapleCharacter chr : getMap(i).getCharactersThreadsafe()) {
                     warpBack(chr);

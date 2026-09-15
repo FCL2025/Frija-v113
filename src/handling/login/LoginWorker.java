@@ -25,7 +25,7 @@ import java.util.Map.Entry;
 
 import client.MapleClient;
 import handling.channel.ChannelServer;
-import server.Timer.PingTimer;
+import server.Timer;
 import tools.packet.ChatPacket;
 import tools.packet.LoginPacket;
 
@@ -68,7 +68,7 @@ public class LoginWorker {
             }
             // 刻意保留：這個閒置計時器原本是要在登入畫面待太久時把連線關掉，
             // 呼叫被註解掉之後任務本體是空的，等於只佔一個排程名額。
-            c.setIdleTask(PingTimer.getInstance().schedule(() -> {
+            c.setIdleTask(Timer.PING.schedule(() -> {
 //                    c.getSession().close();
             }, 10 * 60 * 10000));
         } else {

@@ -15,7 +15,7 @@ import client.inventory.PetDataFactory;
 import handling.cashshop.CashShopServer;
 import handling.channel.ChannelServer;
 import handling.channel.PlayerStorage;
-import server.Timer.WorldTimer;
+import server.Timer;
 import server.maps.MapleMap;
 import server.maps.MapleMapItem;
 import tools.CollectionUtil;
@@ -100,7 +100,7 @@ public class World {
     }
 
     public static void registerRespawn() {
-        WorldTimer.getInstance().register(new Respawn(), 3000); //divisible by 9000 if possible.
+        Timer.WORLD.register(new Respawn(), 3000); //divisible by 9000 if possible.
         //3000 good or bad? ive no idea >_>
         //buffs can also be done, but eh
     }

@@ -21,7 +21,7 @@ import scripting.ScriptEncodingCheck;
 import server.MapleShopFactory;
 import server.MapleSquad;
 import server.ShutdownServer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.events.MapleEvent;
 import server.events.MapleEventType;
 import server.life.MapleMonsterInformationProvider;
@@ -84,7 +84,7 @@ public class AdminServerCommands {
              c.getPlayer().dropMessage(6, "伺服器即將在" + minutesLeft + "分鐘後關閉. 請盡速關閉精靈商人 並下線.");
             if (ts == null && (t == null || !t.isAlive())) {
                 t = new Thread(ShutdownServer.getInstance());
-                ts = EventTimer.getInstance().register(() -> {
+                ts = Timer.EVENT.register(() -> {
                     if (minutesLeft == 0) {
         ShutdownServer.getInstance();
                         t.start();

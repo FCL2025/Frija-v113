@@ -125,7 +125,7 @@ public class AutobanManager implements Runnable {
 
     /**
      * Decays points whose expiry has passed. Scheduled once a minute onto
-     * {@code CheatTimer}.
+     * {@code Timer.CHEAT}.
      *
      * <p>This never ran until the timer pools were made self-starting, which is
      * why two bugs in it went unnoticed: it walked {@code expirations} without

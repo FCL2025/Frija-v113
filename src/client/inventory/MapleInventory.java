@@ -38,9 +38,9 @@ import java.util.Map;
  * <li>定時自動存檔的計時器執行緒 —— {@code ChannelServer.saveAll()} 一路走到
  * {@code CharacterRepository.saveInventory}，對每個線上玩家的六格背包做
  * {@code for (IItem item : iv.list())}。它不是在物主的 handler thread 上跑的。</li>
- * <li>{@code WorldTimer} —— {@code handling.world.Respawn} →
+ * <li>{@code Timer.WORLD} —— {@code handling.world.Respawn} →
  * {@code World.handleCooldowns} 讀 CASH（寵物飽食度）與 EQUIPPED（{@code getHPDecProtect}）。</li>
- * <li>{@code BuffTimer} —— {@code MapleStatEffect.CancelEffectAction} →
+ * <li>{@code Timer.BUFF} —— {@code MapleStatEffect.CancelEffectAction} →
  * {@code MapleCharacter.cancelPlayerBuffs} → {@code PlayerStats.recalcLocalStats}
  * 走訪 EQUIPPED／CASH／ETC 三格。</li>
  * <li>別的玩家的 handler thread —— 交易成立時 {@code MapleTrade.completeTrade}

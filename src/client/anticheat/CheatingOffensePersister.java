@@ -24,8 +24,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import server.Timer;
 
-import server.Timer.CheatTimer;
 
 /**
  * Inert: {@link PersistingTask#run()} only clears {@code toPersist} now - the
@@ -42,7 +42,7 @@ public class CheatingOffensePersister {
     private final Lock mutex = new ReentrantLock();
 
     private CheatingOffensePersister() {
-        CheatTimer.getInstance().register(new PersistingTask(), 61000);
+        Timer.CHEAT.register(new PersistingTask(), 61000);
     }
 
     public static CheatingOffensePersister getInstance() {

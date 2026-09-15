@@ -82,6 +82,7 @@ import handling.world.guild.MapleGuild;
 import handling.world.guild.MapleGuildCharacter;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import server.Timer;
 import tools.MockIOSession;
 import scripting.EventInstanceManager;
 import scripting.NPCScriptManager;
@@ -126,9 +127,6 @@ import tools.packet.ServerPacket;
 import tools.packet.UIPacket;
 import server.MapleCarnivalChallenge;
 import server.MapleInventoryManipulator;
-import server.Timer.BuffTimer;
-import server.Timer.EtcTimer;
-import server.Timer.MapTimer;
 import server.life.MobSkill;
 import server.maps.Event_PyramidSubway;
 import server.maps.MapleDragon;
@@ -198,16 +196,16 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     private List<LifeMovementFragment> lastres;
     // 只有本人：PlayersHandler 的給人氣（chr 就是 c.getPlayer()）與換頻時的 CharacterTransfer。
     List<Integer> lastmonthfameids;
-    // 共用：智慧之門到期時 BuffTimer 的 CancelEffectAction → cancelEffect() 會走訪並清空，
+    // 共用：智慧之門到期時 Timer.BUFF 的 CancelEffectAction → cancelEffect() 會走訪並清空，
     // 本人的 handler thread 同時可能 addDoor；清單只有一兩筆且幾乎不寫 → CopyOnWriteArrayList。
     private List<MapleDoor> doors;
-    // 共用：World.handleCooldowns 在 WorldTimer 上走訪、MapleMap.addPlayer 與
+    // 共用：World.handleCooldowns 在 Timer.WORLD 上走訪、MapleMap.addPlayer 與
     // CharacterPacket/PetPacket 在「別人」的 handler thread 上走訪，本人只在自己的執行緒增刪。
     List<MaplePet> pets;
     // 固定長度陣列，元素只是參考覆寫（addClone/disposeClones），沒有結構性改動 → 不需要同步。
     private WeakReference<MapleCharacter>[] clones;
     // 共用：MapleMonster.switchController 由「攻擊者」的 handler thread 摘掉原控制者的怪，
-    // MapleMap.updateMonsterController 由 Respawn（WorldTimer）指派，MapleMap.removePlayer
+    // MapleMap.updateMonsterController 由 Respawn（Timer.WORLD）指派，MapleMap.removePlayer
     // 還會拿 iterator 邊走邊 remove → 需要 iterator 支援移除的並行 Set。
     private Set<MapleMonster> controlled;
     // 共用，但早就上了讀寫鎖；getAndWriteLockVisibleMapObjects() 是把寫鎖交給呼叫端的設計，
@@ -238,9 +236,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     Map<ISkill, SkillEntry> skills = new ConcurrentHashMap<>();
     private Map<MapleBuffStat, MapleBuffStatValueHolder> effects = new ConcurrentEnumMap<>(MapleBuffStat.class);
     // 共用：別人進地圖時在他的 handler thread 上走訪（sendSpawnData）、MapleMap.removePlayer 也走訪，
-    // 同時 BuffTimer 的 CancelEffectAction → deregisterBuffStats 會移除 → 需要並行 Map。
+    // 同時 Timer.BUFF 的 CancelEffectAction → deregisterBuffStats 會移除 → 需要並行 Map。
     private Map<Integer, MapleSummon> summons;
-    // 共用：World.handleCooldowns 在 WorldTimer 上到期移除，Time Leap 由施放者的執行緒清掉
+    // 共用：World.handleCooldowns 在 Timer.WORLD 上到期移除，Time Leap 由施放者的執行緒清掉
     // 隊友的冷卻（MapleStatEffect.applyTo），本人的 handler thread 則在放技能時加入。
     private Map<Integer, MapleCoolDownValueHolder> coolDowns = new ConcurrentHashMap<>();
     private Map<MapleDisease, MapleDiseaseValueHolder> diseases = new ConcurrentEnumMap<>(MapleDisease.class);
@@ -744,7 +742,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (dragonBloodSchedule != null) {
             dragonBloodSchedule.cancel(false);
         }
-        dragonBloodSchedule = BuffTimer.getInstance().register(() -> {
+        dragonBloodSchedule = Timer.BUFF.register(() -> {
             if (stats.getHp() - bloodEffect.getX() > 1) {
                 cancelBuffStats(MapleBuffStat.DRAGONBLOOD);
             } else {
@@ -759,7 +757,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         client.send(MapPacket.getClock(time));
 
         time *= 1000;
-        mapTimeLimitTask = MapTimer.getInstance().register(() -> {
+        mapTimeLimitTask = Timer.MAP.register(() -> {
             changeMap(to, to.getPortal(0));
         }, time, time);
     }
@@ -768,7 +766,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         final int time = GameConstants.getFishingTime(VIP, isGM());
         cancelFishingTask();
 
-        fishing = EtcTimer.getInstance().register(() -> {
+        fishing = Timer.ETC.register(() -> {
             final boolean expMulti = haveItem(2300001, 1, false, true);
             if (!expMulti && !haveItem(2300000, 1, false, true)) {
                 cancelFishingTask();
@@ -3442,7 +3440,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void removeCooldown(int skillId) {
         // C4：containsKey + remove 併成一步。remove() 本身就是「有才刪、沒有就沒事」，
-        // 語意不變，但不會再有 WorldTimer 的到期掃描與 Time Leap 之間的先讀後寫空窗。
+        // 語意不變，但不會再有 Timer.WORLD 的到期掃描與 Time Leap 之間的先讀後寫空窗。
         coolDowns.remove(Integer.valueOf(skillId));
     }
 
@@ -3670,7 +3668,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             client.send(CharacterPacket.showOwnBuffEffect(1320006, 1, (byte) (stats.Berserk ? 1 : 0)));
             map.broadcastMessage(this, CharacterPacket.showBuffeffect(getId(), 1320006, 1, (byte) (stats.Berserk ? 1 : 0)), false);
 
-            BerserkSchedule = BuffTimer.getInstance().schedule(() -> {
+            BerserkSchedule = Timer.BUFF.schedule(() -> {
                 checkBerserk();
             }, 10000);
         }
@@ -3690,7 +3688,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (bHealingLvl > 0) {
             final MapleStatEffect healEffect = bHealing.getEffect(bHealingLvl);
             int healInterval = healEffect.getX() * 15000;
-            beholderHealingSchedule = BuffTimer.getInstance().register(() -> {
+            beholderHealingSchedule = Timer.BUFF.register(() -> {
                 int remhppercentage = (int) Math.ceil((getStat().getHp() * 100.0) / getStat().getMaxHp());
                 if (berserkLvl == 0 || remhppercentage >= berserkLvl + 10) {
                     addHP(healEffect.getHp());
@@ -3705,7 +3703,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (bBuffLvl > 0) {
             final MapleStatEffect buffEffect = bBuff.getEffect(bBuffLvl);
             int buffInterval = buffEffect.getX() * 10000;
-            beholderBuffSchedule = BuffTimer.getInstance().register(() -> {
+            beholderBuffSchedule = Timer.BUFF.register(() -> {
                 buffEffect.applyTo(MapleCharacter.this);
                 client.send(CharacterPacket.showOwnBuffEffect(1321007, 2));
                 map.broadcastMessage(MapPacket.summonSkill(getId(), 1321007, Randomizer.nextInt(3) + 6));
@@ -4123,7 +4121,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             if (equipped) {
                 dropMessage(5, "The Fairy Pendant's experience points will increase to " + (fairyExp + 10) + "% after one hour.");
             }
-            fairySchedule = EtcTimer.getInstance().schedule(() -> {
+            fairySchedule = Timer.ETC.schedule(() -> {
                 if (fairyExp < 30 && stats.equippedFairy) {
                     fairyExp += 10;
                     dropMessage(5, "The Fairy Pendant's EXP was boosted to " + fairyExp + "%.");

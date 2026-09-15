@@ -23,7 +23,7 @@ package server.events;
 
 import java.util.concurrent.ScheduledFuture;
 import client.MapleCharacter;
-import server.Timer.EventTimer;
+import server.Timer;
 import tools.packet.ChatPacket;
 import tools.packet.MapPacket;
 
@@ -57,7 +57,7 @@ public class MapleFitness extends MapleEvent {
         this.timeStarted = System.currentTimeMillis();
         checkAndMessage();
 
-        fitnessSchedule = EventTimer.getInstance().schedule(() -> {
+        fitnessSchedule = Timer.EVENT.schedule(() -> {
             for (int i = 0; i < mapid.length; i++) {
                 for (MapleCharacter chr : getMap(i).getCharactersThreadsafe()) {
                     warpBack(chr);
@@ -108,7 +108,7 @@ public class MapleFitness extends MapleEvent {
     }
 
     public void checkAndMessage() {
-        msgSchedule = EventTimer.getInstance().register(() -> {
+        msgSchedule = Timer.EVENT.register(() -> {
             final long timeLeft = getTimeLeft();
             if (timeLeft > 9000 && timeLeft < 11000) {
                 broadcast(ChatPacket.serverNotice(0, "You have 10 sec left. Those of you unable to beat the game, we hope you beat it next time! Great job everyone!! See you later~"));

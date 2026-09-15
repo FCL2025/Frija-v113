@@ -1,8 +1,6 @@
 package server;
 
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -18,6 +16,14 @@ import tools.FileoutputUtil;
  * the work and {@link #schedule} onto it, so the work is named, bounded, and
  * shut down with everything else.
  *
+ * <p>These were nine nested classes, each one a {@code static class XxxTimer
+ * extends Timer} holding a private singleton and a {@code getInstance()} that
+ * returned it - about a hundred lines that differed only in the pool's name.
+ * That is what an enum is, so this is one now, and a call site says
+ * {@code Timer.ETC.schedule(...)} instead of {@code EtcTimer.getInstance()
+ * .schedule(...)}. It also removes the {@code CopyOnWriteArrayList} that
+ * {@link #stopAll()} used to walk: the list of pools is {@link #values()}.
+ *
  * <p>Every pool used to be created as {@code new ScheduledThreadPoolExecutor(3)}
  * and then told {@code setCorePoolSize(4)} and {@code setMaximumPoolSize(8)}.
  * The last of those does nothing at all - a scheduled executor's queue is an
@@ -26,141 +32,49 @@ import tools.FileoutputUtil;
  * pool no matter what the numbers said. The size is now one deliberate number,
  * scaled to the machine and overridable with {@code tms.TimerThreads}.
  */
-public abstract class Timer {
+public enum Timer {
+
+    WORLD("WorldTimer"),
+    MAP("MapTimer"),
+    BUFF("BuffTimer"),
+    EVENT("EventTimer"),
+    CLONE("CloneTimer"),
+    ETC("EtcTimer"),
+    MOB("MobTimer"),
+    CHEAT("CheatTimer"),
+    PING("PingTimer");
 
     private static final System.Logger LOG = System.getLogger(Timer.class.getName());
-
-    public static class WorldTimer extends Timer {
-
-        private static final WorldTimer instance = new WorldTimer();
-
-        private WorldTimer() {
-            name = "Worldtimer";
-        }
-
-        public static WorldTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class MapTimer extends Timer {
-
-        private static final MapTimer instance = new MapTimer();
-
-        private MapTimer() {
-            name = "Maptimer";
-        }
-
-        public static MapTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class BuffTimer extends Timer {
-
-        private static final BuffTimer instance = new BuffTimer();
-
-        private BuffTimer() {
-            name = "Bufftimer";
-        }
-
-        public static BuffTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class EventTimer extends Timer {
-
-        private static final EventTimer instance = new EventTimer();
-
-        private EventTimer() {
-            name = "Eventtimer";
-        }
-
-        public static EventTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class CloneTimer extends Timer {
-
-        private static final CloneTimer instance = new CloneTimer();
-
-        private CloneTimer() {
-            name = "Clonetimer";
-        }
-
-        public static CloneTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class EtcTimer extends Timer {
-
-        private static final EtcTimer instance = new EtcTimer();
-
-        private EtcTimer() {
-            name = "Etctimer";
-        }
-
-        public static EtcTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class MobTimer extends Timer {
-
-        private static final MobTimer instance = new MobTimer();
-
-        private MobTimer() {
-            name = "Mobtimer";
-        }
-
-        public static MobTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class CheatTimer extends Timer {
-
-        private static final CheatTimer instance = new CheatTimer();
-
-        private CheatTimer() {
-            name = "Cheattimer";
-        }
-
-        public static CheatTimer getInstance() {
-            return instance;
-        }
-    }
-
-    public static class PingTimer extends Timer {
-
-        private static final PingTimer instance = new PingTimer();
-
-        private PingTimer() {
-            name = "Pingtimer";
-        }
-
-        public static PingTimer getInstance() {
-            return instance;
-        }
-    }
-
-    /**
-     * Every pool that has ever been started, so that {@link #stopAll()} can
-     * reach the ones a hand-written shutdown list would forget. The old
-     * {@code ShutdownServer} stopped seven of the nine by name and left
-     * {@code CheatTimer} and {@code PingTimer} running.
-     */
-    private static final Collection<Timer> STARTED = new CopyOnWriteArrayList<>();
 
     private static final String THREADS_PROPERTY = "tms.TimerThreads";
     private static final int DEFAULT_THREADS =
             Math.max(4, Runtime.getRuntime().availableProcessors());
 
+    /**
+     * Names the pool's threads and its log file, and through the file its
+     * logger.
+     *
+     * <p>The camel case is load-bearing, and it used to be wrong. These names
+     * were spelled {@code "Maptimer"} with a lower-case t, so the log file came
+     * out as {@code Log_Maptimer_Except.rtf} and
+     * {@code FileoutputUtil.loggerName} - whose whole purpose for this family is
+     * the {@code s.endsWith("Timer")} branch that rewrites {@code MapTimer} into
+     * {@code tms.timer.map} - never matched. The nine pools therefore logged
+     * under {@code tms.maptimer}, {@code tms.worldtimer} and so on, which meant
+     * the {@code tms.timer.level = OFF} switch that {@code Libs/logging.properties}
+     * documents silenced nothing at all.
+     */
+    private final String poolName;
+
+    /** Where a task that threw out of {@code run} is recorded. */
+    private final String file;
+
     private volatile ScheduledExecutorService ses;
-    protected String file, name;
+
+    Timer(final String poolName) {
+        this.poolName = poolName;
+        this.file = "Logs/Log_" + poolName + "_Except.rtf";
+    }
 
     public void start() {
         if (isRunning()) {
@@ -170,10 +84,8 @@ public abstract class Timer {
             if (isRunning()) {
                 return;
             }
-            file = "Logs/Log_" + name + "_Except.rtf";
-
             final ScheduledThreadPoolExecutor stpe =
-                    new ScheduledThreadPoolExecutor(poolSize(), namedThreadFactory(name));
+                    new ScheduledThreadPoolExecutor(poolSize(), namedThreadFactory(poolName));
             // Nothing here is worth blocking a shutdown on, and periodic tasks
             // that outlive the shutdown just log into a closing world.
             stpe.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
@@ -182,7 +94,6 @@ public abstract class Timer {
             stpe.setKeepAliveTime(10, TimeUnit.MINUTES);
             stpe.allowCoreThreadTimeOut(true);
             ses = stpe;
-            STARTED.add(this);
         }
     }
 
@@ -202,7 +113,7 @@ public abstract class Timer {
                 final List<Runnable> abandoned = current.shutdownNow();
                 if (!abandoned.isEmpty()) {
                     // WARNING rather than INFO: scheduled work was thrown away.
-                    LOG.log(System.Logger.Level.WARNING, name + ": abandoned " + abandoned.size()
+                    LOG.log(System.Logger.Level.WARNING, poolName + ": abandoned " + abandoned.size()
                             + " task(s) that did not finish in time.");
                 }
             }
@@ -210,12 +121,19 @@ public abstract class Timer {
             current.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        STARTED.remove(this);
     }
 
-    /** Stops every pool that was ever started. Used by the shutdown hook. */
+    /**
+     * Stops every pool that was ever started. Used by the shutdown hook.
+     *
+     * <p>A pool that was never started has a null {@code ses} and {@link #stop}
+     * returns immediately, so walking all nine is the same work the old
+     * "every pool that registered itself on first start" list did - without the
+     * list. The old {@code ShutdownServer} stopped seven of the nine by name
+     * and left {@code CheatTimer} and {@code PingTimer} running.
+     */
     public static void stopAll() {
-        for (final Timer timer : STARTED) {
+        for (final Timer timer : values()) {
             timer.stop();
         }
     }
@@ -240,6 +158,10 @@ public abstract class Timer {
         return current.schedule(logging(r), delay, TimeUnit.MILLISECONDS);
     }
 
+    public ScheduledFuture<?> scheduleAtTimestamp(final Runnable r, final long timestamp) {
+        return schedule(r, timestamp - System.currentTimeMillis());
+    }
+
     /**
      * The pool, started on demand.
      *
@@ -257,10 +179,6 @@ public abstract class Timer {
             start();
         }
         return ses;
-    }
-
-    public ScheduledFuture<?> scheduleAtTimestamp(final Runnable r, final long timestamp) {
-        return schedule(r, timestamp - System.currentTimeMillis());
     }
 
     /**
@@ -292,10 +210,10 @@ public abstract class Timer {
         return DEFAULT_THREADS;
     }
 
-    private static ThreadFactory namedThreadFactory(final String poolName) {
+    private static ThreadFactory namedThreadFactory(final String name) {
         final AtomicInteger threadNumber = new AtomicInteger(1);
         return r -> {
-            final Thread t = new Thread(r, poolName + "-Worker-" + threadNumber.getAndIncrement());
+            final Thread t = new Thread(r, name + "-Worker-" + threadNumber.getAndIncrement());
             // A stuck timer task must not keep a shut-down JVM alive.
             t.setDaemon(true);
             return t;

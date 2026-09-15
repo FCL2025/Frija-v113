@@ -44,7 +44,7 @@ import server.MapleItemInformationProvider;
 import server.MapleStatEffect;
 import server.MaplePortal;
 import server.Randomizer;
-import server.Timer.CloneTimer;
+import server.Timer;
 import server.events.MapleSnowball.MapleSnowballs;
 import server.life.MapleMonster;
 import server.life.MobAttackInfo;
@@ -692,7 +692,7 @@ public class PlayerHandler {
                 final double maxdamage2 = maxdamage;
                 final MapleStatEffect eff2 = effect;
                 final AttackInfo attack2 = DamageParse.DivideAttack(attack, chr.isGM() ? 1 : 4);
-                CloneTimer.getInstance().schedule(() -> {
+                Timer.CLONE.schedule(() -> {
                     clone.getMap().broadcastMessage(CharacterPacket.closeRangeAttack(clone.getId(), attack2.tbyte, attack2.skill, skillLevel2, attack2.display, attack2.animation, attack2.speed, attack2.allDamage, energy, clone.getLevel(), clone.getStat().passive_mastery(), attack2.unk, attack2.charge));
                     DamageParse.applyAttack(attack2, skil2, chr, attackCount2, maxdamage2, eff2, mirror ? AttackType.NON_RANGED_WITH_MIRROR : AttackType.NON_RANGED);
                 }, 500 * i + 500);
@@ -828,7 +828,7 @@ public class PlayerHandler {
                 final int visProjectile2 = visProjectile;
                 final int skillLevel2 = skillLevel;
                 final AttackInfo attack2 = DamageParse.DivideAttack(attack, chr.isGM() ? 1 : 4);
-                CloneTimer.getInstance().schedule(() -> {
+                Timer.CLONE.schedule(() -> {
                     clone.getMap().broadcastMessage(CharacterPacket.rangedAttack(clone.getId(), attack2.tbyte, attack2.skill, skillLevel2, attack2.display, attack2.animation, attack2.speed, visProjectile2, attack2.allDamage, attack2.position, clone.getLevel(), clone.getStat().passive_mastery(), attack2.unk));
                     DamageParse.applyAttack(attack2, skil2, chr, bulletCount2, basedamage2, eff2, AttackType.RANGED);
                 }, 500 * i + 500);
@@ -870,7 +870,7 @@ public class PlayerHandler {
                 final MapleStatEffect eff2 = effect;
                 final int skillLevel2 = skillLevel;
                 final AttackInfo attack2 = DamageParse.DivideAttack(attack, chr.isGM() ? 1 : 4);
-                CloneTimer.getInstance().schedule(() -> {
+                Timer.CLONE.schedule(() -> {
                     //if (attack.skill != 22121000 && attack.skill != 22151001) {
                     clone.getMap().broadcastMessage(CharacterPacket.magicAttack(clone.getId(), attack2.tbyte, attack2.skill, skillLevel2, attack2.display, attack2.animation, attack2.speed, attack2.allDamage, attack2.charge, clone.getLevel(), attack2.unk));
                     //}
@@ -905,7 +905,7 @@ public class PlayerHandler {
             for (int i = 0; i < clones.length; i++) {
                 if (clones[i].get() != null) {
                     final MapleCharacter clone = clones[i].get();
-                    CloneTimer.getInstance().schedule(() -> {
+                    Timer.CLONE.schedule(() -> {
                         clone.getMap().broadcastMessage(CharacterPacket.facialExpression(clone, emote));
                     }, 500 * i + 500);
                 }
@@ -1000,7 +1000,7 @@ Now: D7 00 44 01 00 00 00 00 06 1E 00 00 EA FE D7 00 84 00 00 00 71 00 04 78 00 
                 if (clones[i].get() != null) {
                     final MapleCharacter clone = clones[i].get();
                     final List<LifeMovementFragment> res3 = new ArrayList<>(res2);
-                    CloneTimer.getInstance().schedule(() -> {
+                    Timer.CLONE.schedule(() -> {
                         try {
                             if (clone.getMap() == map) {
                                 if (clone.isHidden()) {

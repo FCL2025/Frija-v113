@@ -24,7 +24,7 @@ package server.events;
 import client.MapleCharacter;
 import java.util.LinkedList;
 import java.util.List;
-import server.Timer.EventTimer;
+import server.Timer;
 import tools.packet.ChatPacket;
 import tools.packet.EventPacket;
 import tools.packet.MapPacket;
@@ -137,7 +137,7 @@ public class MapleCoconut extends MapleEvent {
         getMap(0).broadcastMessage(EventPacket.hitCoconut(true, 0, 0));
         getMap(0).broadcastMessage(MapPacket.getClock(360));
 
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             if (getMapleScore() == getStoryScore()) {
                 bonusTime();
             } else if (getMapleScore() > getStoryScore()) {
@@ -168,7 +168,7 @@ public class MapleCoconut extends MapleEvent {
 
     public void bonusTime() {
         getMap(0).broadcastMessage(MapPacket.getClock(120));
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             if (getMapleScore() == getStoryScore()) {
                 for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
                     chr.getClient().send(MapPacket.showEffect("event/coconut/lose"));
@@ -204,7 +204,7 @@ public class MapleCoconut extends MapleEvent {
 
     public void warpOut() {
         setHittable(false);
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             for (MapleCharacter chr : getMap(0).getCharactersThreadsafe()) {
                 if ((getMapleScore() > getStoryScore() && chr.getCoconutTeam() == 0) || (getStoryScore() > getMapleScore() && chr.getCoconutTeam() == 1)) {
                     givePrize(chr);

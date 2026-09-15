@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import server.MapleSquad;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.events.MapleEvent;
 import server.events.MapleEventType;
 import server.life.MapleMonster;
@@ -81,7 +81,7 @@ public class EventManager {
     }
 
     public ScheduledFuture<?> schedule(final String methodName, long delay) {
-        return EventTimer.getInstance().schedule(() -> {
+        return Timer.EVENT.schedule(() -> {
             try {
                 iv.invokeFunction(methodName, (Object) null);
             } catch (Exception ex) {
@@ -92,7 +92,7 @@ public class EventManager {
     }
 
     public ScheduledFuture<?> schedule(final String methodName, long delay, final EventInstanceManager eim) {
-        return EventTimer.getInstance().schedule(() -> {
+        return Timer.EVENT.schedule(() -> {
             try {
                 iv.invokeFunction(methodName, eim);
             } catch (Exception ex) {
@@ -103,7 +103,7 @@ public class EventManager {
     }
 
     public ScheduledFuture<?> scheduleAtTimestamp(final String methodName, long timestamp) {
-        return EventTimer.getInstance().scheduleAtTimestamp(() -> {
+        return Timer.EVENT.scheduleAtTimestamp(() -> {
             try {
                 iv.invokeFunction(methodName, (Object) null);
             } catch (ScriptException ex) {
@@ -395,7 +395,7 @@ public class EventManager {
             broadcastYellowMsg(msg);
             return false;
         }
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             if (cs.getEvent() >= 0) {
                 MapleEvent.setEvent(cs, true);
             }

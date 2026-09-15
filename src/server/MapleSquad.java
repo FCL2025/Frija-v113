@@ -15,7 +15,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
-import server.Timer.EtcTimer;
 import server.maps.MapleMap;
 import tools.Pair;
 import tools.packet.ChatPacket;
@@ -95,7 +94,7 @@ public class MapleSquad {
     private final int beginMapId;
     private final MapleSquadType type;
     /**
-     * Written by the squad NPC's thread and by the {@code EtcTimer} task, read
+     * Written by the squad NPC's thread and by the {@code Timer.ETC} task, read
      * by both plus whoever walks the boss map - volatile so a cleared squad
      * actually looks cleared to the next thread. The read-modify-write in
      * {@link #setStatus} is still not atomic; see the note there.
@@ -197,7 +196,7 @@ public class MapleSquad {
     }
 
     public void scheduleRemoval() {
-        removal = EtcTimer.getInstance().schedule(() -> {
+        removal = Timer.ETC.schedule(() -> {
             if (status != 0 && leader != null && (getLeader() == null || status == 1)) { //leader itself = null means we're already cleared
                 clear();
                 copy();

@@ -53,6 +53,7 @@ import handling.world.Party;
 import handling.world.PartyOperation;
 import handling.world.family.MapleFamilyCharacter;
 import handling.world.guild.MapleGuildCharacter;
+import server.Timer;
 import server.maps.MapleMap;
 import server.MapleTrade;
 import server.shops.IMaplePlayerShop;
@@ -67,8 +68,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.mina.core.session.IoSession;
 import handling.mina.MapleSession;
-import server.Timer.EtcTimer;
-import server.Timer.PingTimer;
 import server.quest.MapleQuest;
 
 public class MapleClient {
@@ -621,7 +620,7 @@ public class MapleClient {
         // rule that every delayed job in here runs on a server.Timer pool: a
         // burst of duplicate logins would spawn one short-lived thread each,
         // and none of them were named, daemons, or cancellable.
-        EtcTimer.getInstance().schedule(() -> getSession().close(), 3000);
+        Timer.ETC.schedule(() -> getSession().close(), 3000);
     }
     public boolean CheckSecondPassword(String in) {
         // Check if the passwords are correct here. :B
@@ -1156,7 +1155,7 @@ public class MapleClient {
         lastPing = System.currentTimeMillis();
         session.write(LoginPacket.getPing());
 
-        PingTimer.getInstance().schedule(() -> {
+        Timer.PING.schedule(() -> {
             try {
                 if (getLatency() < 0) {
                     if (getSession().isConnected()) {

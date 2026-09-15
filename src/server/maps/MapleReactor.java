@@ -23,7 +23,7 @@ package server.maps;
 import java.awt.Rectangle;
 import client.MapleClient;
 import scripting.ReactorScriptManager;
-import server.Timer.MapTimer;
+import server.Timer;
 import tools.Pair;
 import tools.packet.MapPacket;
 
@@ -134,7 +134,7 @@ public class MapleReactor extends AbstractMapleMapObject {
     }
 
     public void delayedDestroyReactor(long delay) {
-        MapTimer.getInstance().schedule(() -> {
+        Timer.MAP.schedule(() -> {
             map.destroyReactor(getObjectId());
         }, delay);
     }
@@ -194,13 +194,13 @@ public class MapleReactor extends AbstractMapleMapObject {
     }
 
     public void delayedHitReactor(final MapleClient c, long delay) {
-        MapTimer.getInstance().schedule(() -> {
+        Timer.MAP.schedule(() -> {
             hitReactor(c);
         }, delay);
     }
 
     public void scheduleSetState(final byte oldState, final byte newState, long delay) {
-        MapTimer.getInstance().schedule(() -> {
+        Timer.MAP.schedule(() -> {
             if (MapleReactor.this.state == oldState) {
                 forceHitReactor(newState);
             }

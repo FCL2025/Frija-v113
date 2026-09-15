@@ -23,13 +23,6 @@ import provider.MapleDataProviderFactory;
 import provider.MapleDataTool;
 import server.MapleItemInformationProvider;
 import server.Timer;
-import server.Timer.BuffTimer;
-import server.Timer.CloneTimer;
-import server.Timer.EtcTimer;
-import server.Timer.EventTimer;
-import server.Timer.MapTimer;
-import server.Timer.MobTimer;
-import server.Timer.WorldTimer;
 import tools.CPUSampler;
 import tools.Encodings;
 import tools.Pair;
@@ -437,49 +430,49 @@ public class AdminDebugCommands {
     public static class TestEventTimer extends TestTimer {
 
         public TestEventTimer() {
-            toTest = EventTimer.getInstance();
+            toTest = Timer.EVENT;
         }
     }
 
     public static class TestCloneTimer extends TestTimer {
 
         public TestCloneTimer() {
-            toTest = CloneTimer.getInstance();
+            toTest = Timer.CLONE;
         }
     }
 
     public static class TestEtcTimer extends TestTimer {
 
         public TestEtcTimer() {
-            toTest = EtcTimer.getInstance();
+            toTest = Timer.ETC;
         }
     }
 
     public static class TestMobTimer extends TestTimer {
 
         public TestMobTimer() {
-            toTest = MobTimer.getInstance();
+            toTest = Timer.MOB;
         }
     }
 
     public static class TestMapTimer extends TestTimer {
 
         public TestMapTimer() {
-            toTest = MapTimer.getInstance();
+            toTest = Timer.MAP;
         }
     }
 
     public static class TestWorldTimer extends TestTimer {
 
         public TestWorldTimer() {
-            toTest = WorldTimer.getInstance();
+            toTest = Timer.WORLD;
         }
     }
 
     public static class TestBuffTimer extends TestTimer {
 
         public TestBuffTimer() {
-            toTest = BuffTimer.getInstance();
+            toTest = Timer.BUFF;
         }
     }
 }

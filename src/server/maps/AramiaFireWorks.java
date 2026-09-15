@@ -25,7 +25,7 @@ import java.awt.Point;
 import client.MapleCharacter;
 import handling.world.Broadcast;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.life.MapleLifeFactory;
 import tools.packet.ChatPacket;
 import tools.packet.MapPacket;
@@ -69,7 +69,7 @@ public class AramiaFireWorks {
 
     private final void broadcastEvent(final MapleCharacter c) {
         // Henesys Park
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             startEvent(c.getClient().getChannelServer().getMapFactory().getMap(209080000));
         }, 10000);
     }
@@ -77,7 +77,7 @@ public class AramiaFireWorks {
     private final void startEvent(final MapleMap map) {
         map.startMapEffect("雪人大大出現啦", 5120000);
 
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             spawnMonster(map);
         }, 5000);
     }
@@ -129,7 +129,7 @@ public class AramiaFireWorks {
     private final void broadcastSun(final MapleCharacter c) {
         broadcastServer(c, SUN_ID);
         // Henesys Park
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             startSun(c.getClient().getChannelServer().getMapFactory().getMap(970010000));
         }, 10000);
     }
@@ -137,7 +137,7 @@ public class AramiaFireWorks {
     private final void startSun(final MapleMap map) {
         map.startMapEffect("The tree is bursting with sunshine!", 5121010);
         for (int i = 0; i < 3; i++) {
-            EventTimer.getInstance().schedule(() -> {
+            Timer.EVENT.schedule(() -> {
                 spawnItem(map);
             }, 5000 + (i * 10000));
         }
@@ -189,7 +189,7 @@ public class AramiaFireWorks {
 
     private final void broadcastDec(final MapleCharacter c) {
         broadcastServer(c, DEC_ID);
-        EventTimer.getInstance().schedule(() -> {
+        Timer.EVENT.schedule(() -> {
             startDec(c.getClient().getChannelServer().getMapFactory().getMap(555000000));
         }, 10000); //no msg
     }
@@ -197,7 +197,7 @@ public class AramiaFireWorks {
     private final void startDec(final MapleMap map) {
         map.startMapEffect("The tree is bursting with snow!", 5120000);
         for (int i = 0; i < 3; i++) {
-            EventTimer.getInstance().schedule(() -> {
+            Timer.EVENT.schedule(() -> {
                 spawnDec(map);
             }, 5000 + (i * 10000));
         }

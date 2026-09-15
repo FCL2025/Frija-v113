@@ -37,7 +37,6 @@ import server.maps.MapleSummon;
 import server.maps.SummonMovementType;
 import java.util.EnumMap;
 import server.MapleCarnivalFactory.MCSkill;
-import server.Timer.BuffTimer;
 import tools.Pair;
 import tools.packet.BuffPacket;
 import tools.packet.CharacterPacket;
@@ -1141,7 +1140,7 @@ public class MapleStatEffect {
 
     public final void silentApplyBuff(final MapleCharacter chr, final long starttime) {
         final int localDuration = alchemistModifyVal(chr, duration, false);
-        chr.registerEffect(this, starttime, BuffTimer.getInstance().schedule(new CancelEffectAction(chr, this, starttime),
+        chr.registerEffect(this, starttime, Timer.BUFF.schedule(new CancelEffectAction(chr, this, starttime),
                 ((starttime + localDuration) - System.currentTimeMillis())));
 
         final SummonMovementType summonMovementType = getSummonMovementType();
@@ -1178,7 +1177,7 @@ public class MapleStatEffect {
             applyto.cancelEffect(this, true, -1);
             applyto.getMap().broadcastMessage(applyto, BuffPacket.giveEnergyChargeTest(applyto.getId(), 10000, duration / 1000), false);
             final CancelEffectAction cancelAction = new CancelEffectAction(applyto, this, starttime);
-            final ScheduledFuture<?> schedule = BuffTimer.getInstance().schedule(cancelAction, ((starttime + duration) - System.currentTimeMillis()));
+            final ScheduledFuture<?> schedule = Timer.BUFF.schedule(cancelAction, ((starttime + duration) - System.currentTimeMillis()));
             this.statups = Collections.singletonList(new Pair<>(MapleBuffStat.ENERGY_CHARGE, 10000));
             applyto.registerEffect(this, starttime, schedule);
             this.statups = stat;
@@ -1361,7 +1360,7 @@ public class MapleStatEffect {
         }
         final long starttime = System.currentTimeMillis();
         final CancelEffectAction cancelAction = new CancelEffectAction(applyto, this, starttime);
-        final ScheduledFuture<?> schedule = BuffTimer.getInstance().schedule(cancelAction, ((starttime + localDuration) - System.currentTimeMillis()));
+        final ScheduledFuture<?> schedule = Timer.BUFF.schedule(cancelAction, ((starttime + localDuration) - System.currentTimeMillis()));
         applyto.registerEffect(this, starttime, schedule, localstatups);
     }
 

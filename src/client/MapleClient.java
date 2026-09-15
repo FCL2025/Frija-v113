@@ -65,7 +65,8 @@ import tools.packet.LoginPacket;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.session.IoSession;
+import handling.mina.MapleSession;
 import server.Timer.EtcTimer;
 import server.Timer.PingTimer;
 import server.quest.MapleQuest;
@@ -90,7 +91,7 @@ public class MapleClient {
     public static final int DEFAULT_CHARSLOT = 6;
     public static final String CLIENT_KEY = "CLIENT";
     private MapleAESOFB send, receive;
-    private IoSession session;
+    private final MapleSession session;
     private MapleCharacter player;
     private int channel = 1, accId = 1, world, birthday;
     private int charslots = DEFAULT_CHARSLOT;
@@ -119,10 +120,16 @@ public class MapleClient {
     private final Lock npc_mutex = new ReentrantLock();
     private final static Lock login_mutex = new ReentrantLock(true);
 
+    /**
+     * The MINA session is wrapped on the way in, so this constructor and
+     * {@code handling.MapleServerHandler} are the only places outside
+     * {@code handling.mina} that name a MINA type at all. See
+     * {@link MapleSession} for why the wrapper exists.
+     */
     public MapleClient(MapleAESOFB send, MapleAESOFB receive, IoSession session) {
         this.send = send;
         this.receive = receive;
-        this.session = session;
+        this.session = new MapleSession(session);
     }
 
     public final MapleAESOFB getReceiveCrypto() {
@@ -133,13 +140,13 @@ public class MapleClient {
         return send;
     }
 
-    public final IoSession getSession() {
+    public final MapleSession getSession() {
         return session;
     }
 
     /**
-     * 送出一個封包給這個連線。整棵樹唯一直接呼叫 MINA
-     * {@link IoSession#write(Object)} 的地方；其餘程式碼一律走這裡，
+     * 送出一個封包給這個連線。整棵樹唯一直接呼叫
+     * {@link MapleSession#write(MaplePacket)} 的地方；其餘程式碼一律走這裡，
      * 日後更換網路層時只需動 handling/mina/。
      */
     public final void send(final MaplePacket packet) {

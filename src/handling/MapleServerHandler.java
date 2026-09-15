@@ -35,6 +35,7 @@ import handling.cashshop.CashShopServer;
 import handling.channel.ChannelServer;
 import handling.login.LoginServer;
 import handling.mina.MaplePacketDecoder;
+import handling.mina.MapleSession;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.management.ManagementFactory;
@@ -52,9 +53,9 @@ import tools.data.input.GenericSeekableLittleEndianAccessor;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.Pair;
 
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.service.IoHandlerAdapter;
+import org.apache.mina.core.session.IdleStatus;
+import org.apache.mina.core.session.IoSession;
 import server.ServerProperties;
 import tools.FileoutputUtil;
 
@@ -535,7 +536,7 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         final String address = session.getRemoteAddress().toString().split(":")[0];
 
         if (BlockedIP.contains(address)) {
-            session.close();
+            session.closeNow();
             return;
         }
         // Read-modify-write in one atomic step. Split across a get and a put,
@@ -558,24 +559,24 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         if (updated.right >= 10) {
             BlockedIP.add(address);
             tracker.remove(address); // Cleanup
-            session.close();
+            session.closeNow();
             return;
         }
         // End of IP checking.
 
         if (channel > -1) {
             if (ChannelServer.getInstance(channel).isShutdown()) {
-                session.close();
+                session.closeNow();
                 return;
             }
         } else if (cs) {
             if (CashShopServer.isShutdown()) {
-                session.close();
+                session.closeNow();
                 return;
             }
         } else {
             if (LoginServer.isShutdown()) {
-                session.close();
+                session.closeNow();
                 return;
             }
         }
@@ -596,8 +597,11 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         session.write(LoginPacket.getHello(ServerConstants.MAPLE_VERSION,
                 ServerConstants.Use_Fixed_IV ? serverSend : ivSend, ServerConstants.Use_Fixed_IV ? serverRecv : ivRecv));
         session.setAttribute(MapleClient.CLIENT_KEY, client);
-        session.setIdleTime(IdleStatus.READER_IDLE, 60);
-        session.setIdleTime(IdleStatus.WRITER_IDLE, 60);
+        // MINA 1.1 had these on the session; MINA 2 moved them onto the
+        // session's config object. Same units (seconds), same effect: after 60
+        // idle seconds sessionIdle fires and the server pings the client.
+        session.getConfig().setIdleTime(IdleStatus.READER_IDLE, 60);
+        session.getConfig().setIdleTime(IdleStatus.WRITER_IDLE, 60);
 
         StringBuilder sb = new StringBuilder();
         if (channel > -1) {
@@ -636,11 +640,26 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 client.disconnect(true, cs);
             } finally {
                 Client.removeClient(client);
-                session.close();
+                session.closeNow();
                 session.removeAttribute(MapleClient.CLIENT_KEY);
             }
         }
         super.sessionClosed(session);
+    }
+
+    /**
+     * Replays a packet as if the client had sent it, for the {@code !packet} GM
+     * command.
+     *
+     * <p>That command reaches this class through {@code MapleClient.getSession()},
+     * which hands out a {@link MapleSession} rather than a MINA
+     * {@code IoSession} - see that class for why - so this overload exists to
+     * unwrap it. It deliberately does no work of its own: the whole point of
+     * {@code !packet} is that the bytes take the identical path a real packet
+     * takes.
+     */
+    public void messageReceived(final MapleSession session, final Object message) {
+        messageReceived(session.unwrap(), message);
     }
 
     @Override

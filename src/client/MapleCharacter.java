@@ -445,6 +445,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         ret.month = ct.month;
         ret.day = ct.day;
         ret.gachexp = ct.gachexp;
+        // E10：CharacterTransfer 一直有抄 battleshipHP，只是這裡沒有讀回來。漏掉的
+        // 後果不是崩潰而是白吃的補血：Loggedin 稍後用 PlayerBuffStorage 把
+        // MONSTER_RIDING 補回去時，registerEffect:832 那個「battleshipHP <= 0 就
+        // 填滿」的 quick hack 會命中，於是換一次頻道戰艦耐久就滿血。
+        ret.battleshipHP = ct.battleshipHP;
         ret.makeMFC(ct.familyid, ct.seniorid, ct.junior1, ct.junior2);
         if (ret.guildid > 0) {
             ret.mgc = new MapleGuildCharacter(ret);
@@ -3029,6 +3034,19 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public final List<Integer> getFamedCharacters() {
         return lastmonthfameids;
+    }
+
+    /**
+     * E10：成就列表。遊戲端拿成就的整套 API（setAchievementFinished /
+     * finishAchievement / getFinishedAchievements）在本樹裡是整段註解掉的，但
+     * 這個欄位本身並不是死的——CharacterRepository.loadCharFromDB 會照 accountid
+     * 把 achievements 整個帳號載進來，saveToDB 又會「先 DELETE 整個帳號再把這份
+     * 清單寫回去」。所以它必須跟著換頻走，否則換頻之後的第一次存檔會把整個帳號
+     * 的成就清空。這個 getter 是為了 CharacterTransfer（在 handling.world，碰不到
+     * package-private 欄位）而留的。
+     */
+    public final List<Integer> getFinishedAchievements() {
+        return finishedAchievements;
     }
 
     public FameStatus canGiveFame(MapleCharacter from) {

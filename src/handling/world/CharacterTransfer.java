@@ -36,6 +36,46 @@ import tools.Pair;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 換頻道／進出商城時，角色交給目的地頻道的那份資料。
+ *
+ * <p>流程是：來源端 {@code MapleCharacter.changeChannel} 或
+ * {@code InterServerHandler.EnterCS} 建一個 CharacterTransfer，
+ * {@code World.ChannelChange_Data} 把它登記成目的地 {@code PlayerStorage} 的
+ * pending 角色，客戶端接上新的埠之後 {@code InterServerHandler.Loggedin} 取出它，
+ * 由 {@code MapleCharacter.ReconstructChr} 重建成一個新的 MapleCharacter。沒取走
+ * 的（客戶端沒接上來）由 {@code PlayerStorage.PersistingTask} 依 TranferTime 在
+ * 40 秒後掃掉。整條路徑不經過資料庫，也不經過序列化。
+ *
+ * <h2>為什麼是一份欄位清單，而不是直接交遞活的 MapleCharacter</h2>
+ *
+ * <p>E10 評估過「改成交遞 MapleCharacter + rebind(client)」，結論是不改。理由是
+ * 來源頻道並沒有把角色從舊頻道摘乾淨：
+ *
+ * <ul>
+ * <li>{@code changeChannel} 走的是 {@code changeRemoval()}，不是斷線用的
+ *     {@code MapleClient.removalTask()}，所以 {@code cancelAllTimers()} 沒有被呼叫。
+ *     離開的角色身上 fairySchedule、mapTimeLimitTask、fishing、BerserkSchedule、
+ *     dragonBloodSchedule、beholder* 這些 ScheduledFuture 全部還活著，而且它們抓著
+ *     {@code this}、{@code map} 與舊的 {@code client}。現在這些計時器只是繼續戳一個
+ *     沒人在讀的屍體物件（到期前算是洩漏，但不會弄壞任何東西）；如果改成交遞同一個
+ *     物件，它們就變成對玩家正在用的角色的活寫入，而且 {@code map} 指著舊頻道的
+ *     {@code MapleMap}。
+ * <li>相對地，{@code ReconstructChr} 是在目的地頻道的 {@code MapleMapFactory} 上
+ *     重新解析 {@code map}，其餘的頻道綁定狀態（controlled、summons、
+ *     visibleMapObjects、doors、clones、anticheat、pets、effects、eventInstance）
+ *     則由 {@code MapleCharacter(boolean)} 建構子重新開一份。「哪些東西該重算」因此
+ *     是被這份清單明確定義的，而不是靠離開流程有沒有記得清。
+ * </ul>
+ *
+ * <p>要注意這份清單只有「淺」的意義：inventorys、storage、cs、keymap、mbook、
+ * InfoQuest、savedlocation／wishlist／rocks／regrocks／petStore 交出去的都是離開那個
+ * 角色身上的同一個物件（Quest 的值則是在 ReconstructChr 裡逐欄重建的）。這些都是
+ * 玩家私有的葉節點狀態，身上沒有指回 MapleMap／MapleClient／ChannelServer 的參考，
+ * 所以是安全的；被刻意丟掉的正好就是那些綁頻道的東西。
+ *
+ * <p>buff、冷卻與異常狀態不走這裡，由 {@code PlayerBuffStorage} 另外遞送。
+ */
 public class CharacterTransfer {
 
     public int characterid, accountid, exp,
@@ -145,9 +185,15 @@ public class CharacterTransfer {
             this.messengerid = 0;
         }
 
-        /*for (final Integer zz : chr.getFinishedAchievements()) {
-         this.finishedAchievements.add(zz);
-         }*/
+        // E10：這個迴圈原本是註解掉的，而 ReconstructChr 照樣讀 ct.finishedAchievements，
+        // 所以換頻之後角色的成就列表是空的。成就的 UI 那一套 API 確實是死的，但這個
+        // 欄位不是：loadCharFromDB 會照 accountid 把 achievements 載滿，saveToDB 則是
+        // 「DELETE FROM achievements WHERE accountid = ? 之後把這份清單寫回去」。
+        // 兩件事湊起來，換頻（或進出商城）之後的第一次存檔會清空整個帳號的成就列。
+        // 補回來之後，換頻路徑跟登入路徑拿到的是同一份清單。
+        for (final Integer zz : chr.getFinishedAchievements()) {
+            this.finishedAchievements.add(zz);
+        }
         this.mBookCover = chr.getMonsterBookCover();
         this.dojo = chr.getDojo();
         this.dojoRecord = (byte) chr.getDojoRecord();

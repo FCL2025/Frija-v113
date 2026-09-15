@@ -25,7 +25,7 @@ import java.util.List;
 
 import client.inventory.Equip;
 import client.SkillFactory;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.ISkill;
 import client.MapleCharacter;
 import client.MapleClient;
@@ -298,7 +298,7 @@ public abstract class AbstractPlayerInteraction {
     }
 
     public final boolean canHold(final int itemid) {
-        return c.getPlayer().getInventory(GameConstants.getInventoryType(itemid)).getNextFreeSlot() > -1;
+        return c.getPlayer().getInventory(ItemConstants.getInventoryType(itemid)).getNextFreeSlot() > -1;
     }
 
     public final boolean canHold(final int itemid, final int quantity) {
@@ -439,12 +439,12 @@ public abstract class AbstractPlayerInteraction {
     public final void gainItem(final int id, final short quantity, final boolean randomStats, final long period, final int slots, final String owner, final MapleClient cg) {
         if (quantity >= 0) {
             final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-            final MapleInventoryType type = GameConstants.getInventoryType(id);
+            final MapleInventoryType type = ItemConstants.getInventoryType(id);
 
             if (!MapleInventoryManipulator.checkSpace(cg, id, quantity, "")) {
                 return;
             }
-            if (type.equals(MapleInventoryType.EQUIP) && !GameConstants.isThrowingStar(id) && !GameConstants.isBullet(id)) {
+            if (type.equals(MapleInventoryType.EQUIP) && !ItemConstants.isThrowingStar(id) && !ItemConstants.isBullet(id)) {
                 final Equip item = (Equip) (randomStats ? ii.randomizeStats((Equip) ii.getEquipById(id)) : ii.getEquipById(id));
                 if (period > 0) {
                     item.setExpiration(System.currentTimeMillis() + (period * 24 * 60 * 60 * 1000));
@@ -466,7 +466,7 @@ public abstract class AbstractPlayerInteraction {
                 MapleInventoryManipulator.addById(cg, id, quantity, owner == null ? "" : owner, null, period);
             }
         } else {
-            MapleInventoryManipulator.removeById(cg, GameConstants.getInventoryType(id), id, -quantity, true, false);
+            MapleInventoryManipulator.removeById(cg, ItemConstants.getInventoryType(id), id, -quantity, true, false);
         }
         cg.send(InventoryPacket.getShowItemGain(id, quantity, true));
     }
@@ -632,7 +632,7 @@ public abstract class AbstractPlayerInteraction {
             if (quantity >= 0) {
                 MapleInventoryManipulator.addById(chr.getClient(), id, quantity);
             } else {
-                MapleInventoryManipulator.removeById(chr.getClient(), GameConstants.getInventoryType(id), id, -quantity, true, false);
+                MapleInventoryManipulator.removeById(chr.getClient(), ItemConstants.getInventoryType(id), id, -quantity, true, false);
             }
             chr.getClient().send(InventoryPacket.getShowItemGain(id, quantity, true));
         }
@@ -715,9 +715,9 @@ public abstract class AbstractPlayerInteraction {
 
     public final void removeFromParty(final int id, final List<MapleCharacter> party) {
         for (final MapleCharacter chr : party) {
-            final int possesed = chr.getInventory(GameConstants.getInventoryType(id)).countById(id);
+            final int possesed = chr.getInventory(ItemConstants.getInventoryType(id)).countById(id);
             if (possesed > 0) {
-                MapleInventoryManipulator.removeById(c, GameConstants.getInventoryType(id), id, possesed, true, false);
+                MapleInventoryManipulator.removeById(c, ItemConstants.getInventoryType(id), id, possesed, true, false);
                 chr.getClient().send(InventoryPacket.getShowItemGain(id, (short) -possesed, true));
             }
         }

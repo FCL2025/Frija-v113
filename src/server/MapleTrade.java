@@ -5,6 +5,7 @@ import java.util.List;
 import client.inventory.IItem;
 import client.inventory.ItemFlag;
 import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleCharacter;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
@@ -141,7 +142,7 @@ public class MapleTrade {
     public final boolean setItems(final MapleClient c, final IItem item, byte targetSlot, final int quantity) {
         int target = getNextTargetSlot();
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-        if (target == -1 || GameConstants.isPet(item.getItemId()) || isLocked() || (GameConstants.getInventoryType(item.getItemId()) == MapleInventoryType.CASH && quantity != 1) || (GameConstants.getInventoryType(item.getItemId()) == MapleInventoryType.EQUIP && quantity != 1)) {
+        if (target == -1 || ItemConstants.isPet(item.getItemId()) || isLocked() || (ItemConstants.getInventoryType(item.getItemId()) == MapleInventoryType.CASH && quantity != 1) || (ItemConstants.getInventoryType(item.getItemId()) == MapleInventoryType.EQUIP && quantity != 1)) {
             return false;
         }
         final byte flag = item.getFlag();
@@ -156,12 +157,12 @@ public class MapleTrade {
             }
         }
         IItem tradeItem = item.copy();
-        if (GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+        if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
             tradeItem.setQuantity(item.getQuantity());
-            MapleInventoryManipulator.removeFromSlot(c, GameConstants.getInventoryType(item.getItemId()), item.getPosition(), item.getQuantity(), true);
+            MapleInventoryManipulator.removeFromSlot(c, ItemConstants.getInventoryType(item.getItemId()), item.getPosition(), item.getQuantity(), true);
         } else {
             tradeItem.setQuantity((short) quantity);
-            MapleInventoryManipulator.removeFromSlot(c, GameConstants.getInventoryType(item.getItemId()), item.getPosition(), (short) quantity, true);
+            MapleInventoryManipulator.removeFromSlot(c, ItemConstants.getInventoryType(item.getItemId()), item.getPosition(), (short) quantity, true);
         }
         if (targetSlot < 0) {
             targetSlot = (byte) target;
@@ -185,7 +186,7 @@ public class MapleTrade {
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         byte eq = 0, use = 0, setup = 0, etc = 0, cash = 0;
         for (final IItem item : exchangeItems) {
-            switch (GameConstants.getInventoryType(item.getItemId())) {
+            switch (ItemConstants.getInventoryType(item.getItemId())) {
                 case EQUIP:
                     eq++;
                     break;
@@ -202,7 +203,7 @@ public class MapleTrade {
                     cash++;
                     break;
             }
-            if (ii.isPickupRestricted(item.getItemId()) && chr.get().getInventory(GameConstants.getInventoryType(item.getItemId())).findById(item.getItemId()) != null) {
+            if (ii.isPickupRestricted(item.getItemId()) && chr.get().getInventory(ItemConstants.getInventoryType(item.getItemId())).findById(item.getItemId()) != null) {
                 return 2;
             }
         }

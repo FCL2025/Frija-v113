@@ -35,7 +35,7 @@ import server.shops.MaplePlayerShop;
 import server.shops.MaplePlayerShopItem;
 import tools.Pair;
 import tools.data.output.MaplePacketLittleEndianWriter;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.MapleInventoryType;
 import handling.channel.handler.InventoryHandler;
 
@@ -611,8 +611,8 @@ public class PlayerShopPacket {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         mplew.writeShort(SendPacketOpcode.OWL_OF_MINERVA.getValue());
         mplew.write(7);
-        mplew.write(GameConstants.owlItems.length);
-        for (int i : GameConstants.owlItems) {
+        mplew.write(ItemConstants.owlItems.length);
+        for (int i : ItemConstants.owlItems) {
             mplew.writeInt(i);
         } //these are the most searched items. too lazy to actually make
         return mplew.getPacket();
@@ -651,8 +651,8 @@ public class PlayerShopPacket {
                         break;
                 }
                 mplew.write(hm.getFreeSlot() == -1 ? 1 : 0);
-                mplew.write(GameConstants.getInventoryType(itemSearch).getType()); //position?
-                if (GameConstants.getInventoryType(itemSearch) == MapleInventoryType.EQUIP) {
+                mplew.write(ItemConstants.getInventoryType(itemSearch).getType()); //position?
+                if (ItemConstants.getInventoryType(itemSearch) == MapleInventoryType.EQUIP) {
                     PacketHelper.addItemInfo(mplew, item.item, true, true);
                 }
             }

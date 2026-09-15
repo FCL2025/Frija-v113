@@ -26,7 +26,7 @@ import client.inventory.MapleInventory;
 import client.inventory.MapleInventoryType;
 import client.inventory.MapleMount;
 import client.inventory.MaplePet;
-import constants.GameConstants;
+import constants.JobConstants;
 import database.DatabaseConnection;
 import database.DatabaseException;
 import handling.channel.ChannelServer;
@@ -321,10 +321,10 @@ public class CharacterRepository {
                 ISkill skil;
                 while (rs.next()) {
                     skil = SkillFactory.getSkill(rs.getInt("skillid"));
-                    if (skil != null && GameConstants.isApplicableSkill(rs.getInt("skillid"))) {
+                    if (skil != null && JobConstants.isApplicableSkill(rs.getInt("skillid"))) {
                         ret.skills.put(skil, new SkillEntry(rs.getByte("skilllevel"), rs.getByte("masterlevel"), rs.getLong("expiration")));
                     } else if (skil == null) { //doesnt. exist. e.g. bb
-                        ret.remainingSp[GameConstants.getSkillBookForSkill(rs.getInt("skillid"))] += rs.getByte("skilllevel");
+                        ret.remainingSp[JobConstants.getSkillBookForSkill(rs.getInt("skillid"))] += rs.getByte("skilllevel");
                     }
                 }
                 rs.close();
@@ -350,13 +350,13 @@ public class CharacterRepository {
                         }
 
                     } else if (charid < 17000 && !compensate_previousEvans && ret.job >= 2200 && ret.job <= 2218) { //compensate, watch max charid
-                        for (int i = 0; i <= GameConstants.getSkillBook(ret.job); i++) {
+                        for (int i = 0; i <= JobConstants.getSkillBook(ret.job); i++) {
                             ret.remainingSp[i] += 2; //2 that they missed. gg
                         }
                         ret.setQuestAdd(MapleQuest.getInstance(170000), (byte) 0, null); //set it so never again
                     }
                 }
-                ret.skills.put(SkillFactory.getSkill(GameConstants.getBOF_ForJob(ret.job)), new SkillEntry(maxlevel_, (byte) 0, -1));
+                ret.skills.put(SkillFactory.getSkill(JobConstants.getBOF_ForJob(ret.job)), new SkillEntry(maxlevel_, (byte) 0, -1));
                 ps.close();
                 rs.close();
                 // END
@@ -880,7 +880,7 @@ public class CharacterRepository {
             ps.setInt(1, chr.id);
 
             for (final Entry<ISkill, SkillEntry> skill : chr.skills.entrySet()) {
-                if (GameConstants.isApplicableSkill(skill.getKey().getId())) { //do not save additional skills
+                if (JobConstants.isApplicableSkill(skill.getKey().getId())) { //do not save additional skills
                     ps.setInt(2, skill.getKey().getId());
                     ps.setByte(3, skill.getValue().skillevel);
                     ps.setByte(4, skill.getValue().masterlevel);

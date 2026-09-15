@@ -32,7 +32,8 @@ import java.util.Map.Entry;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.IItem;
 import client.ISkill;
 import client.inventory.Item;
@@ -414,7 +415,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
                 exp /= 2;
             }
             exp *= attacker.getEXPMod() * (int) (attacker.getStat().expBuff / 100.0);
-            exp = Math.min(Integer.MAX_VALUE, exp * (attacker.getLevel() < 10 ? GameConstants.getExpRate_Below10(attacker.getJob()) : ChannelServer.getInstance(map.getChannel()).getExpRate()));
+            exp = Math.min(Integer.MAX_VALUE, exp * (attacker.getLevel() < 10 ? JobConstants.getExpRate_Below10(attacker.getJob()) : ChannelServer.getInstance(map.getChannel()).getExpRate()));
             //do this last just incase someone has a 2x exp card and its set to max value
             int Class_Bonus_EXP = 0;
             if (Class_Bonus_EXP_PERCENT > 0) {
@@ -1489,7 +1490,7 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
             IItem idrop;
             for (MonsterDropEntry d : dropEntry) {
                 if (d.itemId() > 0 && d.questid() == 0 && steal.getEffect(level).makeChanceResult()) { //kinda op
-                    if (GameConstants.getInventoryType(d.itemId()) == MapleInventoryType.EQUIP) {
+                    if (ItemConstants.getInventoryType(d.itemId()) == MapleInventoryType.EQUIP) {
                         Equip eq = (Equip) MapleItemInformationProvider.getInstance().getEquipById(d.itemId());
                         idrop = MapleItemInformationProvider.getInstance().randomizeStats(eq);
                     } else {

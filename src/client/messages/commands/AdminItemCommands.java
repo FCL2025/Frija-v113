@@ -11,7 +11,7 @@ import client.inventory.MapleInventoryIdentifier;
 import client.inventory.MapleInventoryType;
 import client.inventory.MapleRing;
 import client.messages.CommandProcessorUtil;
-import constants.GameConstants;
+import constants.ItemConstants;
 import handling.channel.ChannelServer;
 import java.awt.Point;
 import java.sql.SQLException;
@@ -229,7 +229,7 @@ public class AdminItemCommands {
             final short quantity = (short) CommandProcessorUtil.getOptionalIntArg(splitted, 2, 1);
 
             if (!c.getPlayer().isAdmin()) {
-                for (int i : GameConstants.itemBlock) {
+                for (int i : ItemConstants.itemBlock) {
                     if (itemId == i) {
                         c.getPlayer().dropMessage(5, "很抱歉，此物品您的ＧＭ等級無法呼叫.");
                         return 0;
@@ -237,7 +237,7 @@ public class AdminItemCommands {
                 }
             }
             MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-            if (GameConstants.isPet(itemId)) {
+            if (ItemConstants.isPet(itemId)) {
                 c.getPlayer().dropMessage(5, "Please purchase a pet from the cash shop instead.");
             } else if (!ii.itemExists(itemId)) {
                 c.getPlayer().dropMessage(5, itemId + "  不存在");
@@ -246,13 +246,13 @@ public class AdminItemCommands {
                 byte flag = 0;
                 flag = (byte) (flag | ItemFlag.LOCK.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
 
-                if (GameConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+                if (ItemConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
                     item = ii.randomizeStats((Equip) ii.getEquipById(itemId));
                     item.setFlag(flag);
 
                 } else {
                     item = new client.inventory.Item(itemId, (byte) 0, quantity, (byte) 0);
-                    if (GameConstants.getInventoryType(itemId) != MapleInventoryType.USE) {
+                    if (ItemConstants.getInventoryType(itemId) != MapleInventoryType.USE) {
                         item.setFlag(flag);
                     }
                 }
@@ -272,13 +272,13 @@ public class AdminItemCommands {
             final int itemId = Integer.parseInt(splitted[1]);
             final short quantity = (short) CommandProcessorUtil.getOptionalIntArg(splitted, 2, 1);
             MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-            if (GameConstants.isPet(itemId)) {
+            if (ItemConstants.isPet(itemId)) {
                 c.getPlayer().dropMessage(5, "Please purchase a pet from the cash shop instead.");
             } else if (!ii.itemExists(itemId)) {
                 c.getPlayer().dropMessage(5, itemId + " does not exist");
             } else {
                 IItem toDrop;
-                if (GameConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+                if (ItemConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
 
                     toDrop = ii.randomizeStats((Equip) ii.getEquipById(itemId));
                 } else {
@@ -355,7 +355,7 @@ public class AdminItemCommands {
                 return 0;
             }
             int itemId = Integer.parseInt(splitted[2]);
-            if (!GameConstants.isEffectRing(itemId)) {
+            if (!ItemConstants.isEffectRing(itemId)) {
                 c.getPlayer().dropMessage(6, "錯誤的物品ID.");
             } else {
                 MapleCharacter fff = c.getChannelServer().getPlayerStorage().getCharacterByName(splitted[1]);
@@ -442,7 +442,7 @@ public class AdminItemCommands {
                 return 0;
             }
             int itemid = Integer.parseInt(splitted[2]);
-            MapleInventoryType type = GameConstants.getInventoryType(itemid);
+            MapleInventoryType type = ItemConstants.getInventoryType(itemid);
             for (IItem item : chr.getInventory(type).listById(itemid)) {
                 item.setFlag((byte) (item.getFlag() | ItemFlag.LOCK.getValue()));
                 chr.getClient().send(InventoryPacket.updateSpecialItemUse(item, type.getType()));

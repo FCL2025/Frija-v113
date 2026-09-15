@@ -42,6 +42,8 @@ import client.inventory.MapleInventory;
 import client.MapleStat;
 import client.PlayerStats;
 import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.SkillFactory;
 import client.anticheat.CheatingOffense;
 import handling.channel.ChannelServer;
@@ -192,7 +194,7 @@ public class InventoryHandler {
     }
 
     public static final boolean UseRewardItem(final byte slot, final int itemId, final MapleClient c, final MapleCharacter chr) {
-        final IItem toUse = c.getPlayer().getInventory(GameConstants.getInventoryType(itemId)).getItem(slot);
+        final IItem toUse = c.getPlayer().getInventory(ItemConstants.getInventoryType(itemId)).getItem(slot);
         c.send(CharacterPacket.enableActions());
         if (toUse != null && toUse.getQuantity() >= 1 && toUse.getItemId() == itemId) {
             if (chr.getInventory(MapleInventoryType.EQUIP).getNextFreeSlot() > -1 && chr.getInventory(MapleInventoryType.USE).getNextFreeSlot() > -1 && chr.getInventory(MapleInventoryType.SETUP).getNextFreeSlot() > -1 && chr.getInventory(MapleInventoryType.ETC).getNextFreeSlot() > -1) {
@@ -204,7 +206,7 @@ public class InventoryHandler {
                     while (!rewarded) {
                         for (StructRewardItem reward : rewards.getRight()) {
                             if (reward.prob() > 0 && Randomizer.nextInt(rewards.getLeft()) < reward.prob()) { // Total prob
-                                if (GameConstants.getInventoryType(reward.itemid()) == MapleInventoryType.EQUIP) {
+                                if (ItemConstants.getInventoryType(reward.itemid()) == MapleInventoryType.EQUIP) {
                                     final IItem item = ii.getEquipById(reward.itemid());
                                     if (reward.period() > 0) {
                                         item.setExpiration(System.currentTimeMillis() + (reward.period() * 60 * 60 * 10));
@@ -213,7 +215,7 @@ public class InventoryHandler {
                                 } else {
                                     MapleInventoryManipulator.addById(c, reward.itemid(), reward.quantity());
                                 }
-                                MapleInventoryManipulator.removeById(c, GameConstants.getInventoryType(itemId), itemId, 1, false, false);
+                                MapleInventoryManipulator.removeById(c, ItemConstants.getInventoryType(itemId), itemId, 1, false, false);
 
                                 c.send(InventoryPacket.showRewardItemAnimation(reward.itemid(), reward.effect()));
                                 chr.getMap().broadcastMessage(chr, InventoryPacket.showRewardItemAnimation(reward.itemid(), reward.effect(), chr.getId()), false);
@@ -314,7 +316,7 @@ public class InventoryHandler {
                     boolean rewarded = false;
                     while (!rewarded) {
                         StructPotentialItem pot = pots.get(Randomizer.nextInt(pots.size())).get(reqLevel);
-                        if (pot != null && pot.reqLevel / 10 <= reqLevel && GameConstants.optionTypeFits(pot.optionType, eqq.getItemId()) && GameConstants.potentialIDFits(pot.potentialID, new_state, i)) { //optionType
+                        if (pot != null && pot.reqLevel / 10 <= reqLevel && ItemConstants.optionTypeFits(pot.optionType, eqq.getItemId()) && ItemConstants.potentialIDFits(pot.potentialID, new_state, i)) { //optionType
                             //have to research optionType before making this truely sea-like
                             if (i == 0) {
                                 eqq.setPotential1(pot.potentialID);
@@ -371,34 +373,34 @@ public class InventoryHandler {
             c.send(InventoryPacket.getInventoryFull());
             return false;
         }
-        if (!GameConstants.isSpecialScroll(scroll.getItemId()) && !GameConstants.isCleanSlate(scroll.getItemId()) && !GameConstants.isEquipScroll(scroll.getItemId()) && !GameConstants.isPotentialScroll(scroll.getItemId())) {
+        if (!ItemConstants.isSpecialScroll(scroll.getItemId()) && !ItemConstants.isCleanSlate(scroll.getItemId()) && !ItemConstants.isEquipScroll(scroll.getItemId()) && !ItemConstants.isPotentialScroll(scroll.getItemId())) {
             if (toScroll.getUpgradeSlots() < 1) {
                 c.send(InventoryPacket.getInventoryFull());
                 return false;
             }
-        } else if (GameConstants.isEquipScroll(scroll.getItemId())) {
+        } else if (ItemConstants.isEquipScroll(scroll.getItemId())) {
             if (toScroll.getUpgradeSlots() >= 1 || toScroll.getEnhance() >= 100 || vegas > 0 || ii.isCash(toScroll.getItemId())) {
                 c.send(InventoryPacket.getInventoryFull());
                 return false;
             }
-        } else if (GameConstants.isPotentialScroll(scroll.getItemId())) {
+        } else if (ItemConstants.isPotentialScroll(scroll.getItemId())) {
             if (toScroll.getState() >= 1 || (toScroll.getLevel() == 0 && toScroll.getUpgradeSlots() == 0) || vegas > 0 || ii.isCash(toScroll.getItemId())) {
                 c.send(InventoryPacket.getInventoryFull());
                 return false;
             }
         }
-        if (!GameConstants.canScroll(toScroll.getItemId()) && !GameConstants.isChaosScroll(toScroll.getItemId())) {
+        if (!ItemConstants.canScroll(toScroll.getItemId()) && !ItemConstants.isChaosScroll(toScroll.getItemId())) {
             c.send(InventoryPacket.getInventoryFull());
             return false;
         }
-        if ((GameConstants.isCleanSlate(scroll.getItemId()) || GameConstants.isTablet(scroll.getItemId()) || GameConstants.isChaosScroll(scroll.getItemId())) && (vegas > 0 || ii.isCash(toScroll.getItemId()))) {
+        if ((ItemConstants.isCleanSlate(scroll.getItemId()) || ItemConstants.isTablet(scroll.getItemId()) || ItemConstants.isChaosScroll(scroll.getItemId())) && (vegas > 0 || ii.isCash(toScroll.getItemId()))) {
             c.send(InventoryPacket.getInventoryFull());
             return false;
         }
-        if (GameConstants.isTablet(scroll.getItemId()) && toScroll.getDurability() < 0) { //not a durability item
+        if (ItemConstants.isTablet(scroll.getItemId()) && toScroll.getDurability() < 0) { //not a durability item
             c.send(InventoryPacket.getInventoryFull());
             return false;
-        } else if (!GameConstants.isTablet(scroll.getItemId()) && toScroll.getDurability() >= 0) {
+        } else if (!ItemConstants.isTablet(scroll.getItemId()) && toScroll.getDurability() >= 0) {
             c.send(InventoryPacket.getInventoryFull());
             return false;
         }
@@ -422,35 +424,35 @@ public class InventoryHandler {
             //ravana
             return false;
         }
-        if (GameConstants.isTablet(scroll.getItemId())) {
+        if (ItemConstants.isTablet(scroll.getItemId())) {
             switch (scroll.getItemId() % 1000 / 100) {
                 case 0: //1h
-                    if (GameConstants.isTwoHanded(toScroll.getItemId()) || !GameConstants.isWeapon(toScroll.getItemId())) {
+                    if (ItemConstants.isTwoHanded(toScroll.getItemId()) || !ItemConstants.isWeapon(toScroll.getItemId())) {
                         return false;
                     }
                     break;
                 case 1: //2h
-                    if (!GameConstants.isTwoHanded(toScroll.getItemId()) || !GameConstants.isWeapon(toScroll.getItemId())) {
+                    if (!ItemConstants.isTwoHanded(toScroll.getItemId()) || !ItemConstants.isWeapon(toScroll.getItemId())) {
                         return false;
                     }
                     break;
                 case 2: //armor
-                    if (GameConstants.isAccessory(toScroll.getItemId()) || GameConstants.isWeapon(toScroll.getItemId())) {
+                    if (ItemConstants.isAccessory(toScroll.getItemId()) || ItemConstants.isWeapon(toScroll.getItemId())) {
                         return false;
                     }
                     break;
                 case 3: //accessory
-                    if (!GameConstants.isAccessory(toScroll.getItemId()) || GameConstants.isWeapon(toScroll.getItemId())) {
+                    if (!ItemConstants.isAccessory(toScroll.getItemId()) || ItemConstants.isWeapon(toScroll.getItemId())) {
                         return false;
                     }
                     break;
             }
-        } else if (!GameConstants.isAccessoryScroll(scroll.getItemId()) && !GameConstants.isChaosScroll(scroll.getItemId()) && !GameConstants.isCleanSlate(scroll.getItemId()) && !GameConstants.isEquipScroll(scroll.getItemId()) && !GameConstants.isPotentialScroll(scroll.getItemId())) {
+        } else if (!ItemConstants.isAccessoryScroll(scroll.getItemId()) && !ItemConstants.isChaosScroll(scroll.getItemId()) && !ItemConstants.isCleanSlate(scroll.getItemId()) && !ItemConstants.isEquipScroll(scroll.getItemId()) && !ItemConstants.isPotentialScroll(scroll.getItemId())) {
             if (!ii.canScroll(scroll.getItemId(), toScroll.getItemId())) {
                 return false;
             }
         }
-        if (GameConstants.isAccessoryScroll(scroll.getItemId()) && !GameConstants.isAccessory(toScroll.getItemId())) {
+        if (ItemConstants.isAccessoryScroll(scroll.getItemId()) && !ItemConstants.isAccessory(toScroll.getItemId())) {
             return false;
         }
         if (scroll.getQuantity() <= 0) {
@@ -471,7 +473,7 @@ public class InventoryHandler {
             scrollSuccess = IEquip.ScrollResult.CURSE;
         } else if (scrolled.getLevel() > oldLevel || scrolled.getEnhance() > oldEnhance || scrolled.getState() > oldState || scrolled.getFlag() > oldFlag) {
             scrollSuccess = IEquip.ScrollResult.SUCCESS;
-        } else if ((GameConstants.isCleanSlate(scroll.getItemId()) && scrolled.getUpgradeSlots() > oldSlots)) {
+        } else if ((ItemConstants.isCleanSlate(scroll.getItemId()) && scrolled.getUpgradeSlots() > oldSlots)) {
             scrollSuccess = IEquip.ScrollResult.SUCCESS;
         } else {
             scrollSuccess = IEquip.ScrollResult.FAIL;
@@ -804,7 +806,7 @@ public class InventoryHandler {
             }
         }
         if (mountid > 0) {
-            mountid += (GameConstants.isAran(c.getPlayer().getJob()) ? 20000000 : (GameConstants.isEvan(c.getPlayer().getJob()) ? 20010000 : (GameConstants.isKOC(c.getPlayer().getJob()) ? 10000000 : (GameConstants.isResist(c.getPlayer().getJob()) ? 30000000 : 0))));
+            mountid += (JobConstants.isAran(c.getPlayer().getJob()) ? 20000000 : (JobConstants.isEvan(c.getPlayer().getJob()) ? 20010000 : (JobConstants.isKOC(c.getPlayer().getJob()) ? 10000000 : (JobConstants.isResist(c.getPlayer().getJob()) ? 30000000 : 0))));
             if (c.getPlayer().getSkillLevel(mountid) > 0) {
                 c.getPlayer().dropMessage(5, "You already have this skill.");
             } else if (expiration_days > 0) {
@@ -901,7 +903,7 @@ public class InventoryHandler {
             MapleInventoryManipulator.removeById(c, MapleInventoryType.CASH, keyIDforRemoval, 1, true, false);
             c.send(InventoryPacket.getShowItemGain(reward, (short) amount, true));
 
-            if (GameConstants.gachaponRareItem(item.getItemId()) > 0) {
+            if (ItemConstants.gachaponRareItem(item.getItemId()) > 0) {
                 Broadcast.broadcastMessage(ChatPacket.getGachaponMega("[" + box + "] " + c.getPlayer().getName(), " : 從金寶箱中獲得", item, (byte) 2).getBytes());
             }
         } else {
@@ -1265,7 +1267,7 @@ public class InventoryHandler {
                         if (improvingMaxHPLevel >= 1) {
                             maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getY();
                         }
-                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job))) { // Magician
+                    } else if ((job >= 200 && job <= 232) || (JobConstants.isEvan(job))) { // Magician
                         maxhp += Randomizer.rand(10, 20);
                     } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312)) { // Bowman
                         maxhp += Randomizer.rand(16, 20);
@@ -1310,7 +1312,7 @@ public class InventoryHandler {
                         maxmp += Randomizer.rand(6, 8);
                     } else if (job >= 100 && job <= 132) { // Warrior
                         maxmp += Randomizer.rand(5, 7);
-                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
+                    } else if ((job >= 200 && job <= 232) || (JobConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
                         ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
                         int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
                         maxmp += Randomizer.rand(18, 20);
@@ -1476,7 +1478,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         final int days = 1;
-        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+        if (item != null && !ItemConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
             boolean change = true;
             for (String z : GameConstants.RESERVED) {
                 if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
@@ -1499,7 +1501,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         final int days = 7;
-        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+        if (item != null && !ItemConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
             boolean change = true;
             for (String z : GameConstants.RESERVED) {
                 if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
@@ -1522,7 +1524,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         final int days = 20;
-        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+        if (item != null && !ItemConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
             boolean change = true;
             for (String z : GameConstants.RESERVED) {
                 if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
@@ -1545,7 +1547,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         final int days = 50;
-        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+        if (item != null && !ItemConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
             boolean change = true;
             for (String z : GameConstants.RESERVED) {
                 if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
@@ -1568,7 +1570,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem(slea.readShort());
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         final int days = 99;
-        if (item != null && !GameConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
+        if (item != null && !ItemConstants.isAccessory(item.getItemId()) && item.getExpiration() > -1 && !ii.isCash(item.getItemId()) && System.currentTimeMillis() + (100 * 24 * 60 * 60 * 1000L) > item.getExpiration() + (days * 24 * 60 * 60 * 1000L)) {
             boolean change = true;
             for (String z : GameConstants.RESERVED) {
                 if (c.getPlayer().getName().indexOf(z) != -1 || item.getOwner().indexOf(z) != -1) {
@@ -1655,7 +1657,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
         final Equip item = (Equip) c.getPlayer().getInventory(MapleInventoryType.EQUIP).getItem((byte) slea.readInt());
         // another int here, D3 49 DC 00
         if (item != null) {
-            if (GameConstants.canHammer(item.getItemId()) && MapleItemInformationProvider.getInstance().getSlots(item.getItemId()) > 0 && item.getViciousHammer() <= 2) {
+            if (ItemConstants.canHammer(item.getItemId()) && MapleItemInformationProvider.getInstance().getSlots(item.getItemId()) > 0 && item.getViciousHammer() <= 2) {
                 item.setViciousHammer((byte) (item.getViciousHammer() + 1));
                 item.setUpgradeSlots((byte) (item.getUpgradeSlots() + 1));
 
@@ -2375,7 +2377,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
                 } else if (useItem(c, mapitem.getItemId())) {
                     removeItem(c.getPlayer(), mapitem, ob);
                 } else if (MapleInventoryManipulator.checkSpace(c, mapitem.getItem().getItemId(), mapitem.getItem().getQuantity(), mapitem.getItem().getOwner())) {
-                    if (mapitem.getItem().getQuantity() >= 50 && GameConstants.isUpgradeScroll(mapitem.getItem().getItemId())) {
+                    if (mapitem.getItem().getQuantity() >= 50 && ItemConstants.isUpgradeScroll(mapitem.getItem().getItemId())) {
                         c.setMonitored(true); //hack check
                     }
                     if (MapleInventoryManipulator.addFromDrop(c, mapitem.getItem(), true, mapitem.getDropper() instanceof MapleMonster)) {
@@ -2470,7 +2472,7 @@ if ((c.getPlayer().getSkillLevel(skillSPTo) + 1 <= skillSPTo.getMaxLevel()) && c
     }
 
     public static final boolean useItem(final MapleClient c, final int id) {
-        if (GameConstants.isUse(id)) { // TO prevent caching of everything, waste of mem
+        if (ItemConstants.isUse(id)) { // TO prevent caching of everything, waste of mem
             final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
             final byte consumeval = ii.isConsumeOnPickup(id);
 

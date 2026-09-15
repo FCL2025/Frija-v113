@@ -21,7 +21,7 @@
  */
 package server;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.IItem;
 import client.inventory.ItemLoader;
 import client.inventory.MapleInventoryType;
@@ -207,7 +207,7 @@ public class MTSStorage {
                         if (!items.containsKey(m.getId())) {
                             items.put(m.getId(), new ArrayList<>());
                         }
-                        items.get(m.getId()).add(new Pair<>(m.getItem(), GameConstants.getInventoryType(m.getItem().getItemId())));
+                        items.get(m.getId()).add(new Pair<>(m.getItem(), ItemConstants.getInventoryType(m.getItem().getItemId())));
                     }
                 }
                 for (int i : toRemove) {
@@ -340,7 +340,7 @@ public class MTSStorage {
         for (int i = page * 16; i < page * 16 + 16; i++) {
             if (buyNow.size() >= i + 1) {
                 r = rett.get(i); //by index
-                if (r != null && (type == 0 || GameConstants.getInventoryType(r.getItem().getItemId()).getType() == type)) {
+                if (r != null && (type == 0 || ItemConstants.getInventoryType(r.getItem().getItemId()).getType() == type)) {
                     ret.add(r);
                 }
             } else {
@@ -358,7 +358,7 @@ public class MTSStorage {
             r = buyNow.get(i);
             if (r == null) {
                 cart.removeFromCart(i);
-            } else if (cart.getType() == 0 || GameConstants.getInventoryType(r.getItem().getItemId()).getType() == cart.getType()) {
+            } else if (cart.getType() == 0 || ItemConstants.getInventoryType(r.getItem().getItemId()).getType() == cart.getType()) {
                 ret.add(r);
             }
         }

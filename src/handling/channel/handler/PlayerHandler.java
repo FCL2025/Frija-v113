@@ -27,14 +27,15 @@ import client.inventory.IItem;
 import client.ISkill;
 import client.SkillFactory;
 import client.SkillMacro;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
+import constants.MapConstants;
 import client.inventory.MapleInventoryType;
 import client.MapleBuffStat;
 import client.MapleClient;
 import client.MapleCharacter;
 import client.PlayerStats;
 import client.anticheat.CheatingOffense;
-import constants.MapConstants;
 import handling.channel.ChannelServer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -79,7 +80,7 @@ public class PlayerHandler {
     }
 
     public static void ChangeMonsterBookCover(final int bookid, final MapleClient c, final MapleCharacter chr) {
-        if (bookid == 0 || GameConstants.isMonsterCard(bookid)) {
+        if (bookid == 0 || ItemConstants.isMonsterCard(bookid)) {
             chr.setMonsterBookCover(bookid);
             chr.getMonsterBook().updateCard(c, bookid);
         }
@@ -485,11 +486,11 @@ public class PlayerHandler {
         final ISkill skill = SkillFactory.getSkill(skillid);
 
         if (chr.getSkillLevel(skill) <= 0 || chr.getSkillLevel(skill) != skillLevel) {
-            if (!GameConstants.isMulungSkill(skillid) && !GameConstants.isPyramidSkill(skillid)) {
+            if (!JobConstants.isMulungSkill(skillid) && !JobConstants.isPyramidSkill(skillid)) {
                 c.getSession().close();
                 return;
             }
-            if (GameConstants.isMulungSkill(skillid)) {
+            if (JobConstants.isMulungSkill(skillid)) {
                 if (chr.getMapId() / 10000 != 92502) {
                     // 刻意保留：記錄「在武陵道場外使用道場技能」這個自動封鎖檢查存在，
                     // 但被關掉了，現在只是安靜地 return。
@@ -498,7 +499,7 @@ public class PlayerHandler {
                 } else {
                     chr.mulung_EnergyModify(false);
                 }
-            } else if (GameConstants.isPyramidSkill(skillid)) {
+            } else if (JobConstants.isPyramidSkill(skillid)) {
                 if (chr.getMapId() / 10000 != 92602) {
                     // 刻意保留：記錄「在金字塔外使用金字塔技能」這個自動封鎖檢查存在，
                     // 但被關掉了，現在只是安靜地 return。
@@ -507,7 +508,7 @@ public class PlayerHandler {
                 }
             }
         }
-        final MapleStatEffect effect = skill.getEffect(chr.getSkillLevel(GameConstants.getLinkedAranSkill(skillid)));
+        final MapleStatEffect effect = skill.getEffect(chr.getSkillLevel(JobConstants.getLinkedAranSkill(skillid)));
 
         if (effect.getCooldown() > 0 && !chr.isGM()) {
             if (chr.skillisCooling(skillid)) {
@@ -556,8 +557,8 @@ public class PlayerHandler {
                     
                 } else {
                     final int mountid = MapleStatEffect.parseMountInfo(c.getPlayer(), skill.getId());
-                    if (mountid != 0 && mountid != GameConstants.getMountItem(skill.getId()) && !c.getPlayer().isGM() && c.getPlayer().getBuffedValue(MapleBuffStat.MONSTER_RIDING) == null && c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -118) == null) {
-                        if (!GameConstants.isMountItemAvailable(mountid, c.getPlayer().getJob())) {
+                    if (mountid != 0 && mountid != ItemConstants.getMountItem(skill.getId()) && !c.getPlayer().isGM() && c.getPlayer().getBuffedValue(MapleBuffStat.MONSTER_RIDING) == null && c.getPlayer().getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -118) == null) {
+                        if (!ItemConstants.isMountItemAvailable(mountid, c.getPlayer().getJob())) {
                             c.send(CharacterPacket.enableActions());
                             return;
                         }
@@ -569,7 +570,7 @@ public class PlayerHandler {
     }
 
     public static final void closeRangeAttack(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr, final boolean energy) {
-        if (chr == null || (energy && chr.getBuffedValue(MapleBuffStat.ENERGY_CHARGE) == null && chr.getBuffedValue(MapleBuffStat.BODY_PRESSURE) == null && !GameConstants.isKOC(chr.getJob()))) {
+        if (chr == null || (energy && chr.getBuffedValue(MapleBuffStat.ENERGY_CHARGE) == null && chr.getBuffedValue(MapleBuffStat.BODY_PRESSURE) == null && !JobConstants.isKOC(chr.getJob()))) {
             return;
         }
         if (!chr.isAlive() || chr.getMap() == null) {
@@ -584,7 +585,7 @@ public class PlayerHandler {
         ISkill skill = null;
 
         if (attack.skill != 0) {
-            skill = SkillFactory.getSkill(GameConstants.getLinkedAranSkill(attack.skill));
+            skill = SkillFactory.getSkill(JobConstants.getLinkedAranSkill(attack.skill));
             skillLevel = chr.getSkillLevel(skill);
             effect = attack.getAttackEffect(chr, skillLevel, skill);
             if (effect == null) {
@@ -715,7 +716,7 @@ public class PlayerHandler {
         ISkill skill = null;
 
         if (attack.skill != 0) {
-            skill = SkillFactory.getSkill(GameConstants.getLinkedAranSkill(attack.skill));
+            skill = SkillFactory.getSkill(JobConstants.getLinkedAranSkill(attack.skill));
             skillLevel = chr.getSkillLevel(skill);
             effect = attack.getAttackEffect(chr, skillLevel, skill);
             if (effect == null) {
@@ -845,7 +846,7 @@ public class PlayerHandler {
             return;
         }
         final AttackInfo attack = DamageParse.Modify_AttackCrit(DamageParse.parseDmgMa(slea), chr, 3);
-        final ISkill skill = SkillFactory.getSkill(GameConstants.getLinkedAranSkill(attack.skill));
+        final ISkill skill = SkillFactory.getSkill(JobConstants.getLinkedAranSkill(attack.skill));
         final int skillLevel = chr.getSkillLevel(skill);
         final MapleStatEffect effect = attack.getAttackEffect(chr, skillLevel, skill);
         if (effect == null) {
@@ -893,7 +894,7 @@ public class PlayerHandler {
     public static final void ChangeEmotion(final int emote, final MapleCharacter chr) {
         if (emote > 7) {
             final int emoteid = 5159992 + emote;
-            final MapleInventoryType type = GameConstants.getInventoryType(emoteid);
+            final MapleInventoryType type = ItemConstants.getInventoryType(emoteid);
             if (chr.getInventory(type).findById(emoteid) == null) {
                 chr.getCheatTracker().registerOffense(CheatingOffense.USING_UNAVAILABLE_ITEM, Integer.toString(emoteid));
                 return;

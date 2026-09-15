@@ -22,7 +22,7 @@ package tools.packet;
 
 import java.util.Collection;
 import client.inventory.IItem;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.MapleInventoryType;
 import client.inventory.IEquip.ScrollResult;
 import handling.MaplePacket;
@@ -252,7 +252,7 @@ public class InventoryPacket {
         mplew.write(1); // fromdrop always true
         mplew.write(destroyed ? 2 : 3);
         mplew.write(scroll.getQuantity() > 0 ? 1 : 3);
-        mplew.write(GameConstants.getInventoryType(scroll.getItemId()).getType()); //can be cash
+        mplew.write(ItemConstants.getInventoryType(scroll.getItemId()).getType()); //can be cash
         mplew.writeShort(scroll.getPosition());
 
         if (scroll.getQuantity() > 0) {

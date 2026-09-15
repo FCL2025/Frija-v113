@@ -21,6 +21,7 @@
 package client;
 
 import constants.GameConstants;
+import constants.ItemConstants;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,7 +46,7 @@ public class MonsterBook {
         this.cards = cards;
 
         for (Entry<Integer, Integer> card : cards.entrySet()) {
-            if (GameConstants.isSpecialCard(card.getKey())) {
+            if (ItemConstants.isSpecialCard(card.getKey())) {
 
                 SpecialCard += card.getValue();
             } else {
@@ -132,7 +133,7 @@ public class MonsterBook {
         mplew.writeShort(cards.size());
 
         for (Entry<Integer, Integer> all : cards.entrySet()) {
-            mplew.writeShort(GameConstants.getCardShortId(all.getKey())); // Id
+            mplew.writeShort(ItemConstants.getCardShortId(all.getKey())); // Id
             mplew.write(all.getValue()); // Level
         }
     }
@@ -158,7 +159,7 @@ public class MonsterBook {
             if (levels >= 5) {
                 c.send(MonsterBookPacket.addCard(true, cardid, levels));
             } else {
-                if (GameConstants.isSpecialCard(cardid)) {
+                if (ItemConstants.isSpecialCard(cardid)) {
                     SpecialCard += 1;
                 } else {
                     NormalCard += 1;
@@ -171,7 +172,7 @@ public class MonsterBook {
             }
             return;
         }
-        if (GameConstants.isSpecialCard(cardid)) {
+        if (ItemConstants.isSpecialCard(cardid)) {
             SpecialCard += 1;
         } else {
             NormalCard += 1;

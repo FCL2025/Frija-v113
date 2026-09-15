@@ -21,7 +21,7 @@
  */
 package server;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.IItem;
 import client.inventory.ItemLoader;
 import client.inventory.MapleInventoryType;
@@ -116,7 +116,7 @@ public class MTSCart {
         List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<>();
 
         for (IItem item : getInventory()) {
-            itemsWithType.add(new Pair<>(item, GameConstants.getInventoryType(item.getItemId())));
+            itemsWithType.add(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId())));
         }
 
         ItemLoader.MTS_TRANSFER.saveItems(itemsWithType, characterId);

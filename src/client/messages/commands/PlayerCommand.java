@@ -1,6 +1,6 @@
 package client.messages.commands;
 
-import constants.GameConstants;
+import constants.MapConstants;
 import constants.ServerConstants.PlayerGMRank;
 import client.MapleClient;
 import scripting.NPCScriptManager;
@@ -34,7 +34,7 @@ public class PlayerCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             if (npc != 1 && c.getPlayer().getMapId() != 910000000) { //drpcash can use anywhere
-                for (int i : GameConstants.blockedMaps) {
+                for (int i : MapConstants.blockedMaps) {
                     if (c.getPlayer().getMapId() == i) {
                         c.getPlayer().dropMessage(1, "你不能在這裡使用指令.");
                         return 0;

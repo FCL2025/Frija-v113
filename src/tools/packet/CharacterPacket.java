@@ -26,7 +26,8 @@ import java.util.Collections;
 import java.util.List;
 import client.inventory.MapleMount;
 import client.inventory.IItem;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.MapleBuffStat;
 import client.MapleCharacter;
 import client.inventory.MapleInventoryType;
@@ -113,7 +114,7 @@ public class CharacterPacket {
                 } else if (value < 0x20) {
                     mplew.write(statupdate.getRight().byteValue());
                 } else if (value == 0x8000) { //availablesp
-                    if (GameConstants.isEvan(evan) || GameConstants.isResist(evan)) {
+                    if (JobConstants.isEvan(evan) || JobConstants.isResist(evan)) {
                         throw new UnsupportedOperationException("Evan/Resistance wrong updating");
                     } else {
                         mplew.writeShort(statupdate.getRight().shortValue());
@@ -137,7 +138,7 @@ public class CharacterPacket {
         mplew.writeShort(SendPacketOpcode.UPDATE_STATS.getValue());
         mplew.write(itemReaction ? 1 : 0);
         mplew.writeInt(0x8000);
-        if (overrideJob || GameConstants.isEvan(chr.getJob()) || GameConstants.isResist(chr.getJob())) {
+        if (overrideJob || JobConstants.isEvan(chr.getJob()) || JobConstants.isResist(chr.getJob())) {
             mplew.write(chr.getRemainingSpSize());
             for (int i = 0; i < chr.getRemainingSps().length; i++) {
                 if (chr.getRemainingSp(i) > 0) {
@@ -396,12 +397,12 @@ public class CharacterPacket {
         if (buffSrc > 0) {
             final IItem c_mount = chr.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -118);
             final IItem mount = chr.getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -18);
-            if (GameConstants.getMountItem(buffSrc) == 0 && c_mount != null) {
+            if (ItemConstants.getMountItem(buffSrc) == 0 && c_mount != null) {
                 mplew.writeInt(c_mount.getItemId());
-            } else if (GameConstants.getMountItem(buffSrc) == 0 && mount != null) {
+            } else if (ItemConstants.getMountItem(buffSrc) == 0 && mount != null) {
                 mplew.writeInt(mount.getItemId());
             } else {
-                mplew.writeInt(GameConstants.getMountItem(buffSrc));
+                mplew.writeInt(ItemConstants.getMountItem(buffSrc));
             }
             mplew.writeInt(buffSrc);
         } else {
@@ -436,7 +437,7 @@ public class CharacterPacket {
         mplew.writeInt(0); // 台版自己加的
         mplew.writeInt(0); // 只有台陸版有
         mplew.writeInt(-1); // 只有台陸版有
-        mplew.writeInt(GameConstants.getInventoryType(chr.getChair()) == MapleInventoryType.SETUP ? chr.getChair() : 0);
+        mplew.writeInt(ItemConstants.getInventoryType(chr.getChair()) == MapleInventoryType.SETUP ? chr.getChair() : 0);
         mplew.writePos(chr.getPosition());
         mplew.write(chr.getStance());
         mplew.writeShort(0); // FH
@@ -797,7 +798,7 @@ public class CharacterPacket {
         List<Integer> medalQuests = new ArrayList<>();
         List<MapleQuestStatus> completed = chr.getCompletedQuests();
         for (MapleQuestStatus q : completed) {
-            if (q.getQuest().getMedalItem() > 0 && GameConstants.getInventoryType(q.getQuest().getMedalItem()) == MapleInventoryType.EQUIP) { //chair kind medal viewmedal is weird
+            if (q.getQuest().getMedalItem() > 0 && ItemConstants.getInventoryType(q.getQuest().getMedalItem()) == MapleInventoryType.EQUIP) { //chair kind medal viewmedal is weird
                 medalQuests.add(q.getQuest().getId());
             }
         }

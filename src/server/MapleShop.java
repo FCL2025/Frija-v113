@@ -13,7 +13,8 @@ import java.util.Set;
 import client.inventory.IItem;
 import client.inventory.Item;
 import client.SkillFactory;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.MapleInventoryIdentifier;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
@@ -92,23 +93,23 @@ public class MapleShop {
             AutobanManager.getInstance().addPoints(c, 1000, 0, "Buying " + quantity + " " + itemId);
             return;
         }
-        if (!GameConstants.isMountItemAvailable(itemId, c.getPlayer().getJob())) {
+        if (!ItemConstants.isMountItemAvailable(itemId, c.getPlayer().getJob())) {
             c.getPlayer().dropMessage(1, "You may not buy this item.");
             c.send(CharacterPacket.enableActions());
             return;
         }
         MapleShopItem item = findById(itemId);
         if (item != null && item.getPrice() > 0 && item.getReqItem() == 0) {
-            final int price = GameConstants.isRechargable(itemId) ? item.getPrice() : (item.getPrice() * quantity);
+            final int price = ItemConstants.isRechargable(itemId) ? item.getPrice() : (item.getPrice() * quantity);
             if (price >= 0 && c.getPlayer().getMeso() >= price) {
                 if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
                     c.getPlayer().gainMeso(-price, false);
-                    if (GameConstants.isPet(itemId)) {
+                    if (ItemConstants.isPet(itemId)) {
                         MapleInventoryManipulator.addById(c, itemId, quantity, "", MaplePet.createPet(itemId, MapleInventoryIdentifier.getInstance()), -1);
                     } else {
                         MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
 
-                        if (GameConstants.isRechargable(itemId)) {
+                        if (ItemConstants.isRechargable(itemId)) {
                             quantity = ii.getSlotMax(c, item.getItemId());
                         }
 
@@ -121,13 +122,13 @@ public class MapleShop {
             }
         } else if (item != null && item.getReqItem() > 0 && quantity == 1 && c.getPlayer().haveItem(item.getReqItem(), item.getReqItemQ(), false, true)) {
             if (MapleInventoryManipulator.checkSpace(c, itemId, quantity, "")) {
-                MapleInventoryManipulator.removeById(c, GameConstants.getInventoryType(item.getReqItem()), item.getReqItem(), item.getReqItemQ(), false, false);
-                if (GameConstants.isPet(itemId)) {
+                MapleInventoryManipulator.removeById(c, ItemConstants.getInventoryType(item.getReqItem()), item.getReqItem(), item.getReqItemQ(), false, false);
+                if (ItemConstants.isPet(itemId)) {
                     MapleInventoryManipulator.addById(c, itemId, quantity, "", MaplePet.createPet(itemId, MapleInventoryIdentifier.getInstance()), -1);
                 } else {
                     MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
 
-                    if (GameConstants.isRechargable(itemId)) {
+                    if (ItemConstants.isRechargable(itemId)) {
                         quantity = ii.getSlotMax(c, item.getItemId());
                     }
                     MapleInventoryManipulator.addById(c, itemId, quantity);
@@ -148,7 +149,7 @@ public class MapleShop {
             return;
         }
 
-        if (GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+        if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
             quantity = item.getQuantity();
         }
         if (quantity < 0) {
@@ -166,7 +167,7 @@ public class MapleShop {
         if (quantity <= iQuant && iQuant > 0) {
             MapleInventoryManipulator.removeFromSlot(c, type, slot, quantity, false);
             double price;
-            if (GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+            if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
                 price = ii.getWholePrice(item.getItemId()) / (double) ii.getSlotMax(c, item.getItemId());
             } else {
                 price = ii.getPrice(item.getItemId());
@@ -182,12 +183,12 @@ public class MapleShop {
     public void recharge(final MapleClient c, final byte slot) {
         final IItem item = c.getPlayer().getInventory(MapleInventoryType.USE).getItem(slot);
 
-        if (item == null || (!GameConstants.isThrowingStar(item.getItemId()) && !GameConstants.isBullet(item.getItemId()))) {
+        if (item == null || (!ItemConstants.isThrowingStar(item.getItemId()) && !ItemConstants.isBullet(item.getItemId()))) {
             return;
         }
         final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         short slotMax = ii.getSlotMax(c, item.getItemId());
-        final int skill = GameConstants.getMasterySkill(c.getPlayer().getJob());
+        final int skill = JobConstants.getMasterySkill(c.getPlayer().getJob());
 
         if (skill != 0) {
             slotMax = (short) (slotMax + c.getPlayer().getSkillLevel(SkillFactory.getSkill(skill)) * 10); // 精通技能最高 30 級，加總最多 +300，short 夠用
@@ -233,7 +234,7 @@ public class MapleShop {
                 try (ResultSet rs = ps.executeQuery()) {
                     List<Integer> recharges = new ArrayList<>(rechargeableItems);
                     while (rs.next()) {
-                        if (GameConstants.isThrowingStar(rs.getInt("itemid")) || GameConstants.isBullet(rs.getInt("itemid"))) {
+                        if (ItemConstants.isThrowingStar(rs.getInt("itemid")) || ItemConstants.isBullet(rs.getInt("itemid"))) {
                             MapleShopItem starItem = new MapleShopItem((short) 1, rs.getInt("itemid"), rs.getInt("price"), rs.getInt("reqitem"), rs.getInt("reqitemq"));
                             ret.addItem(starItem);
                             if (rechargeableItems.contains(starItem.getItemId())) {

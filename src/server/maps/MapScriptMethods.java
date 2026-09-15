@@ -228,123 +228,19 @@ public class MapScriptMethods {
              break;
              }*/
             case StageMsg_romio: {
-                switch (c.getPlayer().getMapId()) {
-                    case 926100000:
-                        c.getPlayer().getMap().startMapEffect("Please find the hidden door by investigating the Lab!", 5120021);
-                        break;
-                    case 926100001:
-                        c.getPlayer().getMap().startMapEffect("Find  your way through this darkness!", 5120021);
-                        break;
-                    case 926100100:
-                        c.getPlayer().getMap().startMapEffect("Fill the beakers to power the energy!", 5120021);
-                        break;
-                    case 926100200:
-                        c.getPlayer().getMap().startMapEffect("Get the files for the experiment through each door!", 5120021);
-                        break;
-                    case 926100203:
-                        c.getPlayer().getMap().startMapEffect("Please defeat all the monsters!", 5120021);
-                        break;
-                    case 926100300:
-                        c.getPlayer().getMap().startMapEffect("Find your way through the Lab!", 5120021);
-                        break;
-                    case 926100401:
-                        c.getPlayer().getMap().startMapEffect("Please, protect my love!", 5120021);
-
-                        break;
-                }
+                showRomioStageMessage(c);
                 break;
             }
             case StageMsg_juliet: {
-                switch (c.getPlayer().getMapId()) {
-                    case 926110000:
-                        c.getPlayer().getMap().startMapEffect("Please find the hidden door by investigating the Lab!", 5120022);
-                        break;
-                    case 926110001:
-                        c.getPlayer().getMap().startMapEffect("Find  your way through this darkness!", 5120022);
-                        break;
-                    case 926110100:
-                        c.getPlayer().getMap().startMapEffect("Fill the beakers to power the energy!", 5120022);
-                        break;
-                    case 926110200:
-                        c.getPlayer().getMap().startMapEffect("Get the files for the experiment through each door!", 5120022);
-                        break;
-                    case 926110203:
-                        c.getPlayer().getMap().startMapEffect("Please defeat all the monsters!", 5120022);
-                        break;
-                    case 926110300:
-                        c.getPlayer().getMap().startMapEffect("Find your way through the Lab!", 5120022);
-                        break;
-                    case 926110401:
-                        c.getPlayer().getMap().startMapEffect("Please, protect my love!", 5120022);
-                        break;
-                }
+                showJulietStageMessage(c);
                 break;
             }
             case party6weatherMsg: {
-                switch (c.getPlayer().getMapId()) {
-                    case 930000000:
-                        c.getPlayer().getMap().startMapEffect("進入傳送點，我要對你們施放變身魔法了！", 5120023);
-                        break;
-                    case 930000100:
-                        c.getPlayer().getMap().startMapEffect("消滅所有怪物！", 5120023);
-                        break;
-                    case 930000200:
-                        c.getPlayer().getMap().startMapEffect("對荊棘施放稀釋的毒液4個！", 5120023);
-                        break;
-                    case 930000300:
-                        c.getPlayer().getMap().startMapEffect("我迷路了...", 5120023);
-                        break;
-                    case 930000400:
-                        c.getPlayer().getMap().startMapEffect("拿淨化之珠後拿10個怪物株給我！", 5120023);
-                        break;
-                    case 930000500:
-                        c.getPlayer().getMap().startMapEffect("從怪人書桌中尋找紫色魔力石！", 5120023);
-                        break;
-                    case 930000600:
-                        c.getPlayer().getMap().startMapEffect("將紫色魔力石放在祭壇上！", 5120023);
-                        break;
-                }
+                showParty6WeatherMessage(c);
                 break;
             }
             case StageMsg_davy: {
-                switch (c.getPlayer().getMapId()) {
-                    case 925100000:
-                        c.getPlayer().getMap().startMapEffect("Defeat the monsters outside of the ship to advance!", 5120020);
-                        break;
-                    case 925100100:
-                        c.getPlayer().getMap().startMapEffect("We must prove ourselves! Get me Pirate Medals!", 5120020);
-                        break;
-                    case 925100200:
-                        c.getPlayer().getMap().startMapEffect("Defeat the guards here to pass!", 5120020);
-                        break;
-                    case 925100300:
-                        c.getPlayer().getMap().startMapEffect("Eliminate the guards here to pass!", 5120020);
-                        break;
-                    case 925100400:
-                        c.getPlayer().getMap().startMapEffect("Lock the doors! Seal the root of the Ship's power!", 5120020);
-                        break;
-                    case 925100500:
-                        c.getPlayer().getMap().startMapEffect("Destroy the Lord Pirate!", 5120020);
-                        break;
-                }
-                final EventManager em = c.getChannelServer().getEventSM().getEventManager("Pirate");
-                if (c.getPlayer().getMapId() == 925100500 && em != null && em.getProperty("stage5") != null) {
-                    int mobId = Randomizer.nextBoolean() ? 9300119 : 9300119; //lord pirate
-                    final int st = Integer.parseInt(em.getProperty("stage5"));
-                    switch (st) {
-                        case 1:
-                            mobId = /*Randomizer.nextBoolean() ? 9300119 : */ 9300105; //angry
-                            break;
-                        case 2:
-                            mobId = /*Randomizer.nextBoolean() ? */ 9300106/* : 9300105*/; //enraged
-                            break;
-                    }
-                    final MapleMonster shammos = MapleLifeFactory.getMonster(mobId);
-                    if (c.getPlayer().getEventInstance() != null) {
-                        c.getPlayer().getEventInstance().registerMonster(shammos);
-                    }
-                    c.getPlayer().getMap().spawnMonsterOnGroundBelow(shammos, new Point(411, 236));
-                }
+                startDavyJonesStage(c);
                 break;
             }
             case astaroth_summon: {
@@ -357,97 +253,15 @@ public class MapScriptMethods {
                 break;
             }
             case killing_BonusSetting: { //spawns monsters according to mapid
-                //910320010-910320029 = Train 999 bubblings.
-                //926010010-926010029 = 30 Yetis
-                //926010030-926010049 = 35 Yetis
-                //926010050-926010069 = 40 Yetis
-                //926010070-926010089 - 50 Yetis (specialized? immortality)
-                //TODO also find positions to spawn these at
-                c.getPlayer().getMap().resetFully();
-                c.send(MapPacket.showEffect("killing/bonus/bonus"));
-                c.send(MapPacket.showEffect("killing/bonus/stage"));
-                Point pos1 = null, pos2 = null, pos3 = null;
-                int spawnPer = 0;
-                int mobId = 0;
-                //9700019, 9700029
-                //9700021 = one thats invincible
-                if (c.getPlayer().getMapId() >= 910320010 && c.getPlayer().getMapId() <= 910320029) {
-                    pos1 = new Point(121, 218);
-                    pos2 = new Point(396, 43);
-                    pos3 = new Point(-63, 43);
-                    mobId = 9700020;
-                    spawnPer = 10;
-                } else if (c.getPlayer().getMapId() >= 926010010 && c.getPlayer().getMapId() <= 926010029) {
-                    pos1 = new Point(0, 88);
-                    pos2 = new Point(-326, -115);
-                    pos3 = new Point(361, -115);
-                    mobId = 9700019;
-                    spawnPer = 10;
-                } else if (c.getPlayer().getMapId() >= 926010030 && c.getPlayer().getMapId() <= 926010049) {
-                    pos1 = new Point(0, 88);
-                    pos2 = new Point(-326, -115);
-                    pos3 = new Point(361, -115);
-                    mobId = 9700019;
-                    spawnPer = 15;
-                } else if (c.getPlayer().getMapId() >= 926010050 && c.getPlayer().getMapId() <= 926010069) {
-                    pos1 = new Point(0, 88);
-                    pos2 = new Point(-326, -115);
-                    pos3 = new Point(361, -115);
-                    mobId = 9700019;
-                    spawnPer = 20;
-                } else if (c.getPlayer().getMapId() >= 926010070 && c.getPlayer().getMapId() <= 926010089) {
-                    pos1 = new Point(0, 88);
-                    pos2 = new Point(-326, -115);
-                    pos3 = new Point(361, -115);
-                    mobId = 9700029;
-                    spawnPer = 20;
-                } else {
-                    break;
-                }
-                for (int i = 0; i < spawnPer; i++) {
-                    c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(mobId), new Point(pos1));
-                    c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(mobId), new Point(pos2));
-                    c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(mobId), new Point(pos3));
-                }
-                c.getPlayer().startMapTimeLimitTask(120, c.getPlayer().getMap().getReturnMap());
+                spawnKillingBonusMonsters(c);
                 break;
             }
             case shammos_Fenter: {
-                if (c.getPlayer().getMapId() >= 921120100 && c.getPlayer().getMapId() < 921120500) {
-                    final MapleMonster shammos = MapleLifeFactory.getMonster(9300275);
-                    if (c.getPlayer().getEventInstance() != null) {
-                        c.getPlayer().getEventInstance().registerMonster(shammos);
-                        if (c.getPlayer().getEventInstance().getProperty("HP") != null) {
-                            shammos.setHp(Long.parseLong(c.getPlayer().getEventInstance().getProperty("HP")));
-                        } else {
-                            c.getPlayer().getEventInstance().setProperty("HP", "50000");
-                        }
-                    }
-                    c.getPlayer().getMap().spawnMonsterWithEffectBelow(shammos, new Point(c.getPlayer().getMap().getPortal(0).getPosition()), 12);
-                    shammos.switchController(c.getPlayer(), false);
-                    c.send(MapPacket.getNodeProperties(shammos, c.getPlayer().getMap()));
-
-                }
+                spawnShammosOnFirstEnter(c);
                 break;
             }
             case PRaid_D_Fenter: {
-                switch (c.getPlayer().getMapId() % 10) {
-                    case 0:
-                        c.getPlayer().getMap().startMapEffect("Eliminate all the monsters!", 5120033);
-                        break;
-                    case 1:
-                        c.getPlayer().getMap().startMapEffect("Break the boxes and eliminate the monsters!", 5120033);
-                        break;
-                    case 2:
-                        c.getPlayer().getMap().startMapEffect("Eliminate the Officer!", 5120033);
-                        break;
-                    case 3:
-                        c.getPlayer().getMap().startMapEffect("Eliminate all the monsters!", 5120033);
-                        break;
-                    case 4:
-                        c.getPlayer().getMap().startMapEffect("Find the way to the other side!", 5120033);
-                        break;
-                }
+                showPRaidStageMessage(c);
                 break;
             }
             case PRaid_B_Fenter: {
@@ -480,7 +294,6 @@ public class MapScriptMethods {
         if (c.getPlayer() == null) {
             return;
         } //o_O
-        String data = "";
         switch (onUserEnter.fromString(scriptName)) {
             case cygnusTest:
             case cygnusJobTutorial: {
@@ -504,18 +317,7 @@ public class MapScriptMethods {
                 break;
             }
             case PRaid_W_Enter: {
-                c.send(EventPacket.sendPyramidEnergy("PRaid_expPenalty", "0"));
-                c.send(EventPacket.sendPyramidEnergy("PRaid_ElapssedTimeAtField", "0"));
-                c.send(EventPacket.sendPyramidEnergy("PRaid_Point", "-1"));
-                c.send(EventPacket.sendPyramidEnergy("PRaid_Bonus", "-1"));
-                c.send(EventPacket.sendPyramidEnergy("PRaid_Total", "-1"));
-                c.send(EventPacket.sendPyramidEnergy("PRaid_Team", ""));
-                c.send(EventPacket.sendPyramidEnergy("PRaid_IsRevive", "0"));
-                c.getPlayer().writePoint("PRaid_Point", "-1");
-                c.getPlayer().writeStatus("Red_Stage", "1");
-                c.getPlayer().writeStatus("Blue_Stage", "1");
-                c.getPlayer().writeStatus("redTeamDamage", "0");
-                c.getPlayer().writeStatus("blueTeamDamage", "0");
+                resetPyramidRaidCounters(c);
                 break;
             }
             case PRaid_D_Enter:
@@ -590,28 +392,7 @@ public class MapScriptMethods {
                 showIntro(c, "Effect/Direction4.img/PromiseDragon/Scene" + (c.getPlayer().getGender() == 0 ? "0" : "1"));
                 break;
             case evanPromotion:
-                switch (c.getPlayer().getMapId()) {
-                    case 900090000:
-                        data = "Effect/Direction4.img/promotion/Scene0" + (c.getPlayer().getGender() == 0 ? "0" : "1");
-                        break;
-                    case 900090001:
-                        data = "Effect/Direction4.img/promotion/Scene1";
-                        break;
-                    case 900090002:
-                        data = "Effect/Direction4.img/promotion/Scene2" + (c.getPlayer().getGender() == 0 ? "0" : "1");
-                        break;
-                    case 900090003:
-                        data = "Effect/Direction4.img/promotion/Scene3";
-                        break;
-                    case 900090004:
-                        c.send(UIPacket.IntroDisableUI(false));
-                        c.send(UIPacket.IntroLock(false));
-                        c.send(CharacterPacket.enableActions());
-                        final MapleMap mapto = c.getChannelServer().getMapFactory().getMap(900010000);
-                        c.getPlayer().changeMap(mapto, mapto.getPortal(0));
-                        return;
-                }
-                showIntro(c, data);
+                showEvanPromotionIntro(c);
                 break;
             case TD_MC_title: {
                 c.send(UIPacket.IntroDisableUI(false));
@@ -621,64 +402,7 @@ public class MapScriptMethods {
                 break;
             }
             case explorationPoint: {
-                if (c.getPlayer().getMapId() == 104000000) {
-                    c.send(UIPacket.IntroDisableUI(false));
-                    c.send(UIPacket.IntroLock(false));
-                    c.send(CharacterPacket.enableActions());
-                    c.send(UIPacket.MapNameDisplay(c.getPlayer().getMapId()));
-                }
-                MedalQuest m = null;
-                for (MedalQuest mq : MedalQuest.values()) {
-                    for (int i : mq.maps) {
-                        if (c.getPlayer().getMapId() == i) {
-                            m = mq;
-                            break;
-                        }
-                    }
-                }
-                if (m != null && c.getPlayer().getLevel() >= m.level && c.getPlayer().getQuestStatus(m.questid) != 2) {
-                    if (c.getPlayer().getQuestStatus(m.lquestid) != 1) {
-                        MapleQuest.getInstance(m.lquestid).forceStart(c.getPlayer(), 0, "0");
-                    }
-                    if (c.getPlayer().getQuestStatus(m.questid) != 1) {
-                        MapleQuest.getInstance(m.questid).forceStart(c.getPlayer(), 0, null);
-                        final StringBuilder sb = new StringBuilder("enter=");
-                        for (int i = 0; i < m.maps.length; i++) {
-                            sb.append("0");
-                        }
-                        c.getPlayer().updateInfoQuest(m.questid - 2005, sb.toString());
-                        MapleQuest.getInstance(m.questid - 1995).forceStart(c.getPlayer(), 0, "0");
-                    }
-                    final String quest = c.getPlayer().getInfoQuest(m.questid - 2005);
-                    final MapleQuestStatus stat = c.getPlayer().getQuestNAdd(MapleQuest.getInstance(m.questid - 1995));
-                    if (stat.getCustomData() == null) { //just a check.
-                        stat.setCustomData("0");
-                    }
-                    int number = Integer.parseInt(stat.getCustomData());
-                    final StringBuilder sb = new StringBuilder("enter=");
-                    boolean changedd = false;
-                    for (int i = 0; i < m.maps.length; i++) {
-                        boolean changed = false;
-                        if (c.getPlayer().getMapId() == m.maps[i]) {
-                            if (quest.substring(i + 6, i + 7).equals("0")) {
-                                sb.append("1");
-                                changed = true;
-                                changedd = true;
-                            }
-                        }
-                        if (!changed) {
-                            sb.append(quest.substring(i + 6, i + 7));
-                        }
-                    }
-                    if (changedd) {
-                        number++;
-                        c.getPlayer().updateInfoQuest(m.questid - 2005, sb.toString());
-                        MapleQuest.getInstance(m.questid - 1995).forceStart(c.getPlayer(), 0, String.valueOf(number));
-                        c.getPlayer().dropMessage(-1, "訪問 " + number + "/" + m.maps.length + " 個地區.");
-                        c.getPlayer().dropMessage(-1, "稱號 " + String.valueOf(m) + " 已完成了");
-                        c.send(QuestPacket.showQuestMsg("稱號 " + String.valueOf(m) + " 已完成訪問 " + number + "/" + m.maps.length + " 個地區"));
-                    }
-                }
+                trackExplorationMedal(c);
                 break;
             }
             case go10000:
@@ -734,39 +458,11 @@ public class MapScriptMethods {
                 break;
             }
             case aranDirection: {
-                switch (c.getPlayer().getMapId()) {
-                    case 914090010:
-                        data = "Effect/Direction1.img/aranTutorial/Scene0";
-                        break;
-                    case 914090011:
-                        data = "Effect/Direction1.img/aranTutorial/Scene1" + (c.getPlayer().getGender() == 0 ? "0" : "1");
-                        break;
-                    case 914090012:
-                        data = "Effect/Direction1.img/aranTutorial/Scene2" + (c.getPlayer().getGender() == 0 ? "0" : "1");
-                        break;
-                    case 914090013:
-                        data = "Effect/Direction1.img/aranTutorial/Scene3";
-                        break;
-                    case 914090100:
-                        data = "Effect/Direction1.img/aranTutorial/HandedPoleArm" + (c.getPlayer().getGender() == 0 ? "0" : "1");
-                        break;
-                    case 914090200:
-                        data = "Effect/Direction1.img/aranTutorial/Maha";
-                        break;
-                }
-                showIntro(c, data);
+                showAranTutorialIntro(c);
                 break;
             }
             case iceCave: {
-                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000014), (byte) -1, (byte) 0);
-                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000015), (byte) -1, (byte) 0);
-                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000016), (byte) -1, (byte) 0);
-                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000017), (byte) -1, (byte) 0);
-                c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000018), (byte) -1, (byte) 0);
-                c.send(UIPacket.ShowWZEffect("Effect/Direction1.img/aranTutorial/ClickLirin"));
-                c.send(UIPacket.IntroDisableUI(false));
-                c.send(UIPacket.IntroLock(false));
-                c.send(CharacterPacket.enableActions());
+                startIceCaveTutorial(c);
                 break;
             }
             case rienArrow: {
@@ -812,6 +508,359 @@ public class MapScriptMethods {
                 break;
             }
         }
+    }
+
+    private static void showRomioStageMessage(final MapleClient c) {
+        switch (c.getPlayer().getMapId()) {
+            case 926100000:
+                c.getPlayer().getMap().startMapEffect("Please find the hidden door by investigating the Lab!", 5120021);
+                break;
+            case 926100001:
+                c.getPlayer().getMap().startMapEffect("Find  your way through this darkness!", 5120021);
+                break;
+            case 926100100:
+                c.getPlayer().getMap().startMapEffect("Fill the beakers to power the energy!", 5120021);
+                break;
+            case 926100200:
+                c.getPlayer().getMap().startMapEffect("Get the files for the experiment through each door!", 5120021);
+                break;
+            case 926100203:
+                c.getPlayer().getMap().startMapEffect("Please defeat all the monsters!", 5120021);
+                break;
+            case 926100300:
+                c.getPlayer().getMap().startMapEffect("Find your way through the Lab!", 5120021);
+                break;
+            case 926100401:
+                c.getPlayer().getMap().startMapEffect("Please, protect my love!", 5120021);
+
+                break;
+        }
+    }
+
+    private static void showJulietStageMessage(final MapleClient c) {
+        switch (c.getPlayer().getMapId()) {
+            case 926110000:
+                c.getPlayer().getMap().startMapEffect("Please find the hidden door by investigating the Lab!", 5120022);
+                break;
+            case 926110001:
+                c.getPlayer().getMap().startMapEffect("Find  your way through this darkness!", 5120022);
+                break;
+            case 926110100:
+                c.getPlayer().getMap().startMapEffect("Fill the beakers to power the energy!", 5120022);
+                break;
+            case 926110200:
+                c.getPlayer().getMap().startMapEffect("Get the files for the experiment through each door!", 5120022);
+                break;
+            case 926110203:
+                c.getPlayer().getMap().startMapEffect("Please defeat all the monsters!", 5120022);
+                break;
+            case 926110300:
+                c.getPlayer().getMap().startMapEffect("Find your way through the Lab!", 5120022);
+                break;
+            case 926110401:
+                c.getPlayer().getMap().startMapEffect("Please, protect my love!", 5120022);
+                break;
+        }
+    }
+
+    private static void showParty6WeatherMessage(final MapleClient c) {
+        switch (c.getPlayer().getMapId()) {
+            case 930000000:
+                c.getPlayer().getMap().startMapEffect("進入傳送點，我要對你們施放變身魔法了！", 5120023);
+                break;
+            case 930000100:
+                c.getPlayer().getMap().startMapEffect("消滅所有怪物！", 5120023);
+                break;
+            case 930000200:
+                c.getPlayer().getMap().startMapEffect("對荊棘施放稀釋的毒液4個！", 5120023);
+                break;
+            case 930000300:
+                c.getPlayer().getMap().startMapEffect("我迷路了...", 5120023);
+                break;
+            case 930000400:
+                c.getPlayer().getMap().startMapEffect("拿淨化之珠後拿10個怪物株給我！", 5120023);
+                break;
+            case 930000500:
+                c.getPlayer().getMap().startMapEffect("從怪人書桌中尋找紫色魔力石！", 5120023);
+                break;
+            case 930000600:
+                c.getPlayer().getMap().startMapEffect("將紫色魔力石放在祭壇上！", 5120023);
+                break;
+        }
+    }
+
+    private static void startDavyJonesStage(final MapleClient c) {
+        switch (c.getPlayer().getMapId()) {
+            case 925100000:
+                c.getPlayer().getMap().startMapEffect("Defeat the monsters outside of the ship to advance!", 5120020);
+                break;
+            case 925100100:
+                c.getPlayer().getMap().startMapEffect("We must prove ourselves! Get me Pirate Medals!", 5120020);
+                break;
+            case 925100200:
+                c.getPlayer().getMap().startMapEffect("Defeat the guards here to pass!", 5120020);
+                break;
+            case 925100300:
+                c.getPlayer().getMap().startMapEffect("Eliminate the guards here to pass!", 5120020);
+                break;
+            case 925100400:
+                c.getPlayer().getMap().startMapEffect("Lock the doors! Seal the root of the Ship's power!", 5120020);
+                break;
+            case 925100500:
+                c.getPlayer().getMap().startMapEffect("Destroy the Lord Pirate!", 5120020);
+                break;
+        }
+        final EventManager em = c.getChannelServer().getEventSM().getEventManager("Pirate");
+        if (c.getPlayer().getMapId() == 925100500 && em != null && em.getProperty("stage5") != null) {
+            int mobId = Randomizer.nextBoolean() ? 9300119 : 9300119; //lord pirate
+            final int st = Integer.parseInt(em.getProperty("stage5"));
+            switch (st) {
+                case 1:
+                    mobId = /*Randomizer.nextBoolean() ? 9300119 : */ 9300105; //angry
+                    break;
+                case 2:
+                    mobId = /*Randomizer.nextBoolean() ? */ 9300106/* : 9300105*/; //enraged
+                    break;
+            }
+            final MapleMonster shammos = MapleLifeFactory.getMonster(mobId);
+            if (c.getPlayer().getEventInstance() != null) {
+                c.getPlayer().getEventInstance().registerMonster(shammos);
+            }
+            c.getPlayer().getMap().spawnMonsterOnGroundBelow(shammos, new Point(411, 236));
+        }
+    }
+
+    private static void spawnKillingBonusMonsters(final MapleClient c) {
+        //910320010-910320029 = Train 999 bubblings.
+        //926010010-926010029 = 30 Yetis
+        //926010030-926010049 = 35 Yetis
+        //926010050-926010069 = 40 Yetis
+        //926010070-926010089 - 50 Yetis (specialized? immortality)
+        //TODO also find positions to spawn these at
+        c.getPlayer().getMap().resetFully();
+        c.send(MapPacket.showEffect("killing/bonus/bonus"));
+        c.send(MapPacket.showEffect("killing/bonus/stage"));
+        Point pos1 = null, pos2 = null, pos3 = null;
+        int spawnPer = 0;
+        int mobId = 0;
+        //9700019, 9700029
+        //9700021 = one thats invincible
+        if (c.getPlayer().getMapId() >= 910320010 && c.getPlayer().getMapId() <= 910320029) {
+            pos1 = new Point(121, 218);
+            pos2 = new Point(396, 43);
+            pos3 = new Point(-63, 43);
+            mobId = 9700020;
+            spawnPer = 10;
+        } else if (c.getPlayer().getMapId() >= 926010010 && c.getPlayer().getMapId() <= 926010029) {
+            pos1 = new Point(0, 88);
+            pos2 = new Point(-326, -115);
+            pos3 = new Point(361, -115);
+            mobId = 9700019;
+            spawnPer = 10;
+        } else if (c.getPlayer().getMapId() >= 926010030 && c.getPlayer().getMapId() <= 926010049) {
+            pos1 = new Point(0, 88);
+            pos2 = new Point(-326, -115);
+            pos3 = new Point(361, -115);
+            mobId = 9700019;
+            spawnPer = 15;
+        } else if (c.getPlayer().getMapId() >= 926010050 && c.getPlayer().getMapId() <= 926010069) {
+            pos1 = new Point(0, 88);
+            pos2 = new Point(-326, -115);
+            pos3 = new Point(361, -115);
+            mobId = 9700019;
+            spawnPer = 20;
+        } else if (c.getPlayer().getMapId() >= 926010070 && c.getPlayer().getMapId() <= 926010089) {
+            pos1 = new Point(0, 88);
+            pos2 = new Point(-326, -115);
+            pos3 = new Point(361, -115);
+            mobId = 9700029;
+            spawnPer = 20;
+        } else {
+            return;
+        }
+        for (int i = 0; i < spawnPer; i++) {
+            c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(mobId), new Point(pos1));
+            c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(mobId), new Point(pos2));
+            c.getPlayer().getMap().spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(mobId), new Point(pos3));
+        }
+        c.getPlayer().startMapTimeLimitTask(120, c.getPlayer().getMap().getReturnMap());
+    }
+
+    private static void spawnShammosOnFirstEnter(final MapleClient c) {
+        if (c.getPlayer().getMapId() >= 921120100 && c.getPlayer().getMapId() < 921120500) {
+            final MapleMonster shammos = MapleLifeFactory.getMonster(9300275);
+            if (c.getPlayer().getEventInstance() != null) {
+                c.getPlayer().getEventInstance().registerMonster(shammos);
+                if (c.getPlayer().getEventInstance().getProperty("HP") != null) {
+                    shammos.setHp(Long.parseLong(c.getPlayer().getEventInstance().getProperty("HP")));
+                } else {
+                    c.getPlayer().getEventInstance().setProperty("HP", "50000");
+                }
+            }
+            c.getPlayer().getMap().spawnMonsterWithEffectBelow(shammos, new Point(c.getPlayer().getMap().getPortal(0).getPosition()), 12);
+            shammos.switchController(c.getPlayer(), false);
+            c.send(MapPacket.getNodeProperties(shammos, c.getPlayer().getMap()));
+
+        }
+    }
+
+    private static void showPRaidStageMessage(final MapleClient c) {
+        switch (c.getPlayer().getMapId() % 10) {
+            case 0:
+                c.getPlayer().getMap().startMapEffect("Eliminate all the monsters!", 5120033);
+                break;
+            case 1:
+                c.getPlayer().getMap().startMapEffect("Break the boxes and eliminate the monsters!", 5120033);
+                break;
+            case 2:
+                c.getPlayer().getMap().startMapEffect("Eliminate the Officer!", 5120033);
+                break;
+            case 3:
+                c.getPlayer().getMap().startMapEffect("Eliminate all the monsters!", 5120033);
+                break;
+            case 4:
+                c.getPlayer().getMap().startMapEffect("Find the way to the other side!", 5120033);
+                break;
+        }
+    }
+
+    private static void resetPyramidRaidCounters(final MapleClient c) {
+        c.send(EventPacket.sendPyramidEnergy("PRaid_expPenalty", "0"));
+        c.send(EventPacket.sendPyramidEnergy("PRaid_ElapssedTimeAtField", "0"));
+        c.send(EventPacket.sendPyramidEnergy("PRaid_Point", "-1"));
+        c.send(EventPacket.sendPyramidEnergy("PRaid_Bonus", "-1"));
+        c.send(EventPacket.sendPyramidEnergy("PRaid_Total", "-1"));
+        c.send(EventPacket.sendPyramidEnergy("PRaid_Team", ""));
+        c.send(EventPacket.sendPyramidEnergy("PRaid_IsRevive", "0"));
+        c.getPlayer().writePoint("PRaid_Point", "-1");
+        c.getPlayer().writeStatus("Red_Stage", "1");
+        c.getPlayer().writeStatus("Blue_Stage", "1");
+        c.getPlayer().writeStatus("redTeamDamage", "0");
+        c.getPlayer().writeStatus("blueTeamDamage", "0");
+    }
+
+    private static void showEvanPromotionIntro(final MapleClient c) {
+        String data = "";
+        switch (c.getPlayer().getMapId()) {
+            case 900090000:
+                data = "Effect/Direction4.img/promotion/Scene0" + (c.getPlayer().getGender() == 0 ? "0" : "1");
+                break;
+            case 900090001:
+                data = "Effect/Direction4.img/promotion/Scene1";
+                break;
+            case 900090002:
+                data = "Effect/Direction4.img/promotion/Scene2" + (c.getPlayer().getGender() == 0 ? "0" : "1");
+                break;
+            case 900090003:
+                data = "Effect/Direction4.img/promotion/Scene3";
+                break;
+            case 900090004:
+                c.send(UIPacket.IntroDisableUI(false));
+                c.send(UIPacket.IntroLock(false));
+                c.send(CharacterPacket.enableActions());
+                final MapleMap mapto = c.getChannelServer().getMapFactory().getMap(900010000);
+                c.getPlayer().changeMap(mapto, mapto.getPortal(0));
+                return;
+        }
+        showIntro(c, data);
+    }
+
+    private static void trackExplorationMedal(final MapleClient c) {
+        if (c.getPlayer().getMapId() == 104000000) {
+            c.send(UIPacket.IntroDisableUI(false));
+            c.send(UIPacket.IntroLock(false));
+            c.send(CharacterPacket.enableActions());
+            c.send(UIPacket.MapNameDisplay(c.getPlayer().getMapId()));
+        }
+        MedalQuest m = null;
+        for (MedalQuest mq : MedalQuest.values()) {
+            for (int i : mq.maps) {
+                if (c.getPlayer().getMapId() == i) {
+                    m = mq;
+                    break;
+                }
+            }
+        }
+        if (m != null && c.getPlayer().getLevel() >= m.level && c.getPlayer().getQuestStatus(m.questid) != 2) {
+            if (c.getPlayer().getQuestStatus(m.lquestid) != 1) {
+                MapleQuest.getInstance(m.lquestid).forceStart(c.getPlayer(), 0, "0");
+            }
+            if (c.getPlayer().getQuestStatus(m.questid) != 1) {
+                MapleQuest.getInstance(m.questid).forceStart(c.getPlayer(), 0, null);
+                final StringBuilder sb = new StringBuilder("enter=");
+                for (int i = 0; i < m.maps.length; i++) {
+                    sb.append("0");
+                }
+                c.getPlayer().updateInfoQuest(m.questid - 2005, sb.toString());
+                MapleQuest.getInstance(m.questid - 1995).forceStart(c.getPlayer(), 0, "0");
+            }
+            final String quest = c.getPlayer().getInfoQuest(m.questid - 2005);
+            final MapleQuestStatus stat = c.getPlayer().getQuestNAdd(MapleQuest.getInstance(m.questid - 1995));
+            if (stat.getCustomData() == null) { //just a check.
+                stat.setCustomData("0");
+            }
+            int number = Integer.parseInt(stat.getCustomData());
+            final StringBuilder sb = new StringBuilder("enter=");
+            boolean changedd = false;
+            for (int i = 0; i < m.maps.length; i++) {
+                boolean changed = false;
+                if (c.getPlayer().getMapId() == m.maps[i]) {
+                    if (quest.substring(i + 6, i + 7).equals("0")) {
+                        sb.append("1");
+                        changed = true;
+                        changedd = true;
+                    }
+                }
+                if (!changed) {
+                    sb.append(quest.substring(i + 6, i + 7));
+                }
+            }
+            if (changedd) {
+                number++;
+                c.getPlayer().updateInfoQuest(m.questid - 2005, sb.toString());
+                MapleQuest.getInstance(m.questid - 1995).forceStart(c.getPlayer(), 0, String.valueOf(number));
+                c.getPlayer().dropMessage(-1, "訪問 " + number + "/" + m.maps.length + " 個地區.");
+                c.getPlayer().dropMessage(-1, "稱號 " + String.valueOf(m) + " 已完成了");
+                c.send(QuestPacket.showQuestMsg("稱號 " + String.valueOf(m) + " 已完成訪問 " + number + "/" + m.maps.length + " 個地區"));
+            }
+        }
+    }
+
+    private static void showAranTutorialIntro(final MapleClient c) {
+        String data = "";
+        switch (c.getPlayer().getMapId()) {
+            case 914090010:
+                data = "Effect/Direction1.img/aranTutorial/Scene0";
+                break;
+            case 914090011:
+                data = "Effect/Direction1.img/aranTutorial/Scene1" + (c.getPlayer().getGender() == 0 ? "0" : "1");
+                break;
+            case 914090012:
+                data = "Effect/Direction1.img/aranTutorial/Scene2" + (c.getPlayer().getGender() == 0 ? "0" : "1");
+                break;
+            case 914090013:
+                data = "Effect/Direction1.img/aranTutorial/Scene3";
+                break;
+            case 914090100:
+                data = "Effect/Direction1.img/aranTutorial/HandedPoleArm" + (c.getPlayer().getGender() == 0 ? "0" : "1");
+                break;
+            case 914090200:
+                data = "Effect/Direction1.img/aranTutorial/Maha";
+                break;
+        }
+        showIntro(c, data);
+    }
+
+    private static void startIceCaveTutorial(final MapleClient c) {
+        c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000014), (byte) -1, (byte) 0);
+        c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000015), (byte) -1, (byte) 0);
+        c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000016), (byte) -1, (byte) 0);
+        c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000017), (byte) -1, (byte) 0);
+        c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000018), (byte) -1, (byte) 0);
+        c.send(UIPacket.ShowWZEffect("Effect/Direction1.img/aranTutorial/ClickLirin"));
+        c.send(UIPacket.IntroDisableUI(false));
+        c.send(UIPacket.IntroLock(false));
+        c.send(CharacterPacket.enableActions());
     }
 
     private static final int getTiming(int ids) {

@@ -37,10 +37,11 @@ Launcher.bat cashshop   改跑 tools.wztosql.CashShopDumper
 建置結束會印一行 `[build] N warnings`。`test` 用的是 `JarLib\test\` 底下的
 `junit-platform-console-standalone` 單一 jar —— 它只在測試 classpath 上，
 不在 `manifest.mf`、也不在 `dist\lib\`，伺服器執行時碰不到它。測試原始碼在
-`test\`，目前是 158 個測試（3 個 `@Disabled`，用來釘住已知但刻意不修的缺陷），
-全部是零 I/O 的純函式：加解密往返、little-endian 讀寫往返、`StringUtil` 的
+`test\`，目前是 216 個測試（0 個 `@Disabled`），全部是零 I/O 的純函式：加解密往返、
+little-endian 讀寫往返（含緩衝區成長、seek 邊界、讀過封包尾端）、`StringUtil` 的
 BIG5 位元組寬度補位、`LoginCrypto`、面板的 `IniFile` 與 `Json`、opcode 載入、
-`GameConstants` 的 id 運算、`KoreanDateUtil`。
+`GameConstants` / `ItemConstants` / `JobConstants` / `MapConstants` 的 id 運算、
+`KoreanDateUtil`。
 
 專案裡沒有 ant 或 IDE 的專案檔：NetBeans 留下的 `build.xml` 只是個殼，它 `<import>` 的
 `nbproject\build-impl.xml` 從未納入版控、從來跑不起來，已經移除。建置流程就是 `Launcher.bat` 本身。
@@ -63,8 +64,8 @@ BIG5 位元組寬度補位、`LoginCrypto`、面板的 `IniFile` 與 `Json`、op
   要改名字就改那一行，並把 `sql/twmsv113.sql` 開頭的 `CREATE DATABASE` / `USE` 改成一樣。
 - `wz/`（XML 解出來的 WZ 資料，未納入版控）
 
-`dist\lib\` 內的相依：MINA 1.x、Nashorn（JDK 15 起已從 JDK 移除，改由 `nashorn-core` 提供）、
-Nashorn 需要的 asm、MySQL Connector/J、slf4j。
+`dist\lib\` 內的相依：MINA 2.2、Nashorn（JDK 15 起已從 JDK 移除，改由 `nashorn-core` 提供）、
+Nashorn 需要的 asm、MySQL Connector/J、slf4j 2.0。
 
 日誌走 `java.lang.System.Logger`（JDK 內建，不加 jar），後端是 `java.util.logging`，
 而 slf4j-jdk14 把 MINA 的 slf4j 也導到同一組 handler。設定在 `Libs/logging.properties`，

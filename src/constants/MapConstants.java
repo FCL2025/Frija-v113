@@ -39,6 +39,16 @@ import server.maps.MapleMapObjectType;
  */
 public class MapConstants {
 
+    /**
+     * 活動地圖（109xxxxxx 那一帶）。唯一的呼叫端是 {@code PlayerHandler}，
+     * 用來決定死亡時能不能用原地復活術（5510000）——在活動地圖裡不行，一律回城。
+     *
+     * <p>A33：{@code GameConstants} 以前有一個同簽章、零呼叫端的 {@code isEventMap}，
+     * 多算了 {@code 809040000..809040100}，註解說那是婚禮地圖。查證後兩件事都不成立：
+     * {@code String.wz} 裡那兩個 id 的名字是「サバイバルイベント」（求生活動），
+     * 而且 v113 的 {@code Map.wz} 根本沒有這兩張地圖。所以兩個版本在這台伺服器上
+     * 沒有任何可觀察的差別，已刪掉那一個。
+     */
     public static boolean isEventMap(final int mapid) {
         return mapid >= 109010000 && mapid < 109050000 || mapid > 109050001 && mapid < 109090000;
     }

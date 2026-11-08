@@ -20,22 +20,45 @@
  */
 package client.anticheat;
 
+import database.DatabaseConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import server.Timer;
 
-
 /**
- * Inert: {@link PersistingTask#run()} only clears {@code toPersist} now - the
- * actual {@code cheatlog} INSERT/UPDATE below it has been commented out since
- * before this fork existed. Kept rather than deleted because
- * {@code CheatTracker.persistEntry} (a file this cleanup does not own) still
- * calls {@link #persistEntry(CheatingOffenseEntry)} on every offense; removing
- * this class means editing that call site too, which is out of scope here.
+ * Writes {@link CheatingOffenseEntry}s to the {@code cheatlog} table, once
+ * every 61 seconds on {@link Timer#CHEAT}.
+ *
+ * <p>E17: the INSERT/UPDATE below had been commented out since before this
+ * fork existed, so every offence {@code CheatTracker} recorded was collected
+ * here and then silently thrown away by {@code toPersist.clear()}. The table
+ * and its two views ({@code readable_cheatlog},
+ * {@code readable_last_hour_cheatlog}) were always there for it; the schema
+ * matches what this writes.
+ *
+ * <p>One row per {@link CheatingOffenseEntry}: the first flush inserts it and
+ * keeps the generated id in the entry, later flushes update that row. Inserts
+ * therefore stay one statement per row (a batched statement may not ask for
+ * generated keys - see CLAUDE.md), updates are batched.
+ *
+ * <p>Threading: entries are mutated on the offending player's handler thread
+ * and read here on a timer thread; {@code CheatingOffenseEntry}'s mutable
+ * fields are volatile for exactly that reason. A count read slightly behind
+ * is harmless - the next {@code registerOffense} queues the entry again.
  */
 public class CheatingOffensePersister {
+
+    private static final System.Logger LOG = System.getLogger(CheatingOffensePersister.class.getName());
+
+    /** {@code cheatlog.param} is TINYTEXT (255 bytes) in a big5 table: two bytes per CJK char. */
+    private static final int MAX_PARAM_CHARS = 120;
 
     private final static CheatingOffensePersister instance = new CheatingOffensePersister();
     private final Set<CheatingOffenseEntry> toPersist = new LinkedHashSet<>();
@@ -63,47 +86,60 @@ public class CheatingOffensePersister {
 
         @Override
         public void run() {
-            //CheatingOffenseEntry[] offenses;
-
+            final CheatingOffenseEntry[] offenses;
             mutex.lock();
             try {
-                //offenses = toPersist.toArray(new CheatingOffenseEntry[toPersist.size()]);
+                offenses = toPersist.toArray(new CheatingOffenseEntry[0]);
                 toPersist.clear();
             } finally {
                 mutex.unlock();
             }
-
-            /*try {
-             Connection con = DatabaseConnection.getConnection();
-             PreparedStatement insertps = con.prepareStatement("INSERT INTO cheatlog (characterid, offense, count, lastoffensetime, param) VALUES (?, ?, ?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS);
-             PreparedStatement updateps = con.prepareStatement("UPDATE cheatlog SET count = ?, lastoffensetime = ?, param = ? WHERE id = ?");
-             for (CheatingOffenseEntry offense : offenses) {
-             String parm = offense.getParam() == null ? "" : offense.getParam();
-             if (offense.getDbId() == -1) {
-             insertps.setInt(1, offense.getChrfor());
-             insertps.setString(2, offense.getOffense().name());
-             insertps.setInt(3, offense.getCount());
-             insertps.setTimestamp(4, new Timestamp(offense.getLastOffenseTime()));
-             insertps.setString(5, parm);
-             insertps.executeUpdate();
-             ResultSet rs = insertps.getGeneratedKeys();
-             if (rs.next()) {
-             offense.setDbId(rs.getInt(1));
-             }
-             rs.close();
-             } else {
-             updateps.setInt(1, offense.getCount());
-             updateps.setTimestamp(2, new Timestamp(offense.getLastOffenseTime()));
-             updateps.setString(3, parm);
-             updateps.setInt(4, offense.getDbId());
-             updateps.executeUpdate();
-             }
-             }
-             insertps.close();
-             updateps.close();
-             } catch (SQLException e) {
-             System.err.println("error persisting cheatlog" + e);
-             }*/
+            if (offenses.length == 0) {
+                return;
+            }
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement insertps = con.prepareStatement("INSERT INTO cheatlog (characterid, offense, count, lastoffensetime, param) VALUES (?, ?, ?, ?, ?)", DatabaseConnection.RETURN_GENERATED_KEYS);
+                 PreparedStatement updateps = con.prepareStatement("UPDATE cheatlog SET count = ?, lastoffensetime = ?, param = ? WHERE id = ?")) {
+                boolean updates = false;
+                for (CheatingOffenseEntry offense : offenses) {
+                    final String param = clip(offense.getParam());
+                    final Timestamp last = new Timestamp(offense.getLastOffenseTime());
+                    if (offense.getDbId() == -1) {
+                        insertps.setInt(1, offense.getChrfor());
+                        insertps.setString(2, offense.getOffense().name());
+                        insertps.setInt(3, offense.getCount());
+                        insertps.setTimestamp(4, last);
+                        insertps.setString(5, param);
+                        insertps.executeUpdate();
+                        try (ResultSet rs = insertps.getGeneratedKeys()) {
+                            if (rs.next()) {
+                                offense.setDbId(rs.getInt(1));
+                            }
+                        }
+                    } else {
+                        updateps.setInt(1, offense.getCount());
+                        updateps.setTimestamp(2, last);
+                        updateps.setString(3, param);
+                        updateps.setInt(4, offense.getDbId());
+                        updateps.addBatch();
+                        updates = true;
+                    }
+                }
+                if (updates) {
+                    updateps.executeBatch();
+                }
+            } catch (SQLException e) {
+                // ERROR: abandoned - this round's offences are not written. Entries
+                // that offend again are queued again; the rest are lost.
+                LOG.log(System.Logger.Level.ERROR, "error persisting cheatlog", e);
+            }
         }
+    }
+
+    private static String clip(final String param) {
+        if (param == null) {
+            return "";
+        }
+        return param.length() <= MAX_PARAM_CHARS ? param : param.substring(0, MAX_PARAM_CHARS);
     }
 }

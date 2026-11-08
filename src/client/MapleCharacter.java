@@ -236,7 +236,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     // 換 ConcurrentHashMap 後 get(null) 會丟 NPE，故 getSkillLevel/getMasterLevel 補了 null 判斷，
     // 行為與 LinkedHashMap.get(null) 回 null 完全一致。
     Map<ISkill, SkillEntry> skills = new ConcurrentHashMap<>();
-    private Map<MapleBuffStat, MapleBuffStatValueHolder> effects = new ConcurrentEnumMap<>(MapleBuffStat.class);
+    // E4b：buff 登錄表（原本的 effects 欄位）與管理它的方法搬到 PlayerBuffs；這裡只留同簽章的轉呼叫。
+    private final PlayerBuffs playerBuffs = new PlayerBuffs(this);
     // 共用：別人進地圖時在他的 handler thread 上走訪（sendSpawnData）、MapleMap.removePlayer 也走訪，
     // 同時 Timer.BUFF 的 CancelEffectAction → deregisterBuffStats 會移除 → 需要並行 Map。
     private Map<Integer, MapleSummon> summons;
@@ -666,47 +667,27 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public boolean isActiveBuffedValue(int skillid) {
-        LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.isSkill() && mbsvh.effect.getSourceId() == skillid) {
-                return true;
-            }
-        }
-        return false;
+        return playerBuffs.isActiveBuffedValue(skillid);
     }
 
     public Integer getBuffedValue(MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        return mbsvh == null ? null : Integer.valueOf(mbsvh.value);
+        return playerBuffs.getBuffedValue(effect);
     }
 
     public final Integer getBuffedSkill_X(final MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        if (mbsvh == null) {
-            return null;
-        }
-        return mbsvh.effect.getX();
+        return playerBuffs.getBuffedSkill_X(effect);
     }
 
     public final Integer getBuffedSkill_Y(final MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        if (mbsvh == null) {
-            return null;
-        }
-        return mbsvh.effect.getY();
+        return playerBuffs.getBuffedSkill_Y(effect);
     }
 
     public boolean isBuffFrom(MapleBuffStat stat, ISkill skill) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(stat);
-        if (mbsvh == null) {
-            return false;
-        }
-        return mbsvh.effect.isSkill() && mbsvh.effect.getSourceId() == skill.getId();
+        return playerBuffs.isBuffFrom(stat, skill);
     }
 
     public int getBuffSource(MapleBuffStat stat) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(stat);
-        return mbsvh == null ? -1 : mbsvh.effect.getSourceId();
+        return playerBuffs.getBuffSource(stat);
     }
 
     public int getItemQuantity(int itemid, boolean checkEquipped) {
@@ -718,21 +699,15 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void setBuffedValue(MapleBuffStat effect, int value) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        if (mbsvh == null) {
-            return;
-        }
-        mbsvh.value = value;
+        playerBuffs.setBuffedValue(effect, value);
     }
 
     public Long getBuffedStarttime(MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        return mbsvh == null ? null : Long.valueOf(mbsvh.startTime);
+        return playerBuffs.getBuffedStarttime(effect);
     }
 
     public MapleStatEffect getStatForBuff(MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        return mbsvh == null ? null : mbsvh.effect;
+        return playerBuffs.getStatForBuff(effect);
     }
 
     private void prepareDragonBlood(final MapleStatEffect bloodEffect) {
@@ -830,7 +805,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     battleshipHP = value; //copy this as well
                 }
             }
-            effects.put(statup.getLeft(), new MapleBuffStatValueHolder(effect, starttime, schedule, value));
+            playerBuffs.put(statup.getLeft(), new MapleBuffStatValueHolder(effect, starttime, schedule, value));
         }
         if (clonez > 0) {
             int cloneSize = Math.max(getNumClones(), getCloneSize());
@@ -844,73 +819,47 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public List<MapleBuffStat> getBuffStats(final MapleStatEffect effect, final long startTime) {
-        final List<MapleBuffStat> bstats = new ArrayList<>();
-        // C12：不能寫 new EnumMap<>(effects)。EnumMap 的複製建構子對「來源也是 EnumMap」
-        // 走的是直接複製對方 vals/size 欄位的快速路徑，完全不經過 ConcurrentEnumMap 覆寫的
-        // 方法，讀鎖形同不存在，會拿到 size 與陣列對不上的複本。entrySet() 現在本身就是
-        // 鎖內做好的不可變快照，直接走訪它即可。
-        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> stateffect : effects.entrySet()) {
-            final MapleBuffStatValueHolder mbsvh = stateffect.getValue();
-            if (mbsvh.effect.sameSource(effect) && (startTime == -1 || startTime == mbsvh.startTime)) {
-                bstats.add(stateffect.getKey());
-            }
-        }
-        return bstats;
+        return playerBuffs.getBuffStats(effect, startTime);
     }
 
-    private boolean deregisterBuffStats(List<MapleBuffStat> stats) {
-        boolean clonez = false;
-        List<MapleBuffStatValueHolder> effectsToCancel = new ArrayList<>(stats.size());
-        for (MapleBuffStat stat : stats) {
-            final MapleBuffStatValueHolder mbsvh = effects.remove(stat);
-            if (mbsvh != null) {
-                boolean addMbsvh = true;
-                for (MapleBuffStatValueHolder contained : effectsToCancel) {
-                    if (mbsvh.startTime == contained.startTime && contained.effect == mbsvh.effect) {
-                        addMbsvh = false;
+    /**
+     * E4b：{@link PlayerBuffs#deregisterBuffStats} 每移除一個 buff stat 就回頭呼叫這裡，
+     * 做屬於角色本身的善後：召喚獸（含暗之守護者的兩個計時器）、龍之魂、分身。
+     * 內容是搬家前 deregisterBuffStats 迴圈裡那一段 if 鏈，逐字相同；呼叫時機也相同——
+     * 仍然是「移除一個 stat、立刻善後、再移除下一個」，沒有改成先全部移除再一起善後。
+     *
+     * @return {@code true} 表示這一次把分身（ILLUSION）收掉了
+     */
+    boolean buffStatDeregistered(final MapleBuffStat stat, final MapleBuffStatValueHolder mbsvh) {
+        if (stat == MapleBuffStat.SUMMON || stat == MapleBuffStat.PUPPET || stat == MapleBuffStat.REAPER) {
+            final int summonId = mbsvh.effect.getSourceId();
+            final MapleSummon summon = summons.get(summonId);
+            if (summon != null) {
+                map.broadcastMessage(MapPacket.removeSummon(summon, true));
+                map.removeMapObject(summon);
+                removeVisibleMapObject(summon);
+                summons.remove(summonId);
+                if (summon.getSkill() == 1321007) {
+                    if (beholderHealingSchedule != null) {
+                        beholderHealingSchedule.cancel(false);
+                        beholderHealingSchedule = null;
                     }
-                }
-                if (addMbsvh) {
-                    effectsToCancel.add(mbsvh);
-                }
-                if (stat == MapleBuffStat.SUMMON || stat == MapleBuffStat.PUPPET || stat == MapleBuffStat.REAPER) {
-                    final int summonId = mbsvh.effect.getSourceId();
-                    final MapleSummon summon = summons.get(summonId);
-                    if (summon != null) {
-                        map.broadcastMessage(MapPacket.removeSummon(summon, true));
-                        map.removeMapObject(summon);
-                        removeVisibleMapObject(summon);
-                        summons.remove(summonId);
-                        if (summon.getSkill() == 1321007) {
-                            if (beholderHealingSchedule != null) {
-                                beholderHealingSchedule.cancel(false);
-                                beholderHealingSchedule = null;
-                            }
-                            if (beholderBuffSchedule != null) {
-                                beholderBuffSchedule.cancel(false);
-                                beholderBuffSchedule = null;
-                            }
-                        }
+                    if (beholderBuffSchedule != null) {
+                        beholderBuffSchedule.cancel(false);
+                        beholderBuffSchedule = null;
                     }
-                } else if (stat == MapleBuffStat.DRAGONBLOOD) {
-                    if (dragonBloodSchedule != null) {
-                        dragonBloodSchedule.cancel(false);
-                        dragonBloodSchedule = null;
-                    }
-                } else if (stat == MapleBuffStat.ILLUSION) {
-                    disposeClones();
-                    clonez = true;
                 }
             }
-        }
-        for (MapleBuffStatValueHolder cancelEffectCancelTasks : effectsToCancel) {
-            if (getBuffStats(cancelEffectCancelTasks.effect, cancelEffectCancelTasks.startTime).size() == 0) {
-                if (cancelEffectCancelTasks.schedule != null) {
-                    cancelEffectCancelTasks.schedule.cancel(false);
-                }
+        } else if (stat == MapleBuffStat.DRAGONBLOOD) {
+            if (dragonBloodSchedule != null) {
+                dragonBloodSchedule.cancel(false);
+                dragonBloodSchedule = null;
             }
+        } else if (stat == MapleBuffStat.ILLUSION) {
+            disposeClones();
+            return true;
         }
-        return clonez;
+        return false;
     }
 
     /**
@@ -936,7 +885,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (buffstats.size() <= 0) {
             return;
         }
-        final boolean clonez = deregisterBuffStats(buffstats);
+        final boolean clonez = playerBuffs.deregisterBuffStats(buffstats);
         if (effect.isMagicDoor()) {
             // remove for all on maps
             if (!getDoors().isEmpty()) {
@@ -991,14 +940,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void cancelBuffStats(MapleBuffStat... stat) {
         List<MapleBuffStat> buffStatList = Arrays.asList(stat);
-        deregisterBuffStats(buffStatList);
+        playerBuffs.deregisterBuffStats(buffStatList);
         cancelPlayerBuffs(buffStatList);
     }
 
     public void cancelEffectFromBuffStat(MapleBuffStat stat) {
-        if (effects.get(stat) != null) {
-            cancelEffect(effects.get(stat).effect, false, -1);
-        }
+        playerBuffs.cancelEffectFromBuffStat(stat);
     }
 
     private void cancelPlayerBuffs(List<MapleBuffStat> buffstats) {
@@ -1017,47 +964,19 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void dispel() {
-        if (!isHidden()) {
-            final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-            for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-                if (mbsvh.effect.isSkill() && mbsvh.schedule != null && !mbsvh.effect.isMorph()) {
-                    cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                }
-            }
-        }
+        playerBuffs.dispel();
     }
 
     public void dispelSkill(int skillid) {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (skillid == 0) {
-                if (mbsvh.effect.isSkill() && (mbsvh.effect.getSourceId() == 4331003 || mbsvh.effect.getSourceId() == 4331002 || mbsvh.effect.getSourceId() == 4341002 || mbsvh.effect.getSourceId() == 22131001 || mbsvh.effect.getSourceId() == 1321007 || mbsvh.effect.getSourceId() == 2121005 || mbsvh.effect.getSourceId() == 2221005 || mbsvh.effect.getSourceId() == 2311006 || mbsvh.effect.getSourceId() == 2321003 || mbsvh.effect.getSourceId() == 3111002 || mbsvh.effect.getSourceId() == 3111005 || mbsvh.effect.getSourceId() == 3211002 || mbsvh.effect.getSourceId() == 3211005 || mbsvh.effect.getSourceId() == 4111002)) {
-                    cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                    break;
-                }
-            } else {
-                if (mbsvh.effect.isSkill() && mbsvh.effect.getSourceId() == skillid) {
-                    cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                    break;
-                }
-            }
-        }
+        playerBuffs.dispelSkill(skillid);
     }
 
     public void dispelBuff(int skillid) {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.getSourceId() == skillid) {
-                cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                break;
-            }
-        }
+        playerBuffs.dispelBuff(skillid);
     }
 
     public void cancelAllBuffs_() {
-        effects.clear();
+        playerBuffs.clear();
         cancelAllTimers();
     }
     
@@ -1091,70 +1010,27 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void cancelAllBuffs() {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-        }
+        playerBuffs.cancelAllBuffs();
     }
 
     public void cancelMorphs() {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            switch (mbsvh.effect.getSourceId()) {
-                case 5101007:
-                case 5111005:
-                case 5121003:
-                case 15111002:
-                case 13111005:
-                    return; // Since we can't have more than 1, save up on loops
-                default:
-                    if (mbsvh.effect.isMorph()) {
-                        cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                        continue;
-                    }
-            }
-        }
+        playerBuffs.cancelMorphs();
     }
 
     public int getMorphState() {
-        LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.isMorph()) {
-                return mbsvh.effect.getSourceId();
-            }
-        }
-        return -1;
+        return playerBuffs.getMorphState();
     }
 
     public void silentGiveBuffs(List<PlayerBuffValueHolder> buffs) {
-        if (buffs == null) {
-            return;
-        }
-        for (PlayerBuffValueHolder mbsvh : buffs) {
-            mbsvh.effect.silentApplyBuff(this, mbsvh.startTime);
-        }
+        playerBuffs.silentGiveBuffs(buffs);
     }
 
     public List<PlayerBuffValueHolder> getAllBuffs() {
-        List<PlayerBuffValueHolder> ret = new ArrayList<>();
-        LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            ret.add(new PlayerBuffValueHolder(mbsvh.startTime, mbsvh.effect));
-        }
-        return ret;
+        return playerBuffs.getAllBuffs();
     }
 
     public void cancelMagicDoor() {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.isMagicDoor()) {
-                cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                break;
-            }
-        }
+        playerBuffs.cancelMagicDoor();
     }
 
     public int getSkillLevel(int skillid) {
@@ -4257,23 +4133,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         ret.currentrep = currentrep;
         ret.totalrep = totalrep;
         ret.stats = stats;
-        // C12：同上——putAll 對 EnumMap 來源也走那條繞過讀鎖的快速路徑，所以逐筆從
-        // entrySet() 的快照複製。分身只有一隻、buff 數量是個位數，成本可以忽略。
-        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> buff : effects.entrySet()) {
-            ret.effects.put(buff.getKey(), buff.getValue());
-        }
-        if (ret.effects.get(MapleBuffStat.ILLUSION) != null) {
-            ret.effects.remove(MapleBuffStat.ILLUSION);
-        }
-        if (ret.effects.get(MapleBuffStat.SUMMON) != null) {
-            ret.effects.remove(MapleBuffStat.SUMMON);
-        }
-        if (ret.effects.get(MapleBuffStat.REAPER) != null) {
-            ret.effects.remove(MapleBuffStat.REAPER);
-        }
-        if (ret.effects.get(MapleBuffStat.PUPPET) != null) {
-            ret.effects.remove(MapleBuffStat.PUPPET);
-        }
+        ret.playerBuffs.copyForClone(playerBuffs);
         ret.guildrank = guildrank;
         ret.allianceRank = allianceRank;
         ret.hidden = hidden;

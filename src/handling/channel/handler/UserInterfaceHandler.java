@@ -21,13 +21,10 @@
 package handling.channel.handler;
 
 import client.MapleClient;
-import client.MapleCharacterUtil;
-import constants.ServerConstants;
 import scripting.NPCScriptManager;
 import scripting.EventManager;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.packet.MapPacket;
-import tools.packet.UIPacket;
 
 public class UserInterfaceHandler {
 
@@ -38,20 +35,6 @@ public class UserInterfaceHandler {
             NPCScriptManager.getInstance().start(c, 1202000);
         } else if (c.getPlayer().getJob() == 1000) {
             NPCScriptManager.getInstance().start(c, 1101008);
-        }
-    }
-
-    public static final void inGame_Poll(final SeekableLittleEndianAccessor slea, final MapleClient c) {
-        if (ServerConstants.PollEnabled) {
-            c.getPlayer().updateTick(slea.readInt());
-            final int selection = slea.readInt();
-
-            if (selection >= 0 && selection <= ServerConstants.Poll_Answers.length) {
-                if (MapleCharacterUtil.setPoll(c.getAccID(), selection)) {
-                    c.send(UIPacket.getPollReply("Thank you."));
-                    //idk what goes here lol
-                }
-            }
         }
     }
 

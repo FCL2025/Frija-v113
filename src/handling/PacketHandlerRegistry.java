@@ -349,7 +349,6 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.COCONUT, (slea, c, cs) -> PlayersHandler.hitCoconut(slea, c));
         put(RecvPacketOpcode.REPAIR, (slea, c, cs) -> NPCHandler.repair(slea, c));
         put(RecvPacketOpcode.REPAIR_ALL, (slea, c, cs) -> NPCHandler.repairAll(c));
-        put(RecvPacketOpcode.GAME_POLL, (slea, c, cs) -> UserInterfaceHandler.inGame_Poll(slea, c));
         put(RecvPacketOpcode.OWL, (slea, c, cs) -> InventoryHandler.owl(slea, c));
         put(RecvPacketOpcode.OWL_WARP, (slea, c, cs) -> InventoryHandler.owlWarp(slea, c));
         put(RecvPacketOpcode.USE_OWL_MINERVA, (slea, c, cs) -> InventoryHandler.owlMinerva(slea, c));

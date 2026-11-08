@@ -230,8 +230,6 @@ public enum SendPacketOpcode implements WritableIntValueHolder {
     SHOW_POTENTIAL_RESET,
     CHAOS_ZAKUM_SHRINE,
     CHAOS_HORNTAIL_SHRINE,
-    GAME_POLL_QUESTION,
-    GAME_POLL_REPLY,
     GMEVENT_INSTRUCTIONS,
     BOAT_EFF,
     OWL_OF_MINERVA,

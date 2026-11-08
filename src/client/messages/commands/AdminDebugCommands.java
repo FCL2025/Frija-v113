@@ -29,7 +29,6 @@ import tools.Pair;
 import tools.StringUtil;
 import tools.packet.PlayerShopPacket;
 import tools.packet.ServerPacket;
-import tools.packet.UIPacket;
 
 /**
  * ADMIN 指令：除錯、封包、效能取樣、測試與伺服器層級的資訊查詢。由 AdminCommand 拆出。
@@ -316,15 +315,6 @@ public class AdminDebugCommands {
     }
 
     public static class Search extends Find {
-    }
-
-    public static class Test extends CommandExecute {
-
-        @Override
-        public int execute(MapleClient c, String[] splitted) {
-            c.send(UIPacket.getPollQuestion());
-            return 1;
-        }
     }
 
     public static class Test2 extends CommandExecute {

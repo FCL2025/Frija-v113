@@ -24457,18 +24457,6 @@ CREATE TABLE `families` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `game_poll_reply`
---
-
-CREATE TABLE `game_poll_reply` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `AccountId` int(10) UNSIGNED NOT NULL,
-  `SelectAns` tinyint(5) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `gifts`
 --
 
@@ -30545,12 +30533,6 @@ ALTER TABLE `families`
   ADD PRIMARY KEY (`familyid`);
 
 --
--- 資料表索引 `game_poll_reply`
---
-ALTER TABLE `game_poll_reply`
-  ADD PRIMARY KEY (`id`);
-
---
 -- 資料表索引 `gifts`
 --
 ALTER TABLE `gifts`
@@ -30970,11 +30952,6 @@ ALTER TABLE `famelog`
 --
 ALTER TABLE `families`
   MODIFY `familyid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `game_poll_reply`
---
-ALTER TABLE `game_poll_reply`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 --
 -- 使用資料表 AUTO_INCREMENT `gifts`
 --

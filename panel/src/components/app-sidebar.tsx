@@ -29,13 +29,13 @@ export function AppSidebar({ active, onSelect, serverName, version }: AppSidebar
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild tooltip="TMS113 管理面板">
+            <SidebarMenuButton size="lg" asChild tooltip="Frija v113 管理面板">
               <a href="#dashboard" onClick={() => onSelect('dashboard')}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <Server className="size-4" aria-hidden />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">TMS113 管理面板</span>
+                  <span className="truncate font-semibold">Frija v113 管理面板</span>
                   <span className="truncate text-xs text-muted-foreground">
                     {serverName ?? '連線中…'}
                   </span>

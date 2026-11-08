@@ -50,7 +50,7 @@ public final class StaticHandler implements HttpHandler {
 
     private static final String MISSING_PAGE = """
             <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
-            <title>TMS113 管理面板</title></head>
+            <title>Frija v113 管理面板</title></head>
             <body style="font-family:system-ui,sans-serif;max-width:40em;margin:4em auto;line-height:1.6">
             <h1>前端尚未建置</h1>
             <p>這個 jar 裡沒有管理面板的網頁檔。請在 <code>panel\\</code> 目錄執行一次

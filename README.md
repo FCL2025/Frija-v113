@@ -1,156 +1,155 @@
-# MapleStory-v113-server
-台服 113 伺服器
+# TWMS v113 伺服器
 
-原始來源為網路
+台服（TWMS）v113 私服的伺服器端。這份文件只說明如何把伺服器架起來。
 
+## 事前準備
 
-已修正
+| 項目 | 版本 | 說明 |
+|---|---|---|
+| Windows | 10 / 11 | 啟動腳本 `Launcher.bat` 是批次檔 |
+| JDK | **26** | 必須是 **JDK**，不是 JRE（啟動前會自動編譯）。Oracle JDK 或任一 OpenJDK 26 發行版皆可 |
+| MySQL | 8.0 以上 | |
+| WZ 資料 | v113 台服 | 匯出成 XML 格式，**不包含在專案裡**，需自行準備 |
+| 遊戲客戶端 | v113 台服 | 需能連到你的伺服器 IP，**不包含在專案裡** |
+| Node.js | 20 以上（選用） | 只有網頁管理面板需要，不裝也能正常開服 |
 
-多人遊戲
+伺服器以 4 GB 記憶體啟動，建議機器至少有 8 GB。
 
-廣播
+## 架設步驟
 
-商城
+### 1. 安裝 JDK 26
 
-多數技能
-
-修正部分計時器殘留問題
-
-
-## 建置與執行
-
-需要 **JDK 26**。原始碼是 UTF-8 且含有中文識別字，`javac` 必須帶 `-encoding UTF-8`。
-
-整個專案只有一個 `Launcher.bat`，它會在啟動前自動建置：只要 `src\`、`JarLib\` 或
-`manifest.mf` 裡有任何檔案比 `dist\TMS113.jar` 新，就先編譯打包再啟動；沒有改動就直接啟動。
-工作目錄必須是專案根目錄。
+安裝完成後，開一個新的命令提示字元確認版本：
 
 ```
-Launcher.bat            需要的話先建置，然後啟動伺服器
-Launcher.bat run        不建置，直接啟動
-Launcher.bat build      強制重新建置，建置完就結束（不啟動伺服器）
-Launcher.bat lint       只編譯，依類別印出 -Xlint:all 的警告統計後結束
-Launcher.bat test       編譯 src\ 與 test\，跑 JUnit 5 測試
-Launcher.bat cashshop   改跑 tools.wztosql.CashShopDumper
+java -version
 ```
 
-建置結束會印一行 `[build] N warnings`。`test` 用的是 `JarLib\test\` 底下的
-`junit-platform-console-standalone` 單一 jar —— 它只在測試 classpath 上，
-不在 `manifest.mf`、也不在 `dist\lib\`，伺服器執行時碰不到它。測試原始碼在
-`test\`，目前是 216 個測試（0 個 `@Disabled`），全部是零 I/O 的純函式：加解密往返、
-little-endian 讀寫往返（含緩衝區成長、seek 邊界、讀過封包尾端）、`StringUtil` 的
-BIG5 位元組寬度補位、`LoginCrypto`、面板的 `IniFile` 與 `Json`、opcode 載入、
-`GameConstants` / `ItemConstants` / `JobConstants` / `MapConstants` 的 id 運算、
-`KoreanDateUtil`。
+要看到 `26`。如果電腦裡裝了不只一個 Java，請把系統環境變數 `JAVA_HOME` 設成 JDK 26
+的安裝資料夾（例如 `C:\Program Files\Java\jdk-26`）。
 
-專案裡沒有 ant 或 IDE 的專案檔：NetBeans 留下的 `build.xml` 只是個殼，它 `<import>` 的
-`nbproject\build-impl.xml` 從未納入版控、從來跑不起來，已經移除。建置流程就是 `Launcher.bat` 本身。
+### 2. 安裝 MySQL 並匯入資料庫
 
-執行前需要：
-
-- `Settings.ini`：這個檔案不進版控（裡面有資料庫帳密）。從範本複製一份再填：
-
-  ```
-  copy Settings.ini.example Settings.ini
-  ```
-
-- MySQL：`mysql -u root -p < sql/twmsv113.sql`（這個檔案會自己建立並選用 `twmsv113` 資料庫），
-  再把帳密填進 `Settings.ini` 的 `tms.User` / `tms.Pass`
-
-  帳密填錯時伺服器不會報錯：`tms.Url` 裡的 `maxReconnects=999` 會讓它安靜重試約 30 分鐘，
-  期間沒有任何輸出。啟動後卡住沒反應，先檢查這兩行。
-  
-  資料庫名稱沒有獨立的設定項，它是 `tms.Url` 這條 JDBC 網址裡 `3306/` 後面那一段。
-  要改名字就改那一行，並把 `sql/twmsv113.sql` 開頭的 `CREATE DATABASE` / `USE` 改成一樣。
-
-  已經用舊版 `sql/twmsv113.sql` 匯入過的資料庫不會自己跟著變。`sql/migrations/` 底下每一次
-  schema 變更都有一支檔案（刪掉不再使用的表、零日期改 NULL、修好 `cheatlog` 的檢視表……），
-  都可以重複執行，而且刻意不指定資料庫，要在命令列帶上名稱：
-
-  ```
-  mysql -u root -p twmsv113 < sql/migrations/i3-zero-dates.sql
-  ```
-
-  每支檔案開頭都寫了它在做什麼、跑之前要不要先備份。
-- `wz/`（XML 解出來的 WZ 資料，未納入版控）
-
-`dist\lib\` 內的相依：MINA 2.2、Nashorn（JDK 15 起已從 JDK 移除，改由 `nashorn-core` 提供）、
-Nashorn 需要的 asm、MySQL Connector/J、slf4j 2.0。
-
-日誌走 `java.lang.System.Logger`（JDK 內建，不加 jar），後端是 `java.util.logging`，
-而 slf4j-jdk14 把 MINA 的 slf4j 也導到同一組 handler。設定在 `Libs/logging.properties`，
-由 `Launcher.bat` 以 `-Djava.util.logging.config.file=` 帶入。慣例寫在 `src/tools/Logging.java`
-的 javadoc 裡。注意：那個參數指向不存在的檔案時不會退回 JDK 預設、也不會報錯，
-console 會完全安靜——`Launcher.bat` 因此會先檢查並警告。
-
-## 啟動時間
-
-啟動過程中每個階段都會印出花費的毫秒數，最後一行 `Loaded Complete :::` 會標上完成時間與總秒數：
+安裝 MySQL 8，記下 root 密碼。接著在專案根目錄開啟**命令提示字元（cmd）**，執行：
 
 ```
-[啟動] 資料庫連線             741 ms
-[啟動] 世界與計時器            29 ms
-[啟動] 遊戲資料檔            1253 ms
-[啟動] 排行榜與家族           142 ms
-[啟動] 購物商城道具           251 ms
-[啟動] 登入伺服器              58 ms
-[啟動] 頻道伺服器            3592 ms
-[啟動] 購物商城伺服器          35 ms
-Loaded Complete ::: 啟動完成於 2026-09-11 14:46:40，共花費 6.18 秒
+mysql -u root -p < sql\twmsv113.sql
 ```
 
-原本啟動要花約 29 秒，其中 20 秒耗在 `CashItemFactory`：它對 `Commodity.img` 裡約 7800 個道具
-各做一次 `getPackageItems()`，而每一次都把整份 `CashPackage.img` 重新解析成 DOM；同時還對每個
-SN 各發一次 `SELECT … WHERE serial = ?`，等於為一張 6653 列的表跑了 7800 次查詢。現在兩者都改成
-只讀一次。頻道那一段本來是剩下最大的一塊——每個頻道都要為 `tms.Events` 裡約 100 支腳本各開一個 Nashorn
-引擎並編譯。先改成平行編譯，2026-09 又改成「全樹共用一個引擎、每支腳本只編譯一次、
-每段對話只建自己的 Global」，頻道啟動因此由 3.7 秒降到約 2.0 秒，整體啟動約 5.6 秒。
+- 這會自動建立 `twmsv113` 資料庫，不需要先手動建立。
+- PowerShell 不支援 `<` 這種寫法，請用 cmd。
+- 找不到 `mysql` 指令時，它在 MySQL 安裝目錄的 `bin\` 底下（例如
+  `C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe`），可以打完整路徑或加進 PATH。
+  也可以改用 MySQL Workbench 的 File → Run SQL Script 匯入同一個檔案。
 
-總時間會隨機器核心數、`tms.Count`（頻道數）與 `tms.Events` 的長度而變。
+### 3. 放入 WZ 資料
 
-## 管理面板
-
-伺服器啟動後，用瀏覽器開 <http://127.0.0.1:8080/>。登入 Token 印在啟動輸出裡：
+用 WZ 工具（例如 HaRepacker）把 v113 台服客戶端的 `.wz` 檔匯出成 XML，放進專案根目錄的
+`wz\` 資料夾。每個 `X.wz` 都是一個**資料夾**，裡面是 `.img.xml` 檔，例如：
 
 ```
-[面板] 管理面板：http://127.0.0.1:8080/  （8 條處理執行緒）
-[面板] 登入 Token：kGBVMZDI_2fwO3C8S3WJLya1YAObcCDO
+wz\Base.wz\
+wz\Character.wz\
+wz\Effect.wz\
+wz\Etc.wz\
+wz\Item.wz\
+wz\Map.wz\
+wz\Mob.wz\
+wz\Morph.wz\
+wz\Npc.wz\
+wz\Quest.wz\
+wz\Reactor.wz\
+wz\Skill.wz\
+wz\Sound.wz\
+wz\String.wz\
+wz\TamingMob.wz\
+wz\UI.wz\
 ```
 
-面板活在遊戲伺服器的同一個 JVM 裡（`src/server/panel/`，用 JDK 內建的 `com.sun.net.httpserver`，
-沒有新增任何 jar），隨 `server.Start` 一起啟動、隨 `ShutdownServer` 一起關閉；**伺服器沒開就沒有面板，
-面板也無法重啟伺服器**。目前有：
+### 4. 建立設定檔
 
-| 分頁 | 內容 |
+在專案根目錄複製範本：
+
+```
+copy Settings.ini.example Settings.ini
+```
+
+打開 `Settings.ini`，**至少**要填 MySQL 的帳號密碼：
+
+```
+tms.User          = root
+tms.Pass          = 你的MySQL密碼
+```
+
+其他常用設定：
+
+| 設定 | 說明 |
 |---|---|
-| 儀表板 | 線上人數、各頻道人數、登入連線數、資料庫連線池、JVM 記憶體與執行緒、啟動耗時 |
-| 頻道 / 線上玩家 / 日誌 | `ChannelServer` 狀態與倍率、各頻道的線上角色（含帳號與 IP）、`Logs/*.rtf` 的 tail |
-| 即時操作 | 改倍率（四種倍率同時套用到每個頻道並寫回 ini）、廣播、頻道公告、七組 `!reload…`、優雅關機 |
-| 設定檔 | `Settings.ini` 逐項檢視與修改，保留 BOM、CRLF、註解與對齊；每項標明「即時 / 記憶體 / 需重啟」 |
-| 帳號與角色 | `accounts` / `characters` 的查詢與編輯（密碼欄位不會離開伺服器）、踢人、IP / MAC 封鎖清單；線上角色拒絕寫入，因為記憶體才是真相 |
-| 掉寶與商店 | `drop_data` / `drop_data_global` / `shops` + `shopitems` / `cashshop_modified_items` 的編輯器，道具、怪物、NPC 都用名稱搜尋；每次寫入自動清掉對應的快取 |
-| 腳本 | `Libs/scripts/` 的 2454 支腳本：檔案瀏覽、全文搜尋、CodeMirror 編輯；以 UTF-8 編輯、存檔轉回 BIG5，無法以 BIG5 表示的字元會擋下並指出行列 |
+| `tms.IP` | 客戶端要連線的 IP。只在本機玩填 `127.0.0.1`；要給其他電腦連線，填這台主機的區網 IP 或公網 IP |
+| `tms.Count` | 頻道數量，預設 3 |
+| `tms.Exp` / `tms.Meso` / `tms.Drop` | 經驗、楓幣、掉寶倍率 |
+| `tms.ServerName` | 伺服器名稱 |
 
-設定項（都在 `Settings.ini`，見 `Settings.ini.example` 的說明）：`tms.PanelPort`（預設 8080，`0` 停用）、
-`tms.PanelThreads`、`tms.PanelToken`（固定 Token；不設就每次啟動隨機產生）。
+存檔時請保持 UTF-8 編碼（Windows 記事本預設就是）。
 
-面板只綁 `127.0.0.1`，但這不等於安全——同一台機器上任何網頁都能對 localhost 發請求。所以每個 `/api/*`
-都要 `Authorization: Bearer <token>`，並檢查 `Host` / `Origin`；密碼類欄位（`tms.Pass`、`tms.PanelToken`）
-永遠不會送到瀏覽器。不要把這個 port 開到公網。
+### 5. 啟動伺服器
 
-### 前端建置
+雙擊專案根目錄的 `Launcher.bat`。第一次會先編譯（約 10 秒），接著啟動伺服器。
+看到下面這一行就代表開服完成：
 
-前端在 `panel/`（Vite + React + TypeScript + Tailwind + shadcn/ui），建置產物 `panel/dist` 會被
-`Launcher.bat` 複製進 `build\classes\server\panel\web\` 一起打進 jar。第一次要先裝依賴：
+```
+Loaded Complete ::: 啟動完成於 ...
+```
+
+關服時請在伺服器視窗按 **Ctrl+C**，伺服器會先存檔再結束；直接關掉視窗可能來不及存檔。
+
+### 6. 連線進遊戲
+
+- 客戶端連到 `tms.IP` 的 **8484** 埠（登入伺服器）。
+- 要讓其他電腦連線，防火牆需開放以下 TCP 埠（只在本機玩不用開）：
+
+  | 埠 | 用途 |
+  |---|---|
+  | 8484 | 登入 |
+  | 8586 起，每個頻道一個 | 頻道（3 個頻道就是 8586、8587、8588） |
+  | 8596 | 購物商城 |
+
+- `Settings.ini` 的 `tms.AutoRegister = true` 時，在登入畫面輸入一組**還不存在**的帳號與密碼，
+  就會自動建立帳號並登入（同一個 IP 只能自動註冊一個帳號）。
+
+## 設定 GM（選用）
+
+在角色**離線**時，對資料庫執行：
+
+```sql
+UPDATE twmsv113.characters SET gm = 3 WHERE name = '角色名稱';
+```
+
+`3` 是管理員，可以在遊戲內使用 `!` 開頭的 GM 指令。角色在線上時修改會被下一次存檔覆蓋。
+
+## 管理面板（選用）
+
+需要先安裝 Node.js 20 以上，然後只要做一次：
 
 ```
 cd panel
 npm install
 ```
 
-之後照常跑 `Launcher.bat` 即可：只要 `panel\` 底下（`node_modules\` 與 `dist\` 除外）有檔案比
-`panel\dist\index.html` 新，就會先 `npm run build` 再打包；只改 `.java` 時不會碰 npm，只是把現成的
-`panel\dist` 再複製一次。沒有 Node 或沒有 `node_modules` 時會印出警告並跳過前端建置，伺服器照常
-建置與啟動，面板首頁會顯示「前端尚未建置」。
+之後照常啟動 `Launcher.bat`，它會自動建置面板。伺服器開好後，用瀏覽器開
+<http://127.0.0.1:8080/>，登入用的 Token 會印在伺服器視窗裡。面板只能從伺服器本機開啟。
 
-開發前端時可以 `npm run dev`，Vite 會把 `/api` 轉給 127.0.0.1:8080 的伺服器。
+## 常見問題
+
+**啟動後停在開頭，很久都沒有進展**
+MySQL 的帳號密碼錯誤，或 MySQL 服務沒有啟動。帳密錯誤時伺服器不會立刻報錯，而是安靜地重試約
+30 分鐘。請檢查 `Settings.ini` 的 `tms.User` / `tms.Pass`。
+
+**一啟動就自己結束，訊息提到 `auth_server_channel_ip`**
+資料庫沒有匯入成功。請重做第 2 步。
+
+**出現 `ERROR: no JDK found` 或 `that is a JRE, not a JDK`**
+沒有安裝 JDK 26，或 `JAVA_HOME` 指到了錯誤的位置。請重做第 1 步。
+
+**可以登入，但選頻道後斷線或連不上**
+`tms.IP` 填錯，或防火牆沒有開放頻道的埠。

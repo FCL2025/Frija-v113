@@ -150,7 +150,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     long lastfametime;
     private long lastCombo, keydown_skill;
     byte dojoRecord, gmLevel, gender, initialSpawnPoint, skinColor, guildrank = 5, allianceRank = 5, world, subcategory; // Make this a quest record, TODO : Transfer it somehow with the current data
-    private byte fairyExp = 10, numClones;
+    private byte fairyExp = 10;
     short level, fame, hpApUsed, job, remainingAp;
     private short mulung_energy, combo, availableCP, totalCP;
     int accountid, id, meso, exp, hair, face, mapid, bookCover, dojo,
@@ -182,8 +182,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     private final Object currencyLock = new Object();
     private int fallcounter = 0, chair, itemEffect, marriageItemId = 0,
             linkMid = 0, coconutteam = 0, followid = 0, battleshipHP = 0,
-            challenge, guildContribution = 0, beansNum, beansRange;
-    private boolean canSetBeansNum;
+            challenge, guildContribution = 0;
     private Point old = new Point(0, 0);
     private boolean smega, hidden, hasSummon = false;
     int[] wishlist, rocks, savedLocations, regrocks, remainingSp = new int[10];
@@ -204,8 +203,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     // 共用：World.handleCooldowns 在 Timer.WORLD 上走訪、MapleMap.addPlayer 與
     // CharacterPacket/PetPacket 在「別人」的 handler thread 上走訪，本人只在自己的執行緒增刪。
     List<MaplePet> pets;
-    // 固定長度陣列，元素只是參考覆寫（addClone/disposeClones），沒有結構性改動 → 不需要同步。
-    private WeakReference<MapleCharacter>[] clones;
+    // E4d：分身（clones 陣列與 numClones）搬到 PlayerClones；這裡只留同簽章的轉呼叫。
+    private final PlayerClones playerClones;
     // 共用：MapleMonster.switchController 由「攻擊者」的 handler thread 摘掉原控制者的怪，
     // MapleMap.updateMonsterController 由 Respawn（Timer.WORLD）指派，MapleMap.removePlayer
     // 還會拿 iterator 邊走邊 remove → 需要 iterator 支援移除的並行 Set。
@@ -299,6 +298,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         quests = new ConcurrentHashMap<>(); // Stupid erev quest.
         stats = new PlayerStats(this);
+        // E4d：陣列仍然只在頻道伺服器的角色上建立（見 PlayerClones 的建構子），與搬家前相同。
+        playerClones = new PlayerClones(this, ChannelServer);
         for (int i = 0; i < remainingSp.length; i++) {
             remainingSp[i] = 0;
         }
@@ -315,13 +316,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             wishlist = new int[10];
             rocks = new int[10];
             regrocks = new int[5];
-            // 泛型陣列無法直接 new；陣列元素只由本類別以 WeakReference<MapleCharacter> 寫入，故轉型安全
-            @SuppressWarnings("unchecked")
-            final WeakReference<MapleCharacter>[] clonesArray = (WeakReference<MapleCharacter>[]) new WeakReference<?>[25];
-            clones = clonesArray;
-            for (int i = 0; i < clones.length; i++) {
-                clones[i] = new WeakReference<>(null);
-            }
             inst = new AtomicInteger();
             inst.set(0); // 1 = NPC/ Quest, 2 = Duey, 3 = Hired Merch store, 4 = Storage
             keylayout = new MapleKeyLayout();
@@ -535,7 +529,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         client.setAccountName(ct.accountname);
         ret.acash = ct.ACash;
         ret.maplepoints = ct.MaplePoints;
-        ret.numClones = ct.clonez;
+        ret.playerClones.setNumClones(ct.clonez);
         ret.mount = new MapleMount(ret, ct.mount_itemid, JobConstants.isKOC(ret.job) ? 10001004 : (JobConstants.isAran(ret.job) ? 20001004 : (JobConstants.isEvan(ret.job) ? 20011004 : 1004)), ct.mount_Fatigue, ct.mount_level, ct.mount_exp);
 
         ret.stats.recalcLocalStats(true);
@@ -862,7 +856,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                         map.broadcastMessage(this, PetPacket.showPet(this, pet, false, false), false);
                     }
                 }
-                for (final WeakReference<MapleCharacter> chr : clones) {
+                for (final WeakReference<MapleCharacter> chr : playerClones.getClones()) {
                     if (chr.get() != null) {
                         map.broadcastMessage(chr.get(), CharacterPacket.spawnPlayerMapobject(chr.get()), false);
                     }
@@ -870,7 +864,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             }
         }
         if (!clonez) {
-            for (WeakReference<MapleCharacter> chr : clones) {
+            for (WeakReference<MapleCharacter> chr : playerClones.getClones()) {
                 if (chr.get() != null) {
                     chr.get().cancelEffect(effect, overwrite, startTime);
                 }
@@ -2634,7 +2628,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     @Override
     public void sendDestroyData(MapleClient client) {
         client.send(CharacterPacket.removePlayerFromMap(this.getObjectId()));
-        for (final WeakReference<MapleCharacter> chr : clones) {
+        for (final WeakReference<MapleCharacter> chr : playerClones.getClones()) {
             if (chr.get() != null) {
                 chr.get().sendDestroyData(client);
             }
@@ -2652,7 +2646,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     client.send(PetPacket.petComplete(this, pet));
                 }
             }
-            for (final WeakReference<MapleCharacter> chr : clones) {
+            for (final WeakReference<MapleCharacter> chr : playerClones.getClones()) {
                 if (chr.get() != null) {
                     chr.get().sendSpawnData(client);
                 }
@@ -3932,7 +3926,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public WeakReference<MapleCharacter>[] getClones() {
-        return clones;
+        return playerClones.getClones();
     }
 
     public MapleCharacter cloneLooks() {
@@ -4011,55 +4005,23 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public final void cloneLook() {
-        if (clone) {
-            return;
-        }
-        for (int i = 0; i < clones.length; i++) {
-            if (clones[i].get() == null) {
-                final MapleCharacter newp = cloneLooks();
-                map.addPlayer(newp);
-                map.broadcastMessage(CharacterPacket.updateCharLook(newp));
-                map.movePlayer(newp, getPosition());
-                clones[i] = new WeakReference<>(newp);
-                return;
-            }
-        }
+        playerClones.cloneLook();
     }
 
     public final void disposeClones() {
-        numClones = 0;
-        for (int i = 0; i < clones.length; i++) {
-            if (clones[i].get() != null) {
-                map.removePlayer(clones[i].get());
-                clones[i].get().getClient().disconnect(false, false);
-                clones[i] = new WeakReference<>(null);
-                numClones++;
-            }
-        }
+        playerClones.disposeClones();
     }
 
     public final int getCloneSize() {
-        int z = 0;
-        for (int i = 0; i < clones.length; i++) {
-            if (clones[i].get() != null) {
-                z++;
-            }
-        }
-        return z;
+        return playerClones.getCloneSize();
     }
 
     public void spawnClones() {
-        if (numClones == 0 && stats.hasClone) {
-            cloneLook(); //once and never again
-        }
-        for (int i = 0; i < numClones; i++) {
-            cloneLook();
-        }
-        numClones = 0;
+        playerClones.spawnClones();
     }
 
     public byte getNumClones() {
-        return numClones;
+        return playerClones.getNumClones();
     }
 
     public void setDragon(MapleDragon d) {
@@ -4707,45 +4669,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void setBeans(int s) {
         beans = s;
-    }
-
-    public int getBeansNum() {
-        return beansNum;
-    }
-
-    /**
-     * @param beansNum the beansNum to set
-     */
-    public void setBeansNum(int beansNum) {
-        beansNum = beansNum;
-    }
-
-    /**
-     * @return the beansRange
-     */
-    public int getBeansRange() {
-        return beansRange;
-    }
-
-    /**
-     * @param beansRange the beansRange to set
-     */
-    public void setBeansRange(int beansRange) {
-        beansRange = beansRange;
-    }
-
-    /**
-     * @return the canSetBeansNum
-     */
-    public boolean isCanSetBeansNum() {
-        return canSetBeansNum;
-    }
-
-    /**
-     * @param canSetBeansNum the canSetBeansNum to set
-     */
-    public void setCanSetBeansNum(boolean canSetBeansNum) {
-        canSetBeansNum = canSetBeansNum;
     }
 
     public boolean haveGM() {

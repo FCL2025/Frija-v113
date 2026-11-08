@@ -74,7 +74,11 @@ public class CashShopServer {
         LOG.log(System.Logger.Level.INFO, "Saving all connected clients (CS)...");
         players.disconnectAll();
         playersMTS.disconnectAll();
-        MTSStorage.getInstance().saveBuyNow(true);
+        // E19：拍賣場從未載入時 getInstance() 是 null（目前一律如此）。
+        final MTSStorage mts = MTSStorage.getInstance();
+        if (mts != null) {
+            mts.saveBuyNow(true);
+        }
         LOG.log(System.Logger.Level.INFO, "Shutting down CS...");
         MapleAcceptor.unbind(InetSocketadd);
         finishedShutdown = true;

@@ -310,7 +310,13 @@ public final class PacketHandlerRegistry {
             CashShopOperation.couponCode(slea.readMapleAsciiString(), c);
         });
         put(RecvPacketOpcode.CS_UPDATE, (slea, c, cs) -> CashShopOperation.csUpdate(c));
-        put(RecvPacketOpcode.TOUCHING_MTS, (slea, c, cs) -> MTSOperation.mtsUpdate(MTSStorage.getInstance().getCart(c.getPlayer().getId()), c));
+        put(RecvPacketOpcode.TOUCHING_MTS, (slea, c, cs) -> {
+            // E19：拍賣場從未載入（見 MTSOperation.mtsOperation），偽造封包以前會在這裡 NPE。
+            final MTSStorage mts = MTSStorage.getInstance();
+            if (mts != null) {
+                MTSOperation.mtsUpdate(mts.getCart(c.getPlayer().getId()), c);
+            }
+        });
         put(RecvPacketOpcode.MTS_TAB, (slea, c, cs) -> MTSOperation.mtsOperation(slea, c));
         put(RecvPacketOpcode.DAMAGE_SUMMON, (slea, c, cs) -> {
             slea.skip(4);

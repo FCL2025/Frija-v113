@@ -17,6 +17,12 @@ import tools.packet.MTSCSPacket;
 public class MTSOperation {
 
     public static void mtsOperation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+        // E19：MTSStorage.load() 全樹零呼叫端，拍賣場從來沒有載入；ENTER_MTS 也只回「目前暫停使用」，
+        // 正常客戶端走不到這裡。以前偽造的 MTS_TAB 封包會在 getInstance() 的 null 上 NPE，
+        // 現在直接忽略。哪天真的要開拍賣場，在 Start 裡呼叫 MTSStorage.load() 就會自動生效。
+        if (MTSStorage.getInstance() == null) {
+            return;
+        }
         final MTSCart cart = MTSStorage.getInstance().getCart(c.getPlayer().getId());
         if (slea.available() <= 0) {
             doMTSPackets(cart, c);

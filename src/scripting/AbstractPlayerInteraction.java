@@ -908,14 +908,27 @@ public abstract class AbstractPlayerInteraction {
         c.send(UIPacket.getEvanTutorial(data));
     }
 
+    /** 與 {@link #showAvatarOrientedEffect} 送的是同一個封包；名字是歷史遺留，腳本兩個都在用。 */
     public final void aranTutInstructionalBubble(final String data) {
         c.send(UIPacket.aranTutInstructionalBalloon(data));
     }
 
-    public final void ShowWZEffect(final String data) {
+    /**
+     * 畫在角色身上的效果（{@code SHOW_ITEM_GAIN_INCHAT} 模式 0x15）：教學氣泡、
+     * 指引箭頭、楓之島的教學提示。路徑在 {@code Effect/OnUserEff.img/…} 與
+     * {@code UI/tutorial.img/NN}。劇情演出（{@code Effect/Direction*.img/…}）
+     * 請用 {@link #showWZEffect}。
+     *
+     * <p>A31：以前叫 {@code ShowWZEffect}，和下面的 {@code showWZEffect} 只差一個大寫、
+     * 送的卻是不同的封包，看起來像複製貼上忘了改。逐一對過 44 個呼叫端傳的 WZ 路徑後
+     * 確認兩者都沒有壞：大寫那 27 個全部是 OnUserEff / UI/tutorial，小寫那 17 個全部是
+     * Direction，各自配對正確，錯的只有名字。
+     */
+    public final void showAvatarOrientedEffect(final String data) {
         c.send(UIPacket.aranTutInstructionalBalloon(data));
     }
 
+    /** 劇情演出效果（模式 0x12），路徑在 {@code Effect/Direction*.img/…}。見 {@link #showAvatarOrientedEffect}。 */
     public final void showWZEffect(final String data) {
         c.send(UIPacket.ShowWZEffect(data));
     }

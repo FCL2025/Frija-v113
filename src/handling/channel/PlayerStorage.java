@@ -293,10 +293,25 @@ public class PlayerStorage {
         }
     }
 
+    /**
+     * Stops the sweep from rescheduling itself. For a channel that is being
+     * retired while the server runs; without it every retired channel would
+     * leave a storage behind that a {@code Timer.PING} task keeps alive by
+     * re-arming itself every 15 minutes, forever.
+     */
+    public final void close() {
+        closed = true;
+    }
+
+    private volatile boolean closed;
+
     public class PersistingTask implements Runnable {
 
         @Override
         public void run() {
+            if (closed) {
+                return;
+            }
             wL2.lock();
             try {
                 final long currenttime = System.currentTimeMillis();

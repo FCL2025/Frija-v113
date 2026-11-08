@@ -1,5 +1,6 @@
 package server.panel;
 
+import handling.channel.ChannelServer;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -12,9 +13,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import scripting.PortalScriptManager;
@@ -46,9 +49,11 @@ import tools.Encodings;
  * script from there - without it the file on disk would change and the server
  * would go on running the bytecode it compiled the first time. On top of that,
  * portal scripts also have the {@link PortalScript} objects built from them
- * cached process-wide, and those are dropped here too; event scripts are
- * instantiated per channel and still want a reload from {@link ActionsApi} to
- * re-run their {@code init()}.
+ * cached process-wide, and those are dropped here too; an event script is a
+ * running object per channel, so saving one rebuilds just that event on every
+ * channel that loads it ({@code ChannelServer.applyEvents}) - its old copy is
+ * stopped, the new one compiled and its {@code init()} run, and every other
+ * event keeps running untouched.
  *
  * <p>What is deliberately <i>not</i> touched is a live conversation. An NPC,
  * quest or reactor script already running has its own scope in a plain
@@ -276,7 +281,7 @@ final class ScriptsApi {
     private static String afterSave(final String kind) {
         return switch (kind) {
             case "portal" -> "存檔後會自動清掉這支腳本的編譯快取與傳送點快取，下次踩到就是新版。";
-            case "event" -> "存檔後會自動清掉這支腳本的編譯快取；事件是各頻道各自建立的，請再按「重載事件」。";
+            case "event" -> "存檔後會在每個有載入它的頻道上停掉舊版、編譯並啟動新版；其他事件照常執行。已經在進行中的副本用舊版跑完。";
             default -> "存檔後會自動清掉這支腳本的編譯快取，下次跟它互動的玩家就會讀到新檔；正卡在對話中的玩家請用 @解卡 或重登。";
         };
     }
@@ -319,6 +324,21 @@ final class ScriptsApi {
         if (kind.equals("portal")) {
             PortalScriptManager.getInstance().clearScripts();
             reloaded = "portal";
+        } else if (kind.equals("event")) {
+            // An event is a running object per channel, not something looked
+            // up per use, so clearing the cache alone changes nothing until
+            // the channel rebuilds it. Rebuild exactly this one, wherever
+            // tms.Events loads it; every other event keeps running untouched.
+            final String event = name.endsWith(".js") ? name.substring(0, name.length() - 3) : name;
+            final String[] list = ChannelServer.eventList();
+            if (Arrays.asList(list).contains(event)) {
+                for (final ChannelServer cs : ChannelServer.getAllInstances()) {
+                    if (!cs.isShutdown()) {
+                        cs.applyEvents(list, Set.of(event));
+                    }
+                }
+                reloaded = "event";
+            }
         }
         return Json.obj(
                 "ok", true,

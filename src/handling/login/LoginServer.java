@@ -134,6 +134,16 @@ public class LoginServer {
         return adminOnly;
     }
 
+    /** Takes effect at the next login; nobody already in is thrown out. */
+    public static final void setAdminOnly(final boolean on) {
+        adminOnly = on;
+    }
+
+    /** The name in the server list, from the next time a client asks for it. */
+    public static final void setServerName(final String name) {
+        serverName = name;
+    }
+
     public static final boolean isShutdown() {
         return finishedShutdown;
     }

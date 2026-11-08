@@ -71,7 +71,23 @@ public class EventManager {
         this.name = name;
     }
 
+    /**
+     * Set by {@link #cancel()}. An event's own schedules - the ones it makes
+     * with {@link #schedule(String, long)} to drive itself (the boats, the
+     * elevator, the hourly messages) - check it and do nothing once it is set.
+     *
+     * <p>{@code cancelSchedule} in the script was the only thing that stopped
+     * them, and most scripts cancel only the handle they last kept, if that.
+     * That never mattered while cancelling meant the server was going down.
+     * It matters now that one event can be stopped and replaced while the
+     * server runs ({@code ChannelServer.applyEvents}): without this the old
+     * copy keeps scheduling itself next to the new one, and on a channel that
+     * has been retired it runs into a channel that is no longer there.
+     */
+    private volatile boolean cancelled;
+
     public void cancel() {
+        cancelled = true;
         try {
             iv.invokeFunction("cancelSchedule", (Object) null);
         } catch (Exception ex) {
@@ -82,6 +98,9 @@ public class EventManager {
 
     public ScheduledFuture<?> schedule(final String methodName, long delay) {
         return Timer.EVENT.schedule(() -> {
+            if (cancelled) {
+                return;
+            }
             try {
                 iv.invokeFunction(methodName, (Object) null);
             } catch (Exception ex) {
@@ -91,8 +110,19 @@ public class EventManager {
         }, delay);
     }
 
+    /**
+     * An instance's own timer (a party quest's time limit, a boss timeout).
+     * These deliberately keep running after {@link #cancel()}: an instance in
+     * progress when its event was replaced still has players in it, and the
+     * timeout is what warps them out. Only when the whole channel is gone -
+     * retired while the server runs, its players already moved off - is there
+     * nobody left for it to act on.
+     */
     public ScheduledFuture<?> schedule(final String methodName, long delay, final EventInstanceManager eim) {
         return Timer.EVENT.schedule(() -> {
+            if (getChannelServer() == null) {
+                return;
+            }
             try {
                 iv.invokeFunction(methodName, eim);
             } catch (Exception ex) {
@@ -104,6 +134,9 @@ public class EventManager {
 
     public ScheduledFuture<?> scheduleAtTimestamp(final String methodName, long timestamp) {
         return Timer.EVENT.scheduleAtTimestamp(() -> {
+            if (cancelled) {
+                return;
+            }
             try {
                 iv.invokeFunction(methodName, (Object) null);
             } catch (ScriptException ex) {
@@ -396,7 +429,7 @@ public class EventManager {
             return false;
         }
         Timer.EVENT.schedule(() -> {
-            if (cs.getEvent() >= 0) {
+            if (cs.getEvent() >= 0 && !cs.isShutdown()) {
                 MapleEvent.setEvent(cs, true);
             }
         }, 600000);

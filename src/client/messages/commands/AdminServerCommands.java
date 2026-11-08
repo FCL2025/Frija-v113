@@ -10,14 +10,17 @@ import handling.SendPacketOpcode;
 import handling.channel.ChannelServer;
 import handling.world.Broadcast;
 import handling.world.World;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import scripting.EventInstanceManager;
 import scripting.EventManager;
 import scripting.PortalScriptManager;
 import scripting.ReactorScriptManager;
 import scripting.ScriptCache;
 import scripting.ScriptEncodingCheck;
+import server.LiveSettings;
 import server.MapleShopFactory;
 import server.MapleSquad;
 import server.ShutdownServer;
@@ -667,6 +670,35 @@ public class AdminServerCommands {
             // before the scripts were cached the file was re-read on every
             // conversation anyway.
             ScriptCache.clearKind("quest");
+            return 1;
+        }
+    }
+
+    /**
+     * Re-reads Settings.ini and applies whatever differs from what the server
+     * is running. The watcher does the same by itself a couple of seconds
+     * after the file is saved; this is the "now, and tell me what happened"
+     * version.
+     */
+    public static class ReloadSettings extends CommandExecute {
+
+        @Override
+        public int execute(MapleClient c, String[] splitted) {
+            final List<LiveSettings.Outcome> outcomes;
+            try {
+                outcomes = LiveSettings.applyFile();
+            } catch (final IOException e) {
+                c.getPlayer().dropMessage(6, "[設定] 讀取 Settings.ini 失敗：" + e.getMessage());
+                return 0;
+            }
+            if (outcomes.isEmpty()) {
+                c.getPlayer().dropMessage(6, "[設定] Settings.ini 和執行中的設定一致，沒有要套用的。");
+                return 1;
+            }
+            for (final LiveSettings.Outcome o : outcomes) {
+                c.getPlayer().dropMessage(6, "[設定] " + o.key() + (o.ok() ? " 已套用" : " 未套用")
+                        + (o.message() == null ? "" : "：" + o.message()));
+            }
             return 1;
         }
     }

@@ -1,4 +1,8 @@
-﻿#Database Setting
+﻿#熱更新：伺服器執行中修改這個檔案並存檔，約 2～4 秒內就會自動套用到執行中的伺服器，
+#不必重啟（也可以在遊戲內打 !reloadsettings 立刻套用）。唯一的例外是 tms.Url：
+#它決定整個世界的資料來自哪個資料庫，只能重啟後生效。結果會印在伺服器視窗。
+#
+#Database Setting
 #資料庫名稱就是 tms.Url 裡 3306/ 後面的那一段，目前是 twmsv113。
 #要換別的名字就改這一行，並用同樣的名字建資料庫；
 #sql/twmsv113.sql 開頭的 CREATE DATABASE / USE 也要改成同一個名字。
@@ -11,10 +15,14 @@ tms.Url           = jdbc:mysql://localhost:3306/twmsv113?autoReconnect=true&maxR
 #資料庫帳號密碼。請複製這個檔案成 Settings.ini 後再填寫；Settings.ini 本身不進版控。
 #注意：帳密填錯時不會報錯 —— tms.Url 裡的 maxReconnects=999 會讓伺服器安靜重試
 #約 30 分鐘才放棄，期間畫面上什麼都不會出現。連不上資料庫時請先檢查這兩行。
+#伺服器執行中改帳密時，會先用新帳密試連，連得上才切換；連不上就維持原本的連線。
 tms.User          =
 tms.Pass          =
 
 #Channel Setting
+#執行中調高會立刻開新頻道；調低會把最後幾個頻道的玩家移到頻道 1，再關閉那些頻道。
+#頻道 n 的 port 預設是 8585+n，可用 tms.Port<n> 改（例如 tms.Port1 = 9586）；
+#執行中換 port 不會讓線上玩家斷線，之後登入或換頻道的玩家走新的 port。
 tms.Count         = 3
 
 #World Setting
@@ -31,6 +39,7 @@ tms.AutoRegister  = true
 tms.WFlags        = 0
 tms.Admin         = false
 tms.UserLimit     = 600
+#（無作用）每個帳號的角色欄位數由資料表 character_slots 決定，沒有程式讀這一行。
 tms.MaxCharacters = 3
 tms.IP            = 127.0.0.1
 tms.Debug =
@@ -50,13 +59,15 @@ tms.Debug =
 #Management Panel Setting
 #管理面板：伺服器啟動後在瀏覽器開 http://127.0.0.1:8080/ ，登入 Token 會印在 console。
 #面板只綁 127.0.0.1，隨伺服器一起啟動與關閉；port 被占用時伺服器照常啟動，只是沒有面板。
-#設為 0 可停用面板。
+#設為 0 可停用面板。執行中換 port 時面板會搬到新 port（請改用新網址）；
+#面板停用後無法從面板重新開啟，請直接改這一行存檔。
 #tms.PanelPort      = 8080
 #面板請求處理執行緒數，預設為 max(4, CPU 核心數)。
 #tms.PanelThreads   = 4
 #固定的登入 Token。不設定時每次啟動隨機產生一組並印在 console；
-#開發期間常重啟的話可以固定一組，省得每次重貼。
-#tms.PanelToken     = 
+#開發期間常重啟的話可以固定一組，省得每次重貼。執行中更換會讓舊 Token 立即失效；
+#改回留空則沿用目前這組，直到下次重啟才重新隨機產生。
+#tms.PanelToken     =
 
 #Auto Save Setting
 #自動存檔間隔（分鐘），0 或留空 = 關閉。

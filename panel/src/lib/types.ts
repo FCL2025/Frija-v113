@@ -108,8 +108,8 @@ export interface ErrorBody {
 /* Phase 2–3：設定 / 動作                                                   */
 /* ---------------------------------------------------------------------- */
 
-/** 設定項的生效方式：live 有 setter 立即生效；memory 只改記憶體、下次讀取生效；restart 只能重啟 */
-export type ApplyMode = 'live' | 'memory' | 'restart'
+/** 設定項的生效方式：live 存檔即生效（面板或直接編輯 Settings.ini 皆同）；restart 只能重啟；none 沒有程式讀它 */
+export type ApplyMode = 'live' | 'restart' | 'none'
 
 /** GET /api/settings 的單一項目 */
 export interface SettingEntry {
@@ -146,6 +146,8 @@ export interface ApplyOutcome {
   mode?: ApplyMode
   skipped?: boolean
   error?: string
+  /** 成功時伺服器附帶的說明（例如「已開啟頻道 [4]」「管理面板將移到 …」） */
+  note?: string | null
 }
 
 /** PUT /api/settings/{key} */
@@ -166,14 +168,14 @@ export interface RatesRequest {
 
 /** POST /api/rates */
 export interface RatesResponse {
-  applied: { ok: boolean; channels: number }
+  applied: { ok: boolean; channels: number; error?: string }
   saved: SaveOutcome
   rates: RatesRequest
 }
 
 /** POST /api/server-message */
 export interface ServerMessageResponse {
-  applied: { ok: boolean; channels: number }
+  applied: { ok: boolean; channels: number; error?: string }
   saved: SaveOutcome
 }
 
@@ -186,7 +188,7 @@ export interface BroadcastResponse {
   recipients: number
 }
 
-export type ReloadTarget = 'ops' | 'drops' | 'portal' | 'shops' | 'quests' | 'events' | 'ipmonitor'
+export type ReloadTarget = 'ops' | 'drops' | 'portal' | 'shops' | 'quests' | 'events' | 'ipmonitor' | 'settings'
 
 /** POST /api/reload/{target} */
 export interface ReloadResponse {
@@ -194,6 +196,8 @@ export interface ReloadResponse {
   target: ReloadTarget
   elapsedMs: number
   errors: string[]
+  /** 只有 target = settings：每個有變更的設定的處理結果 */
+  applied?: string[]
 }
 
 /** POST /api/shutdown */
@@ -393,7 +397,8 @@ export type CharacterPatch = Partial<
 export interface CharacterUpdateResponse {
   id: number
   saved: { ok: boolean; columns: string[] }
-  applied: { ok: boolean; online: boolean; error: string | null }
+  /** 線上角色：live 是已即時生效的欄位，nextLogin 是要重新登入才看得到的欄位 */
+  applied: { ok: boolean; online: boolean; error: string | null; live?: string[]; nextLogin?: string[] }
 }
 
 export interface KickResponse {

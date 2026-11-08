@@ -132,14 +132,14 @@ export function useSettings() {
   })
 }
 
-/** 寫入一個設定；成功後讓設定與頻道（倍率）失效 */
+/** 寫入一個設定並立即套用（後端一律套用）；成功後讓設定與頻道（倍率）失效 */
 export function usePutSetting() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (v: { key: string; value: string; apply: boolean }) =>
+    mutationFn: (v: { key: string; value: string }) =>
       apiSend<PutSettingResponse>('PUT', `/api/settings/${encodeURIComponent(v.key)}`, {
         value: v.value,
-        apply: v.apply,
+        apply: true,
       }),
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: settingsKeys.settings })

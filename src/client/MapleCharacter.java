@@ -1959,6 +1959,16 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     public int getGMLevel() {
         return gmLevel;
     }
+
+    /**
+     * Changes this character's GM level while they are online. Commands check
+     * it on every use, so it takes effect with the next one; the next save
+     * writes it to {@code characters.gm}. Clamped to 0..3, the levels
+     * {@code ServerConstants.PlayerGMRank} knows.
+     */
+    public void setGMLevel(final int level) {
+        gmLevel = (byte) Math.max(0, Math.min(3, level));
+    }
      public boolean isPlayer() {
         return gmLevel == 0;
     }
@@ -2054,6 +2064,19 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         synchronized (currencyLock) {
             return meso;
         }
+    }
+
+    /**
+     * An absolute set, for the panel editing an online character. Under the
+     * same lock as {@link #gainMeso}, so a trade or a shop sale running at the
+     * same moment cannot be half-overwritten. Only the arithmetic is locked;
+     * the stat packet goes out after.
+     */
+    public void setMeso(final int newMeso) {
+        synchronized (currencyLock) {
+            meso = Math.max(0, newMeso);
+        }
+        updateSingleStat(MapleStat.MESO, Math.max(0, newMeso));
     }
 
     public final int[] getSavedLocations() {

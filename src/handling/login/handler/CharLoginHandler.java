@@ -330,7 +330,7 @@ public class CharLoginHandler {
             c.getIdleTask().cancel(true);
          }
          c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION, c.getSessionIPAddress());
-        c.send(ServerPacket.getServerIP(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1]), charId));
+        sendServerIP(c, charId);
     }
 
     public static final void character_WithSecondPassword(final SeekableLittleEndianAccessor slea, final MapleClient c) {
@@ -347,9 +347,27 @@ public class CharLoginHandler {
                 c.getIdleTask().cancel(true);
             }
             c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION, c.getSessionIPAddress());
-            c.send(ServerPacket.getServerIP(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1]), charId));
+            sendServerIP(c, charId);
         } else {
             c.send(LoginPacket.secondPwError((byte) 0x14));
         }
+    }
+
+    /**
+     * Sends the player off to the channel they picked - or, if that channel
+     * was retired in the meantime (tms.Count can go down while the server
+     * runs), to the lowest one still serving. This used to be
+     * {@code ChannelServer.getInstance(c.getChannel()).getIP()} inline, which
+     * threw on a channel that was no longer there and left the client hanging
+     * on the character-select screen.
+     */
+    private static void sendServerIP(final MapleClient c, final int charId) {
+        final ChannelServer cs = ChannelServer.servingOrFallback(c.getChannel());
+        if (cs == null) {
+            c.getSession().close();
+            return;
+        }
+        c.setChannel(cs.getChannel());
+        c.send(ServerPacket.getServerIP(Integer.parseInt(cs.getIP().split(":")[1]), charId));
     }
 }

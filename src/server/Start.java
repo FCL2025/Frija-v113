@@ -194,6 +194,10 @@ public class Start {
         PanelServer.start();
         phase("管理面板");
 
+        // From here on, saving Settings.ini is enough: every key that can be
+        // applied to a running server is (see LiveSettings).
+        SettingsWatcher.start();
+
         // Uptime rather than a nanoTime taken in main(): it counts from the
         // moment the JVM was launched, which is what the person who ran
         // Launcher.bat actually waited for.

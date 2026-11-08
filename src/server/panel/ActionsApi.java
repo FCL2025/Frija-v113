@@ -6,11 +6,14 @@ import handling.MapleServerHandler;
 import handling.channel.ChannelServer;
 import handling.world.Broadcast;
 import handling.world.World;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import scripting.PortalScriptManager;
 import scripting.ReactorScriptManager;
+import scripting.ScriptCache;
+import server.LiveSettings;
 import server.MapleShopFactory;
 import server.ShutdownServer;
 import server.life.MapleMonsterInformationProvider;
@@ -74,8 +77,8 @@ final class ActionsApi {
         return Json.obj("ok", true, "type", typeName, "recipients", World.getConnected().getOrDefault(0, 0));
     }
 
-    /** The seven reloads, by the name used in the URL. */
-    static final List<String> RELOAD_TARGETS = List.of("ops", "drops", "portal", "shops", "quests", "events", "ipmonitor");
+    /** The reloads, by the name used in the URL. */
+    static final List<String> RELOAD_TARGETS = List.of("ops", "drops", "portal", "shops", "quests", "events", "ipmonitor", "settings");
 
     private static Map<String, Object> reload(final String target) {
         final long t0 = System.nanoTime();
@@ -93,6 +96,11 @@ final class ActionsApi {
             case "shops" -> MapleShopFactory.getInstance().clear();
             case "quests" -> MapleQuest.clearQuests();
             case "events" -> {
+                // Before the channels rebuild, as !reloadevents does: they
+                // compile through ScriptCache, and a stale entry left there
+                // would be handed straight back, so an edited event script
+                // never took effect through this button.
+                ScriptCache.clearKind("event");
                 // Per channel, and one failing must not stop the rest.
                 for (final ChannelServer cs : ChannelServer.getAllInstances()) {
                     try {
@@ -108,6 +116,21 @@ final class ActionsApi {
                 }
             }
             case "ipmonitor" -> MapleServerHandler.reloadLoggedIPs();
+            case "settings" -> {
+                // The watcher does this by itself a couple of seconds after
+                // the file is saved; this is the "now, and tell me" version.
+                try {
+                    for (final LiveSettings.Outcome o : LiveSettings.applyFile()) {
+                        notes.add(o.key() + (o.ok() ? " 已套用" : " 未套用")
+                                + (o.message() == null ? "" : "（" + o.message() + "）"));
+                    }
+                } catch (final IOException e) {
+                    throw new Router.HttpError(500, "讀取 Settings.ini 失敗：" + e.getMessage());
+                }
+                return Json.obj("ok", true, "target", target,
+                        "elapsedMs", (System.nanoTime() - t0) / 1_000_000L,
+                        "errors", List.of(), "applied", notes);
+            }
             default -> throw new Router.HttpError(404, "沒有這個 reload 目標，可用：" + String.join(", ", RELOAD_TARGETS));
         }
         return Json.obj(

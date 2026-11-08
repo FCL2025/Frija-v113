@@ -49,7 +49,10 @@ public class ShutdownServer implements Runnable {
 
         // 0. The panel first, before anything below starts tearing down what
         //    its routes read - and well before step 6, which a request that
-        //    arrived during the drain would otherwise run into.
+        //    arrived during the drain would otherwise run into. The
+        //    Settings.ini watcher too: a hand edit applied mid-shutdown could
+        //    start a channel that is about to be torn down.
+        SettingsWatcher.stop();
         PanelServer.stop();
 
         // 1. Stop accepting anything new.

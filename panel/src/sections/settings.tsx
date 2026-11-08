@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, LoaderCircle, Pencil, Save, Sparkles, X, Zap } from 'lucide-react'
+import { AlertTriangle, LoaderCircle, Pencil, Save, Sparkles, X } from 'lucide-react'
 import { Outcome } from '@/components/outcome'
 import { PageHeader } from '@/components/page-header'
 import { PollStatus } from '@/components/poll-status'
@@ -16,9 +16,9 @@ import type { ApplyMode, PutSettingResponse, SettingEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const APPLY_META: Record<ApplyMode, { label: string; tone: StatusTone; hint: string }> = {
-  live: { label: '即時', tone: 'good', hint: '有專屬 setter，套用後立刻生效' },
-  memory: { label: '記憶體', tone: 'warning', hint: '只改記憶體，下一次讀取這個值時生效；重啟後以檔案為準' },
-  restart: { label: '需重啟', tone: 'neutral', hint: '啟動時就讀進欄位了，只有重啟才會變' },
+  live: { label: '即時', tone: 'good', hint: '存檔就生效；直接編輯 Settings.ini 存檔也一樣，伺服器約 2～4 秒內自動套用' },
+  restart: { label: '需重啟', tone: 'warning', hint: '只有重啟伺服器才會生效' },
+  none: { label: '無作用', tone: 'neutral', hint: '沒有程式讀這個設定，改了不會有任何效果' },
 }
 
 export function SettingsSection() {
@@ -59,7 +59,8 @@ export function SettingsSection() {
       )}
 
       <p className="text-sm text-muted-foreground">
-        逐行改值，其餘位元組（BOM、換行、註解、對齊）原樣保留。「保存」只寫檔案；「保存並套用」再對執行中的伺服器生效——
+        逐行改值，其餘位元組（BOM、換行、註解、對齊）原樣保留。「保存」會寫進檔案並立刻套用到執行中的伺服器；
+        直接用編輯器改 Settings.ini 存檔也會在幾秒內自動套用。
         <span className="inline-flex flex-wrap gap-1 align-middle">
           {(Object.keys(APPLY_META) as ApplyMode[]).map((m) => (
             <StatusBadge key={m} tone={APPLY_META[m].tone}>
@@ -131,8 +132,7 @@ function SettingRow({
     if (editing) setDraft(entry.value ?? entry.commentedDefault ?? '')
   }, [editing, entry.value, entry.commentedDefault])
 
-  const meta = APPLY_META[entry.apply]
-  const canApply = entry.apply !== 'restart' && entry.key !== 'tms.ServerMessage'
+  const meta = APPLY_META[entry.apply] ?? APPLY_META.restart
   const serverMessage = entry.key === 'tms.ServerMessage'
   const differs =
     entry.active &&
@@ -141,8 +141,8 @@ function SettingRow({
     entry.runtimeValue !== undefined &&
     entry.runtimeValue !== entry.value
 
-  function submit(apply: boolean) {
-    put.mutate({ key: entry.key, value: draft, apply }, { onSuccess: onResult })
+  function submit() {
+    put.mutate({ key: entry.key, value: draft }, { onSuccess: onResult })
   }
 
   return (
@@ -164,7 +164,7 @@ function SettingRow({
             className="flex flex-col gap-2"
             onSubmit={(e: FormEvent) => {
               e.preventDefault()
-              submit(false)
+              submit()
             }}
           >
             <Input
@@ -179,14 +179,8 @@ function SettingRow({
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" size="sm" disabled={put.isPending}>
                 {put.isPending ? <LoaderCircle className="animate-spin" data-icon="inline-start" /> : <Save data-icon="inline-start" />}
-                保存
+                {entry.apply === 'live' ? '保存（立即生效）' : entry.apply === 'restart' ? '保存（重啟後生效）' : '保存'}
               </Button>
-              {canApply && (
-                <Button type="button" size="sm" variant="secondary" disabled={put.isPending} onClick={() => submit(true)}>
-                  <Zap data-icon="inline-start" />
-                  保存並套用
-                </Button>
-              )}
               <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={put.isPending}>
                 <X data-icon="inline-start" />
                 取消

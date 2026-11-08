@@ -215,10 +215,6 @@ public class ItemConstants {
         return id >= 2040000 && id < 2050000;
     }
 
-    public static boolean isGun(final int id) {
-        return id >= 1492000 && id < 1500000;
-    }
-
     public static boolean isUse(final int id) {
         return id >= 2000000 && id <= 2490000;
     }
@@ -237,10 +233,6 @@ public class ItemConstants {
 
     public static int getCardShortId(final int id) {
         return id % 10000;
-    }
-
-    public static boolean isSpear(final int itemId){
-        return (getWeaponType(itemId) == MapleWeaponType.SPEAR) || (getWeaponType(itemId) == MapleWeaponType.POLE_ARM);
     }
 
     public static boolean isGem(final int id) {

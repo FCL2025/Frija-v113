@@ -98,7 +98,7 @@ function Shell({ onLogout }: { onLogout: () => void }) {
   const meta = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0]
 
   useEffect(() => {
-    document.title = `${meta.label} · TMS113 管理面板`
+    document.title = `${meta.label} · Frija v113 管理面板`
   }, [meta.label])
 
   return (
@@ -115,7 +115,7 @@ function Shell({ onLogout }: { onLogout: () => void }) {
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="truncate text-sm font-medium">{serverName ?? 'TMS113 管理面板'}</span>
+              <span className="truncate text-sm font-medium">{serverName ?? 'Frija v113 管理面板'}</span>
               <OnlineBadge
                 online={status.data?.online}
                 offline={status.isError && status.error instanceof ApiError && status.error.isNetworkError}

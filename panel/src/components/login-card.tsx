@@ -58,7 +58,7 @@ export function LoginCard({ onLoggedIn }: LoginCardProps) {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg">
               <KeyRound className="size-5" aria-hidden />
-              TMS113 管理面板
+              Frija v113 管理面板
             </CardTitle>
             <CardDescription>
               請貼上伺服器啟動時印在 console 的存取 Token。

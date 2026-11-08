@@ -1,8 +1,8 @@
 @echo off
 rem ---------------------------------------------------------------------------
-rem  TMS113 - builds the server if needed, then starts it.
+rem  Frija v113 - builds the server if needed, then starts it.
 rem
-rem  This is the only .bat in the tree. It compiles src\ into dist\TMS113.jar
+rem  This is the only .bat in the tree. It compiles src\ into dist\Frija-v113.jar
 rem  whenever anything under src\, JarLib\, panel\dist\ or manifest.mf is newer
 rem  than the jar, and then launches server.Start; an unchanged tree starts
 rem  straight away.
@@ -56,19 +56,19 @@ rem     A frontend rebuild always implies a jar rebuild, since the jar holds it.
 :check
 set "NEED_WEB=0"
 set "NEED=1"
-for /f "usebackq tokens=1,2" %%w in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$web = '0'; $jar = '1'; if (Test-Path 'panel\package.json') { $web = '1'; if (Test-Path 'panel\dist\index.html') { $web = '0'; $d = (Get-Item 'panel\dist\index.html').LastWriteTimeUtc; $files = @(Get-ChildItem -Path 'panel' -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -Path 'panel\src','panel\public' -Recurse -File -ErrorAction SilentlyContinue); foreach ($f in $files) { if ($f.LastWriteTimeUtc -gt $d) { $web = '1'; break } } } }; if (Test-Path 'dist\TMS113.jar') { $jar = '0'; $j = (Get-Item 'dist\TMS113.jar').LastWriteTimeUtc; foreach ($f in Get-ChildItem -Path 'src','JarLib','manifest.mf','panel\dist' -Recurse -File -ErrorAction SilentlyContinue) { if ($f.LastWriteTimeUtc -gt $j) { $jar = '1'; break } } }; Write-Output ($web + ' ' + $jar)"`) do (
+for /f "usebackq tokens=1,2" %%w in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$web = '0'; $jar = '1'; if (Test-Path 'panel\package.json') { $web = '1'; if (Test-Path 'panel\dist\index.html') { $web = '0'; $d = (Get-Item 'panel\dist\index.html').LastWriteTimeUtc; $files = @(Get-ChildItem -Path 'panel' -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -Path 'panel\src','panel\public' -Recurse -File -ErrorAction SilentlyContinue); foreach ($f in $files) { if ($f.LastWriteTimeUtc -gt $d) { $web = '1'; break } } } }; if (Test-Path 'dist\Frija-v113.jar') { $jar = '0'; $j = (Get-Item 'dist\Frija-v113.jar').LastWriteTimeUtc; foreach ($f in Get-ChildItem -Path 'src','JarLib','manifest.mf','panel\dist' -Recurse -File -ErrorAction SilentlyContinue) { if ($f.LastWriteTimeUtc -gt $j) { $jar = '1'; break } } }; Write-Output ($web + ' ' + $jar)"`) do (
     set "NEED_WEB=%%w"
     set "NEED=%%x"
 )
 if "!NEED_WEB!"=="1" set "NEED=1"
 if /i "%MODE%"=="build" set "NEED=1"
 if "!NEED!"=="0" (
-    echo [build] dist\TMS113.jar is up to date.
+    echo [build] dist\Frija-v113.jar is up to date.
     goto run
 )
 
 :build
-title Build TMS113
+title Build Frija v113
 
 echo [1/5] Locating the JDK...
 rem PATH may hold only the Oracle javapath shim, which has java.exe and
@@ -119,27 +119,27 @@ if exist panel\dist\index.html (
     if errorlevel 1 goto fail
 )
 
-echo [5/5] Packaging dist\TMS113.jar...
+echo [5/5] Packaging dist\Frija-v113.jar...
 if not exist dist mkdir dist
-"%JAVA_HOME%\bin\jar.exe" cfm dist\TMS113.jar manifest.mf -C build\classes .
+"%JAVA_HOME%\bin\jar.exe" cfm dist\Frija-v113.jar manifest.mf -C build\classes .
 if errorlevel 1 goto fail
 
-echo Build OK: dist\TMS113.jar
+echo Build OK: dist\Frija-v113.jar
 if /i "%MODE%"=="build" (
     endlocal
     exit /b 0
 )
 
 :run
-if not exist dist\TMS113.jar (
-    echo ERROR: dist\TMS113.jar is missing - run Launcher.bat with no argument to build it.
+if not exist dist\Frija-v113.jar (
+    echo ERROR: dist\Frija-v113.jar is missing - run Launcher.bat with no argument to build it.
     goto fail
 )
 if exist "!JAVA_HOME!\bin\java.exe" (set "JAVA=!JAVA_HOME!\bin\java.exe") else (set "JAVA=java")
 
 rem dist\lib holds MINA, Nashorn (dropped from the JDK in 15, so it ships here),
 rem the asm jars Nashorn needs, MySQL Connector/J and slf4j.
-set CLASSPATH=.;dist\TMS113.jar;dist\lib\*
+set CLASSPATH=.;dist\Frija-v113.jar;dist\lib\*
 
 rem Everything logs through java.lang.System.Logger, which is backed by
 rem java.util.logging - and so is MINA, via slf4j-jdk14. Libs\logging.properties
@@ -173,7 +173,7 @@ if /i "%MODE%"=="cashshop" (
     title CashShopDumper
     "!JAVA!" -Xmx2G -Xms512M !LOGCFG! -Dnet.sf.odinms.wzpath=wz tools.wztosql.CashShopDumper
 ) else (
-    title TMS113
+    title Frija v113
     "!JAVA!" -Xmx4G -Xms2G !LOGCFG! -Dnet.sf.odinms.wzpath=wz server.Start
 )
 pause
@@ -222,7 +222,7 @@ rem     call since batch has neither grep nor sort). No panel, no jar, no
 rem     server - the panel frontend and dist\lib have nothing to do with
 rem     whether src\ compiles cleanly.
 :lint
-title Lint TMS113
+title Lint Frija v113
 
 echo [1/2] Locating the JDK...
 rem PATH may hold only the Oracle javapath shim, which has java.exe and
@@ -267,7 +267,7 @@ rem     The launcher is started as a class on -cp rather than with -jar,
 rem     because its own --class-path option takes literal paths and will not
 rem     expand the "JarLib\*" wildcard that java itself understands.
 :test
-title Test TMS113
+title Test Frija v113
 
 echo [1/4] Locating the JDK...
 rem PATH may hold only the Oracle javapath shim, which has java.exe and

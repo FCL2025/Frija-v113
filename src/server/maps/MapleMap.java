@@ -2213,33 +2213,14 @@ public final class MapleMap {
             case 271040100:
                 em = "CygnusBattle";
                 break;
-            case 262030300:
-                em = "HillaBattle";
-                break;
-            case 262031300:
-                em = "DarkHillaBattle";
-                break;
-            case 272020110:
-            case 272030400:
-                em = "ArkariumBattle";
-                break;
-            case 955000100:
-            case 955000200:
-            case 955000300:
-                em = "AswanOffSeason";
-                break;
             case 280030100:
                 em = "ZakumBattle";
                 break;
-            case 272020200:
-                em = "Akayile";
-                break;
-            case 689013000:
-                em = "PinkZakum";
-                break;
-            case 703200400:
-                em = "0AllBoss";
-                break;
+            // A32：這裡以前還有七個名字——HillaBattle、DarkHillaBattle、ArkariumBattle、AswanOffSeason、
+            // Akayile、PinkZakum、0AllBoss——在 Libs/scripts/event/ 底下連檔案都沒有（從較新版本抄來的），
+            // getEventManager 一定回 null，和走 default 完全相同，所以拿掉。PinkZakum 的 689013000
+            // 在 v113 的 Map.wz 裡甚至不存在。其餘的名字都有腳本，只是不一定列在 tms.Events 裡，
+            // 沒列就同樣得到 null；那是設定，不是程式碼的事。
             default:
                 return null;
         }

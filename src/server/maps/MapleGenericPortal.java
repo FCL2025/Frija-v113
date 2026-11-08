@@ -27,9 +27,11 @@ import client.anticheat.CheatingOffense;
 import handling.channel.ChannelServer;
 import scripting.PortalScriptManager;
 import server.MaplePortal;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
 
 public class MapleGenericPortal implements MaplePortal {
+
+    private static final System.Logger LOG = System.getLogger(MapleGenericPortal.class.getName());
 
     private String name, target, scriptName;
     private Point position;
@@ -112,19 +114,23 @@ public class MapleGenericPortal implements MaplePortal {
                 try {
                     PortalScriptManager.getInstance().executePortalScript(this, c);
                 } catch (final Exception e) {
-                    e.printStackTrace();
+                    // ERROR: the portal script did not run, so the player is
+                    // left standing in the portal with nothing having happened.
+                    LOG.log(System.Logger.Level.ERROR, "Error running portal script " + getScriptName(), e);
                 }
             } else if (getTargetMapId() != 999999999) {
                 final MapleMap to = ChannelServer.getInstance(c.getChannel()).getMapFactory().getMap(getTargetMapId());
                 if (!c.getPlayer().isGM()) {
                     if (to.getLevelLimit() > 0 && to.getLevelLimit() > c.getPlayer().getLevel()) {
                         c.getPlayer().dropMessage(-1, "You are too low of a level to enter this place.");
-                        c.getSession().write(MaplePacketCreator.enableActions());
+                        c.send(CharacterPacket.enableActions());
                         return;
                     }
+                    // 刻意保留：記錄「等級太高不准進」這個上限檢查存在，但被關掉了
+                    // （上面的下限檢查還在跑）。MapleMap.getForceMove() 仍然存在。
                     //if (to.getForceMove() > 0 && to.getForceMove() < c.getPlayer().getLevel()) {
                     //    c.getPlayer().dropMessage(-1, "You are too high of a level to enter this place.");
-                    //    c.getSession().write(MaplePacketCreator.enableActions());
+                    //    c.send(CharacterPacket.enableActions());
                     //    return;
                     //}
                 }
@@ -132,7 +138,7 @@ public class MapleGenericPortal implements MaplePortal {
             }
         }
         if (c != null && c.getPlayer() != null && c.getPlayer().getMap() == currentmap) { // Character is still on the same map.
-            c.getSession().write(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
         }
     }
 

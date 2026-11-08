@@ -49,7 +49,7 @@ function setup() {
 function announce() {
     em.setProperty("entryPossible", "true");
     if (i == 0) i = 5;
-    em.getChannelServer().broadcastPacket(tools.MaplePacketCreator.serverNotice(6, "[Event] Field of Judgement will open in " + i + " minutes"));
+    em.getChannelServer().broadcastPacket(Packages.tools.packet.ChatPacket.serverNotice(6, "[Event] Field of Judgement will open in " + i + " minutes"));
     i--;
 }
 
@@ -63,7 +63,7 @@ function mesoDistribution() {
 	    var randWinner = Math.floor(Math.random() * eim.getPlayerCount());
 	    var winner = eim.getPlayers().get(randWinner);
 	    var map = eim.getMapInstance(mapId);
-	    map.broadcastMessage(tools.MaplePacketCreator.serverNotice(6, "[Event] " + winner.getName() + " wins " + meso + " meso"));
+	    map.broadcastMessage(Packages.tools.packet.ChatPacket.serverNotice(6, "[Event] " + winner.getName() + " wins " + meso + " meso"));
 	    winner.gainMeso(meso, true, true, true);
 	}
     }
@@ -72,7 +72,7 @@ function mesoDistribution() {
 function start() {
     scheduleNew();
     em.getChannelServer().broadcastPacket(
-	tools.MaplePacketCreator.serverNotice(6, "[Event] Field of Judgement is now open"));
+	Packages.tools.packet.ChatPacket.serverNotice(6, "[Event] Field of Judgement is now open"));
     var iter = em.getInstances().iterator();
     while (iter.hasNext()) {
 	var eim = iter.next();
@@ -91,7 +91,7 @@ function startInstance(eim) {
 	var iter = eim.getPlayers().iterator();
 	while (iter.hasNext()) {
 	    var player = iter.next();
-	    player.getClient().getSession().write(tools.MaplePacketCreator.getClock(1200));
+	    player.getClient().send(Packages.tools.packet.MapPacket.getClock(1200));
 	}
 	var map = eim.getMapInstance(mapId);
 	if (eim.getName().equals("lolcastle1")) {
@@ -269,7 +269,7 @@ function playerDead(eim, player) {
     player.setHp(1);
     player.changeMap(returnMap, returnMap.getPortal(0));
     eim.unregisterPlayer(player);
-    player.getClient().getSession().write(tools.MaplePacketCreator.serverNotice(1, "You lost with " + eim.getKillCount(player) + " points."));
+    player.getClient().send(Packages.tools.packet.ChatPacket.serverNotice(1, "You lost with " + eim.getKillCount(player) + " points."));
 }
 
 function playerDisconnected(eim, player) {
@@ -506,8 +506,8 @@ function allMonstersDead(eim) {
     var iter = eim.getPlayers().iterator();
     while (iter.hasNext()) {
 	var winner = iter.next();
-	winner.getClient().getSession().write(tools.MaplePacketCreator.serverNotice(1, "You win with " + eim.getKillCount(winner) + " points. You will be warped out in 2 minutes."));
-	winner.getClient().getSession().write(tools.MaplePacketCreator.getClock(120));
+	winner.getClient().send(Packages.tools.packet.ChatPacket.serverNotice(1, "You win with " + eim.getKillCount(winner) + " points. You will be warped out in 2 minutes."));
+	winner.getClient().send(Packages.tools.packet.MapPacket.getClock(120));
 	eim.saveWinner(winner);
     }
     var winner = eim.getPlayers().get(0);

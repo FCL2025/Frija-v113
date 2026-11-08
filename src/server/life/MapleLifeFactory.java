@@ -24,8 +24,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import provider.MapleData;
 import provider.MapleDataDirectoryEntry;
@@ -39,16 +39,18 @@ import tools.StringUtil;
 
 public class MapleLifeFactory {
 
+    private static final System.Logger LOG = System.getLogger(MapleLifeFactory.class.getName());
+
     private static final MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Mob.wz"));
     private static final MapleDataProvider stringDataWZ = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/String.wz"));
     private static final MapleDataProvider etcDataWZ = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Etc.wz"));
     private static final MapleData mobStringData = stringDataWZ.getData("Mob.img");
     private static final MapleData npcStringData = stringDataWZ.getData("Npc.img");
     private static final MapleData npclocData = etcDataWZ.getData("NpcLocation.img");
-    private static Map<Integer, String> npcNames = new HashMap<Integer, String>();
-    private static Map<Integer, MapleMonsterStats> monsterStats = new HashMap<Integer, MapleMonsterStats>();
-    private static Map<Integer, Integer> NPCLoc = new HashMap<Integer, Integer>();
-    private static Map<Integer, List<Integer>> questCount = new HashMap<Integer, List<Integer>>();
+    private static final Map<Integer, String> npcNames = new ConcurrentHashMap<>();
+    private static final Map<Integer, MapleMonsterStats> monsterStats = new ConcurrentHashMap<>();
+    private static final Map<Integer, Integer> NPCLoc = new ConcurrentHashMap<>();
+    private static final Map<Integer, List<Integer>> questCount = new ConcurrentHashMap<>();
 
     public static AbstractLoadedMapleLife getLife(int id, String type) {
         if (type.equalsIgnoreCase("n")) {
@@ -56,21 +58,28 @@ public class MapleLifeFactory {
         } else if (type.equalsIgnoreCase("m")) {
             return getMonster(id);
         } else {
-            System.err.println("Unknown Life type: " + type + "");
+            // ERROR: no life object is built, so whatever the map wanted here
+            // never appears.
+            LOG.log(System.Logger.Level.ERROR, "Unknown Life type: " + type + "");
             return null;
         }
     }
 
     public static int getNPCLocation(int npcid) {
-        if (NPCLoc.containsKey(npcid)) {
-            return NPCLoc.get(npcid);
-        }
-        final int map = MapleDataTool.getIntConvert(Integer.toString(npcid) + "/0", npclocData, -1);
-        NPCLoc.put(npcid, map);
-        return map;
+        // No re-entrancy into NPCLoc from the loader, so computeIfAbsent is safe.
+        return NPCLoc.computeIfAbsent(npcid, id -> MapleDataTool.getIntConvert(Integer.toString(id) + "/0", npclocData, -1));
     }
 
     public static final void loadQuestCounts() {
+        if (questCount.size() > 0) {
+            return;
+        }
+        loadQuestCountsSync();
+    }
+
+    // Bulk-load guarded so concurrent first-callers block instead of racing
+    // to populate questCount together (which corrupted the old plain HashMap).
+    private static final synchronized void loadQuestCountsSync() {
         if (questCount.size() > 0) {
             return;
         }
@@ -80,13 +89,13 @@ public class MapleLifeFactory {
                     final int id = Integer.parseInt(entry.getName().substring(0, entry.getName().length() - 4));
                     MapleData dat = data.getData("QuestCountGroup/" + entry.getName());
                     if (dat != null && dat.getChildByPath("info") != null) {
-                        List<Integer> z = new ArrayList<Integer>();
+                        List<Integer> z = new ArrayList<>();
                         for (MapleData da : dat.getChildByPath("info")) {
                             z.add(MapleDataTool.getInt(da, 0));
                         }
                         questCount.put(id, z);
                     } else {
-                        System.out.println("null questcountgroup");
+                        LOG.log(System.Logger.Level.INFO, "null questcountgroup");
                     }
                 }
             }
@@ -98,13 +107,23 @@ public class MapleLifeFactory {
     }
 
     public static MapleMonster getMonster(int mid) {
-        MapleMonsterStats stats = monsterStats.get(Integer.valueOf(mid));
-
+        // The loader never re-enters monsterStats (link targets are read straight
+        // from WZ, not via getMonster()), so computeIfAbsent is safe; returning
+        // null from the mapping function keeps the original "don't cache a
+        // missing mob" behaviour intact.
+        MapleMonsterStats stats = monsterStats.computeIfAbsent(Integer.valueOf(mid), MapleLifeFactory::loadMonsterStats);
         if (stats == null) {
+            return null;
+        }
+        return new MapleMonster(mid, stats);
+    }
+
+    private static MapleMonsterStats loadMonsterStats(final int mid) {
             MapleData monsterData = data.getData(StringUtil.getLeftPaddedStr(Integer.toString(mid) + ".img", '0', 11));
             if (monsterData == null) {
                 return null;
             }
+            MapleMonsterStats stats;
             MapleData monsterInfoData = monsterData.getChildByPath("info");
             stats = new MapleMonsterStats();
 
@@ -168,7 +187,7 @@ public class MapleLifeFactory {
 
             final MapleData reviveInfo = monsterInfoData.getChildByPath("revive");
             if (reviveInfo != null) {
-                List<Integer> revives = new LinkedList<Integer>();
+                List<Integer> revives = new LinkedList<>();
                 for (MapleData bdata : reviveInfo) {
                     revives.add(MapleDataTool.getInt(bdata));
                 }
@@ -178,9 +197,9 @@ public class MapleLifeFactory {
             final MapleData monsterSkillData = monsterInfoData.getChildByPath("skill");
             if (monsterSkillData != null) {
                 int i = 0;
-                List<Pair<Integer, Integer>> skills = new ArrayList<Pair<Integer, Integer>>();
+                List<Pair<Integer, Integer>> skills = new ArrayList<>();
                 while (monsterSkillData.getChildByPath(Integer.toString(i)) != null) {
-                    skills.add(new Pair<Integer, Integer>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillData, 0))));
+                    skills.add(new Pair<>(Integer.valueOf(MapleDataTool.getInt(i + "/skill", monsterSkillData, 0)), Integer.valueOf(MapleDataTool.getInt(i + "/level", monsterSkillData, 0))));
                     i++;
                 }
                 stats.setSkills(skills);
@@ -216,9 +235,7 @@ public class MapleLifeFactory {
             }
             stats.setHPDisplayType(hpdisplaytype);
 
-            monsterStats.put(Integer.valueOf(mid), stats);
-        }
-        return new MapleMonster(mid, stats);
+            return stats;
     }
 
     public static final void decodeElementalString(MapleMonsterStats stats, String elemAttr) {

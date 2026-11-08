@@ -22,10 +22,11 @@ package server.quest;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.io.Serializable;
 
 import client.ISkill;
 import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.InventoryException;
 import client.MapleCharacter;
 import client.inventory.MapleInventoryType;
@@ -39,12 +40,14 @@ import provider.MapleDataTool;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
 import server.Randomizer;
-import tools.MaplePacketCreator;
-import tools.packet.UIPacket;
+import tools.packet.CharacterPacket;
+import tools.packet.InventoryPacket;
+import tools.packet.QuestPacket;
 
-public class MapleQuestAction implements Serializable {
+public class MapleQuestAction {
 
-    private static final long serialVersionUID = 9179541993413738569L;
+    private static final System.Logger LOG = System.getLogger(MapleQuestAction.class.getName());
+
     private MapleQuestActionType type;
     private MapleData data;
     private MapleQuest quest;
@@ -90,7 +93,7 @@ public class MapleQuestAction implements Serializable {
         return true;
     }
 
-    public final boolean RestoreLostItem(final MapleCharacter c, final int itemid) {
+    public final boolean restoreLostItem(final MapleCharacter c, final int itemid) {
         if (type == MapleQuestActionType.item) {
             int retitem;
 
@@ -119,7 +122,7 @@ public class MapleQuestAction implements Serializable {
                 break;
             case item:
                 // first check for randomness in item selection
-                Map<Integer, Integer> props = new HashMap<Integer, Integer>();
+                Map<Integer, Integer> props = new HashMap<>();
                 MapleData prop;
                 for (MapleData iEntry : data.getChildren()) {
                     prop = iEntry.getChildByPath("prop");
@@ -151,12 +154,15 @@ public class MapleQuestAction implements Serializable {
                     final short count = (short) MapleDataTool.getInt(iEntry.getChildByPath("count"), 1);
                     if (count < 0) { // remove items
                         try {
-                            MapleInventoryManipulator.removeById(c.getClient(), GameConstants.getInventoryType(id), id, (count * -1), true, false);
+                            MapleInventoryManipulator.removeById(c.getClient(), ItemConstants.getInventoryType(id), id, (count * -1), true, false);
                         } catch (InventoryException ie) {
                             // it's better to catch this here so we'll atleast try to remove the other items
-                            System.err.println("[h4x] Completing a quest without meeting the requirements" + ie);
+                            // WARNING, and terse on purpose: this one only ever
+                            // concatenated the exception, and the comment above
+                            // says the loop deliberately carries on.
+                            LOG.log(System.Logger.Level.WARNING, "[h4x] Completing a quest without meeting the requirements" + ie);
                         }
-                        c.getClient().getSession().write(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     } else { // add items
                         final int period = MapleDataTool.getInt(iEntry.getChildByPath("period"), 0) / 1440; //im guessing.
                         final String name = MapleItemInformationProvider.getInstance().getName(id);
@@ -166,7 +172,7 @@ public class MapleQuestAction implements Serializable {
                             c.dropMessage(5, msg);
                         }
                         MapleInventoryManipulator.addById(c.getClient(), id, count, "", null, period);
-                        c.getClient().getSession().write(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     }
                 }
                 break;
@@ -175,7 +181,7 @@ public class MapleQuestAction implements Serializable {
                 if (status.getForfeited() > 0) {
                     break;
                 }
-                c.getClient().getSession().write(MaplePacketCreator.updateQuestFinish(quest.getId(), status.getNpc(), MapleDataTool.getInt(data)));
+                c.getClient().send(QuestPacket.updateQuestFinish(quest.getId(), status.getNpc(), MapleDataTool.getInt(data)));
                 break;
             case money:
                 status = c.getQuest(quest);
@@ -217,7 +223,7 @@ public class MapleQuestAction implements Serializable {
                 final int fameGain = MapleDataTool.getInt(data, 0);
                 c.addFame(fameGain);
                 c.updateSingleStat(MapleStat.FAME, c.getFame());
-                c.getClient().getSession().write(MaplePacketCreator.getShowFameGain(fameGain));
+                c.getClient().send(CharacterPacket.getShowFameGain(fameGain));
                 break;
             case buffItemID:
                 status = c.getQuest(quest);
@@ -231,7 +237,8 @@ public class MapleQuestAction implements Serializable {
                 MapleItemInformationProvider.getInstance().getItemEffect(tobuff).applyTo(c);
                 break;
             case infoNumber: {
-//		System.out.println("quest : "+MapleDataTool.getInt(data, 0)+"");
+                // 刻意保留：infoNumber 這個動作原本會去強制完成 data 指到的那張任務，
+                // 被關掉之後這個 case 什麼都不做。forceComplete 本身還在。
 //		MapleQuest.getInstance(MapleDataTool.getInt(data, 0)).forceComplete(c, 0);
                 break;
             }
@@ -253,7 +260,7 @@ public class MapleQuestAction implements Serializable {
                         if (finalJob == 0) {
                             c.gainSP(sp_val);
                         } else {
-                            c.gainSP(sp_val, GameConstants.getSkillBook(finalJob));
+                            c.gainSP(sp_val, JobConstants.getSkillBook(finalJob));
                         }
                     } else {
                         c.gainSP(sp_val);
@@ -270,7 +277,7 @@ public class MapleQuestAction implements Serializable {
         switch (type) {
             case item: {
                 // first check for randomness in item selection
-                final Map<Integer, Integer> props = new HashMap<Integer, Integer>();
+                final Map<Integer, Integer> props = new HashMap<>();
 
                 for (MapleData iEntry : data.getChildren()) {
                     final MapleData prop = iEntry.getChildByPath("prop");
@@ -312,7 +319,7 @@ public class MapleQuestAction implements Serializable {
                             c.dropMessage(1, "You have this item already: " + MapleItemInformationProvider.getInstance().getName(id));
                             return false;
                         }
-                        switch (GameConstants.getInventoryType(id)) {
+                        switch (ItemConstants.getInventoryType(id)) {
                             case EQUIP:
                                 eq++;
                                 break;
@@ -372,7 +379,7 @@ public class MapleQuestAction implements Serializable {
             }
             case item: {
                 // first check for randomness in item selection
-                Map<Integer, Integer> props = new HashMap<Integer, Integer>();
+                Map<Integer, Integer> props = new HashMap<>();
 
                 for (MapleData iEntry : data.getChildren()) {
                     final MapleData prop = iEntry.getChildByPath("prop");
@@ -403,8 +410,8 @@ public class MapleQuestAction implements Serializable {
                     }
                     final short count = (short) MapleDataTool.getInt(iEntry.getChildByPath("count"), 1);
                     if (count < 0) { // remove items
-                        MapleInventoryManipulator.removeById(c.getClient(), GameConstants.getInventoryType(id), id, (count * -1), true, false);
-                        c.getClient().getSession().write(MaplePacketCreator.getShowItemGain(id, count, true));
+                        MapleInventoryManipulator.removeById(c.getClient(), ItemConstants.getInventoryType(id), id, (count * -1), true, false);
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     } else { // add items
                         final int period = MapleDataTool.getInt(iEntry.getChildByPath("period"), 0) / 1440;
                         final String name = MapleItemInformationProvider.getInstance().getName(id);
@@ -414,13 +421,13 @@ public class MapleQuestAction implements Serializable {
                             c.dropMessage(5, msg);
                         }
                         MapleInventoryManipulator.addById(c.getClient(), id, count, "", null, period);
-                        c.getClient().getSession().write(MaplePacketCreator.getShowItemGain(id, count, true));
+                        c.getClient().send(InventoryPacket.getShowItemGain(id, count, true));
                     }
                 }
                 break;
             }
             case nextQuest: {
-                c.getClient().getSession().write(MaplePacketCreator.updateQuestFinish(quest.getId(), c.getQuest(quest).getNpc(), MapleDataTool.getInt(data)));
+                c.getClient().send(QuestPacket.updateQuestFinish(quest.getId(), c.getQuest(quest).getNpc(), MapleDataTool.getInt(data)));
                 break;
             }
             case money: {
@@ -457,7 +464,7 @@ public class MapleQuestAction implements Serializable {
                 final int fameGain = MapleDataTool.getInt(data, 0);
                 c.addFame(fameGain);
                 c.updateSingleStat(MapleStat.FAME, c.getFame());
-                c.getClient().getSession().write(MaplePacketCreator.getShowFameGain(fameGain));
+                c.getClient().send(CharacterPacket.getShowFameGain(fameGain));
                 break;
             }
             case buffItemID: {
@@ -469,7 +476,8 @@ public class MapleQuestAction implements Serializable {
                 break;
             }
             case infoNumber: {
-//		System.out.println("quest : "+MapleDataTool.getInt(data, 0)+"");
+                // 刻意保留：infoNumber 這個動作原本會去強制完成 data 指到的那張任務，
+                // 被關掉之後這個 case 什麼都不做。forceComplete 本身還在。
 //		MapleQuest.getInstance(MapleDataTool.getInt(data, 0)).forceComplete(c, 0);
                 break;
             }
@@ -484,7 +492,7 @@ public class MapleQuestAction implements Serializable {
                                 finalJob = job_val;
                             }
                         }
-                        c.gainSP(sp_val, GameConstants.getSkillBook(finalJob));
+                        c.gainSP(sp_val, JobConstants.getSkillBook(finalJob));
                     } else {
                         c.gainSP(sp_val);
                     }
@@ -497,7 +505,7 @@ public class MapleQuestAction implements Serializable {
     }
 
     private static List<Integer> getJobBy5ByteEncoding(int encoded) {
-        List<Integer> ret = new ArrayList<Integer>();
+        List<Integer> ret = new ArrayList<>();
         if ((encoded & 0x1) != 0) {
             ret.add(0);
         }

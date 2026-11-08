@@ -26,28 +26,26 @@ import java.util.HashMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import tools.data.output.MaplePacketLittleEndianWriter;
 
 import database.DatabaseConnection;
 import tools.Pair;
 
-public class MapleKeyLayout implements Serializable {
+public class MapleKeyLayout {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private boolean changed = false;
     private Map<Integer, Pair<Byte, Integer>> keymap;
 
     public MapleKeyLayout() {
-        keymap = new HashMap<Integer, Pair<Byte, Integer>>();
+        keymap = new HashMap<>();
     }
 
     public MapleKeyLayout(Map<Integer, Pair<Byte, Integer>> keys) {
         keymap = keys;
     }
 
-    public final Map<Integer, Pair<Byte, Integer>> Layout() {
+    public final Map<Integer, Pair<Byte, Integer>> layout() {
         changed = true;
         return keymap;
     }
@@ -70,31 +68,31 @@ public class MapleKeyLayout implements Serializable {
         if (!changed || keymap.size() == 0) {
             return;
         }
-        Connection con = DatabaseConnection.getConnection();
-
-        PreparedStatement ps = con.prepareStatement("DELETE FROM keymap WHERE characterid = ?");
-        ps.setInt(1, charid);
-        ps.execute();
-        ps.close();
-
-        boolean first = true;
-        StringBuilder query = new StringBuilder();
-
-        for (Entry<Integer, Pair<Byte, Integer>> keybinding : keymap.entrySet()) {
-            if (first) {
-                first = false;
-                query.append("INSERT INTO keymap VALUES (");
-            } else {
-                query.append(",(");
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM keymap WHERE characterid = ?")) {
+                ps.setInt(1, charid);
+                ps.execute();
             }
-            query.append("DEFAULT,");
-            query.append(charid).append(",");
-            query.append(keybinding.getKey().intValue()).append(",");
-            query.append(keybinding.getValue().getLeft().byteValue()).append(",");
-            query.append(keybinding.getValue().getRight().intValue()).append(")");
+
+            boolean first = true;
+            StringBuilder query = new StringBuilder();
+
+            for (Entry<Integer, Pair<Byte, Integer>> keybinding : keymap.entrySet()) {
+                if (first) {
+                    first = false;
+                    query.append("INSERT INTO keymap VALUES (");
+                } else {
+                    query.append(",(");
+                }
+                query.append("DEFAULT,");
+                query.append(charid).append(",");
+                query.append(keybinding.getKey().intValue()).append(",");
+                query.append(keybinding.getValue().getLeft().byteValue()).append(",");
+                query.append(keybinding.getValue().getRight().intValue()).append(")");
+            }
+            try (PreparedStatement ps = con.prepareStatement(query.toString())) {
+                ps.execute();
+            }
         }
-        ps = con.prepareStatement(query.toString());
-        ps.execute();
-        ps.close();
     }
 }

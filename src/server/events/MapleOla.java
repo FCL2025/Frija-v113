@@ -24,17 +24,15 @@ package server.events;
 import java.util.concurrent.ScheduledFuture;
 import client.MapleCharacter;
 import server.Randomizer;
-import server.Timer.EventTimer;
-import tools.MaplePacketCreator;
-import server.maps.MapleMap;
-import server.maps.SavedLocationType;
+import server.Timer;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public class MapleOla extends MapleEvent {
 
-    private static final long serialVersionUID = 845748150824L;
     private long time = 600000; //reduce for less time
     private long timeStarted = 0;
-    private transient ScheduledFuture<?> olaSchedule;
+    private ScheduledFuture<?> olaSchedule;
     private int[] stages = new int[3];
     //stg1 = ch00-ch04 = 5 ports
     //stg2 = ch00-ch07 = 8 ports
@@ -47,13 +45,12 @@ public class MapleOla extends MapleEvent {
     @Override
     public void finished(final MapleCharacter chr) {
         givePrize(chr);
-        //chr.finishAchievement(21);
     }
 
     @Override
     public void onMapLoad(MapleCharacter chr) {
         if (isTimerStarted()) {
-            chr.getClient().getSession().write(MaplePacketCreator.getClock((int) (getTimeLeft() / 1000)));
+            chr.getClient().send(MapPacket.getClock((int) (getTimeLeft() / 1000)));
         }
     }
 
@@ -61,23 +58,19 @@ public class MapleOla extends MapleEvent {
     public void startEvent() { // TODO: Messages
         unreset();
         super.reset(); //isRunning = true
-        broadcast(MaplePacketCreator.getClock((int) (time / 1000)));
+        broadcast(MapPacket.getClock((int) (time / 1000)));
         this.timeStarted = System.currentTimeMillis();
 
-        olaSchedule = EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public void run() {
-                for (int i = 0; i < mapid.length; i++) {
-                    for (MapleCharacter chr : getMap(i).getCharactersThreadsafe()) {
-                        warpBack(chr);
-                    }
-                    unreset();
+        olaSchedule = Timer.EVENT.schedule(() -> {
+            for (int i = 0; i < mapid.length; i++) {
+                for (MapleCharacter chr : getMap(i).getCharactersThreadsafe()) {
+                    warpBack(chr);
                 }
+                unreset();
             }
         }, this.time);
 
-        broadcast(MaplePacketCreator.serverNotice(0, "The portal has now opened. Press the up arrow key at the portal to enter."));
+        broadcast(ChatPacket.serverNotice(0, "The portal has now opened. Press the up arrow key at the portal to enter."));
     }
 
     public boolean isTimerStarted() {

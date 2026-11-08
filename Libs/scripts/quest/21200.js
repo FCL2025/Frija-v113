@@ -32,7 +32,7 @@ function end(mode, type, selection) {
 	    qm.dispose();
 	    return;
 	} else if (status == 13) {
-	    qm.MovieClipIntroUI(true);
+	    qm.movieClipIntroUI(true);
 	    qm.warp(914090200, 0);
 	    qm.dispose();
 	    return;

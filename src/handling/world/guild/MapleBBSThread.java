@@ -24,13 +24,12 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MapleBBSThread implements java.io.Serializable {
+public class MapleBBSThread {
 
-    public static final long serialVersionUID = 3565477792085301248L;
     public String name, text;
     public long timestamp;
     public int localthreadID, guildID, ownerID, icon;
-    public Map<Integer, MapleBBSReply> replies = new HashMap<Integer, MapleBBSReply>();
+    public Map<Integer, MapleBBSReply> replies = new HashMap<>();
 
     public MapleBBSThread(final int localthreadID, final String name, final String text, final long timestamp,
             final int guildID, final int ownerID, final int icon) {
@@ -51,7 +50,7 @@ public class MapleBBSThread implements java.io.Serializable {
         return localthreadID == 0;
     }
 
-    public static class MapleBBSReply implements java.io.Serializable {
+    public static class MapleBBSReply {
 
         public int replyid, ownerID;
         public long timestamp;
@@ -65,7 +64,7 @@ public class MapleBBSThread implements java.io.Serializable {
         }
     }
 
-    public static class ThreadComparator implements Comparator<MapleBBSThread>, java.io.Serializable {
+    public static class ThreadComparator implements Comparator<MapleBBSThread> {
 
         @Override
         public int compare(MapleBBSThread o1, MapleBBSThread o2) {

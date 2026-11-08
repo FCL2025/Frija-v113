@@ -1,0 +1,69 @@
+﻿#Database Setting
+#資料庫名稱就是 tms.Url 裡 3306/ 後面的那一段，目前是 twmsv113。
+#要換別的名字就改這一行，並用同樣的名字建資料庫；
+#sql/twmsv113.sql 開頭的 CREATE DATABASE / USE 也要改成同一個名字。
+#主機與埠號（localhost:3306）也是在這一行設定。
+#rewriteBatchedStatements=true 是 I2 那批 addBatch/executeBatch 真的省下來回的前提：
+#沒有它，Connector/J 還是一列一列送。全樹被批次化的語句都沒有要 generated key
+#（queststatus 那條刻意沒有批次化），也沒有任何地方讀 executeBatch() 的回傳值，
+#所以打開它是安全的。
+tms.Url           = jdbc:mysql://localhost:3306/twmsv113?autoReconnect=true&maxReconnects=999&characterEncoding=BIG5&rewriteBatchedStatements=true
+#資料庫帳號密碼。請複製這個檔案成 Settings.ini 後再填寫；Settings.ini 本身不進版控。
+#注意：帳密填錯時不會報錯 —— tms.Url 裡的 maxReconnects=999 會讓伺服器安靜重試
+#約 30 分鐘才放棄，期間畫面上什麼都不會出現。連不上資料庫時請先檢查這兩行。
+tms.User          =
+tms.Pass          =
+
+#Channel Setting
+tms.Count         = 3
+
+#World Setting
+tms.Exp           = 1
+tms.Meso          = 1
+tms.Drop          = 1
+tms.Cash          = 1
+tms.ServerName    = 測試服v113
+tms.EventMessage  = 測試中
+tms.ServerMessage = 歡迎來到v113測試
+tms.Events        = PinkBeanBattle,Romeo,Juliet,ScarTarBattle,automsg,3rdCake,3rdjob,Boats,ZakumPQ,Hak,KerningPQ,GuildQuest,LudiMazePQ,Dollhouse,Subway,Amoria,HenesysPQ,HorntailBattle,LudiPQ,OrbisPQ,Pirate,ZakumBattle,cpq,cpq2,ChineseBoss,English,English0,English1,English2,elevator,Trains,Flight,Geenie,HontalePQ,s4aWorld,ElementThanatos,ProtectTylus,4jrush,KyrinTrainingGroundC,KyrinTrainingGroundV,s4resurrection,s4resurrection2,s4nest,4jberserk,DLPracticeField,Ellin,AirPlane,BossBalrog_EASY,BossBalrog_NORMAL,BossQuest,BossQuestEASY,BossQuestHARD,BossQuestHELL,BossQuestMed,Brawler,KyrinTrainingGroundC,KyrinTrainingGroundV,ChaosHorntail,ChaosZakum
+tms.Flag          = 3
+tms.AutoRegister  = true
+tms.WFlags        = 0
+tms.Admin         = false
+tms.UserLimit     = 600
+tms.MaxCharacters = 3
+tms.IP            = 127.0.0.1
+tms.Debug =
+
+#Threading / Performance Setting
+#封包處理執行緒數。MINA 以前偷偷用固定 16 條執行緒，現在改成明確設定，
+#預設為 max(16, CPU 核心數 x 2)。登入、各頻道與購物商城共用同一組。
+#tms.HandlerThreads = 16
+#每個 server.Timer 排程池的執行緒數，預設為 max(4, CPU 核心數)。
+#tms.TimerThreads   = 4
+#資料庫連線池上限，以及等不到連線時要等多久（毫秒）才放棄。
+#若看到 Timed out ... waiting for a free database connection，
+#代表某處借了連線沒有關閉，調大這個數字只會拖延問題。
+#tms.DbPoolSize     = 64
+#tms.DbPoolTimeout  = 15000
+
+#Management Panel Setting
+#管理面板：伺服器啟動後在瀏覽器開 http://127.0.0.1:8080/ ，登入 Token 會印在 console。
+#面板只綁 127.0.0.1，隨伺服器一起啟動與關閉；port 被占用時伺服器照常啟動，只是沒有面板。
+#設為 0 可停用面板。
+#tms.PanelPort      = 8080
+#面板請求處理執行緒數，預設為 max(4, CPU 核心數)。
+#tms.PanelThreads   = 4
+#固定的登入 Token。不設定時每次啟動隨機產生一組並印在 console；
+#開發期間常重啟的話可以固定一組，省得每次重貼。
+#tms.PanelToken     = 
+
+#Auto Save Setting
+#自動存檔間隔（分鐘），0 或留空 = 關閉。
+#每個頻道各自排程在 server.Timer 的 EtcTimer 上，到點把該頻道線上的角色
+#逐一寫回資料庫；存檔期間不持有任何鎖，一個頻道一次只借一條資料庫連線。
+#這取代了 Libs/scripts/event/AutoSave.js（每小時 10 分一次、間隔寫死，而且靠
+#Windows 檔名大小寫不敏感才配得到 AutoSave.js，換到大小寫敏感的系統會靜默失效）。
+#那支腳本已經從上面的 tms.Events 拿掉。**不要把 autoSave 加回去**，
+#否則同一批角色會在短時間內被存兩次。
+tms.AutoSaveMinutes = 15

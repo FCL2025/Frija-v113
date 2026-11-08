@@ -1,93 +1,25 @@
 package client.messages.commands;
 
-import client.ISkill;
 import client.MapleCharacter;
-import client.MapleCharacterUtil;
 import constants.ServerConstants.PlayerGMRank;
 import client.MapleClient;
-import client.MapleDisease;
-import client.MapleStat;
-import client.SkillFactory;
-import client.anticheat.CheatingOffense;
 import client.inventory.Equip;
 import client.inventory.IItem;
 import client.inventory.ItemFlag;
-import client.inventory.MapleInventory;
-import client.inventory.MapleInventoryIdentifier;
 import client.inventory.MapleInventoryType;
-import client.inventory.MapleRing;
 import client.messages.CommandProcessorUtil;
-import constants.GameConstants;
-import database.DatabaseConnection;
-import handling.MaplePacket;
-import handling.MapleServerHandler;
-import handling.RecvPacketOpcode;
-import handling.SendPacketOpcode;
+import constants.ItemConstants;
 import handling.channel.ChannelServer;
-import handling.world.World;
-import handling.world.CheaterData;
-import java.awt.Point;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.text.DateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
+import handling.world.Broadcast;
+import handling.world.Find;
 import java.util.Map.Entry;
-import provider.MapleData;
-import provider.MapleDataProvider;
-import provider.MapleDataProviderFactory;
-import provider.MapleDataTool;
-import scripting.EventInstanceManager;
-import scripting.EventManager;
-import scripting.PortalScriptManager;
-import scripting.ReactorScriptManager;
 import server.MapleInventoryManipulator;
 import server.MapleItemInformationProvider;
-import server.MaplePortal;
-import server.MapleShopFactory;
-import server.MapleSquad;
-import server.ShutdownServer;
-import server.Timer;
-import server.Timer.BuffTimer;
-import server.Timer.CloneTimer;
-import server.Timer.EtcTimer;
-import server.Timer.EventTimer;
-import server.Timer.MapTimer;
-import server.Timer.MobTimer;
-import server.Timer.WorldTimer;
-import server.events.MapleEvent;
-import server.events.MapleEventType;
-import server.life.MapleLifeFactory;
-import server.life.MapleMonster;
-import server.life.MapleMonsterInformationProvider;
-import server.life.MapleNPC;
-import server.life.MobSkillFactory;
-import server.life.OverrideMonsterStats;
-import server.life.PlayerNPC;
 import server.maps.MapleMap;
-import server.maps.MapleMapObject;
-import server.maps.MapleMapObjectType;
-import server.maps.MapleReactor;
-import server.maps.MapleReactorFactory;
-import server.maps.MapleReactorStats;
-import server.quest.MapleQuest;
 import tools.ArrayMap;
-import tools.CPUSampler;
-import tools.MaplePacketCreator;
-import tools.MockIOSession;
 import tools.Pair;
 import tools.StringUtil;
-import tools.packet.MobPacket;
-import tools.packet.PlayerShopPacket;
-import com.mysql.jdbc.Connection;
+import tools.packet.ChatPacket;
 
 /**
  *
@@ -239,7 +171,7 @@ public class GMCommand {
             final short quantity = (short) CommandProcessorUtil.getOptionalIntArg(splitted, 2, 1);
 
             if (!c.getPlayer().isAdmin()) {
-                for (int i : GameConstants.itemBlock) {
+                for (int i : ItemConstants.itemBlock) {
                     if (itemId == i) {
                         c.getPlayer().dropMessage(5, "Sorry but this item is blocked for your GM level.");
                         return 0;
@@ -247,22 +179,22 @@ public class GMCommand {
                 }
             }
             MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
-            if (GameConstants.isPet(itemId)) {
+            if (ItemConstants.isPet(itemId)) {
                 c.getPlayer().dropMessage(5, "Please purchase a pet from the cash shop instead.");
             } else if (!ii.itemExists(itemId)) {
                 c.getPlayer().dropMessage(5, itemId + " 為無效的物品");
             } else {
                 IItem item;
                 byte flag = 0;
-                flag |= ItemFlag.LOCK.getValue();
+                flag = (byte) (flag | ItemFlag.LOCK.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
 
-                if (GameConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
+                if (ItemConstants.getInventoryType(itemId) == MapleInventoryType.EQUIP) {
                     item = ii.randomizeStats((Equip) ii.getEquipById(itemId));
                     item.setFlag(flag);
 
                 } else {
                     item = new client.inventory.Item(itemId, (byte) 0, quantity, (byte) 0);
-                    if ( GameConstants.getInventoryType(itemId) != MapleInventoryType.USE)
+                    if ( ItemConstants.getInventoryType(itemId) != MapleInventoryType.USE)
                         item.setFlag(flag);
                 }
 
@@ -376,7 +308,7 @@ public class GMCommand {
             } else {
                 try {
                     victim = c.getPlayer();
-                    int ch = World.Find.findChannel(splitted[1]);
+                    int ch = Find.findChannel(splitted[1]);
                     if (ch < 0) {
                         MapleMap target = c.getChannelServer().getMapFactory().getMap(Integer.parseInt(splitted[1]));
                         c.getPlayer().changeMap(target, target.getPortal(0));
@@ -402,7 +334,7 @@ public class GMCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
 
-                World.Broadcast.broadcastGMMessage(MaplePacketCreator.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+                Broadcast.broadcastGMMessage(ChatPacket.serverNotice(5, "<GM聊天視窗>" + "頻道" + c.getPlayer().getClient().getChannel() + " [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
             
             return 1;
         }
@@ -412,36 +344,36 @@ public class GMCommand {
 
         @Override
         public int execute(MapleClient c, String[] splitted) {
-            java.util.Map<Pair<Short, Short>, MapleInventoryType> eqs = new ArrayMap<Pair<Short, Short>, MapleInventoryType>();
+            java.util.Map<Pair<Short, Short>, MapleInventoryType> eqs = new ArrayMap<>();
             if (splitted[1].equals("全部")) {
                 for (MapleInventoryType type : MapleInventoryType.values()) {
                     for (IItem item : c.getPlayer().getInventory(type)) {
-                        eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), type);
+                        eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), type);
                     }
                 }
             } else if (splitted[1].equals("已裝備道具")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.EQUIPPED)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIPPED);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIPPED);
                 }
             } else if (splitted[1].equals("武器")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.EQUIP)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIP);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.EQUIP);
                 }
             } else if (splitted[1].equals("消耗")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.USE)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.USE);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.USE);
                 }
             } else if (splitted[1].equals("裝飾")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.SETUP)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.SETUP);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.SETUP);
                 }
             } else if (splitted[1].equals("其他")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.ETC)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.ETC);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.ETC);
                 }
             } else if (splitted[1].equals("特殊")) {
                 for (IItem item : c.getPlayer().getInventory(MapleInventoryType.CASH)) {
-                    eqs.put(new Pair<Short, Short>(item.getPosition(), item.getQuantity()), MapleInventoryType.CASH);
+                    eqs.put(new Pair<>(item.getPosition(), item.getQuantity()), MapleInventoryType.CASH);
                 }
             } else {
                 c.getPlayer().dropMessage(6, "[全部/已裝備道具/武器/消耗/裝飾/其他/特殊]");

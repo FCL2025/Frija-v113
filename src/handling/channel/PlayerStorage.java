@@ -33,9 +33,9 @@ import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.world.CharacterTransfer;
 import handling.world.CheaterData;
-import handling.world.World;
+import handling.world.Find;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import server.Timer.PingTimer;
+import server.Timer;
 
 public class PlayerStorage {
 
@@ -43,21 +43,42 @@ public class PlayerStorage {
     private final Lock rL = mutex.readLock(), wL = mutex.writeLock();
     private final ReentrantReadWriteLock mutex2 = new ReentrantReadWriteLock();
     private final Lock rL2 = mutex2.readLock(), wL2 = mutex2.writeLock();
-    private final Map<String, MapleCharacter> nameToChar = new HashMap<String, MapleCharacter>();
-    private final Map<Integer, MapleCharacter> idToChar = new HashMap<Integer, MapleCharacter>();
-    private final Map<Integer, CharacterTransfer> PendingCharacter = new HashMap<Integer, CharacterTransfer>();
-    private int channel;
+    private final Map<String, MapleCharacter> nameToChar = new HashMap<>();
+    private final Map<Integer, MapleCharacter> idToChar = new HashMap<>();
+    private final Map<Integer, CharacterTransfer> PendingCharacter = new HashMap<>();
+    private final int channel;
 
-    public PlayerStorage(int channel) {
+    private PlayerStorage(int channel) {
         this.channel = channel;
+    }
+
+    /**
+     * Builds a storage and arms its stale-pending-transfer sweep.
+     *
+     * <p>The sweep used to be scheduled from the constructor, which handed
+     * {@code this} to a {@code Timer.PING} thread - through the inner
+     * {@link PersistingTask} - before the object was finished
+     * (-Xlint:this-escape). The constructor is private so that it is not
+     * possible to build a storage and forget to arm it: a sweep that silently
+     * never runs would leak every stale pending transfer. The first sweep
+     * still lands 900000 ms after the storage is created, exactly as before.
+     */
+    public static PlayerStorage create(final int channel) {
+        final PlayerStorage ret = new PlayerStorage(channel);
         // Prune once every 15 minutes
-        PingTimer.getInstance().schedule(new PersistingTask(), 900000);
+        Timer.PING.schedule(ret.new PersistingTask(), 900000);
+        return ret;
     }
 
     public final Collection<MapleCharacter> getAllCharacters() {
         rL.lock();
         try {
-            return Collections.unmodifiableCollection(idToChar.values());
+            // A snapshot copy, not Collections.unmodifiableCollection(idToChar.values()):
+            // that would only stop callers from mutating through the returned view, it
+            // would still be backed live by idToChar, so a caller iterating it after this
+            // method returns (i.e. after rL is released) could still race a concurrent
+            // registerPlayer/deregisterPlayer and get a ConcurrentModificationException.
+            return Collections.unmodifiableList(new ArrayList<>(idToChar.values()));
         } finally {
             rL.unlock();
         }
@@ -71,7 +92,7 @@ public class PlayerStorage {
         } finally {
             wL.unlock();
         }
-        World.Find.register(chr.getId(), chr.getName(), channel);
+        Find.register(chr.getId(), chr.getName(), channel);
     }
 
     public final void registerPendingPlayer(final CharacterTransfer chr, final int playerid) {
@@ -91,7 +112,7 @@ public class PlayerStorage {
         } finally {
             wL.unlock();
         }
-        World.Find.forceDeregister(chr.getId(), chr.getName());
+        Find.forceDeregister(chr.getId(), chr.getName());
     }
 
     public final void deregisterPlayer(final int idz, final String namez) {
@@ -102,7 +123,7 @@ public class PlayerStorage {
         } finally {
             wL.unlock();
         }
-        World.Find.forceDeregister(idz, namez);
+        Find.forceDeregister(idz, namez);
     }
 
     public final void deregisterPendingPlayer(final int charid) {
@@ -156,19 +177,20 @@ public class PlayerStorage {
     }
 
     public final int getConnectedClients() {
-        return idToChar.size();
+        rL.lock();
+        try {
+            return idToChar.size();
+        } finally {
+            rL.unlock();
+        }
     }
 
     public final List<CheaterData> getCheaters() {
-        final List<CheaterData> cheaters = new ArrayList<CheaterData>();
+        final List<CheaterData> cheaters = new ArrayList<>();
 
         rL.lock();
         try {
-            final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
-            MapleCharacter chr;
-            while (itr.hasNext()) {
-                chr = itr.next();
-
+            for (final MapleCharacter chr : nameToChar.values()) {
                 if (chr.getCheatTracker().getPoints() > 0) {
                     cheaters.add(new CheaterData(chr.getCheatTracker().getPoints(), MapleCharacterUtil.makeMapleReadable(chr.getName()) + " (" + chr.getCheatTracker().getPoints() + ") " + chr.getCheatTracker().getSummary()));
                 }
@@ -186,6 +208,8 @@ public class PlayerStorage {
     public final void disconnectAll(final boolean checkGM) {
         wL.lock();
         try {
+            // D3：維持顯式 Iterator。本體在移除之前要斷線、關 session 並從 Find 反註冊，
+            // 這些副作用不該被塞進 removeIf 的 predicate。
             final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
             MapleCharacter chr;
             while (itr.hasNext()) {
@@ -194,7 +218,7 @@ public class PlayerStorage {
                 if (!chr.isGM() || !checkGM) {
                     chr.getClient().disconnect(false, false, true);
                     chr.getClient().getSession().close();
-                    World.Find.forceDeregister(chr.getId(), chr.getName());
+                    Find.forceDeregister(chr.getId(), chr.getName());
                     itr.remove();
                 }
             }
@@ -209,9 +233,8 @@ public class PlayerStorage {
         if (byGM) {
             rL.lock();
             try {
-                final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
-                while (itr.hasNext()) {
-                    sb.append(MapleCharacterUtil.makeMapleReadable(itr.next().getName()));
+                for (final MapleCharacter chr : nameToChar.values()) {
+                    sb.append(MapleCharacterUtil.makeMapleReadable(chr.getName()));
                     sb.append(", ");
                 }
             } finally {
@@ -220,11 +243,7 @@ public class PlayerStorage {
         } else {
             rL.lock();
             try {
-                final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
-                MapleCharacter chr;
-                while (itr.hasNext()) {
-                    chr = itr.next();
-
+                for (final MapleCharacter chr : nameToChar.values()) {
                     if (!chr.isGM()) {
                         sb.append(MapleCharacterUtil.makeMapleReadable(chr.getName()));
                         sb.append(", ");
@@ -240,9 +259,8 @@ public class PlayerStorage {
     public final void broadcastPacket(final MaplePacket data) {
         rL.lock();
         try {
-            final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
-            while (itr.hasNext()) {
-                itr.next().getClient().getSession().write(data);
+            for (final MapleCharacter chr : nameToChar.values()) {
+                chr.getClient().send(data);
             }
         } finally {
             rL.unlock();
@@ -252,13 +270,9 @@ public class PlayerStorage {
     public final void broadcastSmegaPacket(final MaplePacket data) {
         rL.lock();
         try {
-            final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
-            MapleCharacter chr;
-            while (itr.hasNext()) {
-                chr = itr.next();
-
+            for (final MapleCharacter chr : nameToChar.values()) {
                 if (chr.getClient().isLoggedIn() && chr.getSmega()) {
-                    chr.getClient().getSession().write(data);
+                    chr.getClient().send(data);
                 }
             }
         } finally {
@@ -269,13 +283,9 @@ public class PlayerStorage {
     public final void broadcastGMPacket(final MaplePacket data) {
         rL.lock();
         try {
-            final Iterator<MapleCharacter> itr = nameToChar.values().iterator();
-            MapleCharacter chr;
-            while (itr.hasNext()) {
-                chr = itr.next();
-
+            for (final MapleCharacter chr : nameToChar.values()) {
                 if (chr.getClient().isLoggedIn() && chr.isGM()) {
-                    chr.getClient().getSession().write(data);
+                    chr.getClient().send(data);
                 }
             }
         } finally {
@@ -290,14 +300,9 @@ public class PlayerStorage {
             wL2.lock();
             try {
                 final long currenttime = System.currentTimeMillis();
-                final Iterator<Map.Entry<Integer, CharacterTransfer>> itr = PendingCharacter.entrySet().iterator();
-
-                while (itr.hasNext()) {
-                    if (currenttime - itr.next().getValue().TranferTime > 40000) { // 40 sec
-                        itr.remove();
-                    }
-                }
-                PingTimer.getInstance().schedule(new PersistingTask(), 900000);
+                // D3：本體只有移除，而且沒有提前跳出，所以 removeIf 完全等價。
+                PendingCharacter.values().removeIf(ct -> currenttime - ct.TranferTime > 40000); // 40 sec
+                Timer.PING.schedule(new PersistingTask(), 900000);
             } finally {
                 wL2.unlock();
             }

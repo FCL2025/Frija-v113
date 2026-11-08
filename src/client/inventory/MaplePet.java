@@ -20,24 +20,22 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
 import java.awt.Point;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import database.DatabaseConnection;
 import server.MapleItemInformationProvider;
 import server.movement.StaticLifeMovement;
 import server.movement.LifeMovement;
 import server.movement.LifeMovementFragment;
 
-public class MaplePet implements Serializable {
+public class MaplePet {
+
+    private static final System.Logger LOG = System.getLogger(MaplePet.class.getName());
 
     public static enum PetFlag {
 
@@ -87,7 +85,6 @@ public class MaplePet implements Serializable {
         }
     }
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private String name;
     private int Fh = 0, stance = 0, uniqueid, petitemid, secondsLeft = 0;
     private Point pos;
@@ -107,34 +104,31 @@ public class MaplePet implements Serializable {
     }
 
     public static final MaplePet loadFromDb(final int itemid, final int petid, final short inventorypos) {
-        try {
-            final MaplePet ret = new MaplePet(itemid, petid, inventorypos);
-
-            Connection con = DatabaseConnection.getConnection(); // Get a connection to the database
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM pets WHERE petid = ?"); // Get pet details..
+        try (Connection con = DatabaseConnection.getConnection(); // Get a connection to the database
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM pets WHERE petid = ?")) { // Get pet details..
             ps.setInt(1, petid);
 
-            final ResultSet rs = ps.executeQuery();
-            if (!rs.next()) {
-                rs.close();
-                ps.close();
-                return null;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+
+                final MaplePet ret = new MaplePet(itemid, petid, inventorypos);
+                ret.setName(rs.getString("name"));
+                ret.setCloseness(rs.getShort("closeness"));
+                ret.setLevel(rs.getByte("level"));
+                ret.setFullness(rs.getByte("fullness"));
+                ret.setSecondsLeft(rs.getInt("seconds"));
+                ret.setFlags(rs.getShort("flags"));
+                ret.changed = false;
+
+                return ret;
             }
-
-            ret.setName(rs.getString("name"));
-            ret.setCloseness(rs.getShort("closeness"));
-            ret.setLevel(rs.getByte("level"));
-            ret.setFullness(rs.getByte("fullness"));
-            ret.setSecondsLeft(rs.getInt("seconds"));
-            ret.setFlags(rs.getShort("flags"));
-            ret.changed = false;
-
-            rs.close();
-            ps.close();
-
-            return ret;
         } catch (SQLException ex) {
-            Logger.getLogger(MaplePet.class.getName()).log(Level.SEVERE, null, ex);
+            // Was java.util.logging.Level.SEVERE with a null message; SEVERE is
+            // what System.Logger's ERROR reaches JUL as, and the load is
+            // abandoned (null), so ERROR is also the right level on its own.
+            LOG.log(System.Logger.Level.ERROR, "Error loading pet " + petid + " from the database", ex);
             return null;
         }
     }
@@ -143,8 +137,8 @@ public class MaplePet implements Serializable {
         if (!changed) {
             return;
         }
-        try {
-            final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("UPDATE pets SET name = ?, level = ?, closeness = ?, fullness = ?, seconds = ?, flags = ? WHERE petid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("UPDATE pets SET name = ?, level = ?, closeness = ?, fullness = ?, seconds = ?, flags = ? WHERE petid = ?")) {
             ps.setString(1, name); // Set name
             ps.setByte(2, level); // Set Level
             ps.setShort(3, closeness); // Set Closeness
@@ -153,15 +147,15 @@ public class MaplePet implements Serializable {
             ps.setShort(6, flags);
             ps.setInt(7, uniqueid); // Set ID
             ps.executeUpdate(); // Execute statement
-            ps.close();
             changed = false;
         } catch (final SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: changed stays true and the pet's state never reached the row.
+            LOG.log(System.Logger.Level.ERROR, "Error saving pet " + uniqueid + " to the database", ex);
         }
     }
 
     public static final MaplePet createPet(final int itemid, final int uniqueid) {
-		MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
+        MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
         return createPet(itemid, ii.getName(itemid), 1, 0, 100, uniqueid, itemid == 5000054 ? 18000 : 0,ii.getPetFlagInfo(itemid));
     }
 
@@ -169,19 +163,19 @@ public class MaplePet implements Serializable {
         if (uniqueid <= -1) { //wah
             uniqueid = MapleInventoryIdentifier.getInstance();
         }
-        try { // Commit to db first
-            PreparedStatement pse = DatabaseConnection.getConnection().prepareStatement("INSERT INTO pets (petid, name, level, closeness, fullness, seconds, flags) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        try (Connection con = DatabaseConnection.getConnection(); // Commit to db first
+                PreparedStatement pse = con.prepareStatement("INSERT INTO pets (petid, name, level, closeness, fullness, seconds, flags) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
             pse.setInt(1, uniqueid);
             pse.setString(2, name);
             pse.setByte(3, (byte) level);
             pse.setShort(4, (short) closeness);
             pse.setByte(5, (byte) fullness);
             pse.setInt(6, secondsLeft);
-            pse.setShort(7, (short) flag); //flags
+            pse.setShort(7, flag); //flags
             pse.executeUpdate();
-            pse.close();
         } catch (final SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: the pet row was not written and createPet gives up.
+            LOG.log(System.Logger.Level.ERROR, "Error creating pet " + uniqueid + " (item " + itemid + ")", ex);
             return null;
         }
         final MaplePet pet = new MaplePet(itemid, uniqueid);

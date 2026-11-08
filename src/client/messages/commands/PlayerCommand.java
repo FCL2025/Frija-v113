@@ -1,21 +1,18 @@
 package client.messages.commands;
 
-import constants.GameConstants;
+import constants.MapConstants;
 import constants.ServerConstants.PlayerGMRank;
 import client.MapleClient;
-import client.MapleStat;
 import scripting.NPCScriptManager;
-import tools.MaplePacketCreator;
 import server.life.MapleMonster;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import java.util.Arrays;
 import tools.StringUtil;
-import handling.world.World;
-import client.MapleCharacter;
-import client.inventory.MapleInventoryIdentifier;
-import java.sql.SQLException;
+import handling.world.Broadcast;
 import tools.FileoutputUtil;
+import tools.packet.CharacterPacket;
+import tools.packet.ChatPacket;
 
 
 /**
@@ -37,7 +34,7 @@ public class PlayerCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             if (npc != 1 && c.getPlayer().getMapId() != 910000000) { //drpcash can use anywhere
-                for (int i : GameConstants.blockedMaps) {
+                for (int i : MapConstants.blockedMaps) {
                     if (c.getPlayer().getMapId() == i) {
                         c.getPlayer().dropMessage(1, "你不能在這裡使用指令.");
                         return 0;
@@ -75,9 +72,9 @@ public class PlayerCommand {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             NPCScriptManager.getInstance().dispose(c);
-            c.getSession().write(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             c.getPlayer().dropMessage(1, "解卡完畢.");
-            c.getPlayer().dropMessage(6, "當前時間是" + FileoutputUtil.CurrentReadable_Time() + " GMT+8 | 經驗值倍率 " + (Math.round(c.getPlayer().getEXPMod()) * 100) * Math.round(c.getPlayer().getStat().expBuff / 100.0) + "%, 掉寶倍率 " + (Math.round(c.getPlayer().getDropMod()) * 100) * Math.round(c.getPlayer().getStat().dropBuff / 100.0) + "%, 楓幣倍率 " + Math.round(c.getPlayer().getStat().mesoBuff / 100.0) * 100 + "%");
+            c.getPlayer().dropMessage(6, "當前時間是" + FileoutputUtil.currentReadable_Time() + " GMT+8 | 經驗值倍率 " + (Math.round(c.getPlayer().getEXPMod()) * 100) * Math.round(c.getPlayer().getStat().expBuff / 100.0) + "%, 掉寶倍率 " + (Math.round(c.getPlayer().getDropMod()) * 100) * Math.round(c.getPlayer().getStat().dropBuff / 100.0) + "%, 楓幣倍率 " + Math.round(c.getPlayer().getStat().mesoBuff / 100.0) * 100 + "%");
             c.getPlayer().dropMessage(6, "當前延遲 " + c.getPlayer().getClient().getLatency() + " 毫秒");
             return 1;
         }
@@ -116,8 +113,8 @@ public class PlayerCommand {
                 c.getPlayer().dropMessage(6, "因為你自己是GM所法使用此指令,可以嘗試!cngm <訊息> 來建立GM聊天頻道~");
                 return 1;
             }
-            if (!c.getPlayer().getCheatTracker().GMSpam(100000, 1)) { // 5 minutes.
-                World.Broadcast.broadcastGMMessage(MaplePacketCreator.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
+            if (!c.getPlayer().getCheatTracker().gmSpam(100000, 1)) { // 5 minutes.
+                Broadcast.broadcastGMMessage(ChatPacket.serverNotice(6, "頻道 " + c.getPlayer().getClient().getChannel() + " 玩家 [" + c.getPlayer().getName()+ "] : " + StringUtil.joinStringFrom(splitted, 1)).getBytes());
                 c.getPlayer().dropMessage(6, "訊息已經寄送給GM了!");
             } else {
                 c.getPlayer().dropMessage(6, "為了防止對GM刷屏所以每1分鐘只能發一次.");

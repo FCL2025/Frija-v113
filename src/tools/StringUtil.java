@@ -20,7 +20,6 @@
  */
 package tools;
 
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.IOException;
@@ -35,6 +34,8 @@ import java.io.IOException;
  */
 public class StringUtil {
 
+    private static final System.Logger LOG = System.getLogger(StringUtil.class.getName());
+
     /**
      * Gets a string padded from the left to <code>length</code> by
      * <code>padchar</code>.
@@ -46,7 +47,7 @@ public class StringUtil {
      */
     public static final String getLeftPaddedStr(final String in, final char padchar, final int length) {
         StringBuilder builder = new StringBuilder(length);
-        for (int x = in.getBytes().length; x < length; x++) {
+        for (int x = getlength(in); x < length; x++) {
             builder.append(padchar);
         }
         builder.append(in);
@@ -63,13 +64,13 @@ public class StringUtil {
      * @return The padded string.
      */
     public static final int getlength(final String str) {
-        byte[] bt = str.getBytes(Charset.forName("BIG5"));
+        byte[] bt = str.getBytes(Encodings.BIG5);
         return bt.length;
     }
 
     public static final String getRightPaddedStr(final String in, final char padchar, final int length) {
         StringBuilder builder = new StringBuilder(in);
-        for (int x = in.getBytes().length; x < length; x++) {
+        for (int x = getlength(in); x < length; x++) {
             builder.append(padchar);
         }
         return builder.toString();
@@ -135,7 +136,7 @@ public class StringUtil {
      */
     public static final int countCharacters(final String str, final char chr) {
         int ret = 0;
-        for (int i = 0; i < str.getBytes().length; i++) {
+        for (int i = 0; i < str.length(); i++) {
             if (str.charAt(i) == chr) {
                 ret++;
             }
@@ -219,17 +220,21 @@ public class StringUtil {
         int elapsedDays = elapsedHrs / 24;
         return elapsedDays;
     }
-	
-	public static String readFileAsString(String path){
-		StringBuilder builder = new StringBuilder();
-		try {
-			for(String str : Files.readAllLines(Paths.get(path) ,Charset.forName("BIG5") )){
-				builder.append(str + System.lineSeparator());
-			}
-			return builder.toString();
-		} catch (IOException e) {
-			System.out.println("Error while loading file " + path + " " + e.getMessage());
-		}
-		return "";
-	}
+    
+    public static String readFileAsString(String path){
+        StringBuilder builder = new StringBuilder();
+        try {
+            for(String str : Files.readAllLines(Paths.get(path) ,Encodings.BIG5 )){
+                builder.append(str + System.lineSeparator());
+            }
+            return builder.toString();
+        } catch (IOException e) {
+            // This is the line a script saved as UTF-8 produces, and the only
+            // sign of it: the read is abandoned, "" goes back, and the NPC
+            // silently stops answering. Terse on purpose - it has always
+            // reported getMessage() and never a trace.
+            LOG.log(System.Logger.Level.ERROR, "Error while loading file " + path + " " + e.getMessage());
+        }
+        return "";
+    }
 }

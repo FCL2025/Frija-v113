@@ -24,14 +24,15 @@ package server.events;
 import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.channel.ChannelServer;
-import handling.world.World;
+import handling.world.Broadcast;
 import server.MapleInventoryManipulator;
 import server.RandomRewards;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.maps.MapleMap;
 import server.maps.SavedLocationType;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public abstract class MapleEvent {
 
@@ -142,13 +143,10 @@ public abstract class MapleEvent {
                 if (e.isRunning) {
                     for (int i : e.mapid) {
                         if (cserv.getEvent() == i) {
-                            e.broadcast(MaplePacketCreator.serverNotice(0, "距離活動開始只剩一分鐘!"));
-                            e.broadcast(MaplePacketCreator.getClock(60));
-                            EventTimer.getInstance().schedule(new Runnable() {
-
-                                public void run() {
-                                    e.startEvent();
-                                }
+                            e.broadcast(ChatPacket.serverNotice(0, "距離活動開始只剩一分鐘!"));
+                            e.broadcast(MapPacket.getClock(60));
+                            Timer.EVENT.schedule(() -> {
+                                e.startEvent();
                             }, 60000);
                             break;
                         }
@@ -203,7 +201,7 @@ public abstract class MapleEvent {
         }
         cserv.setEvent(cserv.getEvent(event).mapid[0]);
         cserv.getEvent(event).reset();
-        World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(0, "活動 " + String.valueOf(event) + " 即將在頻道 " + cserv.getChannel() + " 舉行 , 要參加的玩家請到頻道 " + cserv.getChannel()).getBytes());
+        Broadcast.broadcastMessage(ChatPacket.serverNotice(0, "活動 " + String.valueOf(event) + " 即將在頻道 " + cserv.getChannel() + " 舉行 , 要參加的玩家請到頻道 " + cserv.getChannel()).getBytes());
         return "";
     }
 }

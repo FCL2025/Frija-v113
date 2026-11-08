@@ -6,7 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.lang.ref.WeakReference;
 import server.maps.MapleMap;
-import tools.MaplePacketCreator;
+import tools.packet.MapPacket;
 
 /**
  * Note for this class : MapleCharacter reference must be removed immediately
@@ -14,9 +14,12 @@ import tools.MaplePacketCreator;
  *
  * @author Rob
  */
-public class MapleCarnivalParty {
+// final: the constructor publishes 'this' to every member with
+// mem.setCarnivalParty(this) before it is finished. Nothing extends it
+// (-Xlint:this-escape).
+public final class MapleCarnivalParty {
 
-    private List<Integer> members = new LinkedList<Integer>();
+    private List<Integer> members = new LinkedList<>();
     private WeakReference<MapleCharacter> leader;
     private byte team;
     private int channel;
@@ -24,7 +27,7 @@ public class MapleCarnivalParty {
     private boolean winner = false;
 
     public MapleCarnivalParty(final MapleCharacter owner, final List<MapleCharacter> members1, final byte team1) {
-        leader = new WeakReference<MapleCharacter>(owner);
+        leader = new WeakReference<>(owner);
         for (MapleCharacter mem : members1) {
             members.add(mem.getId());
             mem.setCarnivalParty(this);
@@ -38,8 +41,8 @@ public class MapleCarnivalParty {
     }
 
     public void addCP(MapleCharacter player, int ammount) {
-        totalCP += ammount;
-        availableCP += ammount;
+        totalCP = (short) (totalCP + ammount); // CP 上線是 writeShort，本來就只有 16 bit
+        availableCP = (short) (availableCP + ammount);
         player.addCP(ammount);
     }
 
@@ -52,7 +55,7 @@ public class MapleCarnivalParty {
     }
 
     public void useCP(MapleCharacter player, int ammount) {
-        availableCP -= ammount;
+        availableCP = (short) (availableCP - ammount);
         player.useCP(ammount);
     }
 
@@ -116,8 +119,8 @@ public class MapleCarnivalParty {
         for (int chr : members) {
             final MapleCharacter c = ChannelServer.getInstance(channel).getPlayerStorage().getCharacterById(chr);
             if (c != null) {
-                c.getClient().getSession().write(MaplePacketCreator.showEffect(effect));
-                c.getClient().getSession().write(MaplePacketCreator.playSound(sound));
+                c.getClient().send(MapPacket.showEffect(effect));
+                c.getClient().send(MapPacket.playSound(sound));
                 if (!done) {
                     done = true;
                     c.getMap().killAllMonsters(true);

@@ -1,6 +1,6 @@
 /*
  This file is part of the OdinMS Maple Story Server
- Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
+ Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc>
  Matthias Butz <matze@odinms.de>
  Jan Christian Meyer <vimes@odinms.de>
 
@@ -21,167 +21,135 @@
 package tools.data.input;
 
 import java.awt.Point;
-import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+
+import tools.Encodings;
+import tools.HexTool;
 
 /**
- * Provides a generic interface to a Little Endian stream of bytes.
+ * Reads one inbound packet as a little-endian stream of bytes.
+ *
+ * <p>This is the only reader in the tree. It used to be the middle of a
+ * three-layer stack - {@code ByteInputStream} (an interface for "something that
+ * hands out one byte"), one implementation of it, and this class on top - even
+ * though the only byte source that was ever constructed was a {@code byte[]}.
+ * The array and the cursor now live here, and {@link ByteArrayByteStream} is
+ * just the handle the call sites name.
+ *
+ * <p>Instances are confined to one handler thread. {@code ExecutorFilter} runs
+ * at most one task per session at a time, so the packet a thread is reading is
+ * its own; nothing here is synchronized and nothing should need to be.
  *
  * @version 1.0
  * @author Frz
  * @since Revision 323
  */
-public class GenericLittleEndianAccessor implements LittleEndianAccessor {
+public class GenericLittleEndianAccessor implements SeekableLittleEndianAccessor {
 
-    private final ByteInputStream bs;
+    private final byte[] arr;
+    private int pos;
+    private long bytesRead;
 
     /**
-     * Class constructor - Wraps the accessor around a stream of bytes.
+     * Class constructor - wraps the accessor around a packet's bytes.
      *
      * @param bs The byte stream to wrap the accessor around.
      */
-    public GenericLittleEndianAccessor(final ByteInputStream bs) {
-        this.bs = bs;
+    public GenericLittleEndianAccessor(final ByteArrayByteStream bs) {
+        this.arr = bs.arr;
+    }
+
+    /**
+     * The one place a byte leaves the array. Reading past the end throws
+     * {@link ArrayIndexOutOfBoundsException}, which is what the movement
+     * parsers in {@code PlayerHandler} and {@code MobHandler} catch to reject a
+     * truncated packet - so every read below must stay on this path rather than
+     * bulk-copying without a bounds check.
+     *
+     * @return The next byte, unsigned, as an integer.
+     */
+    private int next() {
+        bytesRead++;
+        return arr[pos++] & 0xFF;
     }
 
     @Override
     public final int readByteAsInt() {
-        return bs.readByte();
+        return next();
     }
 
-    /**
-     * Read a single byte from the stream.
-     *
-     * @return The byte read.
-     * @see net.sf.odinms.tools.data.input.ByteInputStream#readByte
-     */
     @Override
     public final byte readByte() {
-        return (byte) bs.readByte();
+        return (byte) next();
     }
 
-    /**
-     * Reads an integer from the stream.
-     *
-     * @return The integer read.
-     */
     @Override
     public final int readInt() {
-        final int byte1 = bs.readByte();
-        final int byte2 = bs.readByte();
-        final int byte3 = bs.readByte();
-        final int byte4 = bs.readByte();
+        final int byte1 = next();
+        final int byte2 = next();
+        final int byte3 = next();
+        final int byte4 = next();
         return (byte4 << 24) + (byte3 << 16) + (byte2 << 8) + byte1;
     }
 
-    /**
-     * Reads a short integer from the stream.
-     *
-     * @return The short read.
-     */
     @Override
     public final short readShort() {
-        final int byte1 = bs.readByte();
-        final int byte2 = bs.readByte();
+        final int byte1 = next();
+        final int byte2 = next();
         return (short) ((byte2 << 8) + byte1);
     }
 
-    /**
-     * Reads a single character from the stream.
-     *
-     * @return The character read.
-     */
     @Override
     public final char readChar() {
         return (char) readShort();
     }
 
-    /**
-     * Reads a long integer from the stream.
-     *
-     * @return The long integer read.
-     */
     @Override
     public final long readLong() {
-        final int byte1 = bs.readByte();
-        final int byte2 = bs.readByte();
-        final int byte3 = bs.readByte();
-        final int byte4 = bs.readByte();
-        final int byte5 = bs.readByte();
-        final int byte6 = bs.readByte();
-        final int byte7 = bs.readByte();
-        final int byte8 = bs.readByte();
+        final int byte1 = next();
+        final int byte2 = next();
+        final int byte3 = next();
+        final int byte4 = next();
+        final int byte5 = next();
+        final int byte6 = next();
+        final int byte7 = next();
+        final int byte8 = next();
 
-        return (long) ((byte8 << 56) + (byte7 << 48) + (byte6 << 40) + (byte5 << 32) + (byte4 << 24) + (byte3 << 16)
-                + (byte2 << 8) + byte1);
+        // The arithmetic has to be done in long: Java masks an int shift distance
+        // to five bits, so an int-width `byte8 << 56` would really be `<< 24` and
+        // the top four bytes would fold onto the bottom four.
+        return ((byte8 & 0xFFL) << 56) + ((byte7 & 0xFFL) << 48) + ((byte6 & 0xFFL) << 40) + ((byte5 & 0xFFL) << 32)
+                + ((byte4 & 0xFFL) << 24) + ((byte3 & 0xFFL) << 16) + ((byte2 & 0xFFL) << 8) + (byte1 & 0xFFL);
     }
 
-    /**
-     * Reads a floating point integer from the stream.
-     *
-     * @return The float-type integer read.
-     */
     @Override
     public final float readFloat() {
         return Float.intBitsToFloat(readInt());
     }
 
-    /**
-     * Reads a double-precision integer from the stream.
-     *
-     * @return The double-type integer read.
-     */
     @Override
     public final double readDouble() {
         return Double.longBitsToDouble(readLong());
     }
 
     /**
-     * Reads an ASCII string from the stream with length <code>n</code>.
+     * Reads a string of exactly <code>n</code> bytes.
      *
-     * @param n Number of characters to read.
+     * <p>BIG5, from {@code tools.Encodings} - never the platform default, which
+     * JEP 400 changed to UTF-8 in JDK 18. It is the same charset
+     * {@code GenericLittleEndianWriter} encodes with.
+     *
+     * @param n Number of bytes to read.
      * @return The string read.
      */
-    public final String readAsciiString(int n) {
-//char ret[] = new char[n];
-        byte ret[] = new byte[n];
-        for (int x = 0; x < n; x++) {
-            ret[x] = (byte) readByte();
-        }
-        try {
-            String str = new String(ret, "BIG5");//勿改
-            return str;
-        } catch (Exception e) {
-            System.err.println(e);
-        }
-        return null;
-    }
-
-    /*public final String readAsciiString(final int n) {
-     final byte ret[] = new byte[n];
-     for (int x = 0; x < n; x++) {
-     ret[x] = (byte) readByte();
-     }
-     try {
-     String str = new String(ret, "BIG5");
-     return str;
-     } catch (Exception e) {
-     System.err.println(e);
-     }
-     return "";
-     }*/
-    /**
-     * Gets the number of bytes read from the stream so far.
-     *
-     * @return A long integer representing the number of bytes read.
-     * @see net.sf.odinms.tools.data.input.ByteInputStream#getBytesRead()
-     */
-    public final long getBytesRead() {
-        return bs.getBytesRead();
+    @Override
+    public final String readAsciiString(final int n) {
+        return new String(read(n), Encodings.BIG5);
     }
 
     /**
-     * Reads a MapleStory convention lengthed ASCII string. This consists of a
-     * short integer telling the length of the string, then the string itself.
+     * Reads a MapleStory convention lengthed string: a short integer giving the
+     * length <em>in bytes</em>, then that many bytes.
      *
      * @return The string read.
      */
@@ -191,8 +159,7 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
     }
 
     /**
-     * Reads a MapleStory Position information. This consists of 2 short
-     * integer.
+     * Reads a MapleStory Position, i.e. two short integers.
      *
      * @return The Position read.
      */
@@ -203,15 +170,9 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
         return new Point(x, y);
     }
 
-    /**
-     * Reads <code>num</code> bytes off the stream.
-     *
-     * @param num The number of bytes to read.
-     * @return An array of bytes with the length of <code>num</code>
-     */
     @Override
     public final byte[] read(final int num) {
-        byte[] ret = new byte[num];
+        final byte[] ret = new byte[num];
         for (int x = 0; x < num; x++) {
             ret[x] = readByte();
         }
@@ -219,35 +180,62 @@ public class GenericLittleEndianAccessor implements LittleEndianAccessor {
     }
 
     /**
-     * Skips the current position of the stream <code>num</code> bytes ahead.
+     * Skips <code>num</code> bytes, counting them as read.
+     *
+     * <p>Deliberately a read loop rather than an arithmetic jump: running off
+     * the end of a truncated packet has to throw here too.
      *
      * @param num Number of bytes to skip.
      */
     @Override
     public void skip(final int num) {
         for (int x = 0; x < num; x++) {
-            readByte();
+            next();
         }
     }
 
-    /**
-     * @see net.sf.odinms.tools.data.input.ByteInputStream#available
-     */
+    @Override
+    public final void seek(final long offset) {
+        pos = (int) offset;
+    }
+
+    @Override
+    public final long getPosition() {
+        return pos;
+    }
+
+    @Override
+    public final long getBytesRead() {
+        return bytesRead;
+    }
+
     @Override
     public final long available() {
-        return bs.available();
+        return arr.length - pos;
+    }
+
+    @Override
+    public final String toString() {
+        return toString(false);
     }
 
     /**
-     * @see java.lang.Object#toString
+     * The packet as hex digits - what the monitor logs and the "packet parsing
+     * error" reports print.
+     *
+     * @param b Whether to show the whole packet as well as the unread tail.
+     * @return The stream as a string.
      */
     @Override
-    public final String toString() {
-        return bs.toString();
-    }
-
-    @Override
     public final String toString(final boolean b) {
-        return bs.toString(b);
+        String nows = "";
+        if (arr.length - pos > 0) {
+            nows = HexTool.toString(Arrays.copyOfRange(arr, pos, arr.length));
+        }
+        if (b) {
+            return "All: " + HexTool.toString(arr) + "\nNow: " + nows;
+        } else {
+            return "Data: " + nows;
+        }
     }
 }

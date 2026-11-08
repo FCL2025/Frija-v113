@@ -23,7 +23,6 @@ package handling.channel.handler;
 import java.awt.Point;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import client.ISkill;
 import client.MapleBuffStat;
@@ -38,7 +37,7 @@ import java.lang.ref.WeakReference;
 import java.util.Map;
 import server.MapleStatEffect;
 import server.AutobanManager;
-import server.Timer.CloneTimer;
+import server.Timer;
 import server.movement.LifeMovementFragment;
 import server.life.MapleMonster;
 import server.life.SummonAttackEntry;
@@ -47,20 +46,21 @@ import server.maps.MapleSummon;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapObjectType;
 import server.maps.SummonMovementType;
-import tools.MaplePacketCreator;
+import tools.FileoutputUtil;
+import tools.packet.MapPacket;
 import tools.packet.MobPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 
 public class SummonHandler {
 
-    public static final void MoveDragon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void moveDragon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         slea.skip(8); //POS
         final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 5);
         if (chr != null && chr.getDragon() != null) {
             final Point pos = chr.getDragon().getPosition();
             MovementParse.updatePosition(res, chr.getDragon(), 0);
             if (!chr.isHidden()) {
-                chr.getMap().broadcastMessage(chr, MaplePacketCreator.moveDragon(chr.getDragon(), pos, res), chr.getPosition());
+                chr.getMap().broadcastMessage(chr, MapPacket.moveDragon(chr.getDragon(), pos, res), chr.getPosition());
             }
 
             WeakReference<MapleCharacter>[] clones = chr.getClones();
@@ -68,23 +68,20 @@ public class SummonHandler {
                 if (clones[i].get() != null) {
                     final MapleMap map = chr.getMap();
                     final MapleCharacter clone = clones[i].get();
-                    final List<LifeMovementFragment> res3 = new ArrayList<LifeMovementFragment>(res);
-                    CloneTimer.getInstance().schedule(new Runnable() {
+                    final List<LifeMovementFragment> res3 = new ArrayList<>(res);
+                    Timer.CLONE.schedule(() -> {
+                        try {
+                            if (clone.getMap() == map && clone.getDragon() != null) {
+                                final Point startPos = clone.getDragon().getPosition();
+                                MovementParse.updatePosition(res3, clone.getDragon(), 0);
 
-                        public void run() {
-                            try {
-                                if (clone.getMap() == map && clone.getDragon() != null) {
-                                    final Point startPos = clone.getDragon().getPosition();
-                                    MovementParse.updatePosition(res3, clone.getDragon(), 0);
-
-                                    if (!clone.isHidden()) {
-                                        map.broadcastMessage(clone, MaplePacketCreator.moveDragon(clone.getDragon(), startPos, res3), clone.getPosition());
-                                    }
-
+                                if (!clone.isHidden()) {
+                                    map.broadcastMessage(clone, MapPacket.moveDragon(clone.getDragon(), startPos, res3), clone.getPosition());
                                 }
-                            } catch (Exception e) {
-                                //very rarely swallowed
+
                             }
+                        } catch (Exception e) {
+                            FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
                         }
                     }, 500 * i + 500);
                 }
@@ -92,12 +89,10 @@ public class SummonHandler {
         }
     }
 
-    public static final void MoveSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void moveSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final int oid = slea.readInt();
         Point startPos = new Point(slea.readShort(), slea.readShort());
         List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 4);
-//        slea.skip(4); //startPOS
-//        final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 4);
         if (chr == null) {
             return;
         }
@@ -106,36 +101,32 @@ public class SummonHandler {
                 final Point pos = sum.getPosition();
                 MovementParse.updatePosition(res, sum, 0);
                 if (res.size() > 0) {
-                    chr.getMap().broadcastMessage(chr, MaplePacketCreator.moveSummon(chr.getId(), oid, startPos, res), sum.getPosition());
+                    chr.getMap().broadcastMessage(chr, MapPacket.moveSummon(chr.getId(), oid, startPos, res), sum.getPosition());
                 }
                 break;
             }
         }
     }
 
-    public static final void DamageSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void damageSummon(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final int unkByte = slea.readByte();
         final int damage = slea.readInt();
         final int monsterIdFrom = slea.readInt();
         //       slea.readByte(); // stance
 
-        final Iterator<MapleSummon> iter = chr.getSummons().values().iterator();
-        MapleSummon summon;
-
-        while (iter.hasNext()) {
-            summon = iter.next();
+        for (MapleSummon summon : chr.getSummons().values()) {
             if (summon.isPuppet() && summon.getOwnerId() == chr.getId()) { //We can only have one puppet(AFAIK O.O) so this check is safe.
                 summon.addHP((short) -damage);
                 if (summon.getHP() <= 0) {
                     chr.cancelEffectFromBuffStat(MapleBuffStat.PUPPET);
                 }
-                chr.getMap().broadcastMessage(chr, MaplePacketCreator.damageSummon(chr.getId(), summon.getSkill(), damage, unkByte, monsterIdFrom), summon.getPosition());
+                chr.getMap().broadcastMessage(chr, MapPacket.damageSummon(chr.getId(), summon.getSkill(), damage, unkByte, monsterIdFrom), summon.getPosition());
                 break;
             }
         }
     }
 
-    public static void SummonAttack(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static void summonAttack(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null || !chr.isAlive()) {
             return;
         }
@@ -155,18 +146,20 @@ public class SummonHandler {
         slea.skip(8);
         int tick = slea.readInt();
         chr.updateTick(tick);
-        summon.CheckSummonAttackFrequency(chr, tick);
+        summon.checkSummonAttackFrequency(chr, tick);
         slea.skip(8);
         final byte animation = slea.readByte();
         slea.skip(8);
         final byte numAttacked = slea.readByte();
         if (numAttacked > sse.mobCount) {
             chr.getCheatTracker().registerOffense(CheatingOffense.SUMMON_HACK_MOBS);
+            // 刻意保留：記錄「召喚獸攻擊超過上限隻數」原本除了記點還會自動封鎖，
+            // 自動封鎖被關掉了，現在只留 registerOffense 再 return。
             //AutobanManager.getInstance().autoban(c, "Attacking more monster that summon can do (Skillid : "+summon.getSkill()+" Count : " + numAttacked + ", allowed : " + sse.mobCount + ")");
             return;
         }
         slea.skip(8); //some pos stuff
-        final List<SummonAttackEntry> allDamage = new ArrayList<SummonAttackEntry>();
+        final List<SummonAttackEntry> allDamage = new ArrayList<>();
         chr.getCheatTracker().checkSummonAttack();
 
         for (int i = 0; i < numAttacked; i++) {
@@ -183,7 +176,7 @@ public class SummonHandler {
             allDamage.add(new SummonAttackEntry(mob, damage));
         }
         if (!summon.isChangedMap()) {
-            map.broadcastMessage(chr, MaplePacketCreator.summonAttack(summon.getOwnerId(), summon.getObjectId(), animation, allDamage, chr.getLevel()), summon.getPosition());
+            map.broadcastMessage(chr, MapPacket.summonAttack(summon.getOwnerId(), summon.getObjectId(), animation, allDamage, chr.getLevel()), summon.getPosition());
         }
         final ISkill summonSkill = SkillFactory.getSkill(summon.getSkill());
         final MapleStatEffect summonEffect = summonSkill.getEffect(summon.getSkillLevel());
@@ -206,7 +199,7 @@ public class SummonHandler {
                 mob.damage(chr, toDamage, true);
                 chr.checkMonsterAggro(mob);
                 if (!mob.isAlive()) {
-                    chr.getClient().getSession().write(MobPacket.killMonster(mob.getObjectId(), 1));
+                    chr.getClient().send(MobPacket.killMonster(mob.getObjectId(), 1));
                 }
             } else {
                 AutobanManager.getInstance().autoban(c, "High Summon Damage (" + toDamage + " to " + attackEntry.getMonster().getId() + ")");
@@ -214,7 +207,7 @@ public class SummonHandler {
             }
         }
         if (summon.isGaviota()) {
-            chr.getMap().broadcastMessage(MaplePacketCreator.removeSummon(summon, true));
+            chr.getMap().broadcastMessage(MapPacket.removeSummon(summon, true));
             chr.getMap().removeMapObject(summon);
             chr.removeVisibleMapObject(summon);
             chr.cancelEffectFromBuffStat(MapleBuffStat.SUMMON);

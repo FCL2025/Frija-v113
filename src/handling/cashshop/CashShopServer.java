@@ -24,47 +24,33 @@ import java.net.InetSocketAddress;
 
 import handling.MapleServerHandler;
 import handling.channel.PlayerStorage;
-import handling.mina.MapleCodecFactory;
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.SimpleByteBufferAllocator;
-import org.apache.mina.common.IoAcceptor;
-
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
+import handling.mina.MapleAcceptor;
 import server.MTSStorage;
 import server.ServerProperties;
 
 public class CashShopServer {
 
-    private static String ip;
-    private static InetSocketAddress InetSocketadd;
+    private static final System.Logger LOG = System.getLogger(CashShopServer.class.getName());
+
+    private static volatile String ip;
+    private static volatile InetSocketAddress InetSocketadd;
     private final static int PORT = 8596;
-    private static IoAcceptor acceptor;
-    private static PlayerStorage players, playersMTS;
-    private static boolean finishedShutdown = false;
+    private static volatile PlayerStorage players, playersMTS;
+    private static volatile boolean finishedShutdown = false;
 
     public static final void run_startup_configurations() {
         ip = ServerProperties.getProperty("tms.IP") + ":" + PORT;
 
-        ByteBuffer.setUseDirectBuffers(false);
-        ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
-
-        acceptor = new SocketAcceptor();
-        final SocketAcceptorConfig cfg = new SocketAcceptorConfig();
-        cfg.getSessionConfig().setTcpNoDelay(true);
-        cfg.setDisconnectOnUnbind(true);
-        cfg.getFilterChain().addLast("codec", new ProtocolCodecFilter(new MapleCodecFactory()));
-        players = new PlayerStorage(-10);
-        playersMTS = new PlayerStorage(-20);
+        players = PlayerStorage.create(-10);
+        playersMTS = PlayerStorage.create(-20);
 
         try {
-            InetSocketadd = new InetSocketAddress(PORT);
-            acceptor.bind(InetSocketadd, new MapleServerHandler(-1, true), cfg);
-            System.out.println("Shop    1: Listening on port " + PORT);
+            InetSocketadd = MapleAcceptor.bind(PORT, new MapleServerHandler(-1, true));
+            LOG.log(System.Logger.Level.INFO, "Shop    1: Listening on port " + PORT);
         } catch (final Exception e) {
-            System.err.println("Binding to port " + PORT + " failed");
-            e.printStackTrace();
+            // One record where there were two prints: the message and the trace
+            // belong to the same event, and the startup is abandoned right after.
+            LOG.log(System.Logger.Level.ERROR, "Binding to port " + PORT + " failed", e);
             throw new RuntimeException("Binding failed.", e);
         }
     }
@@ -85,12 +71,12 @@ public class CashShopServer {
         if (finishedShutdown) {
             return;
         }
-        System.out.println("Saving all connected clients (CS)...");
+        LOG.log(System.Logger.Level.INFO, "Saving all connected clients (CS)...");
         players.disconnectAll();
         playersMTS.disconnectAll();
         MTSStorage.getInstance().saveBuyNow(true);
-        System.out.println("Shutting down CS...");
-        acceptor.unbindAll();
+        LOG.log(System.Logger.Level.INFO, "Shutting down CS...");
+        MapleAcceptor.unbind(InetSocketadd);
         finishedShutdown = true;
     }
 

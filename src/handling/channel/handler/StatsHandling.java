@@ -20,7 +20,7 @@
  */
 package handling.channel.handler;
 
-import constants.GameConstants;
+import constants.JobConstants;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,18 +30,19 @@ import client.MapleCharacter;
 import client.MapleStat;
 import client.PlayerStats;
 import client.SkillFactory;
-import server.AutobanManager;
 import server.Randomizer;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
 import tools.Pair;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.CharacterPacket;
 
 public class StatsHandling {
 
-    public static final void DistributeAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
-        final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<Pair<MapleStat, Integer>>(2);
-        c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
+    private static final System.Logger LOG = System.getLogger(StatsHandling.class.getName());
+
+    public static final void distributeAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+        final List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
+        c.send(CharacterPacket.updatePlayerStats(statupdate, true, chr.getJob()));
         chr.updateTick(slea.readInt());
 
         final PlayerStats stat = chr.getStat();
@@ -53,31 +54,31 @@ public class StatsHandling {
                         return;
                     }
                     stat.setStr((short) (stat.getStr() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, (int) stat.getStr()));
+                    statupdate.add(new Pair<>(MapleStat.STR, (int) stat.getStr()));
                     break;
                 case 128: // Dex
                     if (stat.getDex() >= 999) {
                         return;
                     }
                     stat.setDex((short) (stat.getDex() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, (int) stat.getDex()));
+                    statupdate.add(new Pair<>(MapleStat.DEX, (int) stat.getDex()));
                     break;
                 case 256: // Int
                     if (stat.getInt() >= 999) {
                         return;
                     }
                     stat.setInt((short) (stat.getInt() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, (int) stat.getInt()));
+                    statupdate.add(new Pair<>(MapleStat.INT, (int) stat.getInt()));
                     break;
                 case 512: // Luk
                     if (stat.getLuk() >= 999) {
                         return;
                     }
                     stat.setLuk((short) (stat.getLuk() + 1));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, (int) stat.getLuk()));
+                    statupdate.add(new Pair<>(MapleStat.LUK, (int) stat.getLuk()));
                     break;
                 case 2048: // HP
-                    short maxhp = stat.getMaxHp();
+                    int maxhp = stat.getMaxHp(); // 累加期間用 int，最後 clamp 到 30000 才轉回 short
                     if (chr.getHpApUsed() >= 10000 || maxhp >= 30000) {
                         return;
                     }
@@ -90,7 +91,7 @@ public class StatsHandling {
                         if (improvingMaxHPLevel >= 1) {
                             maxhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getX();
                         }
-                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job))) { // Magician
+                    } else if ((job >= 200 && job <= 232) || (JobConstants.isEvan(job))) { // Magician
                         maxhp += Randomizer.rand(10, 20);
                     } else if ((job >= 300 && job <= 322) || (job >= 400 && job <= 434) || (job >= 1300 && job <= 1312) || (job >= 1400 && job <= 1412) || (job >= 3300 && job <= 3312)) { // Bowman
                         maxhp += Randomizer.rand(16, 20);
@@ -122,13 +123,13 @@ public class StatsHandling {
                     } else { // GameMaster
                         maxhp += Randomizer.rand(50, 100);
                     }
-                    maxhp = (short) Math.min(30000, Math.abs(maxhp));
+                    maxhp = Math.min(30000, Math.abs(maxhp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
-                    stat.setMaxHp(maxhp);
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXHP, (int) maxhp));
+                    stat.setMaxHp((short) maxhp); // clamp 過，必定在 0..30000
+                    statupdate.add(new Pair<>(MapleStat.MAXHP, maxhp));
                     break;
                 case 8192: // MP
-                    short maxmp = stat.getMaxMp();
+                    int maxmp = stat.getMaxMp(); // 同上；這裡還多了 getTotalInt()/15 一項，是 short 餘裕最窄的地方
                     if (chr.getHpApUsed() >= 10000 || stat.getMaxMp() >= 30000) {
                         return;
                     }
@@ -136,7 +137,7 @@ public class StatsHandling {
                         maxmp += Randomizer.rand(6, 8);
                     } else if (job >= 100 && job <= 132) { // Warrior
                         maxmp += Randomizer.rand(2, 4);
-                    } else if ((job >= 200 && job <= 232) || (GameConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
+                    } else if ((job >= 200 && job <= 232) || (JobConstants.isEvan(job)) || (job >= 3200 && job <= 3212)) { // Magician
                         ISkill improvingMaxMP = SkillFactory.getSkill(2000001);
                         int improvingMaxMPLevel = c.getPlayer().getSkillLevel(improvingMaxMP);
                         maxmp += Randomizer.rand(18, 20);
@@ -159,23 +160,23 @@ public class StatsHandling {
                     } else { // GameMaster
                         maxmp += Randomizer.rand(50, 100);
                     }
-					maxmp += ((int)(stat.getTotalInt()/15) + (int)(stat.getTotalInt()/120));
-                    maxmp = (short) Math.min(30000, Math.abs(maxmp));
+                    maxmp += ((stat.getTotalInt()/15) + (stat.getTotalInt()/120));
+                    maxmp = Math.min(30000, Math.abs(maxmp));
                     chr.setHpApUsed((short) (chr.getHpApUsed() + 1));
-                    stat.setMaxMp(maxmp);
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.MAXMP, (int) maxmp));
+                    stat.setMaxMp((short) maxmp); // clamp 過，必定在 0..30000
+                    statupdate.add(new Pair<>(MapleStat.MAXMP, maxmp));
                     break;
                 default:
-                    c.getSession().write(MaplePacketCreator.updatePlayerStats(MaplePacketCreator.EMPTY_STATUPDATE, true, chr.getJob()));
+                    c.send(CharacterPacket.updatePlayerStats(CharacterPacket.EMPTY_STATUPDATE, true, chr.getJob()));
                     return;
             }
             chr.setRemainingAp((short) (chr.getRemainingAp() - 1));
-            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
-            c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
+            statupdate.add(new Pair<>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
+            c.send(CharacterPacket.updatePlayerStats(statupdate, true, chr.getJob()));
         }
     }
 
-    public static final void DistributeSP(final int skillid, final MapleClient c, final MapleCharacter chr) {
+    public static final void distributeSP(final int skillid, final MapleClient c, final MapleCharacter chr) {
         boolean isBeginnerSkill = false;
         final int remainingSp;
 
@@ -231,7 +232,7 @@ public class StatsHandling {
                 break;
             }
             default: {
-                remainingSp = chr.getRemainingSp(GameConstants.getSkillBookForSkill(skillid));
+                remainingSp = chr.getRemainingSp(JobConstants.getSkillBookForSkill(skillid));
                 break;
             }
         }
@@ -239,6 +240,8 @@ public class StatsHandling {
 
         if (skill.hasRequiredSkill()) {
             if (chr.getSkillLevel(SkillFactory.getSkill(skill.getRequiredSkillId())) < skill.getRequiredSkillLevel()) {
+                // 刻意保留：記錄「加點到前置技能不足的技能」這個自動封鎖檢查存在，
+                // 但被關掉了，現在只是安靜地 return。
 //                AutobanManager.getInstance().addPoints(c, 1000, 0, "Trying to learn a skill without the required skill (" + skillid + ")");
                 return;
             }
@@ -248,36 +251,39 @@ public class StatsHandling {
 
         if (skill.isInvisible() && chr.getSkillLevel(skill) == 0) {
             if ((skill.isFourthJob() && chr.getMasterLevel(skill) == 0) || (!skill.isFourthJob() && maxlevel < 10 && !isBeginnerSkill)) {
+                // 刻意保留：記錄「加點到隱藏技能」這個自動封鎖檢查存在，但被關掉了，
+                // 現在只是安靜地 return。
                 //AutobanManager.getInstance().addPoints(c, 1000, 0, "Illegal distribution of SP to invisible skills (" + skillid + ")");
                 return;
             }
         }
 
-        for (int i : GameConstants.blockedSkills) {
+        for (int i : JobConstants.blockedSkills) {
             if (skill.getId() == i) {
                 chr.dropMessage(1, "You may not add this skill.");
                 return;
             }
         }
-//        System.out.println(skill.canBeLearnedBy(chr.getJob()));
         if ((remainingSp > 0 && curLevel + 1 <= maxlevel) && skill.canBeLearnedBy(chr.getJob())) {
             if (!isBeginnerSkill) {
-                final int skillbook = GameConstants.getSkillBookForSkill(skillid);
+                final int skillbook = JobConstants.getSkillBookForSkill(skillid);
                 chr.setRemainingSp(chr.getRemainingSp(skillbook) - 1, skillbook);
             }
-            c.getSession().write(MaplePacketCreator.updateSp(chr, false));
+            c.send(CharacterPacket.updateSp(chr, false));
             chr.changeSkillLevel(skill, (byte) (curLevel + 1), chr.getMasterLevel(skill));
         } else if (!skill.canBeLearnedBy(chr.getJob())) {
+            // 刻意保留：記錄「加點到別的職業的技能」這個自動封鎖檢查存在，但被關掉了，
+            // 現在只是安靜地 return。
 //            AutobanManager.getInstance().addPoints(c, 1000, 0, "Trying to learn a skill for a different job (" + skillid + ")");
             return;
         }
     }
 
-    public static final void AutoAssignAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void autoAssignAP(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         chr.updateTick(slea.readInt());
         slea.skip(4);
         if (slea.available() < 16) {
-            System.out.println("AutoAssignAP : \n" + slea.toString(true));
+            LOG.log(System.Logger.Level.INFO, "AutoAssignAP : \n" + slea.toString(true));
             FileoutputUtil.log(FileoutputUtil.PacketEx_Log, "AutoAssignAP : \n" + slea.toString(true));
             return;
         }
@@ -291,8 +297,8 @@ public class StatsHandling {
 
         final PlayerStats playerst = chr.getStat();
 
-        List<Pair<MapleStat, Integer>> statupdate = new ArrayList<Pair<MapleStat, Integer>>(2);
-        c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
+        List<Pair<MapleStat, Integer>> statupdate = new ArrayList<>(2);
+        c.send(CharacterPacket.updatePlayerStats(statupdate, true, chr.getJob()));
 
         if (chr.getRemainingAp() == amount + amount2) {
             switch (PrimaryStat) {
@@ -301,31 +307,31 @@ public class StatsHandling {
                         return;
                     }
                     playerst.setStr((short) (playerst.getStr() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, (int) playerst.getStr()));
+                    statupdate.add(new Pair<>(MapleStat.STR, (int) playerst.getStr()));
                     break;
                 case 128: // Dex
                     if (playerst.getDex() + amount > 999) {
                         return;
                     }
                     playerst.setDex((short) (playerst.getDex() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, (int) playerst.getDex()));
+                    statupdate.add(new Pair<>(MapleStat.DEX, (int) playerst.getDex()));
                     break;
                 case 256: // Int
                     if (playerst.getInt() + amount > 999) {
                         return;
                     }
                     playerst.setInt((short) (playerst.getInt() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, (int) playerst.getInt()));
+                    statupdate.add(new Pair<>(MapleStat.INT, (int) playerst.getInt()));
                     break;
                 case 512: // Luk
                     if (playerst.getLuk() + amount > 999) {
                         return;
                     }
                     playerst.setLuk((short) (playerst.getLuk() + amount));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, (int) playerst.getLuk()));
+                    statupdate.add(new Pair<>(MapleStat.LUK, (int) playerst.getLuk()));
                     break;
                 default:
-                    c.getSession().write(MaplePacketCreator.updatePlayerStats(MaplePacketCreator.EMPTY_STATUPDATE, true, chr.getJob()));
+                    c.send(CharacterPacket.updatePlayerStats(CharacterPacket.EMPTY_STATUPDATE, true, chr.getJob()));
                     return;
             }
             switch (SecondaryStat) {
@@ -334,36 +340,36 @@ public class StatsHandling {
                         return;
                     }
                     playerst.setStr((short) (playerst.getStr() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.STR, (int) playerst.getStr()));
+                    statupdate.add(new Pair<>(MapleStat.STR, (int) playerst.getStr()));
                     break;
                 case 128: // Dex
                     if (playerst.getDex() + amount2 > 999) {
                         return;
                     }
                     playerst.setDex((short) (playerst.getDex() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.DEX, (int) playerst.getDex()));
+                    statupdate.add(new Pair<>(MapleStat.DEX, (int) playerst.getDex()));
                     break;
                 case 256: // Int
                     if (playerst.getInt() + amount2 > 999) {
                         return;
                     }
                     playerst.setInt((short) (playerst.getInt() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.INT, (int) playerst.getInt()));
+                    statupdate.add(new Pair<>(MapleStat.INT, (int) playerst.getInt()));
                     break;
                 case 512: // Luk
                     if (playerst.getLuk() + amount2 > 999) {
                         return;
                     }
                     playerst.setLuk((short) (playerst.getLuk() + amount2));
-                    statupdate.add(new Pair<MapleStat, Integer>(MapleStat.LUK, (int) playerst.getLuk()));
+                    statupdate.add(new Pair<>(MapleStat.LUK, (int) playerst.getLuk()));
                     break;
                 default:
-                    c.getSession().write(MaplePacketCreator.updatePlayerStats(MaplePacketCreator.EMPTY_STATUPDATE, true, chr.getJob()));
+                    c.send(CharacterPacket.updatePlayerStats(CharacterPacket.EMPTY_STATUPDATE, true, chr.getJob()));
                     return;
             }
             chr.setRemainingAp((short) (chr.getRemainingAp() - (amount + amount2)));
-            statupdate.add(new Pair<MapleStat, Integer>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
-            c.getSession().write(MaplePacketCreator.updatePlayerStats(statupdate, true, chr.getJob()));
+            statupdate.add(new Pair<>(MapleStat.AVAILABLEAP, (int) chr.getRemainingAp()));
+            c.send(CharacterPacket.updatePlayerStats(statupdate, true, chr.getJob()));
         }
     }
 }

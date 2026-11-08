@@ -20,16 +20,15 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
-import java.io.Serializable;
+import constants.ItemConstants;
 
-public class Item implements IItem, Serializable {
+public class Item implements IItem {
 
     private final int id;
     private short position;
     private short quantity;
     private byte flag;
-	private int exp;
+    private int exp;
     private long expiration = -1;
     private MaplePet pet = null;
     private int uniqueid = -1;
@@ -168,15 +167,15 @@ public class Item implements IItem, Serializable {
     public String getGiftFrom() {
         return giftFrom;
     }
-	
-	@Override
-	public int getExp() {
-		return exp;
-	}
-	@Override
-	public void setExp(int exp) {
-		this.exp = exp;
-	}
+    
+    @Override
+    public int getExp() {
+        return exp;
+    }
+    @Override
+    public void setExp(int exp) {
+        this.exp = exp;
+    }
 
     @Override
     public int compareTo(IItem other) {
@@ -199,13 +198,23 @@ public class Item implements IItem, Serializable {
     }
 
     @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + uniqueid;
+        result = 31 * result + id;
+        result = 31 * result + quantity;
+        result = 31 * result + Math.abs(position);
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "Item: " + id + " quantity: " + quantity;
     }
 
     @Override
     public MapleRing getRing() {
-        if (!GameConstants.isEffectRing(id) || getUniqueId() <= 0) {
+        if (!ItemConstants.isEffectRing(id) || getUniqueId() <= 0) {
             return null;
         }
         if (ring == null) {

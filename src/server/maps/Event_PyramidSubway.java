@@ -27,10 +27,11 @@ import handling.world.MaplePartyCharacter;
 import java.awt.Point;
 import java.util.concurrent.ScheduledFuture;
 import server.Randomizer;
-import server.Timer.MapTimer;
+import server.Timer;
 import server.quest.MapleQuest;
 import server.life.MapleLifeFactory;
-import tools.MaplePacketCreator;
+import tools.packet.EventPacket;
+import tools.packet.MapPacket;
 
 public class Event_PyramidSubway {
 
@@ -48,19 +49,18 @@ public class Event_PyramidSubway {
         }
         if (c.getParty() == null || c.getParty().getLeader().equals(new MaplePartyCharacter(c))) {
             commenceTimerNextMap(c, 1);
-            energyBarDecrease = MapTimer.getInstance().register(new Runnable() {
-
-                public void run() {
-                    energybar -= (c.getParty() != null && c.getParty().getMembers().size() > 1 ? 10 : 5);
-                    if (broaded) {
-                        //broadcastUpdate(c);
-                        c.getMap().respawn(true);
-                    } else {
-                        broaded = true;
-                    }
-                    if (energybar <= 0) { //why
-                        fail(c);
-                    }
+            energyBarDecrease = Timer.MAP.register(() -> {
+                energybar -= (c.getParty() != null && c.getParty().getMembers().size() > 1 ? 10 : 5);
+                if (broaded) {
+                    // 保留作為紀錄：能量條每次遞減原本也會同步推一次 UI 更新，這裡被關掉了，
+                    // 只重生怪；玩家看到的能量條要等下一次 broadcastUpdate（換圖／結算）才會對上。
+                    //broadcastUpdate(c);
+                    c.getMap().respawn(true);
+                } else {
+                    broaded = true;
+                }
+                if (energybar <= 0) { //why
+                    fail(c);
                 }
             }, 1000);
         }
@@ -91,44 +91,38 @@ public class Event_PyramidSubway {
             for (MaplePartyCharacter mpc : c.getParty().getMembers()) {
                 final MapleCharacter chr = ourMap.getCharacterById(mpc.getId());
                 if (chr != null) {
-                    chr.getClient().getSession().write(MaplePacketCreator.getClock(time));
-                    chr.getClient().getSession().write(MaplePacketCreator.showEffect("killing/first/number/" + stage));
-                    chr.getClient().getSession().write(MaplePacketCreator.showEffect("killing/first/stage"));
-                    chr.getClient().getSession().write(MaplePacketCreator.showEffect("killing/first/start"));
+                    chr.getClient().send(MapPacket.getClock(time));
+                    chr.getClient().send(MapPacket.showEffect("killing/first/number/" + stage));
+                    chr.getClient().send(MapPacket.showEffect("killing/first/stage"));
+                    chr.getClient().send(MapPacket.showEffect("killing/first/start"));
                     fullUpdate(chr, stage);
                 }
             }
         } else {
-            c.getClient().getSession().write(MaplePacketCreator.getClock(time));
-            c.getClient().getSession().write(MaplePacketCreator.showEffect("killing/first/number/" + stage));
-            c.getClient().getSession().write(MaplePacketCreator.showEffect("killing/first/stage"));
-            c.getClient().getSession().write(MaplePacketCreator.showEffect("killing/first/start"));
+            c.getClient().send(MapPacket.getClock(time));
+            c.getClient().send(MapPacket.showEffect("killing/first/number/" + stage));
+            c.getClient().send(MapPacket.showEffect("killing/first/stage"));
+            c.getClient().send(MapPacket.showEffect("killing/first/start"));
             fullUpdate(c, stage);
         }
         if (type != -1 && (stage == 4 || stage == 5)) { //yetis. temporary
             final Point pos = c.getPosition();
             final MapleMap map = c.getMap();
-            yetiSchedule = MapTimer.getInstance().register(new Runnable() {
-
-                public void run() {
-                    if (map.countMonsterById(9300021) <= (stage == 4 ? 1 : 2)) {
-                        map.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(9300021), new Point(pos));
-                    }
+            yetiSchedule = Timer.MAP.register(() -> {
+                if (map.countMonsterById(9300021) <= (stage == 4 ? 1 : 2)) {
+                    map.spawnMonsterOnGroundBelow(MapleLifeFactory.getMonster(9300021), new Point(pos));
                 }
             }, 10000L);
         }
-        timerSchedule = MapTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                boolean ret = false;
-                if (type == -1) {
-                    ret = warpNextMap_Subway(c);
-                } else {
-                    ret = warpNextMap_Pyramid(c, type);
-                }
-                if (!ret) {
-                    fail(c);
-                }
+        timerSchedule = Timer.MAP.schedule(() -> {
+            boolean ret = false;
+            if (type == -1) {
+                ret = warpNextMap_Subway(c);
+            } else {
+                ret = warpNextMap_Pyramid(c, type);
+            }
+            if (!ret) {
+                fail(c);
             }
         }, time * 1000L);
     }
@@ -315,8 +309,8 @@ public class Event_PyramidSubway {
             exp = (((kill * 2) + (cool * 10)) + pt) * c.getClient().getChannelServer().getExpRate();
             c.gainExp(exp, true, false, false);
         }
-        c.getClient().getSession().write(MaplePacketCreator.showEffect("killing/clear"));
-        c.getClient().getSession().write(MaplePacketCreator.sendPyramidResult(rank, exp));
+        c.getClient().send(MapPacket.showEffect("killing/clear"));
+        c.getClient().send(EventPacket.sendPyramidResult(rank, exp));
         dispose(c);
     }
 
@@ -358,20 +352,20 @@ public class Event_PyramidSubway {
             for (MaplePartyCharacter mpc : c.getParty().getMembers()) {
                 final MapleCharacter chr = map.getCharacterById(mpc.getId());
                 if (chr != null) {
-                    chr.getClient().getSession().write(MaplePacketCreator.sendPyramidUpdate(energybar));
+                    chr.getClient().send(EventPacket.sendPyramidUpdate(energybar));
                 }
             }
         } else {
-            c.getClient().getSession().write(MaplePacketCreator.sendPyramidUpdate(energybar));
+            c.getClient().send(EventPacket.sendPyramidUpdate(energybar));
         }
     }
 
     public final void broadcastEffect(final MapleCharacter c, final String effect) {
-        c.getClient().getSession().write(MaplePacketCreator.showEffect(effect));
+        c.getClient().send(MapPacket.showEffect(effect));
     }
 
     public final void broadcastEnergy(final MapleCharacter c, final String type, final int amount) {
-        c.getClient().getSession().write(MaplePacketCreator.sendPyramidEnergy(type, String.valueOf(amount)));
+        c.getClient().send(EventPacket.sendPyramidEnergy(type, String.valueOf(amount)));
     }
 
     public static boolean warpStartSubway(final MapleCharacter c) {
@@ -505,18 +499,18 @@ public class Event_PyramidSubway {
                 final MapleCharacter chr = oldMap.getCharacterById(mpc.getId());
                 if (chr != null && chr.getId() != c.getId() && chr.getLevel() >= minLevel && chr.getLevel() <= maxLevel) {
                     if (clear == 1) {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("killing/clear"));
+                        chr.getClient().send(MapPacket.showEffect("killing/clear"));
                     } else if (clear == 2) {
-                        chr.getClient().getSession().write(MaplePacketCreator.showEffect("killing/fail"));
+                        chr.getClient().send(MapPacket.showEffect("killing/fail"));
                     }
                     chr.changeMap(map, map.getPortal(0));
                 }
             }
         }
         if (clear == 1) {
-            c.getClient().getSession().write(MaplePacketCreator.showEffect("killing/clear"));
+            c.getClient().send(MapPacket.showEffect("killing/clear"));
         } else if (clear == 2) {
-            c.getClient().getSession().write(MaplePacketCreator.showEffect("killing/fail"));
+            c.getClient().send(MapPacket.showEffect("killing/fail"));
         }
         c.changeMap(map, map.getPortal(0));
     }

@@ -28,21 +28,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import database.DatabaseConnection;
-import handling.cashshop.CashShopServer;
-import handling.channel.ChannelServer;
-import handling.login.LoginServer;
-import handling.world.World;
-import java.io.Serializable;
 
-public class MapleInventoryIdentifier implements Serializable {
+public class MapleInventoryIdentifier {
 
-    private static final long serialVersionUID = 21830921831301L;
+    private static final System.Logger LOG = System.getLogger(MapleInventoryIdentifier.class.getName());
+
     private AtomicInteger runningUID;
     private ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
     private Lock readLock = rwl.readLock(), writeLock = rwl.writeLock();
     private static MapleInventoryIdentifier instance = new MapleInventoryIdentifier();
 
-    public MapleInventoryIdentifier() {
+    // A singleton: only the static `instance` above may build one, and only
+    // the static getInstance() is used from outside. Both that and the private
+    // helpers below keep the constructor's getNextUniqueId() call non-virtual
+    // (-Xlint:this-escape).
+    private MapleInventoryIdentifier() {
         this.runningUID = new AtomicInteger(0);
         getNextUniqueId();
     }
@@ -51,7 +51,7 @@ public class MapleInventoryIdentifier implements Serializable {
         return instance.getNextUniqueId();
     }
 
-    public int getNextUniqueId() {
+    private int getNextUniqueId() {
         if (grabRunningUID() <= 0) {
             setRunningUID(initUID());
         }
@@ -59,7 +59,7 @@ public class MapleInventoryIdentifier implements Serializable {
         return grabRunningUID();
     }
 
-    public int grabRunningUID() {
+    private int grabRunningUID() {
         readLock.lock();
         try {
             return runningUID.get(); //maybe we should really synchronize/do more here..
@@ -68,11 +68,11 @@ public class MapleInventoryIdentifier implements Serializable {
         }
     }
 
-    public void incrementRunningUID() {
+    private void incrementRunningUID() {
         setRunningUID(grabRunningUID() + 1);
     }
 
-    public void setRunningUID(int rUID) {
+    private void setRunningUID(int rUID) {
         if (rUID < grabRunningUID()) { //dont go backwards.
             return;
         }
@@ -84,53 +84,32 @@ public class MapleInventoryIdentifier implements Serializable {
         }
     }
 
-    public int initUID() {
+    private int initUID() {
         int ret = 0;
         if (grabRunningUID() > 0) {
             return grabRunningUID();
         }
-        try {
-            int[] ids = new int[4];
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT MAX(uniqueid) FROM inventoryitems");
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[0] = rs.getInt(1) + 1;
-            }
-            rs.close();
-            ps.close();
-
-            ps = con.prepareStatement("SELECT MAX(petid) FROM pets");
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[1] = rs.getInt(1) + 1;
-            }
-            rs.close();
-            ps.close();
-
-            ps = con.prepareStatement("SELECT MAX(ringid) FROM rings");
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[2] = rs.getInt(1) + 1;
-            }
-            rs.close();
-            ps.close();
-
-            ps = con.prepareStatement("SELECT MAX(partnerringid) FROM rings");
-            rs = ps.executeQuery();
-            if (rs.next()) {
-                ids[3] = rs.getInt(1) + 1; //biggest pl0x. but if this happens -> o_O
-            }
-            rs.close();
-            ps.close();
-
-            for (int i = 0; i < 4; i++) {
-                if (ids[i] > ret) {
-                    ret = ids[i];
+        // The highest id already handed out by any of the four tables that
+        // draw from this one sequence.
+        final String[] queries = {
+            "SELECT MAX(uniqueid) FROM inventoryitems",
+            "SELECT MAX(petid) FROM pets",
+            "SELECT MAX(ringid) FROM rings",
+            "SELECT MAX(partnerringid) FROM rings"
+        };
+        try (Connection con = DatabaseConnection.getConnection()) {
+            for (final String query : queries) {
+                try (PreparedStatement ps = con.prepareStatement(query);
+                        ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        ret = Math.max(ret, rs.getInt(1) + 1);
+                    }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the scan is abandoned and initUID() falls back to 0, so
+            // the sequence restarts over ids that are already in use.
+            LOG.log(System.Logger.Level.ERROR, "Error reading the highest unique item id", e);
         }
         return ret;
     }

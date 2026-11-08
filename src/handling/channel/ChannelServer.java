@@ -31,28 +31,22 @@ import java.util.List;
 import java.util.Map;
 
 import client.MapleCharacter;
-import constants.ServerConstants;
 import handling.ByteArrayMaplePacket;
 import handling.MaplePacket;
 import handling.MapleServerHandler;
 import handling.login.LoginServer;
-import handling.mina.MapleCodecFactory;
+import handling.mina.MapleAcceptor;
 import handling.world.CheaterData;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import scripting.EventScriptManager;
 import server.MapleSquad;
 import server.MapleSquad.MapleSquadType;
+import server.Timer;
 import server.maps.MapleMapFactory;
 import server.shops.HiredMerchant;
-import tools.MaplePacketCreator;
 import server.life.PlayerNPC;
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.SimpleByteBufferAllocator;
-import org.apache.mina.common.IoAcceptor;
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
-import java.io.Serializable;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -66,40 +60,53 @@ import server.events.MapleOxQuiz;
 import server.events.MapleSnowball;
 import tools.CollectionUtil;
 import tools.ConcurrentEnumMap;
+import tools.packet.ChatPacket;
 
-public class ChannelServer implements Serializable {
+public class ChannelServer {
+
+    private static final System.Logger LOG = System.getLogger(ChannelServer.class.getName());
 
     public static long serverStartTime;
     private int expRate, mesoRate, dropRate, cashRate;
     private short port = 8585;
     private static final short DEFAULT_PORT = 8585;
     private int channel, running_MerchantID = 0, flags = 0;
-    private String serverMessage, key, ip, serverName;
+    private String serverMessage, ip, serverName;
     private boolean shutdown = false, finishedShutdown = false, MegaphoneMuteState = false, adminOnly = false;
     private PlayerStorage players;
     private MapleServerHandler serverHandler;
-    private IoAcceptor acceptor;
+    private volatile InetSocketAddress boundAddress;
     private final MapleMapFactory mapFactory;
     private EventScriptManager eventSM;
-    private static final Map<Integer, ChannelServer> instances = new HashMap<Integer, ChannelServer>();
-    private final Map<MapleSquadType, MapleSquad> mapleSquads = new ConcurrentEnumMap<MapleSquadType, MapleSquad>(MapleSquadType.class);
-    private final Map<Integer, HiredMerchant> merchants = new HashMap<Integer, HiredMerchant>();
-    private final Map<Integer, PlayerNPC> playerNPCs = new HashMap<Integer, PlayerNPC>();
+    /**
+     * Every channel registers itself here from its own startup, and any thread
+     * on any channel looks channels up through it - so it has to be concurrent.
+     */
+    private static final Map<Integer, ChannelServer> instances = new ConcurrentHashMap<>();
+    private final Map<MapleSquadType, MapleSquad> mapleSquads = new ConcurrentEnumMap<>(MapleSquadType.class);
+    private final Map<Integer, HiredMerchant> merchants = new HashMap<>();
+    /**
+     * Player NPCs are created and removed from any handler thread, and read by
+     * every thread that walks a map - so this one is concurrent rather than
+     * lock-guarded the way {@link #merchants} is.
+     */
+    private final Map<Integer, PlayerNPC> playerNPCs = new ConcurrentHashMap<>();
     private final ReentrantReadWriteLock merchLock = new ReentrantReadWriteLock(); //merchant
     private final ReentrantReadWriteLock squadLock = new ReentrantReadWriteLock(); //squad
     private int eventmap = -1;
-    private final Map<MapleEventType, MapleEvent> events = new EnumMap<MapleEventType, MapleEvent>(MapleEventType.class);
+    private final Map<MapleEventType, MapleEvent> events = new EnumMap<>(MapleEventType.class);
     private boolean debugMode = false;
+    /** 自動存檔排程；{@code tms.AutoSaveMinutes} 為 0（預設）時一直是 null。 */
+    private volatile ScheduledFuture<?> autoSaveTask;
 
-    private ChannelServer(final String key, final int channel) {
-        this.key = key;
+    private ChannelServer(final int channel) {
         this.channel = channel;
         mapFactory = new MapleMapFactory();
         mapFactory.setChannel(channel);
     }
 
     public static Set<Integer> getAllInstance() {
-        return new HashSet<Integer>(instances.keySet());
+        return new HashSet<>(instances.keySet());
     }
 
     public final void loadEvents() {
@@ -134,24 +141,20 @@ public class ChannelServer implements Serializable {
 
         ip = ServerProperties.getProperty("tms.IP") + ":" + port;
 
-        ByteBuffer.setUseDirectBuffers(false);
-        ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
-
-        acceptor = new SocketAcceptor();
-        final SocketAcceptorConfig acceptor_config = new SocketAcceptorConfig();
-        acceptor_config.getSessionConfig().setTcpNoDelay(true);
-        acceptor_config.setDisconnectOnUnbind(true);
-        acceptor_config.getFilterChain().addLast("codec", new ProtocolCodecFilter(new MapleCodecFactory()));
-        players = new PlayerStorage(channel);
+        players = PlayerStorage.create(channel);
         loadEvents();
 
         try {
             this.serverHandler = new MapleServerHandler(channel, false);
-            acceptor.bind(new InetSocketAddress(port), serverHandler, acceptor_config);
-            System.out.println("Channel " + channel + ": Listening on port " + port + "");
+            this.boundAddress = MapleAcceptor.bind(port, serverHandler);
+            LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": Listening on port " + port + "");
             eventSM.init();
+            startAutoSave();
         } catch (IOException e) {
-            System.out.println("Binding to port " + port + " failed (ch: " + getChannel() + ")" + e);
+            // ERROR, not INFO: the channel never bound, so it is not serving
+            // anyone. Terse on purpose - this one only ever concatenated the
+            // exception, never a trace, so the Throwable is not attached.
+            LOG.log(System.Logger.Level.ERROR, "Binding to port " + port + " failed (ch: " + getChannel() + ")" + e);
         }
     }
 
@@ -159,27 +162,33 @@ public class ChannelServer implements Serializable {
         if (finishedShutdown) {
             return;
         }
-        broadcastPacket(MaplePacketCreator.serverNotice(0, "這個頻道正在關閉中."));
+        broadcastPacket(ChatPacket.serverNotice(0, "這個頻道正在關閉中."));
         // dc all clients by hand so we get sessionClosed...
         shutdown = true;
 
-        System.out.println("Channel " + channel + ", Saving hired merchants...");
+        // 先停掉自動存檔：關機流程自己會走 disconnectAll() 存一次，沒必要讓排程在
+        // 玩家一個個被踢下線的過程中再插一輪進來搶連線。
+        stopAutoSave();
+
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Saving hired merchants...");
 
         closeAllMerchant();
 
-        System.out.println("Channel " + channel + ", Saving characters...");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Saving characters...");
 
         getPlayerStorage().disconnectAll();
 
-        System.out.println("Channel " + channel + ", Unbinding...");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ", Unbinding...");
 
-        acceptor.unbindAll();
-        acceptor = null;
+        MapleAcceptor.unbind(boundAddress);
+        boundAddress = null;
 
         //temporary while we dont have !addchannel
         instances.remove(channel);
         LoginServer.removeChannel(channel);
         setFinishShutdown();
+        // 保留作為紀錄：shutdown(Object) 的 threadToNotify 參數原本是要在關閉完成後喚醒呼叫端，
+        // 這段被關掉之後參數就沒人用了；現在呼叫端改看 setFinishShutdown()。
 //        if (threadToNotify != null) {
 //            synchronized (threadToNotify) {
 //                threadToNotify.notify();
@@ -188,7 +197,7 @@ public class ChannelServer implements Serializable {
     }
 
     public final void unbind() {
-        acceptor.unbindAll();
+        MapleAcceptor.unbind(boundAddress);
     }
 
     public final boolean hasFinishedShutdown() {
@@ -199,8 +208,8 @@ public class ChannelServer implements Serializable {
         return mapFactory;
     }
 
-    public static final ChannelServer newInstance(final String key, final int channel) {
-        return new ChannelServer(key, channel);
+    public static final ChannelServer newInstance(final int channel) {
+        return new ChannelServer(channel);
     }
 
     public static final ChannelServer getInstance(final int channel) {
@@ -209,12 +218,12 @@ public class ChannelServer implements Serializable {
 
     public final void addPlayer(final MapleCharacter chr) {
         getPlayerStorage().registerPlayer(chr);
-        chr.getClient().getSession().write(MaplePacketCreator.serverMessage(serverMessage));
+        chr.getClient().send(ChatPacket.serverMessage(serverMessage));
     }
 
     public final PlayerStorage getPlayerStorage() {
         if (players == null) { //wth
-            players = new PlayerStorage(channel); //wthhhh
+            players = PlayerStorage.create(channel); //wthhhh
         }
         return players;
     }
@@ -235,7 +244,7 @@ public class ChannelServer implements Serializable {
 
     public final void setServerMessage(final String newMessage) {
         serverMessage = newMessage;
-        broadcastPacket(MaplePacketCreator.serverMessage(serverMessage));
+        broadcastPacket(ChatPacket.serverMessage(serverMessage));
     }
 
     public final void broadcastPacket(final MaplePacket data) {
@@ -295,9 +304,20 @@ public class ChannelServer implements Serializable {
         return eventSM;
     }
 
+    /**
+     * Recompiles every {@code tms.Events} script for this channel.
+     *
+     * <p>This used to read the property {@code "K．"} - a mojibake remnant of
+     * {@code tms.Events} - which does not exist, so {@code split} threw an NPE.
+     * Worse, {@code cancel()} had already run, so {@code !reloadevents} left
+     * the channel with no event scripts at all until the next restart. The
+     * new manager is built before the old one is cancelled for the same
+     * reason: if compiling fails, the channel keeps what it had.
+     */
     public final void reloadEvents() {
+        final EventScriptManager fresh = new EventScriptManager(this, ServerProperties.getProperty("tms.Events").split(","));
         eventSM.cancel();
-        eventSM = new EventScriptManager(this, ServerProperties.getProperty("K．").split(","));
+        eventSM = fresh;
         eventSM.init();
     }
 
@@ -321,23 +341,42 @@ public class ChannelServer implements Serializable {
         serverStartTime = System.currentTimeMillis();
 
         for (int i = 0; i < Integer.parseInt(ServerProperties.getProperty("tms.Count", "0")); i++) {
-            newInstance(ServerConstants.Channel_Key[i], i + 1).run_startup_configurations();
+            newInstance(i + 1).run_startup_configurations();
         }
     }
-    
-    public static final void startChannel(final int channel) 
+
+    public static final void startChannel(final int channel)
     {
         serverStartTime = System.currentTimeMillis();
         for (int i = 0; i < Integer.parseInt(ServerProperties.getProperty("tms.Count", "0")); i++) {
             if(channel == i + 1) {
-                newInstance(ServerConstants.Channel_Key[i], i + 1).run_startup_configurations();
+                newInstance(i + 1).run_startup_configurations();
                 break;
             }
         }
     }
 
+    /**
+     * A snapshot of this channel's squads, not a live view.
+     *
+     * <p>It used to hand back {@code unmodifiableMap(mapleSquads)}, which is a
+     * wrapper around the live map: {@link ConcurrentEnumMap} locks each call
+     * but the caller then iterates outside that lock, so
+     * {@code new ArrayList<>(getAllSquads().values())} in {@code !clearsquads}
+     * could walk straight into a {@code ConcurrentModificationException} if a
+     * squad was registered or expired mid-copy. Copying under
+     * {@link #squadLock} - which every mutator below now takes - gives the
+     * caller a map that cannot change under it.
+     */
     public Map<MapleSquadType, MapleSquad> getAllSquads() {
-        return Collections.unmodifiableMap(mapleSquads);
+        final Map<MapleSquadType, MapleSquad> snapshot;
+        squadLock.readLock().lock();
+        try {
+            snapshot = new EnumMap<>(mapleSquads);
+        } finally {
+            squadLock.readLock().unlock();
+        }
+        return Collections.unmodifiableMap(snapshot);
     }
 
     public final MapleSquad getMapleSquad(final String type) {
@@ -345,30 +384,89 @@ public class ChannelServer implements Serializable {
     }
 
     public final MapleSquad getMapleSquad(final MapleSquadType type) {
+        // A single get, which ConcurrentEnumMap already takes its own read lock
+        // for; squadLock is only needed where a test and a set have to be one
+        // step. Callers that act on the answer must expect it to be stale by the
+        // time they do - addMapleSquad is the only thing that may decide a race.
         return mapleSquads.get(type);
     }
 
+    /**
+     * Claim this channel's slot for one squad type, or report that somebody
+     * else got there first.
+     *
+     * <p>This was {@code containsKey} followed by {@code put}. Both calls lock -
+     * {@code mapleSquads} is a {@link ConcurrentEnumMap} - but the *pair* did
+     * not, and {@code Map.putIfAbsent}'s default get-then-put, which
+     * {@code ConcurrentEnumMap} does not override, would have been no better.
+     * Two leaders talking to the same squad NPC on two handler threads could
+     * both be told they had won the slot, and the return value is not
+     * advisory: {@link MapleSquad#copy()} and
+     * {@code NPCConversationManager.registerSquad} both throw a squad away on
+     * {@code false}, so a lost race that reports {@code true} leaves two live
+     * squads believing they own one boss map.
+     *
+     * <p>{@link #squadLock} makes the test and the set one step. Nothing inside
+     * it broadcasts or borrows a database connection, which is what CLAUDE.md
+     * forbids holding a lock across: {@code scheduleRemoval()} only hands a task
+     * to {@code Timer.ETC} and has been moved out of the lock anyway, and both
+     * callers send their {@code broadcastMessage} pair after this method has
+     * already returned. The window between the {@code put} and
+     * {@code scheduleRemoval()} - a squad visible with a null {@code removal} -
+     * is exactly the window the old code had, since {@code put} released the
+     * map's internal lock before returning too.
+     */
     public final boolean addMapleSquad(final MapleSquad squad, final String type) {
         final MapleSquadType types = MapleSquadType.valueOf(type.toLowerCase());
-        if (types != null && !mapleSquads.containsKey(types)) {
+        squadLock.writeLock().lock();
+        try {
+            if (mapleSquads.containsKey(types)) {
+                return false;
+            }
             mapleSquads.put(types, squad);
-            squad.scheduleRemoval();
-            return true;
+        } finally {
+            squadLock.writeLock().unlock();
         }
-        return false;
+        squad.scheduleRemoval();
+        return true;
     }
 
-    public final boolean removeMapleSquad(final MapleSquadType types) {
-        if (types != null && mapleSquads.containsKey(types)) {
-            mapleSquads.remove(types);
-            return true;
+    /**
+     * Give up this channel's slot for one squad type - but only if {@code squad}
+     * is still the squad holding it.
+     *
+     * <p>The identity check is the other half of the race above, and it is not
+     * decoration. Both callers of {@link #addMapleSquad} build their squad
+     * first and register it second, and both call {@code clear()} on it when
+     * registration fails. {@code clear()} ends in here, and the old
+     * remove-by-key removed whatever was in the slot - which, on a lost race,
+     * is the squad that had just won it. The loser evicted the winner.
+     *
+     * <p>The only caller is {@link MapleSquad#clear()}, so the one-argument form
+     * this replaced had no other users to keep.
+     */
+    public final boolean removeMapleSquad(final MapleSquadType types, final MapleSquad squad) {
+        if (types == null) {
+            return false;
         }
-        return false;
+        squadLock.writeLock().lock();
+        try {
+            if (mapleSquads.get(types) != squad) {
+                return false;
+            }
+            return mapleSquads.remove(types) != null;
+        } finally {
+            squadLock.writeLock().unlock();
+        }
     }
 
     public final void closeAllMerchant() {
         merchLock.writeLock().lock();
         try {
+            // 這裡不能用 removeIf：迴圈本體除了移除之外還要 closeShop(true, false)，
+            // 那會存檔、取消排程、廣播拆店，是實實在在的副作用，放進 predicate 會很糟。
+            // 第二個參數刻意是 false —— closeShop 若自己再呼叫 removeMerchant，
+            // 就會在走訪途中動到 merchants，這個 iterator 才是唯一的移除者。
             final Iterator<HiredMerchant> merchants_ = merchants.values().iterator();
             while (merchants_.hasNext()) {
                 merchants_.next().closeShop(true, false);
@@ -408,10 +506,8 @@ public class ChannelServer implements Serializable {
 
         merchLock.readLock().lock();
         try {
-            final Iterator itr = merchants.values().iterator();
-
-            while (itr.hasNext()) {
-                if (((HiredMerchant) itr.next()).getOwnerAccId() == accid) {
+            for (HiredMerchant hm : merchants.values()) {
+                if (hm.getOwnerAccId() == accid) {
                     contains = true;
                     break;
                 }
@@ -423,13 +519,10 @@ public class ChannelServer implements Serializable {
     }
 
     public final List<HiredMerchant> searchMerchant(final int itemSearch) {
-        final List<HiredMerchant> list = new LinkedList<HiredMerchant>();
+        final List<HiredMerchant> list = new LinkedList<>();
         merchLock.readLock().lock();
         try {
-            final Iterator itr = merchants.values().iterator();
-
-            while (itr.hasNext()) {
-                HiredMerchant hm = (HiredMerchant) itr.next();
+            for (HiredMerchant hm : merchants.values()) {
                 if (hm.searchItem(itemSearch).size() > 0) {
                     list.add(hm);
                 }
@@ -469,16 +562,17 @@ public class ChannelServer implements Serializable {
     }
 
     public final void addPlayerNPC(final PlayerNPC npc) {
-        if (playerNPCs.containsKey(npc.getId())) {
-            removePlayerNPC(npc);
+        // remove() instead of containsKey() + remove(): only the thread that
+        // actually took the old entry out may touch the map object.
+        if (playerNPCs.remove(npc.getId()) != null) {
+            getMapFactory().getMap(npc.getMapId()).removeMapObject(npc);
         }
         playerNPCs.put(npc.getId(), npc);
         getMapFactory().getMap(npc.getMapId()).addMapObject(npc);
     }
 
     public final void removePlayerNPC(final PlayerNPC npc) {
-        if (playerNPCs.containsKey(npc.getId())) {
-            playerNPCs.remove(npc.getId());
+        if (playerNPCs.remove(npc.getId()) != null) {
             getMapFactory().getMap(npc.getMapId()).removeMapObject(npc);
         }
     }
@@ -496,17 +590,17 @@ public class ChannelServer implements Serializable {
     }
 
     public static final Set<Integer> getChannelServer() {
-        return new HashSet<Integer>(instances.keySet());
+        return new HashSet<>(instances.keySet());
     }
 
     public final void setShutdown() {
         this.shutdown = true;
-        System.out.println("Channel " + channel + " has set to shutdown.");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + " has set to shutdown.");
     }
 
     public final void setFinishShutdown() {
         this.finishedShutdown = true;
-        System.out.println("Channel " + channel + " has finished shutdown.");
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + " has finished shutdown.");
     }
 
     public final boolean isAdminOnly() {
@@ -526,7 +620,7 @@ public class ChannelServer implements Serializable {
     }
 
     public static Map<Integer, Integer> getChannelLoad() {
-        Map<Integer, Integer> ret = new HashMap<Integer, Integer>();
+        Map<Integer, Integer> ret = new HashMap<>();
         for (ChannelServer cs : instances.values()) {
             ret.put(cs.getChannel(), cs.getConnectedClients());
         }
@@ -556,14 +650,81 @@ public class ChannelServer implements Serializable {
         broadcastGMPacket(new ByteArrayMaplePacket(message));
     }
 
-
-   public void saveAll() {
-    int ppl = 0;
-    for (Iterator i$ = this.players.getAllCharacters().iterator(); i$.hasNext(); ) { MapleCharacter chr = (MapleCharacter)i$.next();
-      ++ppl;
-      chr.saveToDB(false, false);
+    /**
+     * 把這個頻道上線中的角色逐一寫回資料庫，回傳實際存了幾個。
+     *
+     * <p><b>為什麼這樣是安全的</b>：{@code getAllCharacters()} 回傳的是快照（複製完
+     * 就放掉 {@code PlayerStorage} 的讀鎖），所以整個迴圈跑完都不持有任何鎖——這正是
+     * CLAUDE.md「不要在借資料庫連線時握著鎖」那條規則要的形狀。迴圈是循序的：一次只
+     * 借一條連線、存完還回去再借下一條，所以 N 個頻道同時跑最多也只佔用 N 條連線
+     * （{@code tms.DbPoolSize} 預設 64），不會把連線池吃乾。
+     *
+     * <p>快照的代價是：存檔途中登出的角色會被多存一次（{@code saveToDB} 是冪等的
+     * UPDATE，無害），存檔途中登入的角色這一輪會被跳過，等下一輪。
+     *
+     * <p>{@code saveToDB(false, false)} 的第二個參數是 {@code fromcs}：傳 false 才會
+     * 寫入角色「現在所在地圖」，傳 true 寫的是 {@code chr.mapid} 這個只在換頻道／進
+     * 商城時才更新的欄位。頻道上的角色一律用 false。
+     */
+    public int saveAll() {
+        int ppl = 0;
+        for (MapleCharacter chr : this.players.getAllCharacters()) {
+            ++ppl;
+            chr.saveToDB(false, false);
+        }
+        LOG.log(System.Logger.Level.INFO, "[存檔] 已經將頻道 " + this.channel + " 的 " + ppl + " 個玩家保存到數據中.");
+        return ppl;
     }
-    System.out.println("[自動存檔] 已經將頻道 " + this.channel + " 的 " + ppl + " 個玩家保存到數據中.");
-  }
+
+    /**
+     * 依 {@code tms.AutoSaveMinutes} 掛上定期存檔，0（預設）代表不啟用。
+     *
+     * <p>這個機制以前只存在於 {@code Libs/scripts/event/AutoSave.js}：它靠
+     * {@code tms.Events} 被載入、用 {@code em.scheduleAtTimestamp} 排在每個小時的
+     * 10 分，間隔寫死也不可設定，而且 {@code tms.Events} 裡寫的是 {@code autoSave}、
+     * 檔名卻是 {@code AutoSave.js}——在 Windows 上大小寫不敏感所以剛好載得到，換到
+     * 大小寫敏感的檔案系統就會被「找不到就靜靜跳過」的規則吃掉，自動存檔隨之消失而
+     * 且沒有任何訊息。這裡把同一件事搬回 Java，並且預設關閉，以免和還在跑的
+     * AutoSave.js 疊成一分鐘內存兩次。
+     *
+     * <p>用 {@code Timer.ETC} 而不是 {@code Timer.WORLD}：{@code Timer.WORLD} 上目前只有
+     * 每 3 秒一次的 {@code Respawn}，而存檔是會阻塞在資料庫上的長工作，塞進去會排擠
+     * 怪物重生；{@code Timer.ETC} 本來就是放釣魚、精靈吊墜、雇傭商人到期這類雜項長尾
+     * 工作的池子。
+     */
+    private void startAutoSave() {
+        final int minutes = autoSaveMinutes();
+        if (minutes <= 0) {
+            return;
+        }
+        final long period = minutes * 60000L;
+        // 第一次延遲一個完整週期：伺服器剛起來時沒有人在線上，立刻存一次沒有意義。
+        autoSaveTask = Timer.ETC.register(this::saveAll, period, period);
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": 自動存檔每 " + minutes + " 分鐘一次.");
+    }
+
+    private void stopAutoSave() {
+        final ScheduledFuture<?> task = autoSaveTask;
+        if (task != null) {
+            autoSaveTask = null;
+            // false：正在寫資料庫的那一輪讓它寫完，不要從中間打斷。
+            task.cancel(false);
+        }
+    }
+
+    private static int autoSaveMinutes() {
+        final String configured = ServerProperties.getProperty("tms.AutoSaveMinutes", "0");
+        if (configured == null || configured.isBlank()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(configured.trim());
+        } catch (final NumberFormatException e) {
+            // WARNING：伺服器照跑，只是自動存檔維持關閉——而「靜靜地沒有自動存檔」
+            // 正是這個項目要修掉的毛病，所以要講出來。
+            LOG.log(System.Logger.Level.WARNING, "tms.AutoSaveMinutes 不是數字（" + configured + "），自動存檔維持關閉.");
+            return 0;
+        }
+    }
  }
 

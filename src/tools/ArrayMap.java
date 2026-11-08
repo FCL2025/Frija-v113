@@ -20,7 +20,6 @@
  */
 package tools;
 
-import java.io.Serializable;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -38,9 +37,10 @@ import java.util.Set;
  * @param <K> The type of the keys.
  * @param <V> The type of the values.
  */
-public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
-
-    public static final long serialVersionUID = 9179541993413738569L;
+// final: ArrayMap(Map) seeds itself through AbstractMap.putAll, which is
+// overridable and would run against a subclass that has no fields yet
+// (-Xlint:this-escape). Nothing extends ArrayMap.
+public final class ArrayMap<K, V> extends AbstractMap<K, V> {
 
     /**
      * Provides a strongly typed mapping of a key to a value.
@@ -52,9 +52,8 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * @param <K> The type of the key.
      * @param <V> The type of the value.
      */
-    public static class Entry<K, V> implements Map.Entry<K, V>, Serializable {
+    public static class Entry<K, V> implements Map.Entry<K, V> {
 
-        public static final long serialVersionUID = 9179541993413738569L;
         protected K key;
         protected V value;
 
@@ -105,12 +104,11 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
          * <code>False</code> otherwise.
          */
         @Override
-        @SuppressWarnings("unchecked")
         public boolean equals(Object o) {
             if (!(o instanceof Map.Entry)) {
                 return false;
             }
-            Map.Entry e = (Map.Entry) o;
+            Map.Entry<?, ?> e = (Map.Entry<?, ?>) o;
             return (key == null ? e.getKey() == null : key.equals(e.getKey()))
                     && (value == null ? e.getValue() == null : value.equals(e.getValue()));
         }
@@ -133,14 +131,14 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
             return key + "=" + value;
         }
     }
-    private transient Set<? extends java.util.Map.Entry<K, V>> entries = null;
+    private Set<? extends java.util.Map.Entry<K, V>> entries = null;
     private ArrayList<Entry<K, V>> list;
 
     /**
      * Class constructor
      */
     public ArrayMap() {
-        list = new ArrayList<Entry<K, V>>();
+        list = new ArrayList<>();
     }
 
     /**
@@ -150,7 +148,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * import.
      */
     public ArrayMap(Map<K, V> map) {
-        list = new ArrayList<Entry<K, V>>();
+        list = new ArrayList<>();
         putAll(map);
     }
 
@@ -160,7 +158,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
      * @param initialCapacity The initial size of the ArrayMap.
      */
     public ArrayMap(int initialCapacity) {
-        list = new ArrayList<Entry<K, V>>(initialCapacity);
+        list = new ArrayList<>(initialCapacity);
     }
 
     /**
@@ -226,7 +224,7 @@ public class ArrayMap<K, V> extends AbstractMap<K, V> implements Serializable {
             oldValue = entry.getValue();
             entry.setValue(value);
         } else {
-            list.add(new Entry<K, V>(key, value));
+            list.add(new Entry<>(key, value));
         }
         return oldValue;
     }

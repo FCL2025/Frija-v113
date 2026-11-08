@@ -22,7 +22,7 @@ function start(mode, type, selection) {
     } else if (status == 2) {
 	qm.sendNextPrev("Please rescue the kid from the forest, Aran! We cannot afford any more casualties at the hands of the Black Wizard!");
     } else if (status == 3) {
-	qm.AranTutInstructionalBubble("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow1");
+	qm.aranTutInstructionalBubble("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow1");
 	qm.dispose();
     }
 }

@@ -22,7 +22,6 @@ package client.status;
 
 import java.util.concurrent.ScheduledFuture;
 
-import client.ISkill;
 import server.life.MobSkill;
 
 public class MonsterStatusEffect {
@@ -34,7 +33,7 @@ public class MonsterStatusEffect {
     private Integer x;
     private ScheduledFuture<?> cancelTask;
     private ScheduledFuture<?> poisonSchedule;
-	private ScheduledFuture<?> poisonStatusSchedule;
+    private ScheduledFuture<?> poisonStatusSchedule;
 
     public MonsterStatusEffect(final MonsterStatus stat, final Integer x, final int skillId, final MobSkill mobskill, final boolean monsterSkill) {
         this.stati = stat;
@@ -76,8 +75,8 @@ public class MonsterStatusEffect {
     public final void setPoisonSchedule(final ScheduledFuture<?> poisonSchedule) {
         this.poisonSchedule = poisonSchedule;
     }
-	
-	public final void setPoisonStatusSchedule(final ScheduledFuture<?> poisonStatusSchedule) {
+    
+    public final void setPoisonStatusSchedule(final ScheduledFuture<?> poisonStatusSchedule) {
         this.poisonStatusSchedule = poisonStatusSchedule;
     }
 
@@ -93,15 +92,17 @@ public class MonsterStatusEffect {
             try {
                 this.poisonSchedule.cancel(false);
             } catch (NullPointerException e) {
+                // cancel() failing does not matter - the field is nulled out regardless.
             } //set to null anyway.
         }
         this.poisonSchedule = null;
-		
-		if (this.poisonStatusSchedule != null) {
-	    try {
-            	this.poisonStatusSchedule.cancel(false);
-	    } catch(NullPointerException e) {
-	    } //set to null anyway.
+        
+        if (this.poisonStatusSchedule != null) {
+        try {
+                this.poisonStatusSchedule.cancel(false);
+        } catch(NullPointerException e) {
+            // cancel() failing does not matter - the field is nulled out regardless.
+        } //set to null anyway.
         }
         this.poisonStatusSchedule = null;
     }

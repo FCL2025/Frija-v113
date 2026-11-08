@@ -21,9 +21,6 @@
 package scripting;
 
 import java.util.Map;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-
 import client.MapleClient;
 import java.util.WeakHashMap;
 import java.util.concurrent.locks.Lock;
@@ -32,7 +29,9 @@ import tools.FileoutputUtil;
 
 public class NPCScriptManager extends AbstractScriptManager {
 
-    private final Map<MapleClient, NPCConversationManager> cms = new WeakHashMap<MapleClient, NPCConversationManager>();
+    private static final System.Logger LOG = System.getLogger(NPCScriptManager.class.getName());
+
+    private final Map<MapleClient, NPCConversationManager> cms = new WeakHashMap<>();
     private static final NPCScriptManager instance = new NPCScriptManager();
 
     public static final NPCScriptManager getInstance() {
@@ -47,7 +46,7 @@ public class NPCScriptManager extends AbstractScriptManager {
                 c.getPlayer().dropMessage("[系統提示]您已經建立與NPC:" + npc + "的對話(start)。");
             }
             if (!cms.containsKey(c)) {
-                Invocable iv = getInvocable("npc/" + npc + ".js", c, true);
+                ScriptScope iv = getInvocable("npc/" + npc + ".js", c, true);
                 if (iv == null) {
 
                     iv = getInvocable("npc/notcoded.js", c, true); //safe disposal
@@ -57,12 +56,11 @@ public class NPCScriptManager extends AbstractScriptManager {
                         return;
                     }
                 }
-                final ScriptEngine scriptengine = (ScriptEngine) iv;
                 final NPCConversationManager cm = new NPCConversationManager(c, npc, -1, (byte) -1, iv);
                 cms.put(c, cm);
 
-                scriptengine.put("cm", cm);
-                scriptengine.put("npcid", npc);
+                iv.put("cm", cm);
+                iv.put("npcid", npc);
                 c.getPlayer().setConversation(1);
 
                 try {
@@ -75,7 +73,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             }
 
         } catch (final Exception e) {
-            System.err.println("NPC 腳本錯誤, 它ID為 : " + npc + "." + e);
+            LOG.log(System.Logger.Level.ERROR, "NPC 腳本錯誤, 它ID為 : " + npc + "." + e);
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示] NPC " + npc + "腳本錯誤 " + e + "");
             }
@@ -105,7 +103,7 @@ public class NPCScriptManager extends AbstractScriptManager {
                 if (c.getPlayer().isGM()) {
                     c.getPlayer().dropMessage("[系統提示] NPC " + cm.getNpc() + "腳本錯誤 " + e + "");
                 }
-                System.err.println("NPC 腳本錯誤. 它ID為 : " + cm.getNpc() + ":" + e);
+                LOG.log(System.Logger.Level.ERROR, "NPC 腳本錯誤. 它ID為 : " + cm.getNpc() + ":" + e);
                 dispose(c);
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing NPC script, NPC ID : " + cm.getNpc() + "." + e);
             } finally {
@@ -122,27 +120,27 @@ public class NPCScriptManager extends AbstractScriptManager {
         lock.lock();
         try {
             if (!cms.containsKey(c)) {
-                final Invocable iv = getInvocable("quest/" + quest + ".js", c, true);
+                final ScriptScope iv = getInvocable("quest/" + quest + ".js", c, true);
                 if (iv == null) {
                     dispose(c);
                     return;
                 }
-                final ScriptEngine scriptengine = (ScriptEngine) iv;
                 final NPCConversationManager cm = new NPCConversationManager(c, npc, quest, (byte) 0, iv);
                 cms.put(c, cm);
-                scriptengine.put("qm", cm);
+                iv.put("qm", cm);
 
                 c.getPlayer().setConversation(1);
                 if (c.getPlayer().isGM()) {
                     c.getPlayer().dropMessage("[系統提示]您已經建立與任務腳本:" + quest + "的往來。");
                 }
-                //System.out.println("NPCID started: " + npc + " startquest " + quest);
                 iv.invokeFunction("start", (byte) 1, (byte) 0, 0); // start it off as something
             } else {
+                // 保留作為紀錄：已經在對話中時原本會提示玩家用 @ea 解卡，這則提示被關掉了，
+                // 所以這個 else 分支現在完全沒有回應（訊息也是英文的，BIG5 客戶端看得到但不合本服語系）。
                 // c.getPlayer().dropMessage(-1, "You already are talking to an NPC. Use @ea if this is not intended.");
             }
         } catch (final Exception e) {
-            System.err.println("Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             dispose(c);
         } finally {
@@ -167,7 +165,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示]任務腳本:" + cm.getQuest() + "錯誤...NPC: " + cm.getNpc() + ":" + e);
             }
-            System.err.println("Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + cm.getQuest() + ")..NPCID: " + cm.getNpc() + ":" + e);
             dispose(c);
         } finally {
@@ -180,31 +178,33 @@ public class NPCScriptManager extends AbstractScriptManager {
             return;
         }
         final Lock lock = c.getNPCLock();
+        // 保留作為紀錄：其他幾個方法（action / endQuest 以外）在鎖之後都會先取出既有的 cm，
+        // endQuest 刻意不取——它只在 cms 裡沒有東西時才自己建一個新的。
         //final NPCConversationManager cm = cms.get(c);
         lock.lock();
         try {
             if (!cms.containsKey(c)) {
-                final Invocable iv = getInvocable("quest/" + quest + ".js", c, true);
+                final ScriptScope iv = getInvocable("quest/" + quest + ".js", c, true);
                 if (iv == null) {
                     dispose(c);
                     return;
                 }
-                final ScriptEngine scriptengine = (ScriptEngine) iv;
                 final NPCConversationManager cm = new NPCConversationManager(c, npc, quest, (byte) 1, iv);
                 cms.put(c, cm);
-                scriptengine.put("qm", cm);
+                iv.put("qm", cm);
 
                 c.getPlayer().setConversation(1);
-                //System.out.println("NPCID started: " + npc + " endquest " + quest);
                 iv.invokeFunction("end", (byte) 1, (byte) 0, 0); // start it off as something
             } else {
+                // 保留作為紀錄：已經在對話中時原本會提示玩家用 @ea 解卡，這則提示被關掉了，
+                // 所以這個 else 分支現在完全沒有回應（訊息也是英文的，BIG5 客戶端看得到但不合本服語系）。
                 // c.getPlayer().dropMessage(-1, "You already are talking to an NPC. Use @ea if this is not intended.");
             }
         } catch (Exception e) {
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示]任務腳本:" + quest + "錯誤...NPC: " + quest + ":" + e);
             }
-            System.err.println("Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + quest + ")..NPCID: " + npc + ":" + e);
             dispose(c);
         } finally {
@@ -229,7 +229,7 @@ public class NPCScriptManager extends AbstractScriptManager {
             if (c.getPlayer().isGM()) {
                 c.getPlayer().dropMessage("[系統提示]任務腳本:" + cm.getQuest() + "錯誤...NPC: " + cm.getNpc() + ":" + e);
             }
-            System.err.println("Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing Quest script. (" + cm.getQuest() + ")...NPC: " + cm.getNpc() + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing Quest script. (" + cm.getQuest() + ")..NPCID: " + cm.getNpc() + ":" + e);
             dispose(c);
         } finally {
@@ -242,10 +242,10 @@ public class NPCScriptManager extends AbstractScriptManager {
         if (npccm != null) {
             cms.remove(c);
             if (npccm.getType() == -1) {
-                c.removeScriptEngine("Libs/scripts/npc/" + npccm.getNpc() + ".js");
-                c.removeScriptEngine("Libs/scripts/npc/notcoded.js");
+                c.removeScriptScope("Libs/scripts/npc/" + npccm.getNpc() + ".js");
+                c.removeScriptScope("Libs/scripts/npc/notcoded.js");
             } else {
-                c.removeScriptEngine("Libs/scripts/quest/" + npccm.getQuest() + ".js");
+                c.removeScriptScope("Libs/scripts/quest/" + npccm.getQuest() + ".js");
             }
         }
         if (c.getPlayer() != null && c.getPlayer().getConversation() == 1) {

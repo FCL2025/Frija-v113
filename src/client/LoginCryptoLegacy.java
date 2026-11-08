@@ -23,6 +23,7 @@ package client;
 import java.util.Random;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -37,6 +38,8 @@ import java.security.NoSuchAlgorithmException;
  * @version 0.1
  */
 public class LoginCryptoLegacy {
+
+    private static final System.Logger LOG = System.getLogger(LoginCryptoLegacy.class.getName());
 
     /**
      * Map of 6 bit nibbles to base64 characters.
@@ -83,7 +86,12 @@ public class LoginCryptoLegacy {
      * otherwise.
      */
     public static final boolean checkPassword(String password, String hash) {
-        return (myCrypt(password, hash).equals(hash));
+        // MessageDigest.isEqual, not String.equals: equals answers at the first
+        // character that differs, so the time a rejected login takes says how much
+        // of the stored hash the guess already matched. Both sides are the ASCII
+        // of encode64 and the "$H$" seed, so US_ASCII encodes them exactly; a null
+        // hash still throws out of myCrypt, exactly as it did before.
+        return MessageDigest.isEqual(myCrypt(password, hash).getBytes(StandardCharsets.US_ASCII), hash.getBytes(StandardCharsets.US_ASCII));
     }
 
     public static final boolean isLegacyPassword(String hash) {
@@ -130,9 +138,12 @@ public class LoginCryptoLegacy {
             out = seed.substring(0, 12);
             out += encode64(sha1Hash);
         } catch (NoSuchAlgorithmException Ex) {
-            System.err.println("Error hashing password." + Ex);
+            // ERROR, not WARNING: out stays null and the RuntimeException below
+            // abandons the hash. Terse on purpose - this only ever printed
+            // Ex.toString(), never a trace.
+            LOG.log(System.Logger.Level.ERROR, "Error hashing password." + Ex);
         } catch (UnsupportedEncodingException Ex) {
-            System.err.println("Error hashing password." + Ex);
+            LOG.log(System.Logger.Level.ERROR, "Error hashing password." + Ex);
         }
         if (out == null) {
             throw new RuntimeException("Error hashing password - out = null");
@@ -156,7 +167,7 @@ public class LoginCryptoLegacy {
     }
 
     private static final String convertToHex(byte[] data) {
-        StringBuffer buf = new StringBuffer();
+        StringBuilder buf = new StringBuilder();
         for (int i = 0; i < data.length; i++) {
             int halfbyte = (data[i] >>> 4) & 0x0F;
             int two_halfs = 0;

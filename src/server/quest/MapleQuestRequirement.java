@@ -1,14 +1,13 @@
 package server.quest;
 
 import client.ISkill;
-import java.util.Calendar;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.LinkedList;
-import java.io.Serializable;
 
 import client.inventory.IItem;
 import client.SkillFactory;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleCharacter;
 import client.inventory.MaplePet;
 import client.inventory.MapleInventoryType;
@@ -18,9 +17,8 @@ import provider.MapleDataTool;
 
 import tools.Pair;
 
-public class MapleQuestRequirement implements Serializable {
+public class MapleQuestRequirement {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private MapleQuest quest;
     private MapleQuestRequirementType type;
     private int intStore;
@@ -37,42 +35,42 @@ public class MapleQuestRequirement implements Serializable {
         switch (type) {
             case job: {
                 final List<MapleData> child = data.getChildren();
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (int i = 0; i < child.size(); i++) {
-                    dataStore.add(new Pair<Integer, Integer>(i, MapleDataTool.getInt(child.get(i), -1)));
+                    dataStore.add(new Pair<>(i, MapleDataTool.getInt(child.get(i), -1)));
                 }
                 break;
             }
             case skill: {
                 final List<MapleData> child = data.getChildren();
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (int i = 0; i < child.size(); i++) {
                     final MapleData childdata = child.get(i);
-                    dataStore.add(new Pair<Integer, Integer>(MapleDataTool.getInt(childdata.getChildByPath("id"), 0),
+                    dataStore.add(new Pair<>(MapleDataTool.getInt(childdata.getChildByPath("id"), 0),
                             MapleDataTool.getInt(childdata.getChildByPath("acquire"), 0)));
                 }
                 break;
             }
             case quest: {
                 final List<MapleData> child = data.getChildren();
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (int i = 0; i < child.size(); i++) {
                     final MapleData childdata = child.get(i);
-                    dataStore.add(new Pair<Integer, Integer>(MapleDataTool.getInt(childdata.getChildByPath("id")),
+                    dataStore.add(new Pair<>(MapleDataTool.getInt(childdata.getChildByPath("id")),
                             MapleDataTool.getInt(childdata.getChildByPath("state"), 0)));
                 }
                 break;
             }
             case item: {
                 final List<MapleData> child = data.getChildren();
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (int i = 0; i < child.size(); i++) {
                     final MapleData childdata = child.get(i);
-                    dataStore.add(new Pair<Integer, Integer>(MapleDataTool.getInt(childdata.getChildByPath("id")),
+                    dataStore.add(new Pair<>(MapleDataTool.getInt(childdata.getChildByPath("id")),
                             MapleDataTool.getInt(childdata.getChildByPath("count"), 0)));
                 }
                 break;
@@ -94,11 +92,11 @@ public class MapleQuestRequirement implements Serializable {
             }
             case mob: {
                 final List<MapleData> child = data.getChildren();
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (int i = 0; i < child.size(); i++) {
                     final MapleData childdata = child.get(i);
-                    dataStore.add(new Pair<Integer, Integer>(MapleDataTool.getInt(childdata.getChildByPath("id"), 0),
+                    dataStore.add(new Pair<>(MapleDataTool.getInt(childdata.getChildByPath("id"), 0),
                             MapleDataTool.getInt(childdata.getChildByPath("count"), 0)));
                 }
                 break;
@@ -114,20 +112,20 @@ public class MapleQuestRequirement implements Serializable {
             }
             case mbcard: {
                 final List<MapleData> child = data.getChildren();
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (int i = 0; i < child.size(); i++) {
                     final MapleData childdata = child.get(i);
-                    dataStore.add(new Pair<Integer, Integer>(MapleDataTool.getInt(childdata.getChildByPath("id"), 0),
+                    dataStore.add(new Pair<>(MapleDataTool.getInt(childdata.getChildByPath("id"), 0),
                             MapleDataTool.getInt(childdata.getChildByPath("min"), 0)));
                 }
                 break;
             }
             case pet: {
-                dataStore = new LinkedList<Pair<Integer, Integer>>();
+                dataStore = new LinkedList<>();
 
                 for (MapleData child : data) {
-                    dataStore.add(new Pair<Integer, Integer>(-1, MapleDataTool.getInt("id", child, 0)));
+                    dataStore.add(new Pair<>(-1, MapleDataTool.getInt("id", child, 0)));
                 }
                 break;
             }
@@ -188,7 +186,7 @@ public class MapleQuestRequirement implements Serializable {
                 for (Pair<Integer, Integer> a : dataStore) {
                     itemId = a.getLeft();
                     quantity = 0;
-                    iType = GameConstants.getInventoryType(itemId);
+                    iType = ItemConstants.getInventoryType(itemId);
                     for (IItem item : c.getInventory(iType).listById(itemId)) {
                         quantity += item.getQuantity();
                     }
@@ -202,11 +200,36 @@ public class MapleQuestRequirement implements Serializable {
                 return c.getLevel() >= intStore;
             case lvmax:
                 return c.getLevel() <= intStore;
-            case end:
+            case end: {
+                // Quest.wz stores this as yyyyMMddHH in server local time.
+                //
+                // Two quirks of the Calendar code this replaces are preserved on
+                // purpose, because changing either one changes which quests are
+                // available and that is a gameplay decision, not a refactor:
+                //
+                //  1. cal.set(year, month, ..) fed the 1-based month from the
+                //     string into Calendar's 0-based MONTH field, so every
+                //     deadline is read one month late (and a "12" rolls into
+                //     January of the next year). plusMonths on the 1st of
+                //     January reproduces that, including the roll.
+                //  2. Calendar.set leaves SECOND and MILLISECOND alone, so the
+                //     deadline inherited whatever second it happened to be when
+                //     the check ran. Starting from now() and overwriting only
+                //     the fields set() overwrote keeps that.
+                //
+                // Days are added rather than assigned for the same reason: the
+                // lenient Calendar rolled a "31" in a 30-day month into the 1st
+                // of the next, where withDayOfMonth(31) would throw.
                 final String timeStr = stringStore;
-                final Calendar cal = Calendar.getInstance();
-                cal.set(Integer.parseInt(timeStr.substring(0, 4)), Integer.parseInt(timeStr.substring(4, 6)), Integer.parseInt(timeStr.substring(6, 8)), Integer.parseInt(timeStr.substring(8, 10)), 0);
-                return cal.getTimeInMillis() >= System.currentTimeMillis();
+                final ZonedDateTime now = ZonedDateTime.now();
+                final ZonedDateTime end = now.withDayOfMonth(1).withMonth(1)
+                        .withYear(Integer.parseInt(timeStr.substring(0, 4)))
+                        .plusMonths(Integer.parseInt(timeStr.substring(4, 6)))
+                        .plusDays(Integer.parseInt(timeStr.substring(6, 8)) - 1L)
+                        .withHour(Integer.parseInt(timeStr.substring(8, 10)))
+                        .withMinute(0);
+                return end.toInstant().toEpochMilli() >= System.currentTimeMillis();
+            }
             case mob:
                 for (Pair<Integer, Integer> a : dataStore) {
                     final int mobId = a.getLeft();

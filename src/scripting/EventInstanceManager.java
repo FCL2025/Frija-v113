@@ -20,11 +20,13 @@
  */
 package scripting;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import javax.script.ScriptException;
@@ -39,33 +41,62 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import server.MapleCarnivalParty;
 import server.MapleItemInformationProvider;
 import server.MapleSquad;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.quest.MapleQuest;
 import server.life.MapleMonster;
 import server.maps.MapleMap;
 import server.maps.MapleMapFactory;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 import tools.packet.UIPacket;
 
 public class EventInstanceManager {
 
-    private List<MapleCharacter> chars = new LinkedList<MapleCharacter>(); //this is messy
-    private List<Integer> dced = new LinkedList<Integer>();
-    private List<MapleMonster> mobs = new LinkedList<MapleMonster>();
-    private Map<Integer, Integer> killCount = new HashMap<Integer, Integer>();
+    private static final System.Logger LOG = System.getLogger(EventInstanceManager.class.getName());
+
+    private final List<MapleCharacter> chars = new LinkedList<>(); //this is messy
+    /*
+     * Every player in the instance runs on their own handler thread, so the
+     * three collections below are written and read from several at once. Unlike
+     * chars they are NOT guarded by mutex: there are broadcasts under that lock
+     * already, and widening it would mean holding it across one. They are final
+     * and cleared - never nulled - on dispose, so a thread that slips past the
+     * disposed check finds an empty collection instead of a NullPointerException.
+     * chars is final for the same reason, on top of its mutex.
+     */
+    private final Set<Integer> dced = ConcurrentHashMap.newKeySet();
+    private final List<MapleMonster> mobs = new CopyOnWriteArrayList<>();
+    private final Map<Integer, Integer> killCount = new ConcurrentHashMap<>();
     private EventManager em;
     private int channel;
     private String name;
     private Properties props = new Properties();
     private long timeStarted = 0;
     private long eventTime = 0;
-    private List<Integer> mapIds = new LinkedList<Integer>();
-    private List<Boolean> isInstanced = new LinkedList<Boolean>();
+    /**
+     * One map this instance has registered. {@code instanced} says whether the
+     * instance created the map for itself - in which case dispose has to hand
+     * it back to the map factory - or merely borrowed a plain channel map.
+     */
+    private record EventMap(int mapId, boolean instanced) {
+    }
+
+    /*
+     * C8: this used to be two parallel LinkedLists, mapIds and isInstanced,
+     * addressed by a shared index, unlocked, and nulled on dispose. One record
+     * per map removes any possibility of the two lengths disagreeing. COW is
+     * the right collection for the traffic: the only writers are the three
+     * "a script registered a map" calls, against a read on every getMapInstance.
+     * Cleared and never nulled, for the reason given above dced/mobs.
+     */
+    private final List<EventMap> eventMaps = new CopyOnWriteArrayList<>();
     private ScheduledFuture<?> eventTimer;
     private final ReentrantReadWriteLock mutex = new ReentrantReadWriteLock();
     private final Lock rL = mutex.readLock(), wL = mutex.writeLock();
-    private boolean disposed = false;
+    // Read on every entry point from every handler and timer thread, written once
+    // by whoever disposes the instance - so it has to be volatile to be seen.
+    private volatile boolean disposed = false;
 
     public EventInstanceManager(EventManager em, String name, int channel) {
         this.em = em;
@@ -88,10 +119,12 @@ public class EventInstanceManager {
             em.getIv().invokeFunction("playerEntry", this, chr);
         } catch (NullPointerException ex) {
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
-            ex.printStackTrace();
+            // em is null-checked the way the sibling catches in this class do
+            // it: this branch exists because something in there was null.
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : playerEntry", ex);
         } catch (Exception ex) {
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerEntry:\n" + ex);
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerEntry:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerEntry:\n" + ex);
         }
     }
 
@@ -102,9 +135,11 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("changedMap", this, chr, mapid);
         } catch (NullPointerException npe) {
+            FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : changedMap:\n" + npe);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : changedMap:\n" + npe);
         } catch (Exception ex) {
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : changedMap:\n" + ex);
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : changedMap:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : changedMap:\n" + ex);
         }
     }
 
@@ -112,18 +147,15 @@ public class EventInstanceManager {
         if (disposed || eim == null) {
             return;
         }
-        eventTimer = EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (disposed || eim == null || em == null) {
-                    return;
-                }
-                try {
-                    em.getIv().invokeFunction("scheduledTimeout", eim);
-                } catch (Exception ex) {
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
-                    System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
-                }
+        eventTimer = Timer.EVENT.schedule(() -> {
+            if (disposed || eim == null || em == null) {
+                return;
+            }
+            try {
+                em.getIv().invokeFunction("scheduledTimeout", eim);
+            } catch (Exception ex) {
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
+                LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : scheduledTimeout:\n" + ex);
             }
         }, delay);
     }
@@ -150,14 +182,14 @@ public class EventInstanceManager {
             final int timesend = (int) time / 1000;
 
             for (MapleCharacter chr : getPlayers()) {
-                chr.getClient().getSession().write(MaplePacketCreator.getClock(timesend));
+                chr.getClient().send(MapPacket.getClock(timesend));
             }
             timeOut(time, this);
 
         } catch (Exception ex) {
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : restartEventTimer:\n");
-            ex.printStackTrace();
+            // One record: the line and the trace under it were one report.
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : restartEventTimer:\n", ex);
         }
     }
 
@@ -229,7 +261,7 @@ public class EventInstanceManager {
         wL.lock();
         try {
             if (chars.size() <= size) {
-                final List<MapleCharacter> chrs = new LinkedList<MapleCharacter>(chars);
+                final List<MapleCharacter> chrs = new LinkedList<>(chars);
                 for (MapleCharacter chr : chrs) {
                     unregisterPlayer_NoLock(chr);
                     if (towarp > 0) {
@@ -266,13 +298,13 @@ public class EventInstanceManager {
         }
         rL.lock();
         try {
-            return new LinkedList<MapleCharacter>(chars);
+            return new LinkedList<>(chars);
         } finally {
             rL.unlock();
         }
     }
 
-    public List<Integer> getDisconnected() {
+    public Set<Integer> getDisconnected() {
         return dced;
     }
 
@@ -280,14 +312,21 @@ public class EventInstanceManager {
         if (disposed) {
             return 0;
         }
-        return chars.size();
+        rL.lock(); // chars belongs to mutex; this was the one read that skipped it
+        try {
+            return chars.size();
+        } finally {
+            rL.unlock();
+        }
     }
 
     public void registerMonster(MapleMonster mob) {
         if (disposed) {
             return;
         }
-        mobs.add(mob);
+        synchronized (mobs) {
+            mobs.add(mob);
+        }
         mob.setEventInstance(this);
     }
 
@@ -296,13 +335,23 @@ public class EventInstanceManager {
         if (disposed) {
             return;
         }
-        mobs.remove(mob);
-        if (mobs.size() == 0) {
+        // The removal and the "was that the last one" question have to be one
+        // step, or two players finishing off the last two mobs at the same
+        // moment both see an empty list and allMonstersDead fires twice. The
+        // script itself is invoked after the monitor is dropped.
+        final boolean lastOne;
+        synchronized (mobs) {
+            if (!mobs.remove(mob)) {
+                return;
+            }
+            lastOne = mobs.isEmpty();
+        }
+        if (lastOne) {
             try {
                 em.getIv().invokeFunction("allMonstersDead", this);
             } catch (Exception ex) {
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : allMonstersDead:\n" + ex);
-                System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : allMonstersDead:\n" + ex);
+                LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : allMonstersDead:\n" + ex);
             }
         }
     }
@@ -315,7 +364,7 @@ public class EventInstanceManager {
             em.getIv().invokeFunction("playerDead", this, chr);
         } catch (Exception ex) {
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerDead:\n" + ex);
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerDead:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerDead:\n" + ex);
         }
     }
 
@@ -330,7 +379,7 @@ public class EventInstanceManager {
             }
         } catch (Exception ex) {
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerRevive:\n" + ex);
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerRevive:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerRevive:\n" + ex);
         }
         return true;
     }
@@ -360,7 +409,7 @@ public class EventInstanceManager {
                     dispose_NoLock();
                 }
             } else if ((ret > 0 && getPlayerCount() < ret) || (ret < 0 && (isLeader(chr) || getPlayerCount() < (ret * -1)))) {
-                final List<MapleCharacter> chrs = new LinkedList<MapleCharacter>(chars);
+                final List<MapleCharacter> chrs = new LinkedList<>(chars);
                 for (MapleCharacter player : chrs) {
                     if (player.getId() != idz) {
                         removePlayer(player);
@@ -369,7 +418,7 @@ public class EventInstanceManager {
                 dispose_NoLock();
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : playerDisconnected", ex);
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
         } finally {
             wL.unlock();
@@ -387,28 +436,25 @@ public class EventInstanceManager {
             return;
         }
         try {
-            Integer kc = killCount.get(chr.getId());
-            int inc = ((Integer) em.getIv().invokeFunction("monsterValue", this, mob.getId())).intValue();
+            // The old shape read killCount, called into the script, then wrote
+            // the sum back - a window long enough for a second kill by the same
+            // player to be lost. merge() does the whole add in one step.
+            final int inc = ((Integer) em.getIv().invokeFunction("monsterValue", this, mob.getId())).intValue();
             if (disposed) {
                 return;
             }
-            if (kc == null) {
-                kc = inc;
-            } else {
-                kc += inc;
-            }
-            killCount.put(chr.getId(), kc);
+            killCount.merge(chr.getId(), inc, Integer::sum);
             if (chr.getCarnivalParty() != null && (mob.getStats().getPoint() > 0 || mob.getStats().getCP() > 0)) {
                 em.getIv().invokeFunction("monsterKilled", this, chr, mob.getStats().getCP() > 0 ? mob.getStats().getCP() : mob.getStats().getPoint());
             }
         } catch (ScriptException ex) {
-            System.out.println("Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
         } catch (NoSuchMethodException ex) {
-            System.out.println("Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterKilled", ex);
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
         }
     }
@@ -420,13 +466,13 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("monsterDamaged", this, chr, mob.getId(), damage);
         } catch (ScriptException ex) {
-            System.out.println("Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
         } catch (NoSuchMethodException ex) {
-            System.out.println("Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterValue:\n" + ex);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : monsterDamaged", ex);
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
         }
     }
@@ -455,32 +501,27 @@ public class EventInstanceManager {
                 chr.setEventInstance(null);
             }
             chars.clear();
-            chars = null;
-            for (MapleMonster mob : mobs) {
-                mob.setEventInstance(null);
+            synchronized (mobs) {
+                for (MapleMonster mob : mobs) {
+                    mob.setEventInstance(null);
+                }
+                mobs.clear();
             }
-            mobs.clear();
-            mobs = null;
             killCount.clear();
-            killCount = null;
             dced.clear();
-            dced = null;
             timeStarted = 0;
             eventTime = 0;
             props.clear();
             props = null;
-            for (int i = 0; i < mapIds.size(); i++) {
-                if (isInstanced.get(i)) {
-                    this.getMapFactory().removeInstanceMap(mapIds.get(i));
+            for (EventMap eventMap : eventMaps) {
+                if (eventMap.instanced()) {
+                    this.getMapFactory().removeInstanceMap(eventMap.mapId());
                 }
             }
-            mapIds.clear();
-            mapIds = null;
-            isInstanced.clear();
-            isInstanced = null;
+            eventMaps.clear();
             em.disposeInstance(name);
         } catch (Exception e) {
-            System.out.println("Caused by : " + emN + " instance name: " + name + " method: dispose: " + e);
+            LOG.log(System.Logger.Level.ERROR, "Caused by : " + emN + " instance name: " + name + " method: dispose: " + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + emN + ", Instance name : " + name + ", method Name : dispose:\n" + e);
         }
     }
@@ -517,7 +558,7 @@ public class EventInstanceManager {
             return;
         }
         for (MapleCharacter chr : getPlayers()) {
-            chr.getClient().getSession().write(MaplePacketCreator.serverNotice(type, msg));
+            chr.getClient().send(ChatPacket.serverNotice(type, msg));
         }
     }
 
@@ -526,9 +567,8 @@ public class EventInstanceManager {
             return null;
         }
         final int assignedid = getChannelServer().getEventSM().getNewInstanceMapId();
-        mapIds.add(assignedid);
-        isInstanced.add(true);
-        return this.getMapFactory().CreateInstanceMap(mapid, true, true, true, assignedid);
+        eventMaps.add(new EventMap(assignedid, true));
+        return this.getMapFactory().createInstanceMap(mapid, true, true, true, assignedid);
     }
 
     public final MapleMap createInstanceMapS(final int mapid) {
@@ -536,17 +576,15 @@ public class EventInstanceManager {
             return null;
         }
         final int assignedid = getChannelServer().getEventSM().getNewInstanceMapId();
-        mapIds.add(assignedid);
-        isInstanced.add(true);
-        return this.getMapFactory().CreateInstanceMap(mapid, false, false, false, assignedid);
+        eventMaps.add(new EventMap(assignedid, true));
+        return this.getMapFactory().createInstanceMap(mapid, false, false, false, assignedid);
     }
 
     public final MapleMap setInstanceMap(final int mapid) { //gets instance map from the channelserv
         if (disposed) {
             return this.getMapFactory().getMap(mapid);
         }
-        mapIds.add(mapid);
-        isInstanced.add(false);
+        eventMaps.add(new EventMap(mapid, false));
         return this.getMapFactory().getMap(mapid);
     }
 
@@ -561,12 +599,20 @@ public class EventInstanceManager {
         try {
             boolean instanced = false;
             int trueMapID = -1;
-            if (args >= mapIds.size()) {
+            // One snapshot for both steps. "is args an index into the list" and
+            // "what is at that index" have to answer about the same list, and a
+            // script on another thread can register a map - or dispose can clear
+            // the list - between the two. A negative args still walks into the
+            // else branch and throws IndexOutOfBoundsException, exactly as the
+            // two parallel lists did.
+            final List<EventMap> maps = List.copyOf(eventMaps);
+            if (args >= maps.size()) {
                 //assume real map
                 trueMapID = args;
             } else {
-                trueMapID = mapIds.get(args);
-                instanced = isInstanced.get(args);
+                final EventMap entry = maps.get(args);
+                trueMapID = entry.mapId();
+                instanced = entry.instanced();
             }
             MapleMap map = null;
             if (!instanced) {
@@ -595,7 +641,7 @@ public class EventInstanceManager {
             return map;
         } catch (NullPointerException ex) {
             FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name" + (em == null ? "null" : em.getName()) + ", Instance name : " + name + ", method Name : getMapInstance", ex);
             return null;
         }
     }
@@ -604,19 +650,18 @@ public class EventInstanceManager {
         if (disposed) {
             return;
         }
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (disposed || EventInstanceManager.this == null || em == null) {
-                    return;
-                }
-                try {
-                    em.getIv().invokeFunction(methodName, EventInstanceManager.this);
-                } catch (NullPointerException npe) {
-                } catch (Exception ex) {
-                    System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + ex);
-                }
+        Timer.EVENT.schedule(() -> {
+            if (disposed || EventInstanceManager.this == null || em == null) {
+                return;
+            }
+            try {
+                em.getIv().invokeFunction(methodName, EventInstanceManager.this);
+            } catch (NullPointerException npe) {
+                LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + npe);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + npe);
+            } catch (Exception ex) {
+                LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : " + methodName + ":\n" + ex);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name(schedule) : " + methodName + " :\n" + ex);
             }
         }, delay);
     }
@@ -657,7 +702,7 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("leftParty", this, chr);
         } catch (Exception ex) {
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : leftParty:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : leftParty:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : leftParty:\n" + ex);
         }
     }
@@ -669,7 +714,7 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("disbandParty", this);
         } catch (Exception ex) {
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : disbandParty:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : disbandParty:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : disbandParty:\n" + ex);
         }
     }
@@ -682,7 +727,7 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("clearPQ", this);
         } catch (Exception ex) {
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : clearPQ:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : clearPQ:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : clearPQ:\n" + ex);
         }
     }
@@ -694,7 +739,7 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("playerExit", this, chr);
         } catch (Exception ex) {
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerExit:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerExit:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : playerExit:\n" + ex);
         }
     }
@@ -704,7 +749,7 @@ public class EventInstanceManager {
             return;
         }
         leader.clearCarnivalRequests();
-        List<MapleCharacter> characters = new LinkedList<MapleCharacter>();
+        List<MapleCharacter> characters = new LinkedList<>();
         final MapleParty party = leader.getParty();
 
         if (party == null) {
@@ -722,10 +767,10 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("registerCarnivalParty", this, carnivalParty);
         } catch (ScriptException ex) {
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : registerCarnivalParty:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : registerCarnivalParty:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : registerCarnivalParty:\n" + ex);
         } catch (NoSuchMethodException ex) {
-            //ignore
+            // Ignore, we don't want to update this for all events.
         }
     }
 
@@ -736,7 +781,7 @@ public class EventInstanceManager {
         try {
             em.getIv().invokeFunction("onMapLoad", this, chr);
         } catch (ScriptException ex) {
-            System.out.println("Event name" + em.getName() + ", Instance name : " + name + ", method Name : onMapLoad:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : onMapLoad:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name" + em.getName() + ", Instance name : " + name + ", method Name : onMapLoad:\n" + ex);
         } catch (NoSuchMethodException ex) {
             // Ignore, we don't want to update this for all events.
@@ -769,7 +814,7 @@ public class EventInstanceManager {
             }
         }
         squad.setStatus((byte) 2);
-        squad.getBeginMap().broadcastMessage(MaplePacketCreator.stopClock());
+        squad.getBeginMap().broadcastMessage(MapPacket.stopClock());
     }
 
     public boolean isDisconnected(final MapleCharacter chr) {
@@ -779,6 +824,13 @@ public class EventInstanceManager {
         return (dced.contains(chr.getId()));
     }
 
+    /**
+     * Nothing in src/ or Libs/scripts/ calls this. Worth knowing why that is a
+     * relief: while dced was a List&lt;Integer&gt; this resolved to
+     * List.remove(int index), so it removed by position and threw
+     * IndexOutOfBoundsException for any real character id. As a Set it removes
+     * the id, which is what the name always claimed.
+     */
     public void removeDisconnected(final int id) {
         if (disposed) {
             return;
@@ -792,6 +844,6 @@ public class EventInstanceManager {
 
     public void applyBuff(final MapleCharacter chr, final int id) {
         MapleItemInformationProvider.getInstance().getItemEffect(id).applyTo(chr);
-        chr.getClient().getSession().write(UIPacket.getStatusMsg(id));
+        chr.getClient().send(UIPacket.getStatusMsg(id));
     }
 }

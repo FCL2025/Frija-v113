@@ -20,7 +20,7 @@
  */
 package handling;
 
-public interface MaplePacket extends java.io.Serializable {
+public interface MaplePacket {
 
     public byte[] getBytes();
 

@@ -33,7 +33,6 @@ import java.util.Collections;
 import server.life.MapleMonster;
 import server.life.MobSkill;
 import server.movement.LifeMovementFragment;
-import tools.data.output.LittleEndianWriter;
 import tools.data.output.MaplePacketLittleEndianWriter;
 
 public class MobPacket {
@@ -150,7 +149,7 @@ public class MobPacket {
         mplew.write(6);
         mplew.write(5);
 
-	//colour legend: (applies to both colours)
+    //colour legend: (applies to both colours)
         //1 = red, 2 = dark blue, 3 = light green, 4 = dark green, 5 = black, 6 = light blue, 7 = purple
         return mplew.getPacket();
     }
@@ -167,6 +166,7 @@ public class MobPacket {
         mplew.write(skill2);
         mplew.write(skill3);
         mplew.write(skill4);
+        // 以下三行是逆向出來的線路格式筆記：其他版本在座標前後另有欄位，v113 都不送。
 //        mplew.writeZeroBytes(8); //o.o?
         mplew.writePos(startPos);
 //        mplew.writeShort(8); //? sometimes 0? sometimes 22? sometimes random numbers?
@@ -475,6 +475,29 @@ public class MobPacket {
 
         mplew.writeShort(SendPacketOpcode.REMOVE_TALK_MONSTER.getValue());
         mplew.writeInt(oid);
+        return mplew.getPacket();
+    }
+
+    // ----- E5：以下由 tools.MaplePacketCreator 搬入 -----
+
+    public static MaplePacket showMagnet(int mobid, byte success) { // Monster Magnet
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.SHOW_MAGNET.getValue());
+        mplew.writeInt(mobid);
+        mplew.write(success);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket catchMonster(int mobid, int itemid, byte success) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.CATCH_MONSTER.getValue());
+        mplew.writeInt(mobid);
+        mplew.writeInt(itemid);
+        mplew.write(success);
+
         return mplew.getPacket();
     }
 }

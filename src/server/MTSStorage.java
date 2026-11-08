@@ -21,7 +21,7 @@
  */
 package server;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.IItem;
 import client.inventory.ItemLoader;
 import client.inventory.MapleInventoryType;
@@ -46,7 +46,8 @@ import tools.packet.MTSCSPacket;
 public class MTSStorage {
     //stores all carts all mts items, updates every hour
 
-    private static final long serialVersionUID = 231541893513228L;
+    private static final System.Logger LOG = System.getLogger(MTSStorage.class.getName());
+
     private long lastUpdate = System.currentTimeMillis();
     private final Map<Integer, MTSCart> idToCart;
     private final AtomicInteger packageId;
@@ -59,9 +60,9 @@ public class MTSStorage {
     //mts_items is id/packageid, tab(byte), price, characterid, seller, expiration
 
     public MTSStorage() {
-        System.out.println("Loading MTSStorage :::");
-        idToCart = new LinkedHashMap<Integer, MTSCart>();
-        buyNow = new LinkedHashMap<Integer, MTSItemInfo>();
+        LOG.log(System.Logger.Level.INFO, "Loading MTSStorage :::");
+        idToCart = new LinkedHashMap<>();
+        buyNow = new LinkedHashMap<>();
         packageId = new AtomicInteger(1);
         mutex = new ReentrantReadWriteLock();
         cart_mutex = new ReentrantReadWriteLock();
@@ -145,10 +146,9 @@ public class MTSStorage {
         int lastPackage = 0;
         int cId;
         Map<Integer, Pair<IItem, MapleInventoryType>> items;
-        final Connection con = DatabaseConnection.getConnection();
-        try {
-            final PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE tab = 1");
-            final ResultSet rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE tab = 1");
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 lastPackage = rs.getInt("id");
                 cId = rs.getInt("characterid");
@@ -162,10 +162,10 @@ public class MTSStorage {
                     }
                 }
             }
-            rs.close();
-            ps.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the load stops where it failed, so the auctions after that
+            // row are missing and packageId is set from a short read.
+            LOG.log(System.Logger.Level.ERROR, "Error loading the MTS auctions", e);
         }
         packageId.set(lastPackage);
     }
@@ -176,62 +176,64 @@ public class MTSStorage {
         }
         this.end = isShutDown;
         if (isShutDown) {
-            System.out.println("Saving MTS...");
+            LOG.log(System.Logger.Level.INFO, "Saving MTS...");
         }
-        final Map<Integer, ArrayList<IItem>> expire = new HashMap<Integer, ArrayList<IItem>>();
-        final List<Integer> toRemove = new ArrayList<Integer>();
+        final Map<Integer, ArrayList<IItem>> expire = new HashMap<>();
+        final List<Integer> toRemove = new ArrayList<>();
         final long now = System.currentTimeMillis();
-        final Map<Integer, ArrayList<Pair<IItem, MapleInventoryType>>> items = new HashMap<Integer, ArrayList<Pair<IItem, MapleInventoryType>>>();
-        final Connection con = DatabaseConnection.getConnection();
+        final Map<Integer, ArrayList<Pair<IItem, MapleInventoryType>>> items = new HashMap<>();
         mutex.writeLock().lock(); //lock wL so rL will also be locked
-        try {
-            PreparedStatement ps = con.prepareStatement("DELETE FROM mts_items WHERE tab = 1");
-            ps.execute();
-            ps.close();
-            ps = con.prepareStatement("INSERT INTO mts_items VALUES (?, ?, ?, ?, ?, ?)");
-            for (MTSItemInfo m : buyNow.values()) {
-                if (now > m.getEndingDate()) {
-                    if (!expire.containsKey(m.getCharacterId())) {
-                        expire.put(m.getCharacterId(), new ArrayList<IItem>());
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM mts_items WHERE tab = 1")) {
+                ps.execute();
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO mts_items VALUES (?, ?, ?, ?, ?, ?)")) {
+                for (MTSItemInfo m : buyNow.values()) {
+                    if (now > m.getEndingDate()) {
+                        if (!expire.containsKey(m.getCharacterId())) {
+                            expire.put(m.getCharacterId(), new ArrayList<>());
+                        }
+                        expire.get(m.getCharacterId()).add(m.getItem());
+                        toRemove.add(m.getId());
+                        items.put(m.getId(), null); //destroy from the mtsitems.
+                    } else {
+                        ps.setInt(1, m.getId());
+                        ps.setByte(2, (byte) 1);
+                        ps.setInt(3, m.getPrice());
+                        ps.setInt(4, m.getCharacterId());
+                        ps.setString(5, m.getSeller());
+                        ps.setLong(6, m.getEndingDate());
+                        ps.executeUpdate();
+                        if (!items.containsKey(m.getId())) {
+                            items.put(m.getId(), new ArrayList<>());
+                        }
+                        items.get(m.getId()).add(new Pair<>(m.getItem(), ItemConstants.getInventoryType(m.getItem().getItemId())));
                     }
-                    expire.get(m.getCharacterId()).add(m.getItem());
-                    toRemove.add(m.getId());
-                    items.put(m.getId(), null); //destroy from the mtsitems.
-                } else {
-                    ps.setInt(1, m.getId());
-                    ps.setByte(2, (byte) 1);
-                    ps.setInt(3, m.getPrice());
-                    ps.setInt(4, m.getCharacterId());
-                    ps.setString(5, m.getSeller());
-                    ps.setLong(6, m.getEndingDate());
-                    ps.executeUpdate();
-                    if (!items.containsKey(m.getId())) {
-                        items.put(m.getId(), new ArrayList<Pair<IItem, MapleInventoryType>>());
-                    }
-                    items.get(m.getId()).add(new Pair<IItem, MapleInventoryType>(m.getItem(), GameConstants.getInventoryType(m.getItem().getItemId())));
+                }
+                for (int i : toRemove) {
+                    buyNow.remove(i);
                 }
             }
-            for (int i : toRemove) {
-                buyNow.remove(i);
-            }
-            ps.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: mts_items was emptied first, so a failure here loses the
+            // auctions that had not been re-inserted yet.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the MTS auctions", e);
         } finally {
             mutex.writeLock().unlock();
         }
         if (isShutDown) {
-            System.out.println("Saving MTS items...");
+            LOG.log(System.Logger.Level.INFO, "Saving MTS items...");
         }
         try {
             for (Entry<Integer, ArrayList<Pair<IItem, MapleInventoryType>>> ite : items.entrySet()) {
                 ItemLoader.MTS.saveItems(ite.getValue(), ite.getKey());
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: the items behind the remaining auctions were not written.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the MTS auction items", e);
         }
         if (isShutDown) {
-            System.out.println("Saving MTS carts...");
+            LOG.log(System.Logger.Level.INFO, "Saving MTS carts...");
         }
         cart_mutex.writeLock().lock();
         try {
@@ -248,7 +250,9 @@ public class MTSStorage {
                 c.getValue().save();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            // ERROR: the carts after the failure keep neither their expired
+            // items back nor their removals.
+            LOG.log(System.Logger.Level.ERROR, "Error saving the MTS carts", e);
         } finally {
             cart_mutex.writeLock().unlock();
         }
@@ -275,7 +279,9 @@ public class MTSStorage {
                 ret = new MTSCart(characterId);
                 idToCart.put(characterId, ret);
             } catch (SQLException e) {
-                e.printStackTrace();
+                // ERROR: the cart could not be read, so getCart hands back one
+                // that does not hold what the player actually has on the MTS.
+                LOG.log(System.Logger.Level.ERROR, "Error creating the MTS cart of character " + characterId, e);
             } finally {
                 cart_mutex.writeLock().unlock();
             }
@@ -291,7 +297,7 @@ public class MTSStorage {
             } else if (cart.getTab() == 4) {
                 return MTSCSPacket.sendMTS(getCartItems(cart), cart.getTab(), cart.getType(), cart.getPage(), 0);
             } else {
-                return MTSCSPacket.sendMTS(new ArrayList<MTSItemInfo>(), cart.getTab(), cart.getType(), cart.getPage(), 0);
+                return MTSCSPacket.sendMTS(new ArrayList<>(), cart.getTab(), cart.getType(), cart.getPage(), 0);
             }
         } finally {
             mutex.readLock().unlock();
@@ -301,9 +307,9 @@ public class MTSStorage {
     public final MaplePacket getCurrentNotYetSold(final MTSCart cart) {
         mutex.readLock().lock();
         try {
-            final List<MTSItemInfo> nys = new ArrayList<MTSItemInfo>();
+            final List<MTSItemInfo> nys = new ArrayList<>();
             MTSItemInfo r;
-            final List<Integer> nyss = new ArrayList<Integer>(cart.getNotYetSold());
+            final List<Integer> nyss = new ArrayList<>(cart.getNotYetSold());
             for (int i : nyss) {
                 r = buyNow.get(i);
                 if (r == null) {
@@ -325,8 +331,8 @@ public class MTSStorage {
     private final List<MTSItemInfo> getBuyNow(final int type, int page) {
         //page * 16 = FIRST item thats displayed
         final int size = buyNow.size() / 16 + (buyNow.size() % 16 > 0 ? 1 : 0);
-        final List<MTSItemInfo> ret = new ArrayList<MTSItemInfo>();
-        final List<MTSItemInfo> rett = new ArrayList<MTSItemInfo>(buyNow.values());
+        final List<MTSItemInfo> ret = new ArrayList<>();
+        final List<MTSItemInfo> rett = new ArrayList<>(buyNow.values());
         if (page > size) {
             page = 0;
         }
@@ -334,7 +340,7 @@ public class MTSStorage {
         for (int i = page * 16; i < page * 16 + 16; i++) {
             if (buyNow.size() >= i + 1) {
                 r = rett.get(i); //by index
-                if (r != null && (type == 0 || GameConstants.getInventoryType(r.getItem().getItemId()).getType() == type)) {
+                if (r != null && (type == 0 || ItemConstants.getInventoryType(r.getItem().getItemId()).getType() == type)) {
                     ret.add(r);
                 }
             } else {
@@ -345,14 +351,14 @@ public class MTSStorage {
     }
 
     private final List<MTSItemInfo> getCartItems(final MTSCart cart) {
-        final List<MTSItemInfo> ret = new ArrayList<MTSItemInfo>();
+        final List<MTSItemInfo> ret = new ArrayList<>();
         MTSItemInfo r;
-        final List<Integer> cartt = new ArrayList<Integer>(cart.getCart());
+        final List<Integer> cartt = new ArrayList<>(cart.getCart());
         for (int i : cartt) { //by packageid
             r = buyNow.get(i);
             if (r == null) {
                 cart.removeFromCart(i);
-            } else if (cart.getType() == 0 || GameConstants.getInventoryType(r.getItem().getItemId()).getType() == cart.getType()) {
+            } else if (cart.getType() == 0 || ItemConstants.getInventoryType(r.getItem().getItemId()).getType() == cart.getType()) {
                 ret.add(r);
             }
         }
@@ -390,7 +396,7 @@ public class MTSStorage {
         }
 
         public int getTaxes() {
-            return ServerConstants.MTS_BASE + (int) (price * ServerConstants.MTS_TAX / 100);
+            return ServerConstants.MTS_BASE + (price * ServerConstants.MTS_TAX / 100);
         }
 
         public int getId() {

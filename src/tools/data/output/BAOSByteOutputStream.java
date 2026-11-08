@@ -1,6 +1,6 @@
 /*
  This file is part of the OdinMS Maple Story Server
- Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
+ Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc>
  Matthias Butz <matze@odinms.de>
  Jan Christian Meyer <vimes@odinms.de>
 
@@ -23,34 +23,36 @@ package tools.data.output;
 import java.io.ByteArrayOutputStream;
 
 /**
- * Uses a byte array to output a stream of bytes.
+ * The growing byte[] a packet is built into.
+ *
+ * <p>This was the only implementation {@code ByteOutputStream} ever had: an
+ * interface whose whole contract was "take one byte", wrapped around a
+ * {@link ByteArrayOutputStream} that already does exactly that.
+ * {@link GenericLittleEndianWriter} now holds the stream itself, so what is
+ * left is the handle the round-trip test names.
+ *
+ * <p>The backing store stays a {@code ByteArrayOutputStream} on purpose: it
+ * grows. A packet has no size known up front - the character list and the cash
+ * shop catalogue run to tens of kilobytes - so a fixed-capacity buffer would
+ * fail on exactly the packets that matter most.
  *
  * @author Frz
  * @version 1.0
  * @since Revision 352
  */
-public class BAOSByteOutputStream implements ByteOutputStream {
-
-    private ByteArrayOutputStream baos;
+public final class BAOSByteOutputStream {
 
     /**
-     * Class constructor - Wraps the stream around a Java BAOS.
+     * Read directly by the writers in this package.
+     */
+    final ByteArrayOutputStream baos;
+
+    /**
+     * Class constructor - wraps the stream around a Java BAOS.
      *
-     * @param baos <code>The ByteArrayOutputStream</code> to wrap this around.
+     * @param baos The <code>ByteArrayOutputStream</code> to wrap this around.
      */
     public BAOSByteOutputStream(final ByteArrayOutputStream baos) {
-        super();
         this.baos = baos;
-    }
-
-    /**
-     * Writes a byte to the stream.
-     *
-     * @param b The byte to write to the stream.
-     * @see net.sf.odinms.tools.data.output.ByteOutputStream#writeByte(byte)
-     */
-    @Override
-    public void writeByte(final byte b) {
-        baos.write(b);
     }
 }

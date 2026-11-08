@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
-import java.util.SimpleTimeZone;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
@@ -33,7 +31,8 @@ import java.util.Map.Entry;
 import client.inventory.IEquip;
 import client.inventory.Item;
 import client.ISkill;
-import constants.GameConstants;
+import constants.ItemConstants;
+import constants.JobConstants;
 import client.inventory.MapleRing;
 import client.inventory.MaplePet;
 import client.MapleCharacter;
@@ -48,7 +47,6 @@ import server.movement.LifeMovementFragment;
 import server.shops.AbstractPlayerStore;
 import server.shops.IMaplePlayerShop;
 import tools.KoreanDateUtil;
-import tools.data.output.LittleEndianWriter;
 import tools.data.output.MaplePacketLittleEndianWriter;
 
 public class PacketHelper {
@@ -74,8 +72,14 @@ public class PacketHelper {
         return ((time * 10000000) + FT_UT_OFFSET);
     }
 
+    /**
+     * Unreferenced twin of {@link KoreanDateUtil#getFileTimestamp}, kept only
+     * because it is public; note the different {@link #FT_UT_OFFSET}, four hours
+     * off the real 1601 epoch. The DST test is
+     * {@link KoreanDateUtil#isDST()}'s, so the two cannot drift apart.
+     */
     public static long getFileTimestamp(long timeStampinMillis, boolean roundToMinutes) {
-        if (SimpleTimeZone.getDefault().inDaylightTime(new Date())) {
+        if (KoreanDateUtil.isDST()) {
             timeStampinMillis -= 3600000L;
         }
         long time;
@@ -113,6 +117,7 @@ public class PacketHelper {
         for (final Entry<ISkill, SkillEntry> skill : skills.entrySet()) {
             mplew.writeInt(skill.getKey().getId());
             mplew.writeInt(skill.getValue().skillevel);
+            // 逆向出來的線路格式筆記：其他版本在此還送技能到期時間，v113 沒有。
 //            addExpirationTime(mplew, skill.getValue().expiration);
 
             if (skill.getKey().isFourthJob()) {
@@ -150,7 +155,7 @@ public class PacketHelper {
 
     public static final void addRingInfo(final MaplePacketLittleEndianWriter mplew, final MapleCharacter chr) {
         mplew.writeShort(0);
-	//01 00 = size
+    //01 00 = size
         //01 00 00 00 = gametype?
         //03 00 00 00 = win
         //00 00 00 00 = tie/loss
@@ -193,7 +198,7 @@ public class PacketHelper {
         mplew.write(unk2);
         MapleInventory iv = chr.getInventory(MapleInventoryType.EQUIPPED);
         Collection<IItem> equippedC = iv.list();
-        List<Item> equipped = new ArrayList<Item>(equippedC.size());
+        List<Item> equipped = new ArrayList<>(equippedC.size());
 
         for (IItem item : equippedC) {
             equipped.add((Item) item);
@@ -259,7 +264,7 @@ public class PacketHelper {
         mplew.writeShort(chr.getJob()); // job
         chr.getStat().connectData(mplew);
         mplew.writeShort(chr.getRemainingAp()); // remaining ap
-        if (GameConstants.isEvan(chr.getJob()) || GameConstants.isResist(chr.getJob())) {
+        if (JobConstants.isEvan(chr.getJob()) || JobConstants.isResist(chr.getJob())) {
             final int size = chr.getRemainingSpSize();
             mplew.write(size);
             for (int i = 0; i < chr.getRemainingSps().length; i++) {
@@ -288,8 +293,8 @@ public class PacketHelper {
         mplew.write(mega ? 0 : 1);
         mplew.writeInt(chr.getHair());
 
-        final Map<Byte, Integer> myEquip = new LinkedHashMap<Byte, Integer>();
-        final Map<Byte, Integer> maskedEquip = new LinkedHashMap<Byte, Integer>();
+        final Map<Byte, Integer> myEquip = new LinkedHashMap<>();
+        final Map<Byte, Integer> maskedEquip = new LinkedHashMap<>();
         MapleInventory equip = chr.getInventory(MapleInventoryType.EQUIPPED);
 
         for (final IItem item : equip.list()) {
@@ -399,8 +404,8 @@ public class PacketHelper {
                 mplew.writeShort(equip.getExpPercentage() * 4); // Item Exp... 98% = 25%
 
                 if (!hasUniqueId) {
-					mplew.writeLong(item.getUniqueId());
-				}
+                    mplew.writeLong(item.getUniqueId());
+                }
                 mplew.writeLong(getTime(-2));
                 mplew.writeInt(-1);
             } else {
@@ -408,7 +413,7 @@ public class PacketHelper {
                 mplew.writeMapleAsciiString(item.getOwner());
                 mplew.writeShort(item.getFlag());
 
-                if (GameConstants.isThrowingStar(item.getItemId()) || GameConstants.isBullet(item.getItemId())) {
+                if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
                     mplew.writeInt(2);
                     mplew.writeShort(0x54);
                     mplew.write(0);
@@ -468,7 +473,7 @@ public class PacketHelper {
         addRingInfo(mplew, chr);
         addRocksInfo(mplew, chr);
         addMonsterBookInfo(mplew, chr);
-        chr.QuestInfoPacket(mplew); // for every questinfo: int16_t questid, string questdata
+        chr.questInfoPacket(mplew); // for every questinfo: int16_t questid, string questdata
         mplew.writeInt(0); // PQ rank
         mplew.writeShort(0);
     }

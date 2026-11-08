@@ -26,9 +26,12 @@ import client.MapleCharacter;
 import client.MapleClient;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import tools.MaplePacketCreator;
+import tools.packet.MapPacket;
 
-public class MapleMapItem extends AbstractMapleMapObject {
+// final (-Xlint:this-escape): all four constructors set the position through
+// the inherited, overridable setPosition before the drop is finished. Nothing
+// extends MapleMapItem.
+public final class MapleMapItem extends AbstractMapleMapObject {
 
     protected IItem item;
     protected MapleMapObject dropper;
@@ -139,13 +142,13 @@ public class MapleMapItem extends AbstractMapleMapObject {
     @Override
     public void sendSpawnData(final MapleClient client) {
         if (questid <= 0 || client.getPlayer().getQuestStatus(questid) == 1) {
-            client.getSession().write(MaplePacketCreator.dropItemFromMapObject(this, null, getPosition(), (byte) 2));
+            client.send(MapPacket.dropItemFromMapObject(this, null, getPosition(), (byte) 2));
         }
     }
 
     @Override
     public void sendDestroyData(final MapleClient client) {
-        client.getSession().write(MaplePacketCreator.removeItemFromMap(getObjectId(), 1, 0));
+        client.send(MapPacket.removeItemFromMap(getObjectId(), 1, 0));
     }
 
     public Lock getLock() {
@@ -170,7 +173,7 @@ public class MapleMapItem extends AbstractMapleMapObject {
 
     public void expire(final MapleMap map) {
         pickedUp = true;
-        map.broadcastMessage(MaplePacketCreator.removeItemFromMap(getObjectId(), 0, 0));
+        map.broadcastMessage(MapPacket.removeItemFromMap(getObjectId(), 0, 0));
         map.removeMapObject(this);
         if (randDrop) {
             map.spawnRandDrop();

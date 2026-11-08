@@ -35,7 +35,15 @@ import server.shops.MaplePlayerShop;
 import server.shops.MaplePlayerShopItem;
 import tools.Pair;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import constants.ItemConstants;
+import client.inventory.MapleInventoryType;
+import handling.channel.handler.InventoryHandler;
 
+/**
+ * 本檔案中八處被註解掉的 {@code mplew.writeShort(....getJob())} 都是逆向出來的線路格式筆記，
+ * 刻意保留：其他版本在角色名字後還送一個職業欄位，v113 沒有。取消註解會讓封包多 2 bytes
+ * 而導致客戶端解析錯位。
+ */
 public class PlayerShopPacket {
 
     public static final MaplePacket addCharBox(final MapleCharacter c, final int type) {
@@ -259,7 +267,7 @@ public class PlayerShopPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket Merchant_Buy_Error(final byte message) {
+    public static final MaplePacket merchant_Buy_Error(final byte message) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         // 2 = You have not enough meso
@@ -523,7 +531,7 @@ public class PlayerShopPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket MerchantVisitorView(List<String> visitor) {
+    public static final MaplePacket merchantVisitorView(List<String> visitor) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
@@ -536,7 +544,7 @@ public class PlayerShopPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket MerchantBlackListView(final List<String> blackList) {
+    public static final MaplePacket merchantBlackListView(final List<String> blackList) {
         final MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
@@ -573,5 +581,82 @@ public class PlayerShopPacket {
 
         return mplew.getPacket();
     }
-	
+
+    // ----- E5：以下由 tools.MaplePacketCreator 搬入 -----
+
+    public static MaplePacket getPlayerShopNewVisitor(MapleCharacter c, int slot) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
+        mplew.write(4);
+        mplew.write(slot);
+        PacketHelper.addCharLook(mplew, c, false);
+        mplew.writeMapleAsciiString(c.getName());
+//        mplew.writeShort(c.getJob());
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket getPlayerShopRemoveVisitor(int slot,int status2) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.PLAYER_INTERACTION.getValue());
+        mplew.write(0x0A);
+        mplew.write(slot);
+        mplew.write(status2);
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket getOwlOpen() { //best items! hardcoded
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+        mplew.writeShort(SendPacketOpcode.OWL_OF_MINERVA.getValue());
+        mplew.write(7);
+        mplew.write(ItemConstants.owlItems.length);
+        for (int i : ItemConstants.owlItems) {
+            mplew.writeInt(i);
+        } //these are the most searched items. too lazy to actually make
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket getOwlSearched(final int itemSearch, final List<HiredMerchant> hms) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+        mplew.writeShort(SendPacketOpcode.OWL_OF_MINERVA.getValue());
+        mplew.write(6);
+        mplew.writeInt(0);
+        mplew.writeInt(itemSearch);
+        int size = 0;
+
+        for (HiredMerchant hm : hms) {
+            size += hm.searchItem(itemSearch).size();
+        }
+        mplew.writeInt(size);
+        for (HiredMerchant hm : hms) {
+            final List<MaplePlayerShopItem> items = hm.searchItem(itemSearch);
+            for (MaplePlayerShopItem item : items) {
+                mplew.writeMapleAsciiString(hm.getOwnerName());
+                mplew.writeInt(hm.getMap().getId());
+                mplew.writeMapleAsciiString(hm.getDescription());
+                mplew.writeInt(item.item.getQuantity()); //I THINK.
+                mplew.writeInt(item.bundles); //I THINK.
+                mplew.writeInt(item.price);
+                switch (InventoryHandler.OWL_ID) {
+                    case 0:
+                        mplew.writeInt(hm.getOwnerId()); //store ID
+                        break;
+                    case 1:
+                        mplew.writeInt(hm.getStoreId());
+                        break;
+                    default:
+                        mplew.writeInt(hm.getObjectId());
+                        break;
+                }
+                mplew.write(hm.getFreeSlot() == -1 ? 1 : 0);
+                mplew.write(ItemConstants.getInventoryType(itemSearch).getType()); //position?
+                if (ItemConstants.getInventoryType(itemSearch) == MapleInventoryType.EQUIP) {
+                    PacketHelper.addItemInfo(mplew, item.item, true, true);
+                }
+            }
+        }
+        return mplew.getPacket();
+    }
 }

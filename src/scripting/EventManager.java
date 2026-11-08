@@ -23,7 +23,6 @@ package scripting;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.WeakHashMap;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ScheduledFuture;
 import javax.script.Invocable;
@@ -39,11 +38,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import server.MapleSquad;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.events.MapleEvent;
 import server.events.MapleEventType;
 import server.life.MapleMonster;
@@ -53,15 +50,18 @@ import server.maps.MapleMap;
 import server.maps.MapleMapObject;
 import server.maps.MapleMapFactory;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
 import database.DatabaseConnection;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public class EventManager {
+
+    private static final System.Logger LOG = System.getLogger(EventManager.class.getName());
 
     private static int[] eventChannel = new int[2];
     private Invocable iv;
     private int channel;
-    private Map<String, EventInstanceManager> instances = new WeakHashMap<String, EventInstanceManager>();
+    private Map<String, EventInstanceManager> instances = new WeakHashMap<>();
     private Properties props = new Properties();
     private String name;
 
@@ -75,50 +75,41 @@ public class EventManager {
         try {
             iv.invokeFunction("cancelSchedule", (Object) null);
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : cancelSchedule:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : cancelSchedule:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : cancelSchedule:\n" + ex);
         }
     }
 
     public ScheduledFuture<?> schedule(final String methodName, long delay) {
-        return EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                try {
-                    iv.invokeFunction(methodName, (Object) null);
-                } catch (Exception ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                }
+        return Timer.EVENT.schedule(() -> {
+            try {
+                iv.invokeFunction(methodName, (Object) null);
+            } catch (Exception ex) {
+                LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
             }
         }, delay);
     }
 
     public ScheduledFuture<?> schedule(final String methodName, long delay, final EventInstanceManager eim) {
-        return EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                try {
-                    iv.invokeFunction(methodName, eim);
-                } catch (Exception ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                    FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                }
+        return Timer.EVENT.schedule(() -> {
+            try {
+                iv.invokeFunction(methodName, eim);
+            } catch (Exception ex) {
+                LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
+                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
             }
         }, delay);
     }
 
     public ScheduledFuture<?> scheduleAtTimestamp(final String methodName, long timestamp) {
-        return EventTimer.getInstance().scheduleAtTimestamp(new Runnable() {
-
-            public void run() {
-                try {
-                    iv.invokeFunction(methodName, (Object) null);
-                } catch (ScriptException ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                } catch (NoSuchMethodException ex) {
-                    System.out.println("Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
-                }
+        return Timer.EVENT.scheduleAtTimestamp(() -> {
+            try {
+                iv.invokeFunction(methodName, (Object) null);
+            } catch (ScriptException ex) {
+                LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
+            } catch (NoSuchMethodException ex) {
+                LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : " + methodName + ":\n" + ex);
             }
         }, timestamp);
     }
@@ -185,7 +176,7 @@ public class EventManager {
         try {
             iv.invokeFunction("setup", (Object) null);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup", ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup:\n" + ex);
         }
     }
@@ -195,7 +186,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) iv.invokeFunction("setup", (Object) mapid);
             eim.registerCarnivalParty(chr, chr.getMap(), (byte) 0);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup", ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup:\n" + ex);
         }
     }
@@ -205,7 +196,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) iv.invokeFunction("setup", (Object) mapid);
             eim.registerParty(chr.getParty(), chr.getMap());
         } catch (Exception ex) {
-            ex.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup", ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup:\n" + ex);
         }
     }
@@ -219,7 +210,7 @@ public class EventManager {
             eim.setProperty("guildid", String.valueOf(character.getGuildId()));
             setProperty("guildid", String.valueOf(character.getGuildId()));
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-Guild:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-Guild:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-Guild:\n" + ex);
         }
     }
@@ -229,7 +220,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) (iv.invokeFunction("setup", character.getId()));
             eim.registerPlayer(character);
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-CharID:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-CharID:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-CharID:\n" + ex);
         }
     }
@@ -239,7 +230,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) (iv.invokeFunction("setup", (Object) null));
             eim.registerPlayer(character);
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-character:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-character:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-character:\n" + ex);
         }
     }
@@ -250,7 +241,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) (iv.invokeFunction("setup", party.getId()));
             eim.registerParty(party, map);
         } catch (ScriptException ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-partyid:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-partyid:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-partyid:\n" + ex);
         } catch (Exception ex) {
             //ignore
@@ -267,7 +258,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) (iv.invokeFunction("setup", (Object) null));
             eim.registerParty(party, map);
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-party:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-party:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-party:\n" + ex + "\n" + (old == null ? "no old exception" : old));
         }
     }
@@ -278,7 +269,7 @@ public class EventManager {
             iv.invokeFunction("setup", eim);
             eim.setProperty("leader", leader);
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-leader:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-leader:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-leader:\n" + ex);
         }
     }
@@ -305,7 +296,7 @@ public class EventManager {
             EventInstanceManager eim = (EventInstanceManager) (iv.invokeFunction("setup", squad.getLeaderName()));
             eim.registerSquad(squad, map, questID);
         } catch (Exception ex) {
-            System.out.println("Event name : " + name + ", method Name : setup-squad:\n" + ex);
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : setup-squad:\n" + ex);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Event name : " + name + ", method Name : setup-squad:\n" + ex);
         }
     }
@@ -322,21 +313,20 @@ public class EventManager {
     }
     
         public int online() {
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps;
-        ResultSet re;
         int count = 0;
-        try {
-            ps = con.prepareStatement("SELECT count(*) as cc FROM accounts WHERE loggedin = 2");
-            re = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT count(*) as cc FROM accounts WHERE loggedin = 2");
+             ResultSet re = ps.executeQuery()) {
             while (re.next()) {
                 count = re.getInt("cc");
             }
         } catch (SQLException ex) {
-            Logger.getLogger(EventInstanceManager.class.getName()).log(Level.SEVERE, null, ex);
+            // Was java.util.logging directly, and under EventInstanceManager's
+            // name at that - this class's own logger now, like everywhere else.
+            LOG.log(System.Logger.Level.ERROR, "Event name : " + name + ", method Name : online", ex);
         }
         return count;
-    }    
+    }
 
     public MapleMapFactory getMapFactory() {
         return getChannelServer().getMapFactory();
@@ -347,7 +337,7 @@ public class EventManager {
     }
 
     public List<MapleCharacter> newCharList() {
-        return new ArrayList<MapleCharacter>();
+        return new ArrayList<>();
     }
 
     public MapleMonster getMonster(final int id) {
@@ -355,20 +345,20 @@ public class EventManager {
     }
 
     public void broadcastShip(final int mapid, final int effect) {
-        getMapFactory().getMap(mapid).broadcastMessage(MaplePacketCreator.boatEffect(effect));
+        getMapFactory().getMap(mapid).broadcastMessage(MapPacket.boatEffect(effect));
     }
 
     public void broadcastChangeMusic(final int mapid) {
-        getMapFactory().getMap(mapid).broadcastMessage(MaplePacketCreator.musicChange("Bgm04/ArabPirate"));
+        getMapFactory().getMap(mapid).broadcastMessage(MapPacket.musicChange("Bgm04/ArabPirate"));
     }
 
     public void broadcastYellowMsg(final String msg) {
-        getChannelServer().broadcastPacket(MaplePacketCreator.yellowChat(msg));
+        getChannelServer().broadcastPacket(ChatPacket.yellowChat(msg));
     }
 
     public void broadcastServerMsg(final int type, final String msg, final boolean weather) {
         if (!weather) {
-            getChannelServer().broadcastPacket(MaplePacketCreator.serverNotice(type, msg));
+            getChannelServer().broadcastPacket(ChatPacket.serverNotice(type, msg));
         } else {
             for (MapleMap load : getMapFactory().getAllMaps()) {
                 if (load.getCharactersSize() > 0) {
@@ -405,12 +395,9 @@ public class EventManager {
             broadcastYellowMsg(msg);
             return false;
         }
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                if (cs.getEvent() >= 0) {
-                    MapleEvent.setEvent(cs, true);
-                }
+        Timer.EVENT.schedule(() -> {
+            if (cs.getEvent() >= 0) {
+                MapleEvent.setEvent(cs, true);
             }
         }, 600000);
         return true;

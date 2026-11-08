@@ -32,6 +32,7 @@
 **/
 
 importPackage(Packages.tools);
+importPackage(Packages.tools.packet);
 importPackage(java.awt);
 
 var status = 0;
@@ -221,9 +222,9 @@ function action(mode, type, selection) {
 function clear(stage, eim, cm) {
     eim.setProperty(stage + "stageclear", "true");
     var map = eim.getMapInstance(cm.getPlayer().getMapId());
-    map.broadcastMessage(MaplePacketCreator.showEffect("quest/party/clear"));
-    map.broadcastMessage(MaplePacketCreator.playSound("Party1/Clear"));
-    map.broadcastMessage(MaplePacketCreator.environmentChange("gate", 2));
+    map.broadcastMessage(MapPacket.showEffect("quest/party/clear"));
+    map.broadcastMessage(MapPacket.playSound("Party1/Clear"));
+    map.broadcastMessage(MapPacket.environmentChange("gate", 2));
     var mf = eim.getMapFactory();
     map = mf.getMap(103000800 + stage);
     var nextStage = eim.getMapInstance(103000800 + stage);
@@ -235,8 +236,8 @@ function clear(stage, eim, cm) {
 
 function failstage(eim, cm) {
     var map = eim.getMapInstance(cm.getPlayer().getMapId());
-    map.broadcastMessage(MaplePacketCreator.playSound("Party1/Failed"));
-    map.broadcastMessage(MaplePacketCreator.showEffect("quest/party/wrong_kor"));
+    map.broadcastMessage(MapPacket.playSound("Party1/Failed"));
+    map.broadcastMessage(MapPacket.showEffect("quest/party/wrong_kor"));
 }
 
 function rectanglestages (cm) {

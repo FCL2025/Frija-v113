@@ -23,8 +23,13 @@ package client.messages;
 import java.util.ArrayList;
 import client.MapleCharacter;
 import client.MapleClient;
-import client.messages.commands.*;
-import client.messages.commands.AdminCommand;
+import client.messages.commands.CommandExecute;
+import client.messages.commands.CommandObject;
+import client.messages.commands.AdminDebugCommands;
+import client.messages.commands.AdminItemCommands;
+import client.messages.commands.AdminMapCommands;
+import client.messages.commands.AdminPlayerCommands;
+import client.messages.commands.AdminServerCommands;
 import client.messages.commands.PlayerCommand;
 import client.messages.commands.GMCommand;
 import client.messages.commands.InternCommand;
@@ -32,6 +37,7 @@ import constants.ServerConstants.CommandType;
 import constants.ServerConstants.PlayerGMRank;
 import database.DatabaseConnection;
 import java.lang.reflect.Modifier;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collections;
@@ -40,24 +46,29 @@ import tools.FileoutputUtil;
 
 public class CommandProcessor {
 
-    private final static HashMap<String, CommandObject> commands = new HashMap<String, CommandObject>();
-    private final static HashMap<Integer, ArrayList<String>> commandList = new HashMap<Integer, ArrayList<String>>();
+    private static final System.Logger LOG = System.getLogger(CommandProcessor.class.getName());
+
+    private final static HashMap<String, CommandObject> commands = new HashMap<>();
+    private final static HashMap<Integer, ArrayList<String>> commandList = new HashMap<>();
 
     static {
 
         Class<?>[] CommandFiles = {
-            PlayerCommand.class, AdminCommand.class, GMCommand.class, InternCommand.class
+            PlayerCommand.class,
+            AdminItemCommands.class, AdminMapCommands.class, AdminPlayerCommands.class,
+            AdminServerCommands.class, AdminDebugCommands.class,
+            GMCommand.class, InternCommand.class
         };
 
         for (Class<?> clasz : CommandFiles) {
             try {
                 PlayerGMRank rankNeeded = (PlayerGMRank) clasz.getMethod("getPlayerLevelRequired", new Class<?>[]{}).invoke(null, (Object[]) null);
                 Class<?>[] a = clasz.getDeclaredClasses();
-                ArrayList<String> cL = new ArrayList<String>();
+                ArrayList<String> cL = new ArrayList<>();
                 for (Class<?> c : a) {
                     try {
                         if (!Modifier.isAbstract(c.getModifiers()) && !c.isSynthetic()) {
-                            Object o = c.newInstance();
+                            Object o = c.getDeclaredConstructor().newInstance();
                             boolean enabled;
                             try {
                                 enabled = c.getDeclaredField("enabled").getBoolean(c.getDeclaredField("enabled"));
@@ -70,14 +81,26 @@ public class CommandProcessor {
                             }
                         }
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        // ERROR: this one command class is skipped, so the
+                        // command word it would have registered does not exist.
+                        LOG.log(System.Logger.Level.ERROR, "指令註冊失敗，略過 " + c.getName(), ex);
                         FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
                     }
                 }
-                Collections.sort(cL);
-                commandList.put(rankNeeded.getLevel(), cL);
+                // 一個權限等級可以由多個檔案提供指令（ADMIN 就分成五個檔），所以這裡
+                // 必須把 cL 併進該等級既有的清單，不能整份覆寫：舊寫法會讓後面的檔案
+                // 蓋掉前面檔案已經登記好的指令名稱，commandList 只剩最後一個檔案的。
+                ArrayList<String> rankList = commandList.get(rankNeeded.getLevel());
+                if (rankList == null) {
+                    rankList = new ArrayList<>();
+                    commandList.put(rankNeeded.getLevel(), rankList);
+                }
+                rankList.addAll(cL);
+                Collections.sort(rankList);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                // ERROR: the whole command file is skipped - every command word
+                // it holds is missing for the rest of the run.
+                LOG.log(System.Logger.Level.ERROR, "指令檔載入失敗，略過 " + clasz.getName(), ex);
                 FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
             }
         }
@@ -134,7 +157,7 @@ public class CommandProcessor {
                         int ret = co.execute(c, splitted);
                         if (ret > 0 && c.getPlayer() != null) { //incase d/c after command or something
                             logGMCommandToDB(c.getPlayer(), line);
-                            System.out.println("[ " + c.getPlayer().getName() + " ] 使用了指令: " + line);
+                            LOG.log(System.Logger.Level.INFO, "[ " + c.getPlayer().getName() + " ] 使用了指令: " + line);
                         }
                     } else {
                         sendDisplayMessage(c, "你沒有權限可以使用指令.", type);
@@ -147,22 +170,20 @@ public class CommandProcessor {
     }
 
     private static void logGMCommandToDB(MapleCharacter player, String command) {
-        PreparedStatement ps = null;
-        try {
-            ps = DatabaseConnection.getConnection().prepareStatement("INSERT INTO gmlog (cid, command, mapid) VALUES (?, ?, ?)");
+        // The old finally block called ps.close() unconditionally, so a failure
+        // in prepareStatement itself threw a NullPointerException out of the
+        // finally and replaced the SQLException that caused it.
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("INSERT INTO gmlog (cid, command, mapid) VALUES (?, ?, ?)")) {
             ps.setInt(1, player.getId());
             ps.setString(2, command);
             ps.setInt(3, player.getMap().getId());
             ps.executeUpdate();
         } catch (SQLException ex) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, ex);
-            ex.printStackTrace();
-        } finally {
-            try {
-                ps.close();
-            } catch (SQLException e) {/*Err.. Fuck?*/
-
-            }
+            // ERROR: the gmlog row was not written, so this command's audit
+            // trail is gone. Kept after outputFileError, as it was.
+            LOG.log(System.Logger.Level.ERROR, "寫入 gmlog 失敗：" + command, ex);
         }
     }
 }

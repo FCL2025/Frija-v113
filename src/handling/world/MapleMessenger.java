@@ -20,15 +20,13 @@
  */
 package handling.world;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 
-public class MapleMessenger implements Serializable {
+public class MapleMessenger {
 
-    private static final long serialVersionUID = 9179541993413738569L;
-    private MapleMessengerCharacter[] members = new MapleMessengerCharacter[3];
-    private String[] silentLink = new String[3];
+    private final MapleMessengerCharacter[] members = new MapleMessengerCharacter[3];
+    private final String[] silentLink = new String[3];
     private int id;
 
     public MapleMessenger(int id, MapleMessengerCharacter chrfor) {
@@ -36,7 +34,9 @@ public class MapleMessenger implements Serializable {
         addMem(0, chrfor);
     }
 
-    public void addMem(int pos, MapleMessengerCharacter chrfor) {
+    // private: the constructor calls it, so it must not be overridable
+    // (-Xlint:this-escape). Only MapleMessenger itself ever used it.
+    private void addMem(int pos, MapleMessengerCharacter chrfor) {
         if (members[pos] != null) {
             return;
         }
@@ -141,6 +141,12 @@ public class MapleMessenger implements Serializable {
     }
 
     public Collection<MapleMessengerCharacter> getMembers() {
-        return Arrays.asList(members);
+        // Defensive copy of the backing array rather than a live Arrays.asList()
+        // view over it: World.Messenger's methods run entirely under its
+        // ReentrantReadWriteLock (readers included), so this copy is always taken
+        // under that lock and is therefore a consistent snapshot; without the copy,
+        // a caller iterating the live view could observe individual slots being
+        // reassigned mid-iteration by a concurrent mutator.
+        return Arrays.asList(Arrays.copyOf(members, members.length));
     }
 }

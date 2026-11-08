@@ -1,7 +1,7 @@
 package server;
 
-import java.io.FileReader;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,6 +15,10 @@ import java.io.InputStreamReader;
  * @author Emilyx3
  */
 public class ServerProperties {
+
+    // Declared before the static block below, which uses it: static fields and
+    // static initialisers run in the order they are written.
+    private static final System.Logger LOG = System.getLogger(ServerProperties.class.getName());
 
     private static final Properties props = new Properties();
 
@@ -33,19 +37,21 @@ public class ServerProperties {
                 props.load(fr);
                 fr.close();
             } catch (IOException ex) {
-                ex.printStackTrace();
+                // ERROR: this file is not read, so every tms.* key in it is
+                // missing and the server runs on defaults it never announced.
+                LOG.log(System.Logger.Level.ERROR, "Error reading " + s, ex);
             }
         }
-        try {
-            PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM auth_server_channel_ip");
-            ResultSet rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM auth_server_channel_ip");
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 props.put(rs.getString("name") + rs.getInt("channelid"), rs.getString("value"));
             }
-            rs.close();
-            ps.close();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: the line before System.exit(0), and for most startup
+            // failures the only thing printed at all.
+            LOG.log(System.Logger.Level.ERROR, "Error reading auth_server_channel_ip", ex);
             System.exit(0); //Big ass error.
         }
 

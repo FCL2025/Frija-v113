@@ -22,7 +22,6 @@ package handling;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
@@ -73,15 +72,8 @@ public class ExternalCodeTableGetter {
 
     public final static <T extends Enum<? extends WritableIntValueHolder> & WritableIntValueHolder> String getOpcodeTable(T[] enumeration) {
         StringBuilder enumVals = new StringBuilder();
-        List<T> all = new ArrayList<T>(); // need a mutable list plawks
-        all.addAll(Arrays.asList(enumeration));
-        Collections.sort(all, new Comparator<WritableIntValueHolder>() {
-
-            @Override
-            public int compare(WritableIntValueHolder o1, WritableIntValueHolder o2) {
-                return Short.valueOf(o1.getValue()).compareTo(o2.getValue());
-            }
-        });
+        List<T> all = new ArrayList<>(Arrays.asList(enumeration)); // need a mutable list plawks
+        all.sort(Comparator.comparingInt(WritableIntValueHolder::getValue));
         for (T code : all) {
             enumVals.append(code.name());
             enumVals.append(" = ");
@@ -99,9 +91,5 @@ public class ExternalCodeTableGetter {
         for (T code : values) {
             code.setValue(exc.getValue(code.name(), values, (short) -2));
         }
-
-//		if (log.isTraceEnabled()) { // generics - copy pasted between send and recv current?
-//			log.trace(getOpcodeTable(values));
-//		}
     }
 }

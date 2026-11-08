@@ -20,7 +20,7 @@
  */
 package server.life;
 
-import constants.GameConstants;
+import constants.MapConstants;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Map;
@@ -42,9 +42,8 @@ public class MobSkill {
     private int skillId, skillLevel, mpCon, spawnEffect, hp, x, y;
     private long duration, cooltime;
     private float prop;
-//    private short effect_delay;
     private short limit;
-    private List<Integer> toSummon = new ArrayList<Integer>();
+    private List<Integer> toSummon = new ArrayList<>();
     private Point lt, rb;
 
     public MobSkill(int skillId, int level) {
@@ -60,9 +59,6 @@ public class MobSkill {
         this.toSummon = toSummon;
     }
 
-    /*   public void setEffectDelay(short effect_delay) {
-     this.effect_delay = effect_delay;
-     }*/
     public void setSpawnEffect(int spawnEffect) {
         this.spawnEffect = spawnEffect;
     }
@@ -141,8 +137,8 @@ public class MobSkill {
 
     public void applyEffect(MapleCharacter player, MapleMonster monster, boolean skill) {
         MapleDisease disease = null;
-        Map<MonsterStatus, Integer> stats = new EnumMap<MonsterStatus, Integer>(MonsterStatus.class);
-        List<Integer> reflection = new LinkedList<Integer>();
+        Map<MonsterStatus, Integer> stats = new EnumMap<>(MonsterStatus.class);
+        List<Integer> reflection = new LinkedList<>();
 
         switch (skillId) {
             case 100:
@@ -270,7 +266,7 @@ public class MobSkill {
                 for (Integer mobId : getSummons()) {
                     MapleMonster toSpawn = null;
                     try {
-                        toSpawn = MapleLifeFactory.getMonster(GameConstants.getCustomSpawnID(monster.getId(), mobId));
+                        toSpawn = MapleLifeFactory.getMonster(MapConstants.getCustomSpawnID(monster.getId(), mobId));
                     } catch (RuntimeException e) { //monster doesn't exist
                         continue;
                     }
@@ -326,10 +322,10 @@ public class MobSkill {
 
         if (stats.size() > 0 && monster != null) {
             if (lt != null && rb != null && skill) {
-				int d = 0;
+                int d = 0;
                 for (MapleMapObject mons : getObjectsInRange(monster, MapleMapObjectType.MONSTER)) {
                     ((MapleMonster) mons).applyMonsterBuff(stats, getSkillId(), getDuration() + d, this, reflection);
-					d += 100;
+                    d += 100;
                 }
             } else {
                 monster.applyMonsterBuff(stats, getSkillId(), getDuration(), this, reflection);
@@ -365,9 +361,6 @@ public class MobSkill {
         return Collections.unmodifiableList(toSummon);
     }
 
-    /*    public short getEffectDelay() {
-     return effect_delay;
-     }*/
     public int getSpawnEffect() {
         return spawnEffect;
     }
@@ -423,14 +416,14 @@ public class MobSkill {
 
     private List<MapleCharacter> getPlayersInRange(MapleMonster monster, MapleCharacter player) {
         final Rectangle bounds = calculateBoundingBox(monster.getPosition(), monster.isFacingLeft());
-        List<MapleCharacter> players = new ArrayList<MapleCharacter>();
+        List<MapleCharacter> players = new ArrayList<>();
         players.add(player);
         return monster.getMap().getPlayersInRectAndInList(bounds, players);
     }
 
     private List<MapleMapObject> getObjectsInRange(MapleMonster monster, MapleMapObjectType objectType) {
         final Rectangle bounds = calculateBoundingBox(monster.getPosition(), monster.isFacingLeft());
-        List<MapleMapObjectType> objectTypes = new ArrayList<MapleMapObjectType>();
+        List<MapleMapObjectType> objectTypes = new ArrayList<>();
         objectTypes.add(objectType);
         return monster.getMap().getMapObjectsInRect(bounds, objectTypes);
     }

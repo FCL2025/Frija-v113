@@ -14,17 +14,17 @@ function start(mode, type, selection) {
 	if (status == 0)
 		qm.sendNext("Did you sleep well,Evan?");
 	else if (status == 1)
-		qm.PlayerToNpc("#bYes,what about you,Mom?#k");
+		qm.playerToNpc("#bYes,what about you,Mom?#k");
 	else if (status == 2)
 		qm.sendNextPrev("I did as well. But you seem so tired. Are you sure you slept okay? Did the thunder and lightning last night keep you up?");
 	else if (status == 3) 
-		qm.PlayerToNpc("#bOh, no. It's not that, Mom. I just had a strange dream last night.#k");
+		qm.playerToNpc("#bOh, no. It's not that, Mom. I just had a strange dream last night.#k");
 	else if (status == 4)
 		qm.sendNextPrev("A strange dream? What kind of strange dream?");
 	else if (status == 5)
-		qm.PlayerToNpc("#bWell...#k");
+		qm.playerToNpc("#bWell...#k");
 	else if (status == 6)
-		qm.PlayerToNpc("#b(You explain that you met a dragon in your dream.)");
+		qm.playerToNpc("#b(You explain that you met a dragon in your dream.)");
 	else if (status == 7)
 		qm.sendAcceptDecline("Hahaha, a dragon? That's incredible. I'm glad he didn't swallow you whole! You should tell Utah about your dream. I'm sure he'll enjoy it.");
 	else if (status == 8){

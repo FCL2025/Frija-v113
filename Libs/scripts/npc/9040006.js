@@ -21,7 +21,7 @@ function start() {
 		    eim.setProperty("stage3combo",newCombo);
 		    //cm.playerMessage("Debug: " + newCombo);
 		    eim.setProperty("stage3attempt","1");
-		    cm.sendOk("é€™å€‹å™´æ³‰å®ˆè­·ç§˜å¯†é€šé“åˆ°é‡‘é‘¾æ®¿ã€‚åœ¨è©²åœ°å€æ”¶è³¼é …ç›®çš„é™„åº¸ç¹¼çºŒã€‚è«¸å€™æœƒå‘Šè¨´ä½ ä½ çš„ç”¢å“æ˜¯å¦è¢«æ¥å—ï¼Œå¦‚æœä¸æ˜¯ï¼Œå®ƒçš„é™„åº¸æ˜¯ä¸æ»¿ã€‚ä½ æœ‰ä¸ƒçš„å˜—è©¦ã€‚ç¥å¥½é‹ã€‚")
+		    cm.sendOk("³o­Ó¼Q¬u¦uÅ@¯µ±K³q¹D¨ìª÷Æq·µ¡C¦b¸Ó¦a°Ï¦¬ÁÊ¶µ¥Øªºªş±eÄ~Äò¡C½Ñ­Ô·|§i¶D§A§Aªº²£«~¬O§_³Q±µ¨ü¡A¦pªG¤£¬O¡A¥¦ªºªş±e¬O¤£º¡¡C§A¦³¤Cªº¹Á¸Õ¡C¯¬¦n¹B¡C")
 		} else {
 		    var attempt = parseInt(eim.getProperty("stage3attempt"));
 		    var combo = parseInt(currentCombo);
@@ -29,7 +29,7 @@ function start() {
 		    if (guess != null) {
 			if (combo == guess) {
 			    cm.getMap().getReactorByName("watergate").hitReactor(cm.getC());
-			    cm.sendOk("æ‚¨å¯ä»¥ç¹¼çºŒã€‚");
+			    cm.sendOk("±z¥i¥HÄ~Äò¡C");
 			    cm.showEffect(true, "quest/party/clear");
 			    cm.playSound(true, "Party1/Clear");
 			    var prev = eim.setProperty("stage3clear","true",true);

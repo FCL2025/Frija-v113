@@ -24,13 +24,14 @@ import java.awt.Point;
 
 import client.MapleCharacter;
 import client.MapleClient;
-import constants.GameConstants;
+import constants.JobConstants;
 import client.anticheat.CheatingOffense;
-import handling.channel.ChannelServer;
 import server.MapleStatEffect;
-import tools.MaplePacketCreator;
+import tools.packet.MapPacket;
 
-public class MapleSummon extends AbstractAnimatedMapleMapObject {
+// final (-Xlint:this-escape): the constructor calls the inherited, overridable
+// setPosition before the summon is finished. Nothing extends MapleSummon.
+public final class MapleSummon extends AbstractAnimatedMapleMapObject {
 
     private final int ownerid, skillLevel, ownerLevel, skill;
     private int fh;
@@ -68,12 +69,12 @@ public class MapleSummon extends AbstractAnimatedMapleMapObject {
 
     @Override
     public final void sendSpawnData(final MapleClient client) {
-		if (this != null) client.getSession().write(MaplePacketCreator.spawnSummon(this, false));
+        if (this != null) client.send(MapPacket.spawnSummon(this, false));
     }
 
     @Override
     public final void sendDestroyData(final MapleClient client) {
-        client.getSession().write(MaplePacketCreator.removeSummon(this, false));
+        client.send(MapPacket.removeSummon(this, false));
     }
 
     public final void updateMap(final MapleMap map) {
@@ -203,9 +204,9 @@ public class MapleSummon extends AbstractAnimatedMapleMapObject {
         return MapleMapObjectType.SUMMON;
     }
 
-    public final void CheckSummonAttackFrequency(final MapleCharacter chr, final int tickcount) {
+    public final void checkSummonAttackFrequency(final MapleCharacter chr, final int tickcount) {
         final int tickdifference = (tickcount - lastSummonTickCount);
-        if (tickdifference < GameConstants.getSummonAttackDelay(skill)) {
+        if (tickdifference < JobConstants.getSummonAttackDelay(skill)) {
             chr.getCheatTracker().registerOffense(CheatingOffense.FAST_SUMMON_ATTACK);
         }
         final long STime_TC = System.currentTimeMillis() - tickcount;

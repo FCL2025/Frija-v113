@@ -20,26 +20,38 @@
  */
 package server.life;
 
-import constants.GameConstants;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import client.MapleCharacter;
-import client.inventory.MapleInventoryType;
 import database.DatabaseConnection;
 
 public class MapleMonsterInformationProvider {
 
+    private static final System.Logger LOG = System.getLogger(MapleMonsterInformationProvider.class.getName());
+
     private static final MapleMonsterInformationProvider instance = new MapleMonsterInformationProvider();
-    private final Map<Integer, List<MonsterDropEntry>> drops = new HashMap<Integer, List<MonsterDropEntry>>();
-    private final List<MonsterGlobalDropEntry> globaldrops = new ArrayList<MonsterGlobalDropEntry>();
+    /**
+     * Every mob death on any Maple-Handler-N thread reads this, and
+     * {@code !reloaddrops} or a drop edit in the panel empties it from a
+     * Panel-Worker-N thread, so it has to be concurrent. The per-monster lists
+     * are still filled in outside the map - see {@link #retrieveDrop}.
+     */
+    private final Map<Integer, List<MonsterDropEntry>> drops = new ConcurrentHashMap<>();
+    /**
+     * The global drop table is not looked up per monster, so it is a whole list
+     * that a reload <em>replaces</em> rather than empties and refills: a reader
+     * on another thread sees either the old table or the new one, never the
+     * empty middle of a reload, and never a list being appended to while it
+     * walks it. The list itself is never mutated once published.
+     */
+    private volatile List<MonsterGlobalDropEntry> globaldrops = new ArrayList<>();
 
     protected MapleMonsterInformationProvider() {
         retrieveGlobal();
@@ -54,16 +66,14 @@ public class MapleMonsterInformationProvider {
     }
 
     private final void retrieveGlobal() {
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+        final List<MonsterGlobalDropEntry> fresh = new ArrayList<>();
 
-        try {
-            final Connection con = DatabaseConnection.getConnection();
-            ps = con.prepareStatement("SELECT * FROM drop_data_global WHERE chance > 0");
-            rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM drop_data_global WHERE chance > 0");
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                globaldrops.add(
+                fresh.add(
                         new MonsterGlobalDropEntry(
                                 rs.getInt("itemid"),
                                 rs.getInt("chance"),
@@ -73,73 +83,59 @@ public class MapleMonsterInformationProvider {
                                 rs.getInt("maximum_quantity"),
                                 rs.getShort("questid")));
             }
-            rs.close();
-            ps.close();
         } catch (SQLException e) {
-            System.err.println("Error retrieving drop" + e);
-        } finally {
-            try {
-                if (ps != null) {
-                    ps.close();
-                }
-                if (rs != null) {
-                    rs.close();
-                }
-            } catch (SQLException ignore) {
-            }
+            // WARNING, and terse on purpose: this one only ever concatenated
+            // the exception, and the comment below says the half-read table is
+            // published regardless - the server carries on with it.
+            LOG.log(System.Logger.Level.WARNING, "Error retrieving drop" + e);
         }
+        // Published whether or not the query got through, because a half-read
+        // table is what the old code left behind too.
+        globaldrops = fresh;
     }
 
     public final List<MonsterDropEntry> retrieveDrop(final int monsterId) {
-        if (drops.containsKey(monsterId)) {
-            return drops.get(monsterId);
+        final List<MonsterDropEntry> cached = drops.get(monsterId);
+        if (cached != null) {
+            return cached;
         }
-        final List<MonsterDropEntry> ret = new LinkedList<MonsterDropEntry>();
+        final List<MonsterDropEntry> ret = new LinkedList<>();
 
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-        try {
-            ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM drop_data WHERE dropperid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM drop_data WHERE dropperid = ?")) {
             ps.setInt(1, monsterId);
-            rs = ps.executeQuery();
-            int itemid;
-            int chance;
-            while (rs.next()) {
-                itemid = rs.getInt("itemid");
-                chance = rs.getInt("chance");
-				/*
-                if (GameConstants.getInventoryType(itemid) == MapleInventoryType.EQUIP) {
-                    chance *= 10; //in GMS/SEA it was raised
+            try (ResultSet rs = ps.executeQuery()) {
+                int itemid;
+                int chance;
+                while (rs.next()) {
+                    itemid = rs.getInt("itemid");
+                    chance = rs.getInt("chance");
+                    /*
+                    if (ItemConstants.getInventoryType(itemid) == MapleInventoryType.EQUIP) {
+                        chance *= 10; //in GMS/SEA it was raised
+                    }
+                    */
+                    ret.add(new MonsterDropEntry(
+                            itemid,
+                            chance,
+                            rs.getInt("minimum_quantity"),
+                            rs.getInt("maximum_quantity"),
+                            rs.getShort("questid")));
                 }
-				*/
-                ret.add(new MonsterDropEntry(
-                        itemid,
-                        chance,
-                        rs.getInt("minimum_quantity"),
-                        rs.getInt("maximum_quantity"),
-                        rs.getShort("questid")));
             }
         } catch (SQLException e) {
             return ret;
-        } finally {
-            try {
-                if (ps != null) {
-                    ps.close();
-                }
-                if (rs != null) {
-                    rs.close();
-                }
-            } catch (SQLException ignore) {
-                return ret;
-            }
         }
+        // Deliberately a miss-then-put rather than computeIfAbsent: the query
+        // above borrows a connection, and computeIfAbsent would hold the map's
+        // bin lock across it. Two threads that miss on the same monster both
+        // read the table and the second one wins, which costs one query.
         drops.put(monsterId, ret);
         return ret;
     }
 
     public final void clearDrops() {
         drops.clear();
-        globaldrops.clear();
         retrieveGlobal();
     }
 }

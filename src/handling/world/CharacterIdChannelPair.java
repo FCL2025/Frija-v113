@@ -20,47 +20,12 @@
  */
 package handling.world;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-
-public class CharacterIdChannelPair implements Externalizable, Comparable<CharacterIdChannelPair> {
-
-    private int charid = 0;
-    private int channel = 1;
-
-    /**
-     * only for externalisation
-     */
-    public CharacterIdChannelPair() {
-    }
-
-    public CharacterIdChannelPair(int charid, int channel) {
-        super();
-        this.charid = charid;
-        this.channel = channel;
-    }
-
-    public int getCharacterId() {
-        return charid;
-    }
-
-    public int getChannel() {
-        return channel;
-    }
-
-    @Override
-    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        charid = in.readInt();
-        channel = in.readByte();
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput out) throws IOException {
-        out.writeInt(charid);
-        out.writeByte(channel);
-    }
+/**
+ * D6 改成 record。{@code compareTo} 原樣保留（只比頻道），
+ * 全樹沒有把它放進雜湊或有序集合的地方，所以 record 自動產生的
+ * {@code equals} / {@code hashCode} 不會改變任何現有行為。
+ */
+public record CharacterIdChannelPair(int characterId, int channel) implements Comparable<CharacterIdChannelPair> {
 
     @Override
     public int compareTo(CharacterIdChannelPair o) {

@@ -22,32 +22,30 @@ package handling;
 
 import constants.ServerConstants;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import client.MapleClient;
-import handling.world.World;
+import handling.world.Client;
 import handling.cashshop.CashShopServer;
 import handling.channel.ChannelServer;
-import handling.cashshop.handler.*;
-import handling.channel.handler.*;
 import handling.login.LoginServer;
-import handling.login.handler.*;
 import handling.mina.MaplePacketDecoder;
+import handling.mina.MapleSession;
 import java.io.File;
 import java.io.FileWriter;
 import java.lang.management.ManagementFactory;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Scanner;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import server.Randomizer;
+import tools.Encodings;
 import tools.MapleAESOFB;
 import tools.packet.LoginPacket;
 import tools.data.input.ByteArrayByteStream;
@@ -55,82 +53,191 @@ import tools.data.input.GenericSeekableLittleEndianAccessor;
 import tools.data.input.SeekableLittleEndianAccessor;
 import tools.Pair;
 
-import org.apache.mina.common.IoHandlerAdapter;
-import org.apache.mina.common.IdleStatus;
-import org.apache.mina.common.IoSession;
-import server.MTSStorage;
+import org.apache.mina.core.service.IoHandlerAdapter;
+import org.apache.mina.core.session.IdleStatus;
+import org.apache.mina.core.session.IoSession;
 import server.ServerProperties;
 import tools.FileoutputUtil;
 
 public class MapleServerHandler extends IoHandlerAdapter implements MapleServerHandlerMBean {
 
+    /**
+     * Ordinary application logging for this class - see {@code tools.Logging}
+     * for the conventions.
+     *
+     * <p>This is emphatically <em>not</em> where the three packet logs go. The
+     * 10k ring flushed by the MBean's {@link #writeLog}, the per-player
+     * {@code !monitor} file and the per-IP {@code PacketLog_<ip>.txt} are
+     * forensic captures with their own files, their own lifetimes and their own
+     * exclusion list ({@link #sensitive}); they write through {@link FileWriter}
+     * and must stay that way. What goes through {@code LOG} here is the
+     * reporting <em>about</em> them - "could not reload", "could not close" -
+     * plus session state and the {@code tms.Debug} hex dump.
+     */
+    private static final System.Logger LOG = System.getLogger(MapleServerHandler.class.getName());
+
     public static final boolean Log_Packets = true;
     private int channel = -1;
     private boolean cs;
-    private final List<String> BlockedIP = new ArrayList<String>();
-    private final Map<String, Pair<Long, Byte>> tracker = new ConcurrentHashMap<String, Pair<Long, Byte>>();
-    //Screw locking. Doesn't matter.
-//    private static final ReentrantReadWriteLock IPLoggingLock = new ReentrantReadWriteLock();
-    private static final String nl = System.getProperty("line.separator");
+    /**
+     * IPs that tripped the connection-flood check. Every accepted connection
+     * reads it and any of them can add to it, so it cannot be an ArrayList -
+     * which is what it was, with no lock anywhere near it.
+     */
+    private final Set<String> BlockedIP = ConcurrentHashMap.newKeySet();
+    private final Map<String, Pair<Long, Byte>> tracker = new ConcurrentHashMap<>();
+    private static final String nl = System.lineSeparator();
+    /**
+     * Opt-in list of IPs to keep a full packet log for, one address per line;
+     * blank lines and {@code #} comments are ignored. Each listed IP gets its
+     * own {@code Logs/PacketLog_<ip>.txt} holding every non-{@link #blocked}
+     * packet that address sends, plus session open/close markers and the
+     * account name it logs in with.
+     *
+     * <p>It is the only one of the three packet logs that covers the login
+     * server. The per-player {@code !monitor} log needs {@code c.getPlayer()},
+     * so it cannot see anything an address does before it picks a character,
+     * and {@code PacketLog.txt} is a 10k ring shared by everyone. This is what
+     * to reach for when one address is hammering the login server or failing at
+     * character select.
+     *
+     * <p>The file is not in the repo and is not expected to exist. Absent means
+     * "monitor nobody", which is the normal state and not an error: create it,
+     * list an address, and run {@code !reloadipmonitor}.
+     */
     private static final File loggedIPs = new File("Logs/LogIPs.txt");
-    private static final HashMap<String, FileWriter> logIPMap = new HashMap<String, FileWriter>();
+    /** Rebuilt wholesale by {@code !reloadipmonitor} while handlers read it. */
+    private static final Map<String, FileWriter> logIPMap = new ConcurrentHashMap<>();
+    /**
+     * {@code tms.Debug} - dump every received packet as hex.
+     *
+     * <p>It is now one of two gates, not the only one: the dump goes out at
+     * {@code DEBUG}, so the logging configuration has to allow it as well. To
+     * get the dumps back an operator needs {@code tms.Debug = true} in
+     * {@code Settings.ini} <em>and</em> this line in
+     * {@code Libs/logging.properties}:
+     *
+     * <pre>
+     *     handling.MapleServerHandler.level = FINE
+     * </pre>
+     *
+     * ({@code DEBUG} reaches {@code java.util.logging} as {@code FINE}; the
+     * console handler is already at {@code ALL}, so the logger's level is the
+     * only thing in the way.) Use {@link #debugDump()} rather than reading this
+     * field - building the hex dump is the expensive part and must not happen
+     * when nothing will print it.
+     */
     private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
     //Note to Zero: Use an enumset. Don't iterate through an array.
     private static final EnumSet<RecvPacketOpcode> blocked = EnumSet.noneOf(RecvPacketOpcode.class);
+    /**
+     * Opcodes that carry a password in clear text off the wire. Their bodies must
+     * never reach a log: {@code PacketLog.txt}, the per-IP {@code PacketLog_<ip>.txt},
+     * the per-player monitor logs, or the {@code tms.Debug} hex dump on stdout.
+     * They are folded into {@link #blocked}, and {@code messageReceived} checks this
+     * set separately so a debug dump prints the opcode name without the body.
+     * Any new opcode that reads a password belongs here.
+     */
+    private static final EnumSet<RecvPacketOpcode> sensitive = EnumSet.of(
+            RecvPacketOpcode.LOGIN_PASSWORD,       // account name + password
+            RecvPacketOpcode.DELETE_CHAR,          // second password
+            RecvPacketOpcode.AUTH_SECOND_PASSWORD, // second password
+            RecvPacketOpcode.SET_GENDER);          // account name + second password
 
     static {
         reloadLoggedIPs();
+        // The movement and heal opcodes are blocked because they are noise - they
+        // arrive constantly and would drown the log.
         RecvPacketOpcode[] block = new RecvPacketOpcode[]{RecvPacketOpcode.NPC_ACTION, RecvPacketOpcode.MOVE_PLAYER, RecvPacketOpcode.MOVE_PET, RecvPacketOpcode.MOVE_SUMMON, RecvPacketOpcode.MOVE_DRAGON, RecvPacketOpcode.MOVE_LIFE, RecvPacketOpcode.HEAL_OVER_TIME, RecvPacketOpcode.STRANGE_DATA};
         blocked.addAll(Arrays.asList(block));
+        blocked.addAll(sensitive);
+        // Build the dispatch table now. Its own class initialiser would
+        // otherwise run on whichever handler thread saw the first packet,
+        // with the rest queued behind the class-init lock.
+        PacketHandlerRegistry.preload();
     }
 
-    public static void reloadLoggedIPs() {
-//        IPLoggingLock.writeLock().lock();
-//        try {
+    public static synchronized void reloadLoggedIPs() {
         for (FileWriter fw : logIPMap.values()) {
             if (fw != null) {
                 try {
-                    fw.write("=== Closing Log ===");
-                    fw.write(nl);
-                    fw.flush(); //Just in case.
-                    fw.close();
+                    synchronized (fw) {
+                        fw.write("=== Closing Log ===");
+                        fw.write(nl);
+                        fw.flush(); //Just in case.
+                        fw.close();
+                    }
                 } catch (IOException ex) {
-                    System.out.println("Error closing Packet Log.");
-                    System.out.println(ex);
+                    // One record where there were two prints. Terse on purpose:
+                    // this only ever reported ex.toString(). The reload carries
+                    // on with the next writer, so WARNING.
+                    LOG.log(System.Logger.Level.WARNING, "Error closing Packet Log." + nl + ex);
                 }
             }
         }
         logIPMap.clear();
-        try {
-            Scanner sc = new Scanner(loggedIPs);
+        if (!loggedIPs.isFile()) {
+            // Monitoring nobody, which is the default. Not worth a word on
+            // stdout: the Scanner used to throw FileNotFoundException here and
+            // print it on every single startup.
+            return;
+        }
+        try (Scanner sc = new Scanner(loggedIPs, Encodings.NATIVE)) {
             while (sc.hasNextLine()) {
                 String line = sc.nextLine().trim();
-                if (line.length() > 0) {
-                    FileWriter fw = new FileWriter(new File("PacketLog_" + line + ".txt"), true);
+                if (line.length() > 0 && !line.startsWith("#")) {
+                    FileWriter fw = new FileWriter(new File("Logs/PacketLog_" + line + ".txt"), Encodings.NATIVE, true);
                     fw.write("=== Creating Log ===");
                     fw.write(nl);
                     fw.flush();
                     logIPMap.put(line, fw);
                 }
             }
+            LOG.log(System.Logger.Level.INFO, "[IP Monitor] 記錄封包中的 IP: " + logIPMap.keySet());
         } catch (Exception e) {
-            System.out.println("Could not reload packet logged IPs.");
-            System.out.println(e);
+            // One record where there were two prints, terse as before. The
+            // reload did not happen, so ERROR: whatever was listed in
+            // LogIPs.txt is not being monitored.
+            LOG.log(System.Logger.Level.ERROR, "Could not reload packet logged IPs." + nl + e);
         }
-//        } finally {
-//            IPLoggingLock.writeLock().unlock();
-//        }
     }
 
     //Return the Filewriter if the IP is logged. Null otherwise.
     private static FileWriter isLoggedIP(IoSession sess) {
+        if (logIPMap.isEmpty()) {
+            // The common case by far, and it skips the string surgery below.
+            return null;
+        }
         String a = sess.getRemoteAddress().toString();
         String realIP = a.substring(a.indexOf('/') + 1, a.indexOf(':'));
         return logIPMap.get(realIP);
     }
+
+    /**
+     * One {@link FileWriter} per monitored IP is shared by every handler
+     * thread that sees that IP, and an unsynchronised {@code write} from two of
+     * them interleaves mid-line or worse. Every write to these goes through
+     * here.
+     */
+    private static void writeMonitorLog(final FileWriter fw, final String text) throws IOException {
+        synchronized (fw) {
+            fw.write(text);
+            fw.write(nl);
+            fw.flush();
+        }
+    }
 // <editor-fold defaultstate="collapsed" desc="Packet Log Implementation">
     private static final int Log_Size = 10000;
-    private static final ArrayList<LoggedPacket> Packet_Log = new ArrayList<LoggedPacket>(Log_Size);
+    /**
+     * A ring of the last {@value #Log_Size} packets.
+     *
+     * <p>This was an {@code ArrayList} that dropped its oldest entry with
+     * {@code remove(0)} - a ten-thousand element {@code arraycopy} on every
+     * single packet once the log filled up, performed while holding the one
+     * write lock that all sixteen handler threads have to queue behind. An
+     * {@link ArrayDeque} drops from the front in constant time.
+     */
+    private static final ArrayDeque<LoggedPacket> Packet_Log = new ArrayDeque<>(Log_Size);
     private static final ReentrantReadWriteLock Packet_Log_Lock = new ReentrantReadWriteLock();
     private static final File Packet_Log_Output = new File("PacketLog.txt");
 
@@ -138,11 +245,11 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         if (blocked.contains(op)) {
             return;
         }
+        Packet_Log_Lock.writeLock().lock();
         try {
-            Packet_Log_Lock.writeLock().lock();
             LoggedPacket logged = null;
             if (Packet_Log.size() == Log_Size) {
-                logged = Packet_Log.remove(0);
+                logged = Packet_Log.pollFirst();
             }
             //This way, we don't create new LoggedPacket objects, we reuse them =]
             if (logged == null) {
@@ -164,8 +271,9 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
 
     private static class LoggedPacket {
 
-        private static final String nl = System.getProperty("line.separator");
-        private String ip, accName, accId, chrName;
+        private static final String nl = System.lineSeparator();
+        private String ip, accName, chrName;
+        private int accId;
         private SeekableLittleEndianAccessor packet;
         private long timestamp;
         private RecvPacketOpcode op;
@@ -178,6 +286,10 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             this.ip = ip;
             this.op = op;
             packet = p;
+            // The account id was taken as a parameter and then thrown away -
+            // accId was a String nobody ever assigned, so every line of
+            // PacketLog.txt has always read "null" where the id belongs.
+            this.accId = id;
             this.accName = accName;
             this.chrName = chrName;
             timestamp = System.currentTimeMillis();
@@ -201,28 +313,36 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             //The log is a static object, so we can just use this hacky method.
             mBeanServer.registerMBean(mbean, new ObjectName("handling:type=MapleServerHandler"));
         } catch (Exception e) {
-            System.out.println("Error registering PacketLog MBean");
-            e.printStackTrace();
+            // One record: the message and the trace are the same event.
+            LOG.log(System.Logger.Level.ERROR, "Error registering PacketLog MBean", e);
         }
     }
 
     public void writeLog() {
-        try {
-            FileWriter fw = new FileWriter(Packet_Log_Output, true);
+        // 寫檔機制刻意維持 FileWriter（見 tools.Logging 的「不准轉換」清單）；這裡只動
+        // 兩件事：資源管理與錯誤回報。
+        //
+        // 舊寫法把 fw.close() 放在 try 裡、finally 只解鎖，所以只要任何一次 fw.write
+        // 丟出 IOException，那個檔案代號就永遠不會關——在 Windows 上還會讓 PacketLog.txt
+        // 一直被鎖住。改成 try-with-resources 之後，鎖的範圍與原本一模一樣：開檔在鎖外，
+        // 讀鎖只圍住走訪環，close() 發生在解鎖之後。
+        try (FileWriter fw = new FileWriter(Packet_Log_Output, Encodings.NATIVE, true)) {
+            Packet_Log_Lock.readLock().lock();
             try {
-                Packet_Log_Lock.readLock().lock();
-                String nl = System.getProperty("line.separator");
                 for (LoggedPacket loggedPacket : Packet_Log) {
                     fw.write(loggedPacket.toString());
                     fw.write(nl);
                 }
                 fw.flush();
-                fw.close();
             } finally {
                 Packet_Log_Lock.readLock().unlock();
             }
         } catch (IOException ex) {
-            System.out.println("Error writing log to file.");
+            // writeLog() 是 handling:type=MapleServerHandler 這個 MBean 的操作，回傳
+            // void 也不宣告受檢例外，IOException 從來不會傳出去——JMX 呼叫端無論如何
+            // 都只看到「執行成功」。所以附上 ex 只是讓日誌多一份堆疊，MBean 那端看到的
+            // 東西完全沒變。整份傾印被放棄了，所以是 ERROR。
+            LOG.log(System.Logger.Level.ERROR, "Error writing log to file.", ex);
         }
     }
 
@@ -245,11 +365,169 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         super.messageSent(session, message);
     }
 
+    /**
+     * Full log entries written per session before this handler goes quiet, and
+     * the session attribute the running count lives in.
+     *
+     * <p>A broken or hostile client can drive {@link #exceptionCaught} in a
+     * loop, and an unbounded append to an {@code .rtf} from a MINA handler
+     * thread is a denial-of-service on its own - the disk write is the
+     * expensive part and the attacker pays nothing for it. A per-session budget
+     * is the right bound rather than a global rate: a global one lets one bad
+     * session hide every other session's first failure, which is the exact
+     * failure mode this method exists to stop. The overall ceiling is still
+     * bounded, because {@link #sessionOpened}'s flood check already caps how
+     * many sessions one address may open before the address is blocked
+     * outright.
+     *
+     * <p>The counter is an {@link AtomicInteger} in the session's attribute
+     * map, so it dies with the session and leaks nothing. Two threads racing to
+     * create it would cost a couple of extra entries and nothing else;
+     * MINA's {@code ExecutorFilter} runs at most one event per session at a
+     * time, so it should not happen at all.
+     */
+    private static final int EXCEPTION_LOG_LIMIT = 5;
+    private static final String EXCEPTION_COUNT_KEY = "handling.exceptionCount";
+
+    /**
+     * The last stop for anything thrown out of decoding, packet handling or a
+     * write - and until now it threw it away. The body was commented out
+     * entirely, so an {@link Error}, which walks straight through every
+     * {@code catch (Exception)} on the way here, produced literally nothing: no
+     * log line, no stack trace, no sign that anything had happened.
+     *
+     * <p>That is not theoretical. {@code Libs/scripts/npc/2040043.js} makes
+     * Nashorn throw a bare {@link AssertionError} while generating bytecode for
+     * it. The error passed through {@code AbstractScriptManager}, through
+     * {@code NPCScriptManager}, through the dispatch path and arrived here,
+     * where it vanished - so LPQ stage 8's NPC simply did nothing, forever,
+     * with not one line anywhere to say why.
+     *
+     * <p>Three rules shape what it may do, all of them because it runs on a
+     * handler thread on the error path:
+     *
+     * <ul>
+     * <li><b>It must not throw.</b> The whole body sits inside one
+     * {@code catch (Throwable)}. If the reporting itself fails there is nowhere
+     * left to report to, and propagating out of here would take a MINA thread
+     * with it.</li>
+     * <li><b>It must not write without a bound.</b> See
+     * {@link #EXCEPTION_LOG_LIMIT}.</li>
+     * <li><b>It must not bury the routine ones in stack traces.</b> A client
+     * that vanishes mid-write surfaces here as an {@link IOException} -
+     * "connection reset", {@code ClosedChannelException}. That is normal, it
+     * happens once per ungraceful disconnect, and its trace says nothing anyone
+     * can act on. Those get one line naming the exception and the player, and
+     * no trace. The category is still logged, not swallowed: a genuine I/O
+     * failure that is not a disconnect still leaves its name, its message and
+     * its context in the same file.</li>
+     * </ul>
+     *
+     * <p>What the commented-out original body had was the client lookup, the
+     * {@code MapleClient.getLogMessage(client, cause.getMessage())} context
+     * string and passing {@code cause} itself so the trace went out - all three
+     * are kept. What could not be kept was its sink: it called {@code log.error}
+     * on an slf4j logger that this class has not had for as long as the repo
+     * has existed. {@link FileoutputUtil} is where the rest of this class
+     * already sends swallowed exceptions, so this goes to the same file as
+     * {@code messageReceived}'s own catch, {@link FileoutputUtil#PacketEx_Log}.
+     * The second commented-out line, a bare {@code cause.printStackTrace()}, is
+     * deliberately not restored as-is - full traces on the console are the same
+     * unbounded-write problem - and is replaced by one {@code ERROR} record
+     * naming the log file, so an operator watching the console still sees that
+     * something happened. That record carries <em>no</em> {@link Throwable} for
+     * the same reason: {@code tools.Logging.ConsoleFormat} appends a full stack
+     * trace to any record that has one, which is exactly what this is avoiding.
+     */
     @Override
     public void exceptionCaught(final IoSession session, final Throwable cause) throws Exception {
-        /*	MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
-         log.error(MapleClient.getLogMessage(client, cause.getMessage()), cause);*/
-//	cause.printStackTrace();
+        try {
+            if (cause == null) {
+                return;
+            }
+            final int seen = countException(session);
+            if (seen > EXCEPTION_LOG_LIMIT) {
+                return; // already said, on entry EXCEPTION_LOG_LIMIT, that we were going quiet
+            }
+            final MapleClient client = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+            final String where = channel > -1 ? "[Channel " + channel + "]" : (cs ? "[Cash Server]" : "[Login Server]");
+            final String address = session.getRemoteAddress() == null ? "?" : session.getRemoteAddress().toString();
+            // MINA's own decoder exceptions carry a hex dump of the offending
+            // buffer in getMessage(), so the message is truncated: one entry has
+            // to stay one readable entry, and the client chooses its length.
+            String message = cause.getMessage();
+            if (message != null && message.length() > 512) {
+                message = message.substring(0, 512) + "…(截斷)";
+            }
+            final String what = cause.getClass().getName() + (message == null ? "" : ": " + message);
+
+            final StringBuilder sb = new StringBuilder();
+            sb.append(where).append(" [IP: ").append(address).append("] ");
+            // getLogMessage prefixes the character (name + cid) and the account
+            // name when there is a client far enough along to have them.
+            sb.append(MapleClient.getLogMessage(client, what));
+            final boolean routine = isRoutineDisconnect(cause);
+            if (routine) {
+                sb.append(" [連線中斷，不輸出堆疊]");
+            } else {
+                sb.append(nl).append(FileoutputUtil.getString(cause));
+            }
+            if (seen == EXCEPTION_LOG_LIMIT) {
+                sb.append(nl).append("[此連線已達 ").append(EXCEPTION_LOG_LIMIT)
+                        .append(" 筆上限，後續的例外不再記錄]");
+            }
+            // One append, one entry: FileoutputUtil writes the header and the
+            // body in a single call for exactly this reason.
+            FileoutputUtil.log(FileoutputUtil.PacketEx_Log, sb.toString());
+            if (!routine) {
+                // No Throwable attached: see this method's javadoc. The full
+                // trace is already in PacketEx_Log, one entry, bounded by
+                // EXCEPTION_LOG_LIMIT.
+                LOG.log(System.Logger.Level.ERROR,
+                        where + " exceptionCaught " + what + " - 詳見 " + FileoutputUtil.PacketEx_Log);
+            }
+        } catch (final Throwable ignored) {
+            // The error path's own error path. There is nothing left to report
+            // to, and throwing from here would kill a MINA handler thread.
+        }
+    }
+
+    /**
+     * How many times this session has reached {@link #exceptionCaught},
+     * including this one.
+     */
+    private static int countException(final IoSession session) {
+        if (session.getAttribute(EXCEPTION_COUNT_KEY) instanceof AtomicInteger seen) {
+            return seen.incrementAndGet();
+        }
+        final AtomicInteger fresh = new AtomicInteger(1);
+        session.setAttribute(EXCEPTION_COUNT_KEY, fresh);
+        return 1;
+    }
+
+    /**
+     * True for the everyday "the client went away" throwables - anything with
+     * an {@link IOException} anywhere in its cause chain, which covers
+     * {@code SocketException: Connection reset},
+     * {@code ClosedChannelException} and {@code EOFException}. These are logged
+     * as one line instead of a stack trace.
+     *
+     * <p>The walk is depth-bounded because a {@code Throwable} whose cause
+     * chain loops back on itself would otherwise spin here, on an I/O thread,
+     * forever.
+     */
+    private static boolean isRoutineDisconnect(final Throwable cause) {
+        Throwable t = cause;
+        for (int depth = 0; t != null && depth < 8; depth++) {
+            if (t instanceof IOException) {
+                return true;
+            }
+            if (t.getCause() == t) {
+                break;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     @Override
@@ -258,46 +536,47 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         final String address = session.getRemoteAddress().toString().split(":")[0];
 
         if (BlockedIP.contains(address)) {
-            session.close();
+            session.closeNow();
             return;
         }
-        final Pair<Long, Byte> track = tracker.get(address);
-
-        byte count;
-        if (track == null) {
-            count = 1;
-        } else {
-            count = track.right;
-
-            final long difference = System.currentTimeMillis() - track.left;
+        // Read-modify-write in one atomic step. Split across a get and a put,
+        // as it was, ten machines behind one NAT could each see the same stale
+        // count and none of them would ever reach the threshold.
+        final Pair<Long, Byte> updated = tracker.compute(address, (key, track) -> {
+            final long now = System.currentTimeMillis();
+            if (track == null) {
+                return new Pair<>(now, (byte) 1);
+            }
+            byte count = track.right;
+            final long difference = now - track.left;
             if (difference < 2000) { // Less than 2 sec
                 count++;
             } else if (difference > 20000) { // Over 20 sec
                 count = 1;
             }
-            if (count >= 10) {
-                BlockedIP.add(address);
-                tracker.remove(address); // Cleanup
-                session.close();
-                return;
-            }
+            return new Pair<>(now, count);
+        });
+        if (updated.right >= 10) {
+            BlockedIP.add(address);
+            tracker.remove(address); // Cleanup
+            session.closeNow();
+            return;
         }
-        tracker.put(address, new Pair<Long, Byte>(System.currentTimeMillis(), count));
         // End of IP checking.
 
         if (channel > -1) {
             if (ChannelServer.getInstance(channel).isShutdown()) {
-                session.close();
+                session.closeNow();
                 return;
             }
         } else if (cs) {
             if (CashShopServer.isShutdown()) {
-                session.close();
+                session.closeNow();
                 return;
             }
         } else {
             if (LoginServer.isShutdown()) {
-                session.close();
+                session.closeNow();
                 return;
             }
         }
@@ -318,8 +597,11 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
         session.write(LoginPacket.getHello(ServerConstants.MAPLE_VERSION,
                 ServerConstants.Use_Fixed_IV ? serverSend : ivSend, ServerConstants.Use_Fixed_IV ? serverRecv : ivRecv));
         session.setAttribute(MapleClient.CLIENT_KEY, client);
-        session.setIdleTime(IdleStatus.READER_IDLE, 60);
-        session.setIdleTime(IdleStatus.WRITER_IDLE, 60);
+        // MINA 1.1 had these on the session; MINA 2 moved them onto the
+        // session's config object. Same units (seconds), same effect: after 60
+        // idle seconds sessionIdle fires and the server pings the client.
+        session.getConfig().setIdleTime(IdleStatus.READER_IDLE, 60);
+        session.getConfig().setIdleTime(IdleStatus.WRITER_IDLE, 60);
 
         StringBuilder sb = new StringBuilder();
         if (channel > -1) {
@@ -330,22 +612,18 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             sb.append("[Login Server]");
         }
         sb.append("IoSession opened ").append(address);
-        System.out.println(sb.toString());
-		World.Client.addClient(client);
+        LOG.log(System.Logger.Level.INFO, sb.toString());
+        Client.addClient(client);
 
         FileWriter fw = isLoggedIP(session);
         if (fw != null) {
             if (channel > -1) {
-                fw.write("=== Logged Into Channel " + channel + " ===");
-                fw.write(nl);
+                writeMonitorLog(fw, "=== Logged Into Channel " + channel + " ===");
             } else if (cs) {
-                fw.write("=== Logged Into CashShop Server ===");
-                fw.write(nl);
+                writeMonitorLog(fw, "=== Logged Into CashShop Server ===");
             } else {
-                fw.write("=== Logged Into Login Server ===");
-                fw.write(nl);
+                writeMonitorLog(fw, "=== Logged Into Login Server ===");
             }
-            fw.flush();
         }
     }
 
@@ -357,18 +635,31 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             try {
                 FileWriter fw = isLoggedIP(session);
                 if (fw != null) {
-                    fw.write("=== Session Closed ===");
-                    fw.write(nl);
-                    fw.flush();
+                    writeMonitorLog(fw, "=== Session Closed ===");
                 }
                 client.disconnect(true, cs);
             } finally {
-				World.Client.removeClient(client);
-                session.close();
+                Client.removeClient(client);
+                session.closeNow();
                 session.removeAttribute(MapleClient.CLIENT_KEY);
             }
         }
         super.sessionClosed(session);
+    }
+
+    /**
+     * Replays a packet as if the client had sent it, for the {@code !packet} GM
+     * command.
+     *
+     * <p>That command reaches this class through {@code MapleClient.getSession()},
+     * which hands out a {@link MapleSession} rather than a MINA
+     * {@code IoSession} - see that class for why - so this overload exists to
+     * unwrap it. It deliberately does no work of its own: the whole point of
+     * {@code !packet} is that the bytes take the identical path a real packet
+     * takes.
+     */
+    public void messageReceived(final MapleSession session, final Object message) {
+        messageReceived(session.unwrap(), message);
     }
 
     @Override
@@ -379,68 +670,80 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
                 return;
             }
             final short header_num = slea.readShort();
-            // Console output part
+            // One hash lookup. This used to be a linear scan over all ~190
+            // enum constants, on every packet from every client.
+            final RecvPacketOpcode recv = RecvPacketOpcode.forValue(header_num);
+            if (recv == null) {
+                if (debugDump()) {
+                    final StringBuilder sb = new StringBuilder("Received data 未處理 : ");
+                    sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
+                    LOG.log(System.Logger.Level.DEBUG, sb.toString());
+                }
+                return;
+            }
 
-            for (final RecvPacketOpcode recv : RecvPacketOpcode.values()) {
-                if (recv.getValue() == header_num) {
-
-                    if (debugMode) {
-                        final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
-                        sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
-                        System.out.println(sb.toString());
-                    }
-                    final MapleClient c = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
-                    if (!c.isReceiving()) {
-                        return;
-                    }
-                    if (recv.NeedsChecking()) {
-                        if (!c.isLoggedIn()) {
-                            return;
-                        }
-                    }
-                    if (c.getPlayer() != null && c.isMonitored()) {
-                        if (!blocked.contains(recv)) {
-                            FileWriter fw = new FileWriter(new File("Logs/MonitorLogs/" + c.getPlayer().getName() + "_log.txt"), true);
-                            fw.write(String.valueOf(recv) + " (" + Integer.toHexString(header_num) + ") Handled: \r\n" + slea.toString() + "\r\n");
-                            fw.flush();
-                            fw.close();
-                        }
-                    }
-                    if (Log_Packets) {
-                        log(slea, recv, c, session);
-                    }
-                    handlePacket(recv, slea, c, cs);
-
-                    //Log after the packet is handle. You'll see why =]
-                    FileWriter fw = isLoggedIP(session);
-                    if (fw != null && !blocked.contains(recv)) {
-                        if (recv == RecvPacketOpcode.PLAYER_LOGGEDIN && c != null) { // << This is why. Win.
-                            fw.write(">> [AccountName: "
-                                    + (c.getAccountName() == null ? "null" : c.getAccountName())
-                                    + "] | [IGN: "
-                                    + (c.getPlayer() == null || c.getPlayer().getName() == null ? "null" : c.getPlayer().getName())
-                                    + "] | [Time: "
-                                    + FileoutputUtil.CurrentReadable_Time()
-                                    + "]");
-                            fw.write(nl);
-                        }
-                        fw.write("[" + recv.toString() + "]" + slea.toString(true));
-                        fw.write(nl);
-                        fw.flush();
-                    }
-                    return;
+            if (debugDump()) {
+                if (sensitive.contains(recv)) {
+                    // The body holds a password in clear text - name the opcode only.
+                    LOG.log(System.Logger.Level.DEBUG, "Received data 已處理 :" + String.valueOf(recv) + " [內容含密碼，不輸出]");
+                } else {
+                    final StringBuilder sb = new StringBuilder("Received data 已處理 :" + String.valueOf(recv) + "\n");
+                    sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
+                    LOG.log(System.Logger.Level.DEBUG, sb.toString());
                 }
             }
-            if (debugMode) {
-                final StringBuilder sb = new StringBuilder("Received data 未處理 : ");
-                sb.append(tools.HexTool.toString((byte[]) message)).append("\n").append(tools.HexTool.toStringFromAscii((byte[]) message));
-                System.out.println(sb.toString());
+            final MapleClient c = (MapleClient) session.getAttribute(MapleClient.CLIENT_KEY);
+            if (c == null || !c.isReceiving()) {
+                return;
+            }
+            if (recv.needsChecking() && !c.isLoggedIn()) {
+                return;
+            }
+            if (c.getPlayer() != null && c.isMonitored() && !blocked.contains(recv)) {
+                try (FileWriter fw = new FileWriter(new File("Logs/MonitorLogs/" + c.getPlayer().getName() + "_log.txt"), Encodings.NATIVE, true)) {
+                    fw.write(String.valueOf(recv) + " (" + Integer.toHexString(header_num) + ") Handled: \r\n" + slea.toString() + "\r\n");
+                }
+            }
+            if (Log_Packets) {
+                log(slea, recv, c, session);
+            }
+            PacketHandlerRegistry.handle(recv, slea, c, cs);
+
+            //Log after the packet is handle. You'll see why =]
+            final FileWriter fw = isLoggedIP(session);
+            if (fw != null && !blocked.contains(recv)) {
+                if (recv == RecvPacketOpcode.PLAYER_LOGGEDIN) { // << This is why. Win.
+                    writeMonitorLog(fw, ">> [AccountName: "
+                            + (c.getAccountName() == null ? "null" : c.getAccountName())
+                            + "] | [IGN: "
+                            + (c.getPlayer() == null || c.getPlayer().getName() == null ? "null" : c.getPlayer().getName())
+                            + "] | [Time: "
+                            + FileoutputUtil.currentReadable_Time()
+                            + "]");
+                }
+                writeMonitorLog(fw, "[" + recv.toString() + "]" + slea.toString(true));
             }
         } catch (Exception e) {
             FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
-            e.printStackTrace();
+            // The trace went to stdout before and still does, as one record
+            // rather than an interleaved block: tools.Logging.ConsoleFormat
+            // appends it to the message.
+            LOG.log(System.Logger.Level.ERROR, "封包處理發生例外 - 詳見 " + FileoutputUtil.PacketEx_Log, e);
         }
 
+    }
+
+    /**
+     * Whether a {@code tms.Debug} hex dump should be built at all.
+     *
+     * <p>Both gates, checked in the cheap order, on the per-packet path: the
+     * {@code tms.Debug} switch first, then whether {@code DEBUG} is loggable.
+     * The dump itself is two passes of {@code HexTool} over the whole packet,
+     * so it must not be built for a record that will be thrown away - see
+     * {@link #debugMode} for what an operator has to set.
+     */
+    private static boolean debugDump() {
+        return debugMode && LOG.isLoggable(System.Logger.Level.DEBUG);
     }
 
     @Override
@@ -454,494 +757,5 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
             client.sendPing();
         }
         super.sessionIdle(session, status);
-    }
-
-    public static final void handlePacket(final RecvPacketOpcode header, final SeekableLittleEndianAccessor slea, final MapleClient c, final boolean cs) throws Exception {
-        switch (header) {
-            case PONG:
-                c.pongReceived();
-                break;
-            case STRANGE_DATA:
-                // Does nothing for now, HackShield's heartbeat
-                break;
-            case HELLO_LOGIN:
-                CharLoginHandler.Welcome(c);
-                // Does nothing for now, HackShield's heartbeat
-                break;
-            case HELLO_CHANNEL:
-                CharLoginHandler.Welcome(c);
-                break;
-            case LOGIN_PASSWORD:
-                CharLoginHandler.login(slea, c);
-                break;
-            case SERVERLIST_REQUEST:
-                CharLoginHandler.ServerListRequest(c);
-                break;
-            case CHARLIST_REQUEST:
-                CharLoginHandler.CharlistRequest(slea, c);
-                break;
-            case SERVERSTATUS_REQUEST:
-                CharLoginHandler.ServerStatusRequest(c);
-                break;
-            case CHECK_CHAR_NAME:
-                CharLoginHandler.CheckCharName(slea.readMapleAsciiString(), c);
-                break;
-            case CREATE_CHAR:
-                CharLoginHandler.CreateChar(slea, c);
-                break;
-            case DELETE_CHAR:
-                CharLoginHandler.DeleteChar(slea, c);
-                break;
-            case CHAR_SELECT:
-                CharLoginHandler.Character_WithoutSecondPassword(slea, c);
-                break;
-            case AUTH_SECOND_PASSWORD:
-                CharLoginHandler.Character_WithSecondPassword(slea, c);
-                break;
-            case SET_GENDER:
-                CharLoginHandler.SetGenderRequest(slea, c);
-                break;
-            case RSA_KEY: // Fix this somehow
-                c.getSession().write(LoginPacket.StrangeDATA());
-                break;
-            // END OF LOGIN SERVER
-            case CHANGE_CHANNEL:
-                InterServerHandler.ChangeChannel(slea, c, c.getPlayer());
-                break;
-            case PLAYER_LOGGEDIN:
-                final int playerid = slea.readInt();
-                if (cs) {
-                    CashShopOperation.EnterCS(playerid, c);
-                } else {
-                    InterServerHandler.Loggedin(playerid, c);
-                }
-                break;
-            case ENTER_CASH_SHOP:
-                InterServerHandler.EnterCS(c, c.getPlayer(), false);
-                break;
-            case ENTER_MTS:
-//                InterServerHandler.EnterCS(c, c.getPlayer(), true);
-				c.getPlayer().dropMessage(1, "目前暫停使用.");
-                break;
-            case MOVE_PLAYER:
-                PlayerHandler.MovePlayer(slea, c, c.getPlayer());
-                break;
-            case CHAR_INFO_REQUEST:
-                c.getPlayer().updateTick(slea.readInt());
-                PlayerHandler.CharInfoRequest(slea.readInt(), c, c.getPlayer());
-                //System.err.println("CHAR_INFO_REQUEST");
-                break;
-            case CLOSE_RANGE_ATTACK:
-                PlayerHandler.closeRangeAttack(slea, c, c.getPlayer(), false);
-                break;
-            case RANGED_ATTACK:
-                PlayerHandler.rangedAttack(slea, c, c.getPlayer());
-                break;
-            case MAGIC_ATTACK:
-                PlayerHandler.MagicDamage(slea, c, c.getPlayer());
-                break;
-            case SPECIAL_MOVE:
-                PlayerHandler.SpecialMove(slea, c, c.getPlayer());
-                break;
-            case PASSIVE_ENERGY:
-                PlayerHandler.closeRangeAttack(slea, c, c.getPlayer(), true);
-                break;
-            case FACE_EXPRESSION:
-                PlayerHandler.ChangeEmotion(slea.readInt(), c.getPlayer());
-                break;
-            case TAKE_DAMAGE:
-                PlayerHandler.TakeDamage(slea, c, c.getPlayer());
-                break;
-            case HEAL_OVER_TIME:
-                PlayerHandler.Heal(slea, c.getPlayer());
-                break;
-            case CANCEL_BUFF:
-                PlayerHandler.CancelBuffHandler(slea.readInt(), c.getPlayer());
-                break;
-            case CANCEL_ITEM_EFFECT:
-                PlayerHandler.CancelItemEffect(slea.readInt(), c.getPlayer());
-                break;
-            case USE_CHAIR:
-                PlayerHandler.UseChair(slea.readInt(), c, c.getPlayer());
-                break;
-            case CANCEL_CHAIR:
-                PlayerHandler.CancelChair(slea.readShort(), c, c.getPlayer());
-                break;
-            case USE_ITEMEFFECT:
-            case WHEEL_OF_FORTUNE:
-                PlayerHandler.UseItemEffect(slea.readInt(), c, c.getPlayer());
-                break;
-            case SKILL_EFFECT:
-                PlayerHandler.SkillEffect(slea, c.getPlayer());
-                break;
-            case MESO_DROP:
-                c.getPlayer().updateTick(slea.readInt());
-                PlayerHandler.DropMeso(slea.readInt(), c.getPlayer());
-                break;
-            case MONSTER_BOOK_COVER:
-                PlayerHandler.ChangeMonsterBookCover(slea.readInt(), c, c.getPlayer());
-                break;
-            case CHANGE_KEYMAP:
-                PlayerHandler.ChangeKeymap(slea, c.getPlayer());
-                break;
-            case CHANGE_MAP:
-                if (cs) {
-                    CashShopOperation.LeaveCS(slea, c, c.getPlayer());
-                } else {
-                    PlayerHandler.ChangeMap(slea, c, c.getPlayer());
-                }
-                break;
-            case CHANGE_MAP_SPECIAL:
-                slea.skip(1);
-                PlayerHandler.ChangeMapSpecial(slea.readMapleAsciiString(), c, c.getPlayer());
-                break;
-            case USE_INNER_PORTAL:
-                slea.skip(1);
-                PlayerHandler.InnerPortal(slea, c, c.getPlayer());
-                break;
-            case TROCK_ADD_MAP:
-                PlayerHandler.TrockAddMap(slea, c, c.getPlayer());
-                break;
-            case ARAN_COMBO:
-                PlayerHandler.AranCombo(c, c.getPlayer());
-                break;
-            case SKILL_MACRO:
-                PlayerHandler.ChangeSkillMacro(slea, c.getPlayer());
-                break;
-            case GIVE_FAME:
-                PlayersHandler.GiveFame(slea, c, c.getPlayer());
-                break;
-            case TRANSFORM_PLAYER:
-                PlayersHandler.TransformPlayer(slea, c, c.getPlayer());
-                break;
-            case NOTE_ACTION:
-                PlayersHandler.Note(slea, c.getPlayer());
-                break;
-            case USE_DOOR:
-                PlayersHandler.UseDoor(slea, c.getPlayer());
-                break;
-            case DAMAGE_REACTOR:
-                PlayersHandler.HitReactor(slea, c);
-                break;
-            case TOUCH_REACTOR:
-                PlayersHandler.TouchReactor(slea, c);
-                break;
-            case CLOSE_CHALKBOARD:
-                c.getPlayer().setChalkboard(null);
-                break;
-            case ITEM_MAKER:
-                ItemMakerHandler.ItemMaker(slea, c);
-                break;
-            case ITEM_SORT:
-                InventoryHandler.ItemSort(slea, c);
-                break;
-            case ITEM_GATHER:
-                InventoryHandler.ItemGather(slea, c);
-                break;
-            case ITEM_MOVE:
-                InventoryHandler.ItemMove(slea, c);
-                break;
-            case ITEM_PICKUP:
-                InventoryHandler.Pickup_Player(slea, c, c.getPlayer());
-                break;
-            case USE_CASH_ITEM:
-                InventoryHandler.UseCashItem(slea, c);
-                break;
-            case USE_ITEM:
-                InventoryHandler.UseItem(slea, c, c.getPlayer());
-                break;
-            case USE_MAGNIFY_GLASS:
-                InventoryHandler.UseMagnify(slea, c);
-                break;
-            case USE_SCRIPTED_NPC_ITEM:
-                InventoryHandler.UseScriptedNPCItem(slea, c, c.getPlayer());
-                break;
-            case USE_RETURN_SCROLL:
-                InventoryHandler.UseReturnScroll(slea, c, c.getPlayer());
-                break;
-            case USE_UPGRADE_SCROLL:
-                c.getPlayer().updateTick(slea.readInt());
-                InventoryHandler.UseUpgradeScroll((byte) slea.readShort(), (byte) slea.readShort(), (byte) slea.readShort(), c, c.getPlayer());
-                break;
-            case USE_POTENTIAL_SCROLL:
-                c.getPlayer().updateTick(slea.readInt());
-                InventoryHandler.UseUpgradeScroll((byte) slea.readShort(), (byte) slea.readShort(), (byte) 0, c, c.getPlayer());
-                break;
-            case USE_EQUIP_SCROLL:
-                c.getPlayer().updateTick(slea.readInt());
-                InventoryHandler.UseUpgradeScroll((byte) slea.readShort(), (byte) slea.readShort(), (byte) 0, c, c.getPlayer());
-                break;
-            case USE_SUMMON_BAG:
-                InventoryHandler.UseSummonBag(slea, c, c.getPlayer());
-                break;
-            case USE_TREASUER_CHEST:
-                InventoryHandler.UseTreasureChest(slea, c, c.getPlayer());
-                break;
-            case USE_SKILL_BOOK:
-//                c.getPlayer().updateTick(slea.readInt());
-                InventoryHandler.UseSkillBook(slea, c, c.getPlayer());
-                break;
-            case USE_CATCH_ITEM:
-                InventoryHandler.UseCatchItem(slea, c, c.getPlayer());
-                break;
-            case USE_MOUNT_FOOD:
-                InventoryHandler.UseMountFood(slea, c, c.getPlayer());
-                break;
-            case REWARD_ITEM:
-                InventoryHandler.UseRewardItem((byte) slea.readShort(), slea.readInt(), c, c.getPlayer());
-                break;
-            case HYPNOTIZE_DMG:
-                MobHandler.HypnotizeDmg(slea, c.getPlayer());
-                break;
-            case MOB_NODE:
-                MobHandler.MobNode(slea, c.getPlayer());
-                break;
-            case DISPLAY_NODE:
-                MobHandler.DisplayNode(slea, c.getPlayer());
-                break;
-            case MOVE_LIFE:
-                MobHandler.MoveMonster(slea, c, c.getPlayer());
-                break;
-            case AUTO_AGGRO:
-                MobHandler.AutoAggro(slea.readInt(), c.getPlayer());
-                break;
-            case FRIENDLY_DAMAGE:
-                MobHandler.FriendlyDamage(slea, c.getPlayer());
-                break;
-            case MONSTER_BOMB:
-                MobHandler.MonsterBomb(slea.readInt(), c.getPlayer());
-                break;
-            case NPC_SHOP:
-                NPCHandler.NPCShop(slea, c, c.getPlayer());
-                break;
-            case NPC_TALK:
-                NPCHandler.NPCTalk(slea, c, c.getPlayer());
-                break;
-            case NPC_TALK_MORE:
-                NPCHandler.NPCMoreTalk(slea, c);
-                break;
-            case NPC_ACTION:
-                NPCHandler.NPCAnimation(slea, c);
-                break;
-            case QUEST_ACTION:
-                NPCHandler.QuestAction(slea, c, c.getPlayer());
-                break;
-            case STORAGE:
-                NPCHandler.Storage(slea, c, c.getPlayer());
-                break;
-            case GENERAL_CHAT:
-//                c.getPlayer().updateTick(slea.readInt());
-                ChatHandler.GeneralChat(slea.readMapleAsciiString(), slea.readByte(), c, c.getPlayer());
-                break;
-            case PARTYCHAT:
-                ChatHandler.Others(slea, c, c.getPlayer());
-                break;
-            case WHISPER:
-                ChatHandler.Whisper_Find(slea, c);
-                break;
-            case MESSENGER:
-                ChatHandler.Messenger(slea, c);
-                break;
-            case AUTO_ASSIGN_AP:
-                StatsHandling.AutoAssignAP(slea, c, c.getPlayer());
-                break;
-            case DISTRIBUTE_AP:
-                StatsHandling.DistributeAP(slea, c, c.getPlayer());
-                break;
-            case DISTRIBUTE_SP:
-                c.getPlayer().updateTick(slea.readInt());
-                StatsHandling.DistributeSP(slea.readInt(), c, c.getPlayer());
-                break;
-            case PLAYER_INTERACTION:
-                PlayerInteractionHandler.PlayerInteraction(slea, c, c.getPlayer());
-                break;
-            case GUILD_OPERATION:
-                GuildHandler.Guild(slea, c);
-                break;
-            case UPDATE_CHAR_INFO:
-                //System.err.println("UPDATE_CHAR_INFO");
-                //PlayersHandler.UpdateCharInfo(slea.readAsciiString(), c);
-                PlayersHandler.UpdateCharInfo(slea, c, c.getPlayer());
-                break;
-            case DENY_GUILD_REQUEST:
-                slea.skip(1);
-                GuildHandler.DenyGuildRequest(slea.readMapleAsciiString(), c);
-                break;
-            case ALLIANCE_OPERATION:
-                AllianceHandler.HandleAlliance(slea, c, false);
-                break;
-            case DENY_ALLIANCE_REQUEST:
-                AllianceHandler.HandleAlliance(slea, c, true);
-                break;
-            case BBS_OPERATION:
-                BBSHandler.BBSOperatopn(slea, c);
-                break;
-            case PARTY_OPERATION:
-                PartyHandler.PartyOperatopn(slea, c);
-                break;
-            case DENY_PARTY_REQUEST:
-                PartyHandler.DenyPartyRequest(slea, c);
-                break;
-            case BUDDYLIST_MODIFY:
-                BuddyListHandler.BuddyOperation(slea, c);
-                break;
-            case CYGNUS_SUMMON:
-                UserInterfaceHandler.CygnusSummon_NPCRequest(c);
-                break;
-            case SHIP_OBJECT:
-                UserInterfaceHandler.ShipObjectRequest(slea.readInt(), c);
-                break;
-            case BUY_CS_ITEM:
-                CashShopOperation.BuyCashItem(slea, c, c.getPlayer());
-                break;
-            case COUPON_CODE:
-                FileoutputUtil.log(FileoutputUtil.PacketEx_Log, "Coupon : \n" + slea.toString(true));
-                System.out.println(slea.toString());
-                slea.skip(2);
-                CashShopOperation.CouponCode(slea.readMapleAsciiString(), c);
-                break;
-            case CS_UPDATE:
-                CashShopOperation.CSUpdate(c);
-                break;
-            case TOUCHING_MTS:
-                MTSOperation.MTSUpdate(MTSStorage.getInstance().getCart(c.getPlayer().getId()), c);
-                break;
-            case MTS_TAB:
-                MTSOperation.MTSOperation(slea, c);
-                break;
-            case DAMAGE_SUMMON:
-                slea.skip(4);
-                SummonHandler.DamageSummon(slea, c.getPlayer());
-                break;
-            case MOVE_SUMMON:
-                SummonHandler.MoveSummon(slea, c.getPlayer());
-                break;
-            case SUMMON_ATTACK:
-                SummonHandler.SummonAttack(slea, c, c.getPlayer());
-                break;
-            case MOVE_DRAGON:
-                SummonHandler.MoveDragon(slea, c.getPlayer());
-                break;
-            case SPAWN_PET:
-                PetHandler.SpawnPet(slea, c, c.getPlayer());
-                break;
-            case MOVE_PET:
-                PetHandler.MovePet(slea, c.getPlayer());
-                break;
-            case PET_CHAT:
-                if (slea.available() < 12) {
-                    break;
-                }
-                PetHandler.PetChat((int) slea.readLong(), slea.readShort(), slea.readMapleAsciiString(), c.getPlayer());
-                break;
-            case PET_COMMAND:
-                PetHandler.PetCommand(slea, c, c.getPlayer());
-                break;
-            case PET_FOOD:
-                PetHandler.PetFood(slea, c, c.getPlayer());
-                break;
-            case PET_LOOT:
-                InventoryHandler.Pickup_Pet(slea, c, c.getPlayer());
-                break;
-            case PET_AUTO_POT:
-                PetHandler.Pet_AutoPotion(slea, c, c.getPlayer());
-                break;
-            case MONSTER_CARNIVAL:
-                MonsterCarnivalHandler.MonsterCarnival(slea, c);
-                break;
-            case DUEY_ACTION:
-                DueyHandler.DueyOperation(slea, c);
-                break;
-            case USE_HIRED_MERCHANT:
-                HiredMerchantHandler.UseHiredMerchant(slea, c);
-                break;
-            case MERCH_ITEM_STORE:
-                HiredMerchantHandler.MerchantItemStore(slea, c);
-                break;
-            case CANCEL_DEBUFF:
-                // Ignore for now
-                break;
-            case LEFT_KNOCK_BACK:
-                PlayerHandler.leftKnockBack(slea, c);
-                break;
-            case SNOWBALL:
-                PlayerHandler.snowBall(slea, c);
-                break;
-            case COCONUT:
-                PlayersHandler.hitCoconut(slea, c);
-                break;
-            case REPAIR:
-                NPCHandler.repair(slea, c);
-                break;
-            case REPAIR_ALL:
-                NPCHandler.repairAll(c);
-                break;
-            case GAME_POLL:
-                UserInterfaceHandler.InGame_Poll(slea, c);
-                break;
-            case OWL:
-                InventoryHandler.Owl(slea, c);
-                break;
-            case OWL_WARP:
-                InventoryHandler.OwlWarp(slea, c);
-                break;
-            case USE_OWL_MINERVA:
-                InventoryHandler.OwlMinerva(slea, c);
-                break;
-            case RPS_GAME:
-                NPCHandler.RPSGame(slea, c);
-                break;
-            case UPDATE_QUEST:
-                NPCHandler.UpdateQuest(slea, c);
-                break;
-            case USE_ITEM_QUEST:
-                NPCHandler.UseItemQuest(slea, c);
-                break;
-            case FOLLOW_REQUEST:
-                PlayersHandler.FollowRequest(slea, c);
-                break;
-            case FOLLOW_REPLY:
-                PlayersHandler.FollowReply(slea, c);
-                break;
-            case RING_ACTION:
-                PlayersHandler.RingAction(slea, c);
-                break;
-            case REQUEST_FAMILY:
-                FamilyHandler.RequestFamily(slea, c);
-                break;
-            case OPEN_FAMILY:
-                FamilyHandler.OpenFamily(slea, c);
-                break;
-            case FAMILY_OPERATION:
-                FamilyHandler.FamilyOperation(slea, c);
-                break;
-            case DELETE_JUNIOR:
-                FamilyHandler.DeleteJunior(slea, c);
-                break;
-            case DELETE_SENIOR:
-                FamilyHandler.DeleteSenior(slea, c);
-                break;
-            case USE_FAMILY:
-                FamilyHandler.UseFamily(slea, c);
-                break;
-            case FAMILY_PRECEPT:
-                FamilyHandler.FamilyPrecept(slea, c);
-                break;
-            case FAMILY_SUMMON:
-                FamilyHandler.FamilySummon(slea, c);
-                break;
-            case ACCEPT_FAMILY:
-                FamilyHandler.AcceptFamily(slea, c);
-                break;
-            case SOLOMON:
-                PlayersHandler.Solomon(slea, c);
-                break;
-            case GACH_EXP:
-                PlayersHandler.GachExp(slea, c);
-                break;
-            default:
-                System.out.println("[UNHANDLED] Recv [" + header.toString() + "] found");
-                break;
-        }
     }
 }

@@ -9,66 +9,75 @@ import java.sql.SQLException;
 
 public class AutoRegister {
 
+    private static final System.Logger LOG = System.getLogger(AutoRegister.class.getName());
+
     private static final int ACCOUNTS_PER_IP = 1;
-    public static boolean autoRegister = true;
-    public static boolean success = false;
 
     public static boolean getAccountExists(String login) {
         boolean accountExists = false;
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("SELECT name FROM accounts WHERE name = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT name FROM accounts WHERE name = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
             ps.setString(1, login);
-            ResultSet rs = ps.executeQuery();
-            if (rs.first()) {
-                accountExists = true;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.first()) {
+                    accountExists = true;
+                }
             }
         } catch (SQLException ex) {
-            System.out.println(ex);
+            // Terse on purpose - this only ever printed ex.toString(). ERROR
+            // rather than INFO because the answer returned below is then wrong:
+            // an existing account reads back as free.
+            LOG.log(System.Logger.Level.ERROR, "查詢帳號是否存在失敗：" + ex);
         }
         return accountExists;
     }
 
-    public static void createAccount(String login, String pwd, String eip) {
+    /**
+     * Registers {@code login}, unless the requesting address already holds
+     * {@link #ACCOUNTS_PER_IP} accounts.
+     *
+     * The answer is returned rather than parked in a public static field, which
+     * is how this used to report itself. Two clients auto-registering at the same
+     * moment run on two Maple-Handler threads, so each could read the other's
+     * result - and a caller that saw a stale true would then treat an account
+     * that was never created as if it had been.
+     *
+     * @return true only when a row was actually inserted.
+     */
+    public static boolean createAccount(String login, String pwd, String eip) {
         String sockAddr = eip;
-        Connection con;
 
-        try {
-            con = DatabaseConnection.getConnection();
-        } catch (Exception ex) {
-            System.out.println(ex);
-            return;
-        }
-
-        try {
-            ResultSet rs;
-            PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?");
-
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
             ipc.setString(1, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
-            rs = ipc.executeQuery();
-            if (rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP) {
-
-                PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?)");/*) {*/
-
+            try (ResultSet rs = ipc.executeQuery()) {
+                if (!(rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP)) {
+                    return false;
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, salt, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+                // A new account is created as PBKDF2 straight away, so it is never
+                // written in a scheme that has to be upgraded later. This used to
+                // store a salted SHA-512, and before that an unsalted SHA-1 - both a
+                // single digest pass, i.e. GPU-speed to brute-force offline.
+                //
+                // `salt` is left NULL on purpose: the PBKDF2 string carries its own
+                // salt and iteration count, and MapleClient.passwordMatches does not
+                // consult the column for a row whose password starts with $pbkdf2$.
                 ps.setString(1, login);
-                ps.setString(2, LoginCrypto.hexSha1(pwd));
-                ps.setString(3, "autoregister@mail.com");
-                ps.setString(4, "2008-04-07");
-                ps.setString(5, "00-00-00-00-00-00");
-                ps.setString(6, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
+                ps.setString(2, LoginCrypto.makePbkdf2Hash(pwd));
+                ps.setString(3, null);
+                ps.setString(4, "autoregister@mail.com");
+                ps.setString(5, "2008-04-07");
+                ps.setString(6, "00-00-00-00-00-00");
+                ps.setString(7, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
                 ps.executeUpdate();
             }
-
-            success = true;
+            return true;
         } catch (SQLException ex) {
-            System.out.println(ex);
-            return;
+            // Terse on purpose, as above; the registration is abandoned.
+            LOG.log(System.Logger.Level.ERROR, "自動註冊失敗：" + ex);
+            return false;
         }
-        /*                }
-         }
-         rs.close();
-         } catch (SQLException ex) {
-         System.out.println(ex);
-         }*/
     }
 }

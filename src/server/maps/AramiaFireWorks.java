@@ -23,12 +23,12 @@ package server.maps;
 import java.awt.Point;
 
 import client.MapleCharacter;
-import handling.world.World;
-import server.MapleItemInformationProvider;
+import handling.world.Broadcast;
 import server.Randomizer;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.life.MapleLifeFactory;
-import tools.MaplePacketCreator;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 
 public class AramiaFireWorks {
 
@@ -52,7 +52,7 @@ public class AramiaFireWorks {
     }
 
     public final void giveKegs(final MapleCharacter c, final int kegs) {
-        this.kegs += kegs;
+        this.kegs = (short) (this.kegs + kegs); // 每次達 MAX_KEGS(10000) 就歸零，加上單次上限（背包容量）仍遠小於 short
         if (this.kegs >= MAX_KEGS) {
             this.kegs = 0;
             broadcastEvent(c);
@@ -60,7 +60,7 @@ public class AramiaFireWorks {
     }
 
     private final void broadcastServer(final MapleCharacter c, final int itemid) {
-        World.Broadcast.broadcastMessage(MaplePacketCreator.serverNotice(6, itemid, "<頻道 " + c.getClient().getChannel() + "> " + "弓箭手村邱比特公園即將開始發射煙火!"/*c.getMap().getMapName() + " : The amount of {" + MapleItemInformationProvider.getInstance().getName(itemid) + "} has reached the limit!"*/).getBytes());
+        Broadcast.broadcastMessage(ChatPacket.serverNotice(6, itemid, "<頻道 " + c.getClient().getChannel() + "> " + "弓箭手村邱比特公園即將開始發射煙火!"/*c.getMap().getMapName() + " : The amount of {" + MapleItemInformationProvider.getInstance().getName(itemid) + "} has reached the limit!"*/).getBytes());
     }
 
     public final short getKegsPercentage() {
@@ -68,26 +68,17 @@ public class AramiaFireWorks {
     }
 
     private final void broadcastEvent(final MapleCharacter c) {
-//        broadcastServer(c, KEG_ID);
         // Henesys Park
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                startEvent(c.getClient().getChannelServer().getMapFactory().getMap(209080000));
-            }
+        Timer.EVENT.schedule(() -> {
+            startEvent(c.getClient().getChannelServer().getMapFactory().getMap(209080000));
         }, 10000);
     }
 
     private final void startEvent(final MapleMap map) {
         map.startMapEffect("雪人大大出現啦", 5120000);
 
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                spawnMonster(map);
-            }
+        Timer.EVENT.schedule(() -> {
+            spawnMonster(map);
         }, 5000);
     }
 
@@ -101,7 +92,7 @@ public class AramiaFireWorks {
     }
 
     public final void giveSuns(final MapleCharacter c, final int kegs) {
-        this.sunshines += kegs;
+        this.sunshines = (short) (this.sunshines + kegs); // 每次達 MAX_SUN(14000) 就歸零
         //have to broadcast a Reactor?
         final MapleMap map = c.getClient().getChannelServer().getMapFactory().getMap(555000000);
         final MapleReactor reactor = map.getReactorByName("XmasTree");
@@ -115,7 +106,7 @@ public class AramiaFireWorks {
                     if (this.sunshines >= (MAX_SUN / 6) * (2 + reactor.getState())) {
                         reactor.setState((byte) (reactor.getState() + 1));
                         reactor.setTimerActive(false);
-                        map.broadcastMessage(MaplePacketCreator.triggerReactor(reactor, reactor.getState()));
+                        map.broadcastMessage(MapPacket.triggerReactor(reactor, reactor.getState()));
                     }
                     break;
                 default:
@@ -138,24 +129,16 @@ public class AramiaFireWorks {
     private final void broadcastSun(final MapleCharacter c) {
         broadcastServer(c, SUN_ID);
         // Henesys Park
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                startSun(c.getClient().getChannelServer().getMapFactory().getMap(970010000));
-            }
+        Timer.EVENT.schedule(() -> {
+            startSun(c.getClient().getChannelServer().getMapFactory().getMap(970010000));
         }, 10000);
     }
 
     private final void startSun(final MapleMap map) {
         map.startMapEffect("The tree is bursting with sunshine!", 5121010);
         for (int i = 0; i < 3; i++) {
-            EventTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public final void run() {
-                    spawnItem(map);
-                }
+            Timer.EVENT.schedule(() -> {
+                spawnItem(map);
             }, 5000 + (i * 10000));
         }
     }
@@ -170,7 +153,7 @@ public class AramiaFireWorks {
     }
 
     public final void giveDecs(final MapleCharacter c, final int kegs) {
-        this.decorations += kegs;
+        this.decorations = (short) (this.decorations + kegs); // 每次達 MAX_DEC(18000) 就歸零
         //have to broadcast a Reactor?
         final MapleMap map = c.getClient().getChannelServer().getMapFactory().getMap(555000000);
         final MapleReactor reactor = map.getReactorByName("XmasTree");
@@ -184,7 +167,7 @@ public class AramiaFireWorks {
                     if (this.decorations >= (MAX_DEC / 6) * (2 + reactor.getState())) {
                         reactor.setState((byte) (reactor.getState() + 1));
                         reactor.setTimerActive(false);
-                        map.broadcastMessage(MaplePacketCreator.triggerReactor(reactor, reactor.getState()));
+                        map.broadcastMessage(MapPacket.triggerReactor(reactor, reactor.getState()));
                     }
                     break;
                 default:
@@ -206,24 +189,16 @@ public class AramiaFireWorks {
 
     private final void broadcastDec(final MapleCharacter c) {
         broadcastServer(c, DEC_ID);
-        EventTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public final void run() {
-                startDec(c.getClient().getChannelServer().getMapFactory().getMap(555000000));
-            }
+        Timer.EVENT.schedule(() -> {
+            startDec(c.getClient().getChannelServer().getMapFactory().getMap(555000000));
         }, 10000); //no msg
     }
 
     private final void startDec(final MapleMap map) {
         map.startMapEffect("The tree is bursting with snow!", 5120000);
         for (int i = 0; i < 3; i++) {
-            EventTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public final void run() {
-                    spawnDec(map);
-                }
+            Timer.EVENT.schedule(() -> {
+                spawnDec(map);
             }, 5000 + (i * 10000));
         }
     }

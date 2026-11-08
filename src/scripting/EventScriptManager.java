@@ -23,8 +23,7 @@ package scripting;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
+import java.util.stream.IntStream;
 
 import handling.channel.ChannelServer;
 import tools.FileoutputUtil;
@@ -33,35 +32,61 @@ import tools.FileoutputUtil;
  *
  * @author Matze
  */
-public class EventScriptManager extends AbstractScriptManager {
+// final (-Xlint:this-escape): the constructor compiles the scripts on the
+// common ForkJoinPool, so 'this' is handed to other threads (through the
+// inherited getInvocable) while the object is still being built. The parallel
+// forEach joins before the constructor returns and nothing extends this class,
+// so no subclass can ever see the half-built object.
+public final class EventScriptManager extends AbstractScriptManager {
+
+    private static final System.Logger LOG = System.getLogger(EventScriptManager.class.getName());
 
     private static class EventEntry {
 
-        public EventEntry(final String script, final Invocable iv, final EventManager em) {
+        public EventEntry(final String script, final ScriptScope iv, final EventManager em) {
             this.script = script;
             this.iv = iv;
             this.em = em;
         }
         public String script;
-        public Invocable iv;
+        public ScriptScope iv;
         public EventManager em;
     }
-    private final Map<String, EventEntry> events = new LinkedHashMap<String, EventEntry>();
+    private final Map<String, EventEntry> events = new LinkedHashMap<>();
     private final AtomicInteger runningInstanceMapId = new AtomicInteger(0);
 
     public final int getNewInstanceMapId() {
         return runningInstanceMapId.addAndGet(1);
     }
 
+    /**
+     * Compiles every event script named by {@code tms.Events} for one channel.
+     *
+     * <p>Each script gets its own Nashorn engine, and each engine has to be
+     * created and then handed {@code mozilla_compat.js} plus the script itself
+     * to compile. There are about a hundred of them per channel and doing that
+     * one at a time was most of a channel's startup, so they are compiled in
+     * parallel - they are completely independent of each other, and nothing
+     * here is shared but the {@code ScriptEngineManager}, which is only read.
+     *
+     * <p>The results are collected back in the order {@code tms.Events} lists
+     * them, because {@link #init()} runs them in the map's iteration order.
+     * This is deliberately the common ForkJoinPool rather than a
+     * {@code server.Timer} pool: it is one bounded burst of CPU work at
+     * startup, not scheduled work that wants a named, shut-down-with-the-server
+     * pool.
+     */
     public EventScriptManager(final ChannelServer cserv, final String[] scripts) {
         super();
-        for (final String script : scripts) {
-            if (!script.equals("")) {
-                final Invocable iv = getInvocable("event/" + script + ".js", null);
-
-                if (iv != null) {
-                    events.put(script, new EventEntry(script, iv, new EventManager(cserv, iv, script)));
-                }
+        final ScriptScope[] loaded = new ScriptScope[scripts.length];
+        IntStream.range(0, scripts.length).parallel().forEach(i -> {
+            if (!scripts[i].equals("")) {
+                loaded[i] = getInvocable("event/" + scripts[i] + ".js", null);
+            }
+        });
+        for (int i = 0; i < scripts.length; i++) {
+            if (loaded[i] != null) {
+                events.put(scripts[i], new EventEntry(scripts[i], loaded[i], new EventManager(cserv, loaded[i], scripts[i])));
             }
         }
     }
@@ -77,11 +102,11 @@ public class EventScriptManager extends AbstractScriptManager {
     public final void init() {
         for (final EventEntry entry : events.values()) {
             try {
-                ((ScriptEngine) entry.iv).put("em", entry.em);
+                entry.iv.put("em", entry.em);
                 entry.iv.invokeFunction("init", (Object) null);
                
             } catch (final Exception ex) {
-                System.out.println("Error initiating event: " + entry.script + ":" + ex);
+                LOG.log(System.Logger.Level.ERROR, "Error initiating event: " + entry.script + ":" + ex);
                 FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error initiating event: " + entry.script + ":" + ex);
             }
         }

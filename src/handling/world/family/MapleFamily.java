@@ -31,24 +31,28 @@ import java.util.Iterator;
 import client.MapleCharacter;
 import database.DatabaseConnection;
 import handling.MaplePacket;
-import handling.world.World;
+import handling.world.Broadcast;
+import handling.world.Family;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import tools.MaplePacketCreator;
 import tools.packet.FamilyPacket;
 
-public class MapleFamily implements java.io.Serializable {
+// final: the loading constructor calls resetPedigree(), which hands 'this' to
+// every MapleFamilyCharacter before the family has finished loading. Nothing
+// extends MapleFamily (-Xlint:this-escape).
+public final class MapleFamily {
+
+    private static final System.Logger LOG = System.getLogger(MapleFamily.class.getName());
 
     public static enum FCOp {
 
         NONE, DISBAND;
     }
-    public static final long serialVersionUID = 6322150443228168192L;
     //does not need to be in order :) CID -> MFC
-    private final Map<Integer, MapleFamilyCharacter> members = new ConcurrentHashMap<Integer, MapleFamilyCharacter>();
+    private final Map<Integer, MapleFamilyCharacter> members = new ConcurrentHashMap<>();
     private String leadername = null, notice;
     private int id, leaderid, generations = 0;
     private boolean proper = true, bDirty = false, changed = false;
@@ -56,38 +60,34 @@ public class MapleFamily implements java.io.Serializable {
     public MapleFamily(final int fid) {
         super();
 
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM families WHERE familyid = ?");
-            ps.setInt(1, fid);
-            ResultSet rs = ps.executeQuery();
-
-            if (!rs.first()) {
-                rs.close();
-                ps.close();
-                id = -1;
-                return;
-            }
-            id = fid;
-            leaderid = rs.getInt("leaderid");
-            notice = rs.getString("notice");
-            rs.close();
-            ps.close();
-            //does not need to be in any order
-            ps = con.prepareStatement("SELECT id, name, level, job, seniorid, junior1, junior2, currentrep, totalrep FROM characters WHERE familyid = ?");
-            ps.setInt(1, fid);
-            rs = ps.executeQuery();
-            while (rs.next()) {
-                if (rs.getInt("id") == leaderid) {
-                    leadername = rs.getString("name");
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM families WHERE familyid = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+                ps.setInt(1, fid);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.first()) {
+                        id = -1;
+                        return;
+                    }
+                    id = fid;
+                    leaderid = rs.getInt("leaderid");
+                    notice = rs.getString("notice");
                 }
-                members.put(rs.getInt("id"), new MapleFamilyCharacter(rs.getInt("id"), rs.getShort("level"), rs.getString("name"), (byte) -1, rs.getInt("job"), fid, rs.getInt("seniorid"), rs.getInt("junior1"), rs.getInt("junior2"), rs.getInt("currentrep"), rs.getInt("totalrep"), false));
             }
-            rs.close();
-            ps.close();
+            //does not need to be in any order
+            try (PreparedStatement ps = con.prepareStatement("SELECT id, name, level, job, seniorid, junior1, junior2, currentrep, totalrep FROM characters WHERE familyid = ?")) {
+                ps.setInt(1, fid);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        if (rs.getInt("id") == leaderid) {
+                            leadername = rs.getString("name");
+                        }
+                        members.put(rs.getInt("id"), new MapleFamilyCharacter(rs.getInt("id"), rs.getShort("level"), rs.getString("name"), (byte) -1, rs.getInt("job"), fid, rs.getInt("seniorid"), rs.getInt("junior1"), rs.getInt("junior2"), rs.getInt("currentrep"), rs.getInt("totalrep"), false));
+                    }
+                }
+            }
 
             if (leadername == null || members.size() < 2) {
-                System.err.println("Leader " + leaderid + " isn't in family " + id + ".  Impossible... family is disbanding.");
+                LOG.log(System.Logger.Level.ERROR, "Leader " + leaderid + " isn't in family " + id + ".  Impossible... family is disbanding.");
                 writeToDB(true);
                 proper = false;
                 return;
@@ -136,8 +136,7 @@ public class MapleFamily implements java.io.Serializable {
             resetDescendants(); //set
             resetGens(); //set
         } catch (SQLException se) {
-            System.err.println("unable to read family information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read family information from sql", se);
         }
     }
 
@@ -173,53 +172,49 @@ public class MapleFamily implements java.io.Serializable {
     }
 
     public static final Collection<MapleFamily> loadAll() {
-        final Collection<MapleFamily> ret = new ArrayList<MapleFamily>();
+        final Collection<MapleFamily> ret = new ArrayList<>();
         MapleFamily g;
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT familyid FROM families");
-            ResultSet rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT familyid FROM families");
+                ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 g = new MapleFamily(rs.getInt("familyid"));
                 if (g.getId() > 0) {
                     ret.add(g);
                 }
             }
-            rs.close();
-            ps.close();
         } catch (SQLException se) {
-            System.err.println("unable to read family information from sql");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "unable to read family information from sql", se);
         }
         return ret;
     }
 
     public final void writeToDB(final boolean bDisband) {
-        try {
-            Connection con = DatabaseConnection.getConnection();
+        try (Connection con = DatabaseConnection.getConnection()) {
             if (!bDisband) {
                 if (changed) {
-                    PreparedStatement ps = con.prepareStatement("UPDATE families SET notice = ? WHERE familyid = ?");
-                    ps.setString(1, notice);
-                    ps.setInt(2, id);
-                    ps.execute();
-                    ps.close();
+                    try (PreparedStatement ps = con.prepareStatement("UPDATE families SET notice = ? WHERE familyid = ?")) {
+                        ps.setString(1, notice);
+                        ps.setInt(2, id);
+                        ps.execute();
+                    }
                 }
                 changed = false;
             } else {
                 //members is less than 2, this shall be executed
+                // 保留作為紀錄：解散家族時原本會先廣播一次 DISBAND 通知線上成員，
+                // 這個廣播被關掉了，現在只直接刪 DB 的 families 列。
                /* if (leadername == null || members.size() < 2) {
                  broadcast(null, -1, FCOp.DISBAND, null);
                  }*/
 
-                PreparedStatement ps = con.prepareStatement("DELETE FROM families WHERE familyid = ?");
-                ps.setInt(1, id);
-                ps.execute();
-                ps.close();
+                try (PreparedStatement ps = con.prepareStatement("DELETE FROM families WHERE familyid = ?")) {
+                    ps.setInt(1, id);
+                    ps.execute();
+                }
             }
         } catch (SQLException se) {
-            System.err.println("Error saving family to SQL");
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error saving family to SQL", se);
         }
     }
 
@@ -261,12 +256,12 @@ public class MapleFamily implements java.io.Serializable {
             if (cids == null || cids.contains(mgc.getId())) {
                 if (bcop == FCOp.DISBAND) {
                     if (mgc.isOnline()) {
-                        World.Family.setFamily(0, 0, 0, 0, mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
+                        Family.setFamily(0, 0, 0, 0, mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
                     } else {
                         setOfflineFamilyStatus(0, 0, 0, 0, mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
                     }
                 } else if (mgc.isOnline() && mgc.getId() != exceptionId) {
-                    World.Broadcast.sendFamilyPacket(mgc.getId(), packet, exceptionId, id);
+                    Broadcast.sendFamilyPacket(mgc.getId(), packet, exceptionId, id);
                 }
             }
         }
@@ -277,6 +272,9 @@ public class MapleFamily implements java.io.Serializable {
         if (!bDirty) {
             return;
         }
+        // 這裡不能用 removeIf：迴圈本體除了移除之外，還會就地把懸空的
+        // junior1 / junior2 / seniorid 歸零（setJunior1 等），對每一筆都有副作用，
+        // 而且那些修正必須連「不會被移除」的成員一起做。
         final Iterator<Entry<Integer, MapleFamilyCharacter>> toRemove = members.entrySet().iterator();
         while (toRemove.hasNext()) {
             MapleFamilyCharacter mfc = toRemove.next().getValue();
@@ -294,8 +292,8 @@ public class MapleFamily implements java.io.Serializable {
                 continue;
             }
         }
-        if (members.size() < 2 && World.Family.getFamily(id) != null) {
-            World.Family.disbandFamily(id); //disband us.
+        if (members.size() < 2 && Family.getFamily(id) != null) {
+            Family.disbandFamily(id); //disband us.
         }
         bDirty = false;
     }
@@ -318,13 +316,14 @@ public class MapleFamily implements java.io.Serializable {
             if (oldLevel > mgc.getLevel()) {
                 addrep /= 2; //:D
             }
-            //mgc.setCurrentRep(mgc.getCurrentRep()+addrep);
-            //mgc.setTotalRep(mgc.getTotalRep()+addrep);
+            // 保留作為紀錄：原本會直接把記憶體裡的成員聲望加上去，這兩行被關掉之後，
+            // 只有 isOnline() 的分支會透過 Family.setFamily(...) 帶上新值；
+            // 離線成員的 MapleFamilyCharacter 在記憶體裡不會更新（DB 側另外走 setOfflineFamilyStatus）。
             if (mgc.isOnline()) {
-                List<Integer> dummy = new ArrayList<Integer>();
+                List<Integer> dummy = new ArrayList<>();
                 dummy.add(mgc.getId());
                 broadcast(FamilyPacket.changeRep(addrep), -1, dummy);
-                World.Family.setFamily(id, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep() + addrep, mgc.getTotalRep() + addrep, mgc.getId());
+                Family.setFamily(id, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep() + addrep, mgc.getTotalRep() + addrep, mgc.getId());
             } else {
                 setOfflineFamilyStatus(id, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep() + addrep, mgc.getTotalRep() + addrep, mgc.getId());
             }
@@ -338,7 +337,7 @@ public class MapleFamily implements java.io.Serializable {
         members.put(mc.getId(), ret);
         ret.resetPedigree(this);
         bDirty = true;
-        List<Integer> toRemove = new ArrayList<Integer>();
+        List<Integer> toRemove = new ArrayList<>();
         for (int i = 0; i < ret.getPedigree().size(); i++) {
             if (ret.getPedigree().get(i) == ret.getId()) {
                 continue;
@@ -371,81 +370,12 @@ public class MapleFamily implements java.io.Serializable {
         leaveFamily(getMFC(id), true);
     }
 
-    /* public final void leaveFamily(final int id) {
-     leaveFamily(getMFC(id), true);
-     }*/
-
-    /*public final void leaveFamily(final MapleFamilyCharacter mgc, final boolean skipLeader) {
-     bDirty = true;
-     if (mgc.getId() == leaderid && !skipLeader) {
-     //disband
-     leadername = null; //to disband family completely
-     World.Family.disbandFamily(id);
-     } else {
-     //we also have to update anyone below us
-
-     if (mgc.getJunior1() > 0) {
-     MapleFamilyCharacter j = getMFC(mgc.getJunior1());
-     if (j != null) {
-     j.setSeniorId(0);
-     splitFamily(mgc.getJunior1());
-     }
-     }
-     if (mgc.getJunior2() > 0) {
-     MapleFamilyCharacter j = getMFC(mgc.getJunior2());
-     if (j != null) {
-     j.setSeniorId(0);
-     splitFamily(mgc.getJunior2());
-     }
-     }
-     if (mgc.getSeniorId() > 0) {
-     MapleFamilyCharacter mfc = getMFC(mgc.getSeniorId());
-     if (mfc != null) {
-     if (mfc.getJunior1() == mgc.getId()) {
-     mfc.setJunior1(0);
-     } else {
-     mfc.setJunior2(0);
-     }
-     }
-     }
-     List<Integer> dummy = new ArrayList<Integer>();
-     dummy.add(mgc.getId());
-     broadcast(null, -1, FCOp.DISBAND, dummy);
-     resetPedigree(); //ex but eh
-     }
-     members.remove(mgc.getId());
-     bDirty = true;
-     }*/
-    /*public final void leaveFamily(final MapleFamilyCharacter mgc, final boolean skipLeader) {
-     bDirty = true;
-     if (mgc.getId() == leaderid && !skipLeader) {
-     //disband
-     leadername = null; //to disband family completely
-     World.Family.disbandFamily(id);
-     } else {
-     //we also have to update anyone below us
-     if (mgc.getJunior1() > 0) {
-     splitFamily(mgc.getJunior1()); //junior1 makes his own family
-     }
-     if (mgc.getJunior2() > 0) {
-     splitFamily(mgc.getJunior2()); //junior2 makes his own family
-     }
-     List<Integer> dummy = new ArrayList<Integer>();
-     dummy.add(mgc.getId());
-     broadcast(null, -1, FCOp.DISBAND, dummy);
-     resetPedigree(); //ex but eh
-     }
-     members.remove(mgc.getId());
-     }
-     public final void setNotice(final String notice) {
-     this.notice = notice;
-     }*/
     public final void leaveFamily(final MapleFamilyCharacter mgc, final boolean skipLeader) {
         bDirty = true;
         if (mgc.getId() == leaderid && !skipLeader) {
             //disband
             leadername = null; //to disband family completely
-            World.Family.disbandFamily(id);
+            Family.disbandFamily(id);
         } else {
             //we also have to update anyone below us
 
@@ -453,7 +383,6 @@ public class MapleFamily implements java.io.Serializable {
                 MapleFamilyCharacter j = getMFC(mgc.getJunior1());
                 if (j != null) {
                     j.setSeniorId(0);
-                    //splitFamily(mgc.getJunior1());
                     splitFamily(j.getId(), j); //junior1 makes his own family
                 }
             }
@@ -461,7 +390,6 @@ public class MapleFamily implements java.io.Serializable {
                 MapleFamilyCharacter j = getMFC(mgc.getJunior2());
                 if (j != null) {
                     j.setSeniorId(0);
-                    //splitFamily(mgc.getJunior2());
                     splitFamily(j.getId(), j); //junior1 makes his own family
                 }
             }
@@ -475,7 +403,7 @@ public class MapleFamily implements java.io.Serializable {
                     }
                 }
             }
-            List<Integer> dummy = new ArrayList<Integer>();
+            List<Integer> dummy = new ArrayList<>();
             dummy.add(mgc.getId());
             broadcast(null, -1, FCOp.DISBAND, dummy);
             resetPedigree(); //ex but eh
@@ -490,12 +418,12 @@ public class MapleFamily implements java.io.Serializable {
             int old_level = member.getLevel();
             int old_job = member.getJobId();
             member.setJobId(mgc.getJob());
-            member.setLevel((short) mgc.getLevel());
+            member.setLevel(mgc.getLevel());
             if (old_level != mgc.getLevel()) {
-                this.broadcast(MaplePacketCreator.sendLevelup(true, mgc.getLevel(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
+                this.broadcast(FamilyPacket.sendLevelup(true, mgc.getLevel(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
             }
             if (old_job != mgc.getJob()) {
-                this.broadcast(MaplePacketCreator.sendJobup(true, mgc.getJob(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
+                this.broadcast(FamilyPacket.sendJobup(true, mgc.getJob(), mgc.getName()), mgc.getId(), mgc.getId() == leaderid ? null : member.getPedigree());
             }
         }
     }
@@ -513,9 +441,8 @@ public class MapleFamily implements java.io.Serializable {
     }
 
     public static void setOfflineFamilyStatus(int familyid, int seniorid, int junior1, int junior2, int currentrep, int totalrep, int cid) {
-        try {
-            java.sql.Connection con = DatabaseConnection.getConnection();
-            java.sql.PreparedStatement ps = con.prepareStatement("UPDATE characters SET familyid = ?, seniorid = ?, junior1 = ?, junior2 = ?, currentrep = ?, totalrep = ? WHERE id = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("UPDATE characters SET familyid = ?, seniorid = ?, junior1 = ?, junior2 = ?, currentrep = ?, totalrep = ? WHERE id = ?")) {
             ps.setInt(1, familyid);
             ps.setInt(2, seniorid);
             ps.setInt(3, junior1);
@@ -524,32 +451,26 @@ public class MapleFamily implements java.io.Serializable {
             ps.setInt(6, totalrep);
             ps.setInt(7, cid);
             ps.execute();
-            ps.close();
         } catch (SQLException se) {
-            System.out.println("SQLException: " + se.getLocalizedMessage());
-            se.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "SQLException: " + se.getLocalizedMessage(), se);
         }
     }
 
     public static int createFamily(int leaderId) {
-        try {
-            Connection con = DatabaseConnection.getConnection();
-
-            PreparedStatement ps = con.prepareStatement("INSERT INTO families (`leaderid`) VALUES (?)", Statement.RETURN_GENERATED_KEYS);
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("INSERT INTO families (`leaderid`) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, leaderId);
             ps.executeUpdate();
-            ResultSet rs = ps.getGeneratedKeys();
-            if (!rs.next()) {
-                rs.close();
-                ps.close();
-                return 0;
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (!rs.next()) {
+                    return 0;
+                }
+                return rs.getInt(1);
             }
-            int ret = rs.getInt(1);
-            rs.close();
-            ps.close();
-            return ret;
         } catch (Exception e) {
-            e.printStackTrace();
+            // Only a bare stack trace before: System.Logger needs a message, so
+            // it names the operation and nothing else.
+            LOG.log(System.Logger.Level.ERROR, "Error creating family", e);
             return 0;
         }
     }
@@ -560,7 +481,7 @@ public class MapleFamily implements java.io.Serializable {
         for (MapleFamilyCharacter mgc : oldfam.members.values()) {
             mgc.setFamilyId(newfam.getId());
             if (mgc.isOnline()) {
-                World.Family.setFamily(newfam.getId(), mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
+                Family.setFamily(newfam.getId(), mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
             } else {
                 setOfflineFamilyStatus(newfam.getId(), mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
             }
@@ -569,54 +490,9 @@ public class MapleFamily implements java.io.Serializable {
         }
         newfam.resetPedigree();
         //do not reset characters, so leadername is fine
-        World.Family.disbandFamily(oldfam.getId()); //and remove it
+        Family.disbandFamily(oldfam.getId()); //and remove it
     }
 
-    /* //return disbanded or not.
-     public boolean splitFamily(int splitId, MapleFamilyCharacter def) {
-     //toSplit = initiator who either broke off with their junior/senior, splitId is the ID of the one broken off
-     //if it's junior, splitId will be the new leaderID, if its senior it's toSplit thats the new leader
-     //happens when someone in fam breaks off with anyone else, either junior/senior
-     //update all the members.
-     MapleFamilyCharacter leader = getMFC(splitId);
-     if (leader == null) {
-     leader = def;
-     if (leader == null) {
-     return false;
-     }
-     }
-     try {
-     List<MapleFamilyCharacter> all = leader.getAllJuniors(this); //leader is included in this collection
-     if (all.size() <= 1) { //but if leader is the only person, then we're done
-     leaveFamily(leader, false);
-     return true;
-     }
-     final int newId = createFamily(leader.getId());
-     if (newId <= 0) {
-     return false;
-     }
-     for (MapleFamilyCharacter mgc : all) {
-     // need it for sql
-     mgc.setFamilyId(newId);
-     setOfflineFamilyStatus(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
-     members.remove(mgc.getId()); //clean remove
-     }
-     final MapleFamily newfam = World.Family.getFamily(newId);
-     for (MapleFamilyCharacter mgc : all) {
-     if (mgc.isOnline()) { //NOW we change the char info
-     World.Family.setFamily(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
-     }
-     newfam.setOnline(mgc.getId(), mgc.isOnline(), mgc.getChannel());
-     }
-     } finally {
-     if (members.size() <= 1) { //only one person is left :|
-     World.Family.disbandFamily(id); //disband us.
-     return true;
-     }
-     }
-     bDirty = true;
-     return false;
-     }*/
     //return disbanded or not.
     public boolean splitFamily(int splitId, MapleFamilyCharacter def) {
         //toSplit = initiator who either broke off with their junior/senior, splitId is the ID of the one broken off
@@ -646,16 +522,16 @@ public class MapleFamily implements java.io.Serializable {
                 setOfflineFamilyStatus(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
                 members.remove(mgc.getId()); //clean remove
             }
-            final MapleFamily newfam = World.Family.getFamily(newId);
+            final MapleFamily newfam = Family.getFamily(newId);
             for (MapleFamilyCharacter mgc : all) {
                 if (mgc.isOnline()) { //NOW we change the char info
-                    World.Family.setFamily(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
+                    Family.setFamily(newId, mgc.getSeniorId(), mgc.getJunior1(), mgc.getJunior2(), mgc.getCurrentRep(), mgc.getTotalRep(), mgc.getId());
                 }
                 newfam.setOnline(mgc.getId(), mgc.isOnline(), mgc.getChannel());
             }
         } finally {
             if (members.size() <= 1) { //only one person is left :|
-                World.Family.disbandFamily(id); //disband us.
+                Family.disbandFamily(id); //disband us.
                 return true;
             }
         }

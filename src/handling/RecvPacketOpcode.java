@@ -23,6 +23,8 @@ package handling;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public enum RecvPacketOpcode implements WritableIntValueHolder {
@@ -103,9 +105,9 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
     QUEST_ACTION,
     SKILL_MACRO,
     REWARD_ITEM,
-	SOLOMON_EXP,
-	SOLOMON,
-	GACH_EXP,
+    SOLOMON_EXP,
+    SOLOMON,
+    GACH_EXP,
     ITEM_MAKER,
     USE_TREASUER_CHEST,
     PARTYCHAT,
@@ -187,7 +189,11 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
     MTS_TAB,
     BEANS_GAME1,
     BEANS_GAME2;
-    private short code = -2;
+    /**
+     * Volatile because {@code !reloadops} rewrites these from a command thread
+     * while the packet handlers are reading them on every inbound packet.
+     */
+    private volatile short code = -2;
 
     @Override
     public void setValue(short code) {
@@ -208,7 +214,7 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
         this.CheckState = CheckState;
     }
 
-    public final boolean NeedsChecking() {
+    public final boolean needsChecking() {
         return CheckState;
     }
 
@@ -220,8 +226,24 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
         return props;
     }
 
+    /**
+     * Header short to opcode. Rebuilt whenever the table is reloaded and never
+     * mutated in place, so readers either see the whole old table or the whole
+     * new one.
+     *
+     * <p>The dispatcher used to answer this question with a linear scan over
+     * {@code values()} - some 190 comparisons for the last opcode in the enum,
+     * on every packet from every client.
+     */
+    private static volatile Map<Short, RecvPacketOpcode> byValue = Map.of();
+
     static {
         reloadValues();
+    }
+
+    /** The opcode with this header, or {@code null} if the table has no such code. */
+    public static RecvPacketOpcode forValue(final short header) {
+        return byValue.get(header);
     }
 
     public static final void reloadValues() {
@@ -230,5 +252,13 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load recvops", e);
         }
+        final Map<Short, RecvPacketOpcode> table = new HashMap<>(values().length * 2);
+        for (final RecvPacketOpcode op : values()) {
+            // First declaration wins, which is what the old scan did. It
+            // matters for the codes left at the -2 default by an ini that does
+            // not mention them.
+            table.putIfAbsent(op.getValue(), op);
+        }
+        byValue = Map.copyOf(table);
     }
 }

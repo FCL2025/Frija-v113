@@ -20,30 +20,16 @@
  */
 package server.life;
 
-public class MonsterGlobalDropEntry {
+/**
+ * 全域掉寶項目。D6 改成 record，理由同 {@link MonsterDropEntry}。
+ * 原本的七參數建構子（不帶 {@code onlySelf}）保留為委派建構子，
+ * 所以既有呼叫端一行都不用改。
+ */
+public record MonsterGlobalDropEntry(int itemId, int chance, int continent, byte dropType,
+        int Minimum, int Maximum, short questid, boolean onlySelf) {
 
-    public MonsterGlobalDropEntry(int itemId, int chance, int continent, byte dropType, int Minimum, int Maximum, short questid) {
-        this.itemId = itemId;
-        this.chance = chance;
-        this.dropType = dropType;
-        this.continent = continent;
-        this.questid = questid;
-        this.Minimum = Minimum;
-        this.Maximum = Maximum;
+    public MonsterGlobalDropEntry(int itemId, int chance, int continent, byte dropType,
+            int Minimum, int Maximum, short questid) {
+        this(itemId, chance, continent, dropType, Minimum, Maximum, questid, false);
     }
-
-    public MonsterGlobalDropEntry(int itemId, int chance, int continent, byte dropType, int Minimum, int Maximum, short questid, boolean onlySelf) {
-        this.itemId = itemId;
-        this.chance = chance;
-        this.dropType = dropType;
-        this.continent = continent;
-        this.questid = questid;
-        this.Minimum = Minimum;
-        this.Maximum = Maximum;
-        this.onlySelf = onlySelf;
-    }
-    public byte dropType;
-    public short questid;
-    public int itemId, chance, Minimum, Maximum, continent;
-    public boolean onlySelf = false;
 }

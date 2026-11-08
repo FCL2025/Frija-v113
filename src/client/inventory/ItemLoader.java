@@ -21,7 +21,7 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -31,10 +31,7 @@ import java.util.List;
 import java.util.Map;
 import database.DatabaseConnection;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import tools.Pair;
 
 public enum ItemLoader {
@@ -69,7 +66,7 @@ public enum ItemLoader {
     //does not need connection con to be auto commit
     public Map<Integer, Pair<IItem, MapleInventoryType>> loadItems(boolean login, Integer... id) throws SQLException {
         List<Integer> lulz = Arrays.asList(id);
-        Map<Integer, Pair<IItem, MapleInventoryType>> items = new LinkedHashMap<Integer, Pair<IItem, MapleInventoryType>>();
+        Map<Integer, Pair<IItem, MapleInventoryType>> items = new LinkedHashMap<>();
         if (lulz.size() != arg.size()) {
             return items;
         }
@@ -90,115 +87,124 @@ public enum ItemLoader {
             query.append(MapleInventoryType.EQUIPPED.getType());
         }
 
-        PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement(query.toString());
-        ps.setInt(1, value);
-        for (int i = 0; i < lulz.size(); i++) {
-            ps.setInt(i + 2, lulz.get(i));
-        }
-        ResultSet rs = ps.executeQuery();
-
-        while (rs.next()) {
-            MapleInventoryType mit = MapleInventoryType.getByType(rs.getByte("inventorytype"));
-
-            if (mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED)) {
-                Equip equip = new Equip(rs.getInt("itemid"), rs.getShort("position"), rs.getInt("uniqueid"), rs.getByte("flag"));
-                if (!login) {
-                    equip.setQuantity((short) 1);
-                    equip.setOwner(rs.getString("owner"));
-                    equip.setExpiration(rs.getLong("expiredate"));
-                    equip.setUpgradeSlots(rs.getByte("upgradeslots"));
-                    equip.setLevel(rs.getByte("level"));
-                    equip.setStr(rs.getShort("str"));
-                    equip.setDex(rs.getShort("dex"));
-                    equip.setInt(rs.getShort("int"));
-                    equip.setLuk(rs.getShort("luk"));
-                    equip.setHp(rs.getShort("hp"));
-                    equip.setMp(rs.getShort("mp"));
-                    equip.setWatk(rs.getShort("watk"));
-                    equip.setMatk(rs.getShort("matk"));
-                    equip.setWdef(rs.getShort("wdef"));
-                    equip.setMdef(rs.getShort("mdef"));
-                    equip.setAcc(rs.getShort("acc"));
-                    equip.setAvoid(rs.getShort("avoid"));
-                    equip.setHands(rs.getShort("hands"));
-                    equip.setSpeed(rs.getShort("speed"));
-                    equip.setJump(rs.getShort("jump"));
-                    equip.setViciousHammer(rs.getByte("ViciousHammer"));
-                    equip.setItemEXP(rs.getInt("itemEXP"));
-                    equip.setGMLog(rs.getString("GM_Log"));
-                    equip.setDurability(rs.getInt("durability"));
-                    equip.setEnhance(rs.getByte("enhance"));
-                    equip.setPotential1(rs.getShort("potential1"));
-                    equip.setPotential2(rs.getShort("potential2"));
-                    equip.setPotential3(rs.getShort("potential3"));
-                    equip.setHpR(rs.getShort("hpR"));
-                    equip.setMpR(rs.getShort("mpR"));
-                    equip.setGiftFrom(rs.getString("sender"));
-                    if (equip.getUniqueId() > -1) {
-                        if (GameConstants.isEffectRing(rs.getInt("itemid"))) {
-                            MapleRing ring = MapleRing.loadFromDb(equip.getUniqueId(), mit.equals(MapleInventoryType.EQUIPPED));
-                            if (ring != null) {
-                                equip.setRing(ring);
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement(query.toString())) {
+            ps.setInt(1, value);
+            for (int i = 0; i < lulz.size(); i++) {
+                ps.setInt(i + 2, lulz.get(i));
+            }
+            ResultSet rs = ps.executeQuery();
+    
+            while (rs.next()) {
+                MapleInventoryType mit = MapleInventoryType.getByType(rs.getByte("inventorytype"));
+    
+                if (mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED)) {
+                    Equip equip = new Equip(rs.getInt("itemid"), rs.getShort("position"), rs.getInt("uniqueid"), rs.getByte("flag"));
+                    if (!login) {
+                        equip.setQuantity((short) 1);
+                        equip.setOwner(rs.getString("owner"));
+                        equip.setExpiration(rs.getLong("expiredate"));
+                        equip.setUpgradeSlots(rs.getByte("upgradeslots"));
+                        equip.setLevel(rs.getByte("level"));
+                        equip.setStr(rs.getShort("str"));
+                        equip.setDex(rs.getShort("dex"));
+                        equip.setInt(rs.getShort("int"));
+                        equip.setLuk(rs.getShort("luk"));
+                        equip.setHp(rs.getShort("hp"));
+                        equip.setMp(rs.getShort("mp"));
+                        equip.setWatk(rs.getShort("watk"));
+                        equip.setMatk(rs.getShort("matk"));
+                        equip.setWdef(rs.getShort("wdef"));
+                        equip.setMdef(rs.getShort("mdef"));
+                        equip.setAcc(rs.getShort("acc"));
+                        equip.setAvoid(rs.getShort("avoid"));
+                        equip.setHands(rs.getShort("hands"));
+                        equip.setSpeed(rs.getShort("speed"));
+                        equip.setJump(rs.getShort("jump"));
+                        equip.setViciousHammer(rs.getByte("ViciousHammer"));
+                        equip.setItemEXP(rs.getInt("itemEXP"));
+                        equip.setGMLog(rs.getString("GM_Log"));
+                        equip.setDurability(rs.getInt("durability"));
+                        equip.setEnhance(rs.getByte("enhance"));
+                        equip.setPotential1(rs.getShort("potential1"));
+                        equip.setPotential2(rs.getShort("potential2"));
+                        equip.setPotential3(rs.getShort("potential3"));
+                        equip.setHpR(rs.getShort("hpR"));
+                        equip.setMpR(rs.getShort("mpR"));
+                        equip.setGiftFrom(rs.getString("sender"));
+                        if (equip.getUniqueId() > -1) {
+                            if (ItemConstants.isEffectRing(rs.getInt("itemid"))) {
+                                MapleRing ring = MapleRing.loadFromDb(equip.getUniqueId(), mit.equals(MapleInventoryType.EQUIPPED));
+                                if (ring != null) {
+                                    equip.setRing(ring);
+                                }
                             }
                         }
                     }
-                }
-                items.put(rs.getInt("inventoryitemid"), new Pair<IItem, MapleInventoryType>(equip.copy(), mit));
-            } else {
-                Item item = new Item(rs.getInt("itemid"), rs.getShort("position"), rs.getShort("quantity"), rs.getByte("flag"));
-                item.setUniqueId(rs.getInt("uniqueid"));
-                item.setOwner(rs.getString("owner"));
-                item.setExpiration(rs.getLong("expiredate"));
-                item.setGMLog(rs.getString("GM_Log"));
-                item.setGiftFrom(rs.getString("sender"));
-                if (GameConstants.isPet(item.getItemId())) {
-                    if (item.getUniqueId() > -1) {
-                        MaplePet pet = MaplePet.loadFromDb(item.getItemId(), item.getUniqueId(), item.getPosition());
-                        if (pet != null) {
-                            item.setPet(pet);
+                    items.put(rs.getInt("inventoryitemid"), new Pair<>(equip.copy(), mit));
+                } else {
+                    Item item = new Item(rs.getInt("itemid"), rs.getShort("position"), rs.getShort("quantity"), rs.getByte("flag"));
+                    item.setUniqueId(rs.getInt("uniqueid"));
+                    item.setOwner(rs.getString("owner"));
+                    item.setExpiration(rs.getLong("expiredate"));
+                    item.setGMLog(rs.getString("GM_Log"));
+                    item.setGiftFrom(rs.getString("sender"));
+                    if (ItemConstants.isPet(item.getItemId())) {
+                        if (item.getUniqueId() > -1) {
+                            MaplePet pet = MaplePet.loadFromDb(item.getItemId(), item.getUniqueId(), item.getPosition());
+                            if (pet != null) {
+                                item.setPet(pet);
+                            }
+                        } else {
+                            //O_O hackish fix
+                            final int new_unique = MapleInventoryIdentifier.getInstance();
+                            item.setUniqueId(new_unique);
+                            item.setPet(MaplePet.createPet(item.getItemId(), new_unique));
                         }
-                    } else {
-                        //O_O hackish fix
-                        final int new_unique = MapleInventoryIdentifier.getInstance();
-                        item.setUniqueId(new_unique);
-                        item.setPet(MaplePet.createPet(item.getItemId(), new_unique));
                     }
+                    items.put(rs.getInt("inventoryitemid"), new Pair<>(item.copy(), mit));
                 }
-                items.put(rs.getInt("inventoryitemid"), new Pair<IItem, MapleInventoryType>(item.copy(), mit));
             }
+    
+            // rs is closed by ps, and ps and con by the try-with-resources.
         }
-
-        rs.close();
-        ps.close();
         return items;
     }
 
     public void saveItems(List<Pair<IItem, MapleInventoryType>> items, Integer... id) throws SQLException {
-        Connection con = DatabaseConnection.getConnection();
-        /*try {
-
-         con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
-         con.setAutoCommit(false);*/
-        saveItems(items, con, id);
-        /*	con.commit();
-         } catch (Exception e) {
-         e.printStackTrace();
-         System.err.println("[charsave] Error saving inventory" + e);
-         try {
-         con.rollback();
-         } catch (SQLException ex) {
-         System.err.println("[charsave] Error Rolling Back inventory" + e);
-         }
-         } finally {
-         try {
-         con.setAutoCommit(true);
-         con.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
-         } catch (SQLException e) {
-         System.err.println("[charsave] Error going back to autocommit mode inventory" + e);
-         }
-         }*/
+        try (Connection con = DatabaseConnection.getConnection()) {
+            saveItems(items, con, id);
+        }
     }
 
+    /**
+     * 寫回一批道具：先整批刪掉舊列，再插回去。維持「DELETE + 逐列 INSERT」的形狀，
+     * 不改成 upsert，欄位的值與寫入順序也一律不動。
+     *
+     * <p><b>為什麼不能整個批次化</b>（規則見 CLAUDE.md 的 Persistence 一節）：
+     * {@code tms.Url} 帶著 {@code rewriteBatchedStatements=true}，Connector/J 會把一串
+     * INSERT 併成一條多 VALUES 的語句，而那種語句拿不到逐列的 generated key。偏偏
+     * {@code inventoryitems.inventoryitemid} 這個 auto-increment 就是
+     * {@code inventoryequipment.inventoryitemid} 的外來鍵 —— 裝備的屬性列靠它接回母列，
+     * {@code loadItems} 的 {@code LEFT JOIN … USING(inventoryitemid)} 走的正是這條線。
+     * 所以這裡和 {@code CharacterRepository} 裡的 {@code queststatus} 是同一個形狀：
+     * <ul>
+     *   <li><b>裝備的母列</b>維持逐列 {@code executeUpdate()}，因為下一行就要
+     *       {@code getGeneratedKeys()}；
+     *   <li><b>非裝備的母列</b>沒有人要它的 key，收成批次；
+     *   <li><b>{@code table_equip} 的子列</b>也收成批次 —— key 在 {@code setInt(1, …)}
+     *       當下就已經取出來了，累積到最後才送出不會改變任何一列的內容。
+     * </ul>
+     *
+     * <p>母列的 INSERT 是同一段 SQL 準備了兩份，差別只在有沒有要 generated key。
+     * 這樣「會被改寫成批次的那一份，永遠沒有要求 generated key」從型別就看得出來，
+     * 不必靠註解保證。非裝備的批次在碰到裝備列之前一定先送出（見迴圈裡的 flush），
+     * 因此 auto-increment 的配發順序與逐列寫入時逐字相同 —— 雇傭商店的貨架順序
+     * 就是由這個順序決定的。
+     *
+     * <p>被改寫的批次只會回 {@code SUCCESS_NO_INFO}，所以 {@code executeBatch()} 的
+     * 回傳值一律不讀。{@code con} 是<em>參數</em>，絕對不能關。
+     */
     public void saveItems(List<Pair<IItem, MapleInventoryType>> items, final Connection con, Integer... id) throws SQLException {
         List<Integer> lulz = Arrays.asList(id);
         if (lulz.size() != arg.size()) {
@@ -219,13 +225,13 @@ public enum ItemLoader {
         }
         query.append(")");
 
-        PreparedStatement ps = con.prepareStatement(query.toString());
-        ps.setInt(1, value);
-        for (int i = 0; i < lulz.size(); i++) {
-            ps.setInt(i + 2, lulz.get(i));
+        try (PreparedStatement ps = con.prepareStatement(query.toString())) {
+            ps.setInt(1, value);
+            for (int i = 0; i < lulz.size(); i++) {
+                ps.setInt(i + 2, lulz.get(i));
+            }
+            ps.executeUpdate();
         }
-        ps.executeUpdate();
-        ps.close();
         if (items == null) {
             return;
         }
@@ -241,41 +247,54 @@ public enum ItemLoader {
             query_2.append(", ?");
         }
         query_2.append(")");
-        ps = con.prepareStatement(query_2.toString(), Statement.RETURN_GENERATED_KEYS);
-        PreparedStatement pse = con.prepareStatement("INSERT INTO " + table_equip + " VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        final Iterator<Pair<IItem, MapleInventoryType>> iter = items.iterator();
-        Pair<IItem, MapleInventoryType> pair;
-        while (iter.hasNext()) {
-            pair = iter.next();
-            IItem item = pair.getLeft();
-            MapleInventoryType mit = pair.getRight();
-            int i = 1;
-            for (int x = 0; x < lulz.size(); x++) {
-                ps.setInt(i, lulz.get(x));
-                i++;
-            }
-            ps.setInt(i, item.getItemId());
-            ps.setInt(i + 1, mit.getType());
-            ps.setInt(i + 2, item.getPosition());
-            ps.setInt(i + 3, item.getQuantity());
-            ps.setString(i + 4, item.getOwner());
-            ps.setString(i + 5, item.getGMLog());
-            ps.setInt(i + 6, item.getUniqueId());
-            ps.setLong(i + 7, item.getExpiration());
-            ps.setByte(i + 8, item.getFlag());
-            ps.setByte(i + 9, (byte) value);
-            ps.setString(i + 10, item.getGiftFrom());
-            ps.executeUpdate();
-
-            if (mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED)) {
-                ResultSet rs = ps.getGeneratedKeys();
-
-                if (!rs.next()) {
-                    throw new RuntimeException("Inserting item failed.");
+        // ps 會要 generated key，所以它永遠逐列送；psNoKeys 是同一段 SQL 的另一份，
+        // 沒有要 key，所以它才是那個可以被 rewriteBatchedStatements 併起來的。
+        try (PreparedStatement ps = con.prepareStatement(query_2.toString(), Statement.RETURN_GENERATED_KEYS);
+                PreparedStatement psNoKeys = con.prepareStatement(query_2.toString());
+                PreparedStatement pse = con.prepareStatement("INSERT INTO " + table_equip + " VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+            boolean pending = false;
+            for (Pair<IItem, MapleInventoryType> pair : items) {
+                IItem item = pair.getLeft();
+                MapleInventoryType mit = pair.getRight();
+                final boolean isEquip = mit.equals(MapleInventoryType.EQUIP) || mit.equals(MapleInventoryType.EQUIPPED);
+                if (isEquip && pending) {
+                    // 排在這一列前面的非裝備列必須先落地，auto-increment 才會照
+                    // items 的順序配發，和逐列寫入時完全一樣。這也順便保證了下面
+                    // 丟 RuntimeException 時手上不會有還沒送出的批次。
+                    psNoKeys.executeBatch();
+                    pending = false;
                 }
+                final PreparedStatement pst = isEquip ? ps : psNoKeys;
+                int i = 1;
+                for (int x = 0; x < lulz.size(); x++) {
+                    pst.setInt(i, lulz.get(x));
+                    i++;
+                }
+                pst.setInt(i, item.getItemId());
+                pst.setInt(i + 1, mit.getType());
+                pst.setInt(i + 2, item.getPosition());
+                pst.setInt(i + 3, item.getQuantity());
+                pst.setString(i + 4, item.getOwner());
+                pst.setString(i + 5, item.getGMLog());
+                pst.setInt(i + 6, item.getUniqueId());
+                pst.setLong(i + 7, item.getExpiration());
+                pst.setByte(i + 8, item.getFlag());
+                pst.setByte(i + 9, (byte) value);
+                pst.setString(i + 10, item.getGiftFrom());
 
-                pse.setInt(1, rs.getInt(1));
-                rs.close();
+                if (!isEquip) {
+                    psNoKeys.addBatch();
+                    pending = true;
+                    continue;
+                }
+                ps.executeUpdate();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (!rs.next()) {
+                        throw new RuntimeException("Inserting item failed.");
+                    }
+                    pse.setInt(1, rs.getInt(1));
+                }
                 IEquip equip = (IEquip) item;
                 pse.setInt(2, equip.getUpgradeSlots());
                 pse.setInt(3, equip.getLevel());
@@ -303,10 +322,12 @@ public enum ItemLoader {
                 pse.setInt(25, equip.getPotential3());
                 pse.setInt(26, equip.getHpR());
                 pse.setInt(27, equip.getMpR());
-                pse.executeUpdate();
+                pse.addBatch();
             }
+            if (pending) {
+                psNoKeys.executeBatch();
+            }
+            pse.executeBatch();
         }
-        pse.close();
-        ps.close();
     }
 }

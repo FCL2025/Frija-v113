@@ -29,7 +29,6 @@ import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
 import server.movement.LifeMovementFragment;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
 
 public class PetPacket {
@@ -55,17 +54,17 @@ public class PetPacket {
         PacketHelper.addPetItemInfo(mplew, item, pet);
         return mplew.getPacket();
     }
-	
-	public static MaplePacket PetComplete(MapleCharacter chr, MaplePet pet) {
+    
+    public static MaplePacket petComplete(MapleCharacter chr, MaplePet pet) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.COMPLETE_PET.getValue());
         mplew.writeInt(chr.getId());
         mplew.write(chr.getPetIndex(pet));
         mplew.writeInt(pet.getUniqueId());
-		mplew.write(0);
+        mplew.write(0);
         mplew.writeInt(0);
-		
+        
         return mplew.getPacket();
     }
 
@@ -178,7 +177,7 @@ public class PetPacket {
     }
 
     public static final MaplePacket emptyStatUpdate() {
-        return MaplePacketCreator.enableActions();
+        return CharacterPacket.enableActions();
     }
 
     public static final MaplePacket petStatUpdate_Empty() {

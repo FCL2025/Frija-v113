@@ -21,6 +21,7 @@
 package client;
 
 import constants.GameConstants;
+import constants.ItemConstants;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -28,17 +29,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import database.DatabaseConnection;
 import server.MapleItemInformationProvider;
-import tools.MaplePacketCreator;
 import tools.data.output.MaplePacketLittleEndianWriter;
+import tools.packet.CharacterPacket;
 import tools.packet.MonsterBookPacket;
 
-public class MonsterBook implements Serializable {
+public class MonsterBook {
 
-    private static final long serialVersionUID = 7179541993413738569L;
     private boolean changed = false;
     private int SpecialCard = 0, NormalCard = 0, BookLevel = 1;
     private Map<Integer, Integer> cards;
@@ -47,7 +46,7 @@ public class MonsterBook implements Serializable {
         this.cards = cards;
 
         for (Entry<Integer, Integer> card : cards.entrySet()) {
-            if (GameConstants.isSpecialCard(card.getKey())) {
+            if (ItemConstants.isSpecialCard(card.getKey())) {
 
                 SpecialCard += card.getValue();
             } else {
@@ -70,17 +69,18 @@ public class MonsterBook implements Serializable {
     }
 
     public final static MonsterBook loadCards(final int charid) throws SQLException {
-        final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM monsterbook WHERE charid = ? ORDER BY cardid ASC");
-        ps.setInt(1, charid);
-        final ResultSet rs = ps.executeQuery();
-        Map<Integer, Integer> cards = new LinkedHashMap<Integer, Integer>();
+        Map<Integer, Integer> cards = new LinkedHashMap<>();
         int cardid, level;
 
-        while (rs.next()) {
-            cards.put(rs.getInt("cardid"), rs.getInt("level"));
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM monsterbook WHERE charid = ? ORDER BY cardid ASC")) {
+            ps.setInt(1, charid);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    cards.put(rs.getInt("cardid"), rs.getInt("level"));
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return new MonsterBook(cards);
     }
 
@@ -88,32 +88,33 @@ public class MonsterBook implements Serializable {
         if (!changed || cards.size() == 0) {
             return;
         }
-        final Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("DELETE FROM monsterbook WHERE charid = ?");
-        ps.setInt(1, charid);
-        ps.execute();
-        ps.close();
-
-        boolean first = true;
-        final StringBuilder query = new StringBuilder();
-
-        for (final Entry<Integer, Integer> all : cards.entrySet()) {
-            if (first) {
-                first = false;
-                query.append("INSERT INTO monsterbook VALUES (DEFAULT,");
-            } else {
-                query.append(",(DEFAULT,");
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM monsterbook WHERE charid = ?")) {
+                ps.setInt(1, charid);
+                ps.execute();
             }
-            query.append(charid);
-            query.append(",");
-            query.append(all.getKey()); // Card ID
-            query.append(",");
-            query.append(all.getValue()); // Card level
-            query.append(")");
+
+            boolean first = true;
+            final StringBuilder query = new StringBuilder();
+
+            for (final Entry<Integer, Integer> all : cards.entrySet()) {
+                if (first) {
+                    first = false;
+                    query.append("INSERT INTO monsterbook VALUES (DEFAULT,");
+                } else {
+                    query.append(",(DEFAULT,");
+                }
+                query.append(charid);
+                query.append(",");
+                query.append(all.getKey()); // Card ID
+                query.append(",");
+                query.append(all.getValue()); // Card level
+                query.append(")");
+            }
+            try (PreparedStatement ps = con.prepareStatement(query.toString())) {
+                ps.execute();
+            }
         }
-        ps = con.prepareStatement(query.toString());
-        ps.execute();
-        ps.close();
     }
 
     private final void calculateLevel() {
@@ -132,7 +133,7 @@ public class MonsterBook implements Serializable {
         mplew.writeShort(cards.size());
 
         for (Entry<Integer, Integer> all : cards.entrySet()) {
-            mplew.writeShort(GameConstants.getCardShortId(all.getKey())); // Id
+            mplew.writeShort(ItemConstants.getCardShortId(all.getKey())); // Id
             mplew.write(all.getValue()); // Level
         }
     }
@@ -146,7 +147,7 @@ public class MonsterBook implements Serializable {
     }
 
     public final void updateCard(final MapleClient c, final int cardid) {
-        c.getSession().write(MonsterBookPacket.changeCover(cardid));
+        c.send(MonsterBookPacket.changeCover(cardid));
     }
 
     public final void addCard(final MapleClient c, final int cardid) {
@@ -156,31 +157,31 @@ public class MonsterBook implements Serializable {
         if (cards.containsKey(cardid)) {
             final int levels = cards.get(cardid);
             if (levels >= 5) {
-                c.getSession().write(MonsterBookPacket.addCard(true, cardid, levels));
+                c.send(MonsterBookPacket.addCard(true, cardid, levels));
             } else {
-                if (GameConstants.isSpecialCard(cardid)) {
+                if (ItemConstants.isSpecialCard(cardid)) {
                     SpecialCard += 1;
                 } else {
                     NormalCard += 1;
                 }
-                c.getSession().write(MonsterBookPacket.addCard(false, cardid, levels));
-                c.getSession().write(MonsterBookPacket.showGainCard(cardid));
-                c.getSession().write(MaplePacketCreator.showSpecialEffect(13));
+                c.send(MonsterBookPacket.addCard(false, cardid, levels));
+                c.send(MonsterBookPacket.showGainCard(cardid));
+                c.send(CharacterPacket.showSpecialEffect(13));
                 cards.put(cardid, levels + 1);
                 calculateLevel();
             }
             return;
         }
-        if (GameConstants.isSpecialCard(cardid)) {
+        if (ItemConstants.isSpecialCard(cardid)) {
             SpecialCard += 1;
         } else {
             NormalCard += 1;
         }
         // New card
         cards.put(cardid, 1);
-        c.getSession().write(MonsterBookPacket.addCard(false, cardid, 1));
-        c.getSession().write(MonsterBookPacket.showGainCard(cardid));
-        c.getSession().write(MaplePacketCreator.showSpecialEffect(13));
+        c.send(MonsterBookPacket.addCard(false, cardid, 1));
+        c.send(MonsterBookPacket.showGainCard(cardid));
+        c.send(CharacterPacket.showSpecialEffect(13));
         calculateLevel();
     }
 }

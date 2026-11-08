@@ -31,12 +31,16 @@ import handling.channel.ChannelServer;
 import java.util.LinkedList;
 import java.util.List;
 import server.MapleInventoryManipulator;
-import server.Timer.EtcTimer;
+import server.Timer;
 import server.maps.MapleMapObjectType;
-import tools.MaplePacketCreator;
+import tools.packet.CharacterPacket;
 import tools.packet.PlayerShopPacket;
 
-public class HiredMerchant extends AbstractPlayerStore {
+// final (-Xlint:this-escape): the constructor schedules the 24h auto-close on
+// Timer.ETC, so the task captures 'this' before the constructor returns. It
+// cannot run for a day, and nothing extends HiredMerchant - see the note on the
+// schedule below.
+public final class HiredMerchant extends AbstractPlayerStore {
 
     public ScheduledFuture<?> schedule;
     private List<String> blacklist;
@@ -46,13 +50,12 @@ public class HiredMerchant extends AbstractPlayerStore {
     public HiredMerchant(MapleCharacter owner, int itemId, String desc) {
         super(owner, itemId, desc, "", 3);
         start = System.currentTimeMillis();
-        blacklist = new LinkedList<String>();
-        this.schedule = EtcTimer.getInstance().schedule(new Runnable() {
-
-            @Override
-            public void run() {
-                closeShop(true, true);
-            }
+        blacklist = new LinkedList<>();
+        // The task captures 'this' and is queued before `schedule` is assigned,
+        // so closeShop would read a null schedule and skip its cancel() if it
+        // ever ran first. It cannot: the delay is a full day.
+        this.schedule = Timer.ETC.schedule(() -> {
+            closeShop(true, true);
         }, 1000 * 60 * 60 * 24);
     }
 
@@ -65,7 +68,7 @@ public class HiredMerchant extends AbstractPlayerStore {
     }
 
     public List<MaplePlayerShopItem> searchItem(final int itemSearch) {
-        final List<MaplePlayerShopItem> itemz = new LinkedList<MaplePlayerShopItem>();
+        final List<MaplePlayerShopItem> itemz = new LinkedList<>();
         for (MaplePlayerShopItem item : items) {
             if (item.item.getItemId() == itemSearch && item.bundles > 0) {
                 itemz.add(item);
@@ -92,28 +95,28 @@ public class HiredMerchant extends AbstractPlayerStore {
         }
 
          if (MapleInventoryManipulator.checkSpace(c, newItem.getItemId(), newItem.getQuantity(), newItem.getOwner())) {
-			final int gainmeso = getMeso() + theQuantity - GameConstants.EntrustedStoreTax(theQuantity);
-			if (gainmeso > 0) {
-				if(MapleInventoryManipulator.addFromDrop(c, newItem, false)){
-					setMeso(gainmeso);
-					pItem.bundles -= quantity; // Number remaining in the store
-					bought.add(new BoughtItem(newItem.getItemId(), quantity, theQuantity, c.getPlayer().getName()));
-					c.getPlayer().gainMeso(-theQuantity, false);
-					MapleCharacter chr = getMCOwnerWorld();
-					if (chr != null) {
-						chr.dropMessage(5, "物品 " + MapleItemInformationProvider.getInstance().getName(newItem.getItemId()) + " (" + perbundle + ") x " + quantity + " 已從精靈商店賣出. 還剩下 " + pItem.bundles + "個");
-					}
-				}else{
-					c.getPlayer().dropMessage(1, "您的背包滿了.");
-					c.getSession().write(MaplePacketCreator.enableActions());
-				}
-			} else {
-				c.getPlayer().dropMessage(1, "拍賣家有太多錢了.");
-				c.getSession().write(MaplePacketCreator.enableActions());
-			}
+            final int gainmeso = getMeso() + theQuantity - GameConstants.entrustedStoreTax(theQuantity);
+            if (gainmeso > 0) {
+                if(MapleInventoryManipulator.addFromDrop(c, newItem, false)){
+                    setMeso(gainmeso);
+                    pItem.bundles -= quantity; // Number remaining in the store
+                    bought.add(new BoughtItem(newItem.getItemId(), quantity, theQuantity, c.getPlayer().getName()));
+                    c.getPlayer().gainMeso(-theQuantity, false);
+                    MapleCharacter chr = getMCOwnerWorld();
+                    if (chr != null) {
+                        chr.dropMessage(5, "物品 " + MapleItemInformationProvider.getInstance().getName(newItem.getItemId()) + " (" + perbundle + ") x " + quantity + " 已從精靈商店賣出. 還剩下 " + pItem.bundles + "個");
+                    }
+                }else{
+                    c.getPlayer().dropMessage(1, "您的背包滿了.");
+                    c.send(CharacterPacket.enableActions());
+                }
+            } else {
+                c.getPlayer().dropMessage(1, "拍賣家有太多錢了.");
+                c.send(CharacterPacket.enableActions());
+            }
          } else {
-			c.getPlayer().dropMessage(1, "您的背包滿了.");
-			c.getSession().write(MaplePacketCreator.enableActions());
+            c.getPlayer().dropMessage(1, "您的背包滿了.");
+            c.send(CharacterPacket.enableActions());
          }
     }
 
@@ -124,6 +127,8 @@ public class HiredMerchant extends AbstractPlayerStore {
         }
         if (saveItems) {
             saveItems();
+            // 保留作為紀錄：存檔後原本會把架上清單清空，這一行被關掉了，
+            // items 會一直留到這個 HiredMerchant 物件本身被丟掉為止。
             //items.clear();
         }
         if (remove) {
@@ -150,14 +155,14 @@ public class HiredMerchant extends AbstractPlayerStore {
     @Override
     public void sendDestroyData(MapleClient client) {
         if (isAvailable()) {
-            client.getSession().write(PlayerShopPacket.destroyHiredMerchant(getOwnerId()));
+            client.send(PlayerShopPacket.destroyHiredMerchant(getOwnerId()));
         }
     }
 
     @Override
     public void sendSpawnData(MapleClient client) {
         if (isAvailable()) {
-            client.getSession().write(PlayerShopPacket.spawnHiredMerchant(this));
+            client.send(PlayerShopPacket.spawnHiredMerchant(this));
         }
     }
 
@@ -174,10 +179,10 @@ public class HiredMerchant extends AbstractPlayerStore {
     }
 
     public final void sendBlackList(final MapleClient c) {
-        c.getSession().write(PlayerShopPacket.MerchantBlackListView(blacklist));
+        c.send(PlayerShopPacket.merchantBlackListView(blacklist));
     }
 
     public final void sendVisitor(final MapleClient c) {
-        c.getSession().write(PlayerShopPacket.MerchantVisitorView(visitors));
+        c.send(PlayerShopPacket.merchantVisitorView(visitors));
     }
 }

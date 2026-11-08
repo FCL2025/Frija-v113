@@ -15,7 +15,7 @@ function start(mode, type, selection) {
 	if (status == 0)
 		qm.sendNext("Haha. I had a good laugh. Hahaha. But enough with that nonsense. Feed #p1013102#, would you?");
 	else if (status == 1)
-		qm.PlayerToNpc("#bWhat? That's Utah's job!#k");
+		qm.playerToNpc("#bWhat? That's Utah's job!#k");
 	else if (status == 2)
 		qm.sendAcceptDecline("You little brat! I told you to call me Older Brother! You know how much #p1013102# hates me. He'll bite me if I go near him. You feed him. He likes you.");
 	else if (status == 3){

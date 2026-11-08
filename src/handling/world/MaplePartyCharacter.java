@@ -22,14 +22,12 @@ package handling.world;
 
 import java.awt.Point;
 import java.util.List;
-import java.io.Serializable;
 
 import client.MapleCharacter;
 import server.maps.MapleDoor;
 
-public class MaplePartyCharacter implements Serializable {
+public class MaplePartyCharacter {
 
-    private static final long serialVersionUID = 6215463252132450750L;
     private String name;
     private int id;
     private int level;

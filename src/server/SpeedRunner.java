@@ -1,6 +1,7 @@
 package server;
 
 import database.DatabaseConnection;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,7 +18,7 @@ public class SpeedRunner {
     private final Map<SpeedRunType, Pair<String, Map<Integer, String>>> speedRunData;
 
     private SpeedRunner() {
-        speedRunData = new EnumMap<SpeedRunType, Pair<String, Map<Integer, String>>>(SpeedRunType.class);
+        speedRunData = new EnumMap<>(SpeedRunType.class);
     }
 
     public static final SpeedRunner getInstance() {
@@ -29,7 +30,7 @@ public class SpeedRunner {
     }
 
     public final void addSpeedRunData(SpeedRunType type, Pair<StringBuilder, Map<Integer, String>> mib) {
-        speedRunData.put(type, new Pair<String, Map<Integer, String>>(mib.getLeft().toString(), mib.getRight()));
+        speedRunData.put(type, new Pair<>(mib.getLeft().toString(), mib.getRight()));
     }
 
     public final void removeSpeedRunData(SpeedRunType type) {
@@ -46,23 +47,24 @@ public class SpeedRunner {
     }
 
     public final void loadSpeedRunData(SpeedRunType type) throws SQLException {
-        PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM speedruns WHERE type = ? ORDER BY time LIMIT 25"); //or should we do less
-        ps.setString(1, type.name());
-        StringBuilder ret = new StringBuilder("#rThese are the speedrun times for " + StringUtil.makeEnumHumanReadable(type.name()) + ".#k\r\n\r\n");
-        Map<Integer, String> rett = new LinkedHashMap<Integer, String>();
-        ResultSet rs = ps.executeQuery();
-        int rank = 1;
-        boolean cont = rs.first();
-        boolean changed = cont;
-        while (cont) {
-            addSpeedRunData(ret, rett, rs.getString("members"), rs.getString("leader"), rank, rs.getString("timestring"));
-            rank++;
-            cont = rs.next();
-        }
-        rs.close();
-        ps.close();
-        if (changed) {
-            speedRunData.put(type, new Pair<String, Map<Integer, String>>(ret.toString(), rett));
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM speedruns WHERE type = ? ORDER BY time LIMIT 25", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) { //or should we do less
+            ps.setString(1, type.name());
+            StringBuilder ret = new StringBuilder("#rThese are the speedrun times for " + StringUtil.makeEnumHumanReadable(type.name()) + ".#k\r\n\r\n");
+            Map<Integer, String> rett = new LinkedHashMap<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                int rank = 1;
+                boolean cont = rs.first();
+                boolean changed = cont;
+                while (cont) {
+                    addSpeedRunData(ret, rett, rs.getString("members"), rs.getString("leader"), rank, rs.getString("timestring"));
+                    rank++;
+                    cont = rs.next();
+                }
+                if (changed) {
+                    speedRunData.put(type, new Pair<>(ret.toString(), rett));
+                }
+            }
         }
     }
 
@@ -95,6 +97,6 @@ public class SpeedRunner {
             ret.append("#l");
         }
         ret.append("\r\n");
-        return new Pair<StringBuilder, Map<Integer, String>>(ret, rett);
+        return new Pair<>(ret, rett);
     }
 }

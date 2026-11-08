@@ -22,8 +22,6 @@ package tools;
 
 import java.io.ByteArrayOutputStream;
 
-import org.apache.mina.common.ByteBuffer;
-
 /**
  * Provides a class for manipulating hexadecimal numbers.
  *
@@ -47,22 +45,13 @@ public class HexTool {
         return String.valueOf(retstr);
     }
 
-    /**
-     * Turns a <code>org.apache.mina.common.ByteBuffer</code> into a hexadecimal
-     * string.
-     *
-     * @param buf The <code>org.apache.mina.common.ByteBuffer</code> to convert.
-     * @return The hexadecimal representation of <code>buf</code>
-     */
-    public static final String toString(final ByteBuffer buf) {
-        buf.flip();
-        final byte arr[] = new byte[buf.remaining()];
-        buf.get(arr);
-        String ret = toString(arr);
-        buf.flip();
-        buf.put(arr);
-        return ret;
-    }
+    // There was a toString(org.apache.mina.common.ByteBuffer) overload here.
+    // It had no callers anywhere in src/, Libs/scripts/ or test/, and it was
+    // the only thing keeping a MINA import in tools/, so the MINA 2 upgrade
+    // deleted it rather than porting it to IoBuffer. It was also subtly wrong:
+    // it flipped the buffer, drained it, flipped again and put the bytes back,
+    // which only restores a buffer that was in write mode to begin with.
+    // Anything that needs this can call toString(byte[]).
 
     /**
      * Turns an integer into a hexadecimal string.
@@ -111,6 +100,7 @@ public class HexTool {
             String str = new String(ret, encode);
             return str;
         } catch (Exception e) {
+            // BIG5 decode failed - this is only a debug hex-dump helper, fall back to empty.
         }
         return "";
     }

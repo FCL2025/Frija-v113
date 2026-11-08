@@ -4,9 +4,11 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 
 public class RandomRewards {
+
+    private static final System.Logger LOG = System.getLogger(RandomRewards.class.getName());
 
     private final static RandomRewards instance = new RandomRewards();
     private List<Integer> compiledGold = null;
@@ -22,50 +24,50 @@ public class RandomRewards {
     }
 
     protected RandomRewards() {
-        System.out.println("Loading RandomRewards :::");
+        LOG.log(System.Logger.Level.INFO, "Loading RandomRewards :::");
         // Gold Box
-        List<Integer> returnArray = new ArrayList<Integer>();
+        List<Integer> returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.goldrewards);
+        processRewards(returnArray, ItemConstants.goldrewards);
 
         compiledGold = returnArray;
 
         // Silver Box
-        returnArray = new ArrayList<Integer>();
+        returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.silverrewards);
+        processRewards(returnArray, ItemConstants.silverrewards);
 
         compiledSilver = returnArray;
 
         // Fishing Rewards
-        returnArray = new ArrayList<Integer>();
+        returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.fishingReward);
+        processRewards(returnArray, ItemConstants.fishingReward);
 
         compiledFishing = returnArray;
 
         // Event Rewards
-        returnArray = new ArrayList<Integer>();
+        returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.eventCommonReward);
+        processRewards(returnArray, ItemConstants.eventCommonReward);
 
         compiledEventC = returnArray;
 
-        returnArray = new ArrayList<Integer>();
+        returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.eventUncommonReward);
+        processRewards(returnArray, ItemConstants.eventUncommonReward);
 
         compiledEventB = returnArray;
 
-        returnArray = new ArrayList<Integer>();
+        returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.eventRareReward);
+        processRewards(returnArray, ItemConstants.eventRareReward);
 
         compiledEventA = returnArray;
 
-        returnArray = new ArrayList<Integer>();
+        returnArray = new ArrayList<>();
 
-        processRewards(returnArray, GameConstants.eventSuperReward);
+        processRewards(returnArray, ItemConstants.eventSuperReward);
 
         compiledEvent = returnArray;
     }

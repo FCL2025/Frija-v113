@@ -26,11 +26,13 @@ import client.MapleCharacter;
 import handling.channel.ChannelServer;
 import handling.world.MaplePartyCharacter;
 import server.Randomizer;
-import server.Timer.MapTimer;
+import server.Timer;
 import server.life.MapleLifeFactory;
-import tools.MaplePacketCreator;
+import tools.packet.EventPacket;
 
 public class Event_DojoAgent {
+
+    private static final System.Logger LOG = System.getLogger(Event_DojoAgent.class.getName());
 
     private final static int baseAgentMapId = 970030000; // 9500337 = mano
     private final static Point point1 = new Point(140, 0),
@@ -139,7 +141,7 @@ public class Event_DojoAgent {
         try {
             final MapleMap currentmap = c.getMap();
             final int temp = (currentmap.getId() - 925000000) / 100;
-            final int thisStage = (int) (temp - ((temp / 100) * 100));
+            final int thisStage = (temp - ((temp / 100) * 100));
             final int points = getDojoPoints(thisStage);
 
             final ChannelServer ch = c.getClient().getChannelServer();
@@ -152,14 +154,14 @@ public class Event_DojoAgent {
                             final int point = (points) * 5 ;
                             chr.modifyCSPoints(1, point, true);
                             chr.setDojo(chr.getDojo() + point);
-                            chr.getClient().getSession().write(MaplePacketCreator.Mulung_Pts(point, chr.getDojo()));
+                            chr.getClient().send(EventPacket.mulung_Pts(point, chr.getDojo()));
                         }
                     }
                 } else {
                     final int point = (points + 1) * 5 ;
                     c.modifyCSPoints(1, point, true);
                     c.setDojo(c.getDojo() + point);
-                    c.getClient().getSession().write(MaplePacketCreator.Mulung_Pts(point, c.getDojo()));
+                    c.getClient().send(EventPacket.mulung_Pts(point, c.getDojo()));
                 }
 
             }
@@ -181,7 +183,6 @@ public class Event_DojoAgent {
                 return true;
             }
 
-            //final int nextmapid = 925020000 + ((thisStage + 1) * 100);
             final MapleMap map = ch.getMapFactory().getMap(currentmap.getId() + 100);
             if (map.getCharactersSize() == 0) {
                 clearMap(map, false);
@@ -219,7 +220,8 @@ public class Event_DojoAgent {
                 }
             }
         } catch (Exception rm) {
-            rm.printStackTrace();
+            // ERROR: the warp is abandoned and warpNextMap returns false.
+            LOG.log(System.Logger.Level.ERROR, "Error warping a party to the next dojo stage", rm);
         }
         return false;
     }
@@ -386,12 +388,8 @@ public class Event_DojoAgent {
         if (mobid != 0) {
             final int rand = Randomizer.nextInt(3);
 
-            MapTimer.getInstance().schedule(new Runnable() {
-
-                @Override
-                public void run() {
-                    map.spawnMonsterWithEffect(MapleLifeFactory.getMonster(mobid), 15, rand == 0 ? point1 : rand == 1 ? point2 : point3);
-                }
+            Timer.MAP.schedule(() -> {
+                map.spawnMonsterWithEffect(MapleLifeFactory.getMonster(mobid), 15, rand == 0 ? point1 : rand == 1 ? point2 : point3);
             }, 3000);
         }
     }

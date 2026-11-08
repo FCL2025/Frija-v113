@@ -8,7 +8,7 @@ var chatState;
 var party;
 var preamble;
 
-var stage8combos = Array(Array(0, 0, 0, 0, 1, 1, 1, 1, 1),
+var stage8combos = [Array(0, 0, 0, 0, 1, 1, 1, 1, 1),
     Array(0, 0, 0, 1, 0, 1, 1, 1, 1),
     Array(0, 0, 0, 1, 1, 0, 1, 1, 1),
     Array(0, 0, 0, 1, 1, 1, 0, 1, 1),
@@ -133,7 +133,7 @@ var stage8combos = Array(Array(0, 0, 0, 0, 1, 1, 1, 1, 1),
     Array(1, 1, 1, 1, 0, 0, 0, 1, 0),
     Array(1, 1, 1, 1, 0, 0, 1, 0, 0),
     Array(1, 1, 1, 1, 0, 1, 0, 0, 0),
-    Array(1, 1, 1, 1, 1, 0, 0, 0, 0));
+    Array(1, 1, 1, 1, 1, 0, 0, 0, 0)];
 
 function start() {
     status = -1;

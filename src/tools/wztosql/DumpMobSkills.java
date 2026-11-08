@@ -40,9 +40,15 @@ public class DumpMobSkills {
     protected boolean hadError = false;
     protected boolean update = false;
     protected int id = 0;
-    private Connection con = DatabaseConnection.getConnection();
+    /**
+     * Borrowed once by {@link #main} and passed down here, rather than
+     * borrowed per-method - delete/doesExist/dumpMobSkills all need to share
+     * one connection across this tool's single run.
+     */
+    private final Connection con;
 
-    public DumpMobSkills(boolean update) throws Exception {
+    public DumpMobSkills(Connection con, boolean update) throws Exception {
+        this.con = con;
         this.update = update;
         this.skill = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Skill.wz"));
         if (skill == null) {
@@ -114,7 +120,7 @@ public class DumpMobSkills {
                 ps.setInt(11, MapleDataTool.getInt("interval", lvlz, 0)); // * 1000
 
                 StringBuilder summ = new StringBuilder();
-                List<Integer> toSummon = new ArrayList<Integer>();
+                List<Integer> toSummon = new ArrayList<>();
                 for (int i = 0; i > -1; i++) {
                     if (lvlz.getChildByPath(String.valueOf(i)) == null) {
                         break;
@@ -166,8 +172,8 @@ public class DumpMobSkills {
             }
         }
         int currentQuest = 0;
-        try {
-            final DumpMobSkills dq = new DumpMobSkills(update);
+        try (Connection con = DatabaseConnection.getConnection()) {
+            final DumpMobSkills dq = new DumpMobSkills(con, update);
             System.out.println("Dumping mobskills");
             dq.dumpMobSkills();
             hadError |= dq.isHadError();

@@ -39,10 +39,10 @@ public interface IItem extends Comparable<IItem> {
     MaplePet getPet();
 
     int getUniqueId();
-	
-	int getExp();
-	
-	void setExp(int exp);
+    
+    int getExp();
+    
+    void setExp(int exp);
 
     IItem copy();
 

@@ -22,7 +22,6 @@ package server.maps;
 
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +34,7 @@ import java.sql.ResultSet;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import provider.MapleData;
 import provider.MapleDataProvider;
@@ -47,15 +47,18 @@ import server.life.MapleMonster;
 import server.life.MapleNPC;
 import server.maps.MapleNodes.MapleNodeInfo;
 import server.maps.MapleNodes.MaplePlatform;
+import tools.FileoutputUtil;
 import tools.StringUtil;
 
 public class MapleMapFactory {
 
     private static final MapleDataProvider source = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Map.wz"));
     private static final MapleData nameData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/String.wz")).getData("Map.img");
-    private final Map<Integer, MapleMap> maps = new HashMap<Integer, MapleMap>();
-    private final Map<Integer, MapleMap> instanceMap = new HashMap<Integer, MapleMap>();
-    private static final Map<Integer, MapleNodes> mapInfos = new HashMap<Integer, MapleNodes>();
+    private final Map<Integer, MapleMap> maps = new ConcurrentHashMap<>();
+    private final Map<Integer, MapleMap> instanceMap = new ConcurrentHashMap<>();
+    // Shared across every channel's MapleMapFactory (each has its own `lock`),
+    // so loadNodes() below cannot rely on that per-instance lock to protect it.
+    private static final Map<Integer, MapleNodes> mapInfos = new ConcurrentHashMap<>();
     private final ReentrantLock lock = new ReentrantLock(true);
     private int channel;
 
@@ -98,7 +101,7 @@ public class MapleMapFactory {
                 for (MapleData portal : mapData.getChildByPath("portal")) {
                     map.addPortal(portalFactory.makePortal(MapleDataTool.getInt(portal.getChildByPath("pt")), portal));
                 }
-                List<MapleFoothold> allFootholds = new LinkedList<MapleFoothold>();
+                List<MapleFoothold> allFootholds = new LinkedList<>();
                 Point lBound = new Point();
                 Point uBound = new Point();
                 MapleFoothold fh;
@@ -140,34 +143,35 @@ public class MapleMapFactory {
                     bossid = MapleDataTool.getInt(mapData.getChildByPath("info/timeMob/id"), 0);
                     msg = MapleDataTool.getString(mapData.getChildByPath("info/timeMob/message"), null);
                 }
-				try
-				{
-					Connection con = DatabaseConnection.getConnection();
-					PreparedStatement ps = con.prepareStatement("SELECT * FROM spawns WHERE mid = ?");
-					ps.setInt(1, omapid);
-					ResultSet rs = ps.executeQuery();
-					while (rs.next()) {
-						int id = rs.getInt("idd");
-						int f = rs.getInt("f"); 
-						boolean hide = false; 
-						String type = rs.getString("type");
-						int _fh = rs.getInt("fh");
-						int cy = rs.getInt("cy");
-						int rx0 = rs.getInt("rx0");
-						int rx1 = rs.getInt("rx1");
-						int x = rs.getInt("x");
-						int y = rs.getInt("y");
-						int mobTime = rs.getInt("mobtime");
+                try (Connection con = DatabaseConnection.getConnection();
+                        PreparedStatement ps = con.prepareStatement("SELECT * FROM spawns WHERE mid = ?"))
+                {
+                    ps.setInt(1, omapid);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            int id = rs.getInt("idd");
+                            int f = rs.getInt("f");
+                            boolean hide = false;
+                            String type = rs.getString("type");
+                            int _fh = rs.getInt("fh");
+                            int cy = rs.getInt("cy");
+                            int rx0 = rs.getInt("rx0");
+                            int rx1 = rs.getInt("rx1");
+                            int x = rs.getInt("x");
+                            int y = rs.getInt("y");
+                            int mobTime = rs.getInt("mobtime");
 
-						AbstractLoadedMapleLife myLife = loadLife(id, f, hide, _fh, cy, rx0, rx1, x, y, type);
+                            AbstractLoadedMapleLife myLife = loadLife(id, f, hide, _fh, cy, rx0, rx1, x, y, type);
 
-						if(type.equals("n"))
-						{
-							map.addMapObject(myLife);
-						}
-					}
-				} catch(SQLException e) {
-				}
+                            if(type.equals("n"))
+                            {
+                                map.addMapObject(myLife);
+                            }
+                        }
+                    }
+                } catch(SQLException e) {
+                    FileoutputUtil.outputFileError(FileoutputUtil.PacketEx_Log, e);
+                }
                 // load life data (npc, monsters)
                 String type;
                 AbstractLoadedMapleLife myLife;
@@ -257,7 +261,15 @@ public class MapleMapFactory {
         }
     }
 
-    public MapleMap CreateInstanceMap(int mapid, boolean respawns, boolean npcs, boolean reactors, int instanceid) {
+    public MapleMap createInstanceMap(int mapid, boolean respawns, boolean npcs, boolean reactors, int instanceid) {
+        if (isInstanceMapLoaded(instanceid)) {
+            return getInstanceMap(instanceid);
+        }
+        // Building an instance map has side effects (spawning monsters/reactors,
+        // DB reads) that must not run twice for the same instanceid, so this
+        // reuses the same lock getMap() uses for the same reason.
+        lock.lock();
+        try {
         if (isInstanceMapLoaded(instanceid)) {
             return getInstanceMap(instanceid);
         }
@@ -280,7 +292,7 @@ public class MapleMapFactory {
         for (MapleData portal : mapData.getChildByPath("portal")) {
             map.addPortal(portalFactory.makePortal(MapleDataTool.getInt(portal.getChildByPath("pt")), portal));
         }
-        List<MapleFoothold> allFootholds = new LinkedList<MapleFoothold>();
+        List<MapleFoothold> allFootholds = new LinkedList<>();
         Point lBound = new Point();
         Point uBound = new Point();
         for (MapleData footRoot : mapData.getChildByPath("foothold")) {
@@ -319,7 +331,7 @@ public class MapleMapFactory {
             bossid = MapleDataTool.getInt(mapData.getChildByPath("info/timeMob/id"), 0);
             msg = MapleDataTool.getString(mapData.getChildByPath("info/timeMob/message"), null);
         }
-		
+        
         // load life data (npc, monsters)
         String type;
         AbstractLoadedMapleLife myLife;
@@ -383,6 +395,9 @@ public class MapleMapFactory {
 
         instanceMap.put(instanceid, map);
         return map;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public int getLoadedMaps() {
@@ -426,22 +441,20 @@ public class MapleMapFactory {
 
         if (MapleDataTool.getInt("hide", life, 0) == 1 && myLife instanceof MapleNPC) {
             myLife.setHide(true);
-//		} else if (hide > 1) {
-//			System.err.println("Hide > 1 ("+ hide +")");
         }
         return myLife;
     }
-	private AbstractLoadedMapleLife loadLife(int id, int f, boolean hide, int fh, int cy, int rx0, int rx1, int x, int y, String type) {
-		AbstractLoadedMapleLife myLife = MapleLifeFactory.getLife(id, type);
-		myLife.setCy(cy);
-		myLife.setF(f);
-		myLife.setFh(fh);
-		myLife.setRx0(rx0);
-		myLife.setRx1(rx1);
-		myLife.setPosition(new Point(x, y));
-		myLife.setHide(hide);
-		return myLife;
-	}
+    private AbstractLoadedMapleLife loadLife(int id, int f, boolean hide, int fh, int cy, int rx0, int rx1, int x, int y, String type) {
+        AbstractLoadedMapleLife myLife = MapleLifeFactory.getLife(id, type);
+        myLife.setCy(cy);
+        myLife.setF(f);
+        myLife.setFh(fh);
+        myLife.setRx0(rx0);
+        myLife.setRx1(rx1);
+        myLife.setPosition(new Point(x, y));
+        myLife.setHide(hide);
+        return myLife;
+    }
 
     private final MapleReactor loadReactor(final MapleData reactor, final String id, final byte FacingDirection) {
         final MapleReactorStats stats = MapleReactorFactory.getReactor(Integer.parseInt(id));
@@ -733,7 +746,7 @@ public class MapleMapFactory {
                             nodeInfo.setNodeEnd(MapleDataTool.getInt(node, 0));
                             continue;
                         }
-                        List<Integer> edges = new ArrayList<Integer>();
+                        List<Integer> edges = new ArrayList<>();
                         if (node.getChildByPath("edge") != null) {
                             for (MapleData edge : node.getChildByPath("edge")) {
                                 edges.add(MapleDataTool.getInt(edge, -1));
@@ -747,6 +760,7 @@ public class MapleMapFactory {
                                 MapleDataTool.getIntConvert("attr", node, 0), edges);
                         nodeInfo.addNode(mni);
                     } catch (NumberFormatException e) {
+                        // node name is not numeric (start/end/edgeInfo) - skip it, we don't need it
                     } //start, end, edgeInfo = we dont need it
                 }
                 nodeInfo.sortNodes();
@@ -760,7 +774,7 @@ public class MapleMapFactory {
                         if (sn_count <= 0 || speed <= 0 || name.equals("")) {
                             continue;
                         }
-                        final List<Integer> SN = new ArrayList<Integer>();
+                        final List<Integer> SN = new ArrayList<>();
                         for (int x = 0; x < sn_count; x++) {
                             SN.add(MapleDataTool.getIntConvert("SN" + x, node, 0));
                         }
@@ -815,7 +829,14 @@ public class MapleMapFactory {
                     }
                 }
             }
-            mapInfos.put(mapid, nodeInfo);
+            // mapInfos is shared by every channel's MapleMapFactory, each with its
+            // own `lock`, so two channels can race to build the same mapid's
+            // MapleNodes here; putIfAbsent makes every caller converge on the
+            // same winning instance instead of corrupting the map.
+            final MapleNodes existing = mapInfos.putIfAbsent(mapid, nodeInfo);
+            if (existing != null) {
+                nodeInfo = existing;
+            }
         }
         return nodeInfo;
     }

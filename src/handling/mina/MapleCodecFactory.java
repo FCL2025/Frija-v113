@@ -20,20 +20,30 @@
  */
 package handling.mina;
 
+import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.ProtocolCodecFactory;
 import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolEncoder;
 
+/**
+ * MINA 2 asks for the codec per session rather than per service, so both
+ * methods take an {@link IoSession} now. Both codecs are stateless - the
+ * per-session state they need (the cipher and the half-read packet length) is
+ * reached through the session's own attributes - so one instance of each still
+ * serves every connection.
+ */
 public class MapleCodecFactory implements ProtocolCodecFactory {
 
     private final ProtocolEncoder encoder = new MaplePacketEncoder();
     private final ProtocolDecoder decoder = new MaplePacketDecoder();
 
-    public ProtocolEncoder getEncoder() throws Exception {
+    @Override
+    public ProtocolEncoder getEncoder(final IoSession session) throws Exception {
         return encoder;
     }
 
-    public ProtocolDecoder getDecoder() throws Exception {
+    @Override
+    public ProtocolDecoder getDecoder(final IoSession session) throws Exception {
         return decoder;
     }
 }

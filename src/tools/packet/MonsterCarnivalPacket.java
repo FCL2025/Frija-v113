@@ -57,7 +57,7 @@ public class MonsterCarnivalPacket {
         return mplew.getPacket();
     }
 
-    public static MaplePacket CPUpdate(boolean party, int curCP, int totalCP, int team) {
+    public static MaplePacket cpUpdate(boolean party, int curCP, int totalCP, int team) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         if (!party) {
             mplew.writeShort(SendPacketOpcode.MONSTER_CARNIVAL_OBTAINED_CP.getValue());

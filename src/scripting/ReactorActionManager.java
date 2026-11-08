@@ -21,15 +21,13 @@
 package scripting;
 
 import java.awt.Point;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
 import client.inventory.Equip;
 import client.inventory.IItem;
 import client.inventory.Item;
-import constants.GameConstants;
-import client.MapleCharacter;
+import constants.ItemConstants;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
 import handling.channel.ChannelServer;
@@ -40,9 +38,7 @@ import server.Randomizer;
 import server.life.MapleLifeFactory;
 import server.maps.ReactorDropEntry;
 import server.maps.MapleReactor;
-import tools.MaplePacketCreator;
 import server.life.MapleMonster;
-import server.maps.MapleMap;
 
 public class ReactorActionManager extends AbstractPlayerInteraction {
 
@@ -64,7 +60,7 @@ public class ReactorActionManager extends AbstractPlayerInteraction {
 
     public void dropItems(boolean meso, int mesoChance, int minMeso, int maxMeso, int minItems) {
         final List<ReactorDropEntry> chances = ReactorScriptManager.getInstance().getDrops(reactor.getReactorId());
-        final List<ReactorDropEntry> items = new LinkedList<ReactorDropEntry>();
+        final List<ReactorDropEntry> items = new LinkedList<>();
 
         if (meso) {
             if (Math.random() < (1 / (double) mesoChance)) {
@@ -74,10 +70,7 @@ public class ReactorActionManager extends AbstractPlayerInteraction {
 
         int numItems = 0;
         // narrow list down by chances
-        final Iterator<ReactorDropEntry> iter = chances.iterator();
-        // for (DropEntry d : chances){
-        while (iter.hasNext()) {
-            ReactorDropEntry d = (ReactorDropEntry) iter.next();
+        for (ReactorDropEntry d : chances) {
             if (Math.random() < (1 / (double) d.chance) && (d.questid <= 0 || getPlayer().getQuestStatus(d.questid) == 1)) {
                 numItems++;
                 items.add(d);
@@ -102,7 +95,7 @@ public class ReactorActionManager extends AbstractPlayerInteraction {
                 reactor.getMap().spawnMesoDrop(mesoDrop, dropPos, reactor, getPlayer(), false, (byte) 0);
             } else {
                 IItem drop;
-                if (GameConstants.getInventoryType(d.itemId) != MapleInventoryType.EQUIP) {
+                if (ItemConstants.getInventoryType(d.itemId) != MapleInventoryType.EQUIP) {
                     drop = new Item(d.itemId, (byte) 0, (short) 1, (byte) 0);
                 } else {
                     drop = ii.randomizeStats((Equip) ii.getEquipById(d.itemId));

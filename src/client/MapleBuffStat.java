@@ -20,9 +20,7 @@
  */
 package client;
 
-import java.io.Serializable;
-
-public enum MapleBuffStat implements Serializable {
+public enum MapleBuffStat {
     //DICE = 0x100000, the roll is determined in the long-ass packet itself as buffedvalue
     //ENERGY CHARGE = 0x400000
     //teleport mastery = 0x800000
@@ -53,11 +51,11 @@ public enum MapleBuffStat implements Serializable {
     MONSTER_RIDING(0x400000000000L, true),
     SPEED_INFUSION(0x800000000000L, true),
     HOMING_BEACON(0x1000000000000L, true),
-	ELEMENT_RESET(0x100000000L),
+    ELEMENT_RESET(0x100000000L),
     ARAN_COMBO(0x400000000L, true),
     COMBO_DRAIN(0x800000000L, true),
-	COMBO_BARRIER(0x1000000000L, true),
-	BODY_PRESSURE(0x2000000000L, true),
+    COMBO_BARRIER(0x1000000000L, true),
+    BODY_PRESSURE(0x2000000000L, true),
     SMART_KNOCKBACK(0x4000000000L, true),
     PYRAMID_PQ(0x2, false),
     LIGHTNING_CHARGE(0x4, false),
@@ -109,10 +107,10 @@ public enum MapleBuffStat implements Serializable {
     GM_HIDE(0x1000000),
     BERSERK_FURY(0x2000000),
     ILLUSION(0x4000000),
-	SPARK(0x8000000),
+    SPARK(0x8000000),
     DIVINE_BODY(0x10000000),
-	FINAL_MEL_ATTACK(0x20000000),
-	FINALATTACK(0x40000000),
+    FINAL_MEL_ATTACK(0x20000000),
+    FINALATTACK(0x40000000),
     ARIANT_COSS_IMU2(0x40000000), // no idea, seems the same
     WATK(0x100000000L),
     WDEF(0x200000000L),
@@ -142,7 +140,6 @@ public enum MapleBuffStat implements Serializable {
     PUPPET(0x800000000000000L), // HACK - shares buffmask with pickpocket - odin special ^.-
 
     MESOGUARD(0x1000000000000000L),;
-    private static final long serialVersionUID = 0L;
     private final long buffstat;
     private final boolean first;
 

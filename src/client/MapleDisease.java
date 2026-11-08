@@ -20,10 +20,9 @@
  */
 package client;
 
-import java.io.Serializable;
 import server.Randomizer;
 
-public enum MapleDisease implements Serializable {
+public enum MapleDisease {
 
     POTION(0x80000000000L, true),
     SHADOW(0x100000000000L, true), //receiving damage/moving
@@ -42,7 +41,6 @@ public enum MapleDisease implements Serializable {
     WEAKEN(0x4000000000000000L),
     CURSE(0x8000000000000000L),;
     // 0x100 is disable skill except buff
-    private static final long serialVersionUID = 0L;
     private long i;
     private boolean first;
 

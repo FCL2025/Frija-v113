@@ -21,13 +21,12 @@
  */
 package server;
 
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.IItem;
 import client.inventory.ItemLoader;
 import client.inventory.MapleInventoryType;
 import java.sql.Connection;
 import database.DatabaseConnection;
-import java.io.Serializable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,16 +34,15 @@ import java.util.ArrayList;
 import java.util.List;
 import tools.Pair;
 
-public class MTSCart implements Serializable {
+public class MTSCart {
 
-    private static final long serialVersionUID = 231541893513373578L;
     private int characterId, tab = 1, type = 0, page = 0;
     //tab; 1 = buy now, 2 = wanted, 3 = auction, 4 = cart
     //type = inventorytype; 0 = anything
     //page = whatever
-    private List<IItem> transfer = new ArrayList<IItem>();
-    private List<Integer> cart = new ArrayList<Integer>();
-    private List<Integer> notYetSold = new ArrayList<Integer>(10);
+    private List<IItem> transfer = new ArrayList<>();
+    private List<Integer> cart = new ArrayList<>();
+    private List<Integer> notYetSold = new ArrayList<>(10);
     private int owedNX = 0;
 
     public MTSCart(int characterId) throws SQLException {
@@ -115,62 +113,67 @@ public class MTSCart implements Serializable {
     }
 
     public void save() throws SQLException {
-        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<Pair<IItem, MapleInventoryType>>();
+        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<>();
 
         for (IItem item : getInventory()) {
-            itemsWithType.add(new Pair<IItem, MapleInventoryType>(item, GameConstants.getInventoryType(item.getItemId())));
+            itemsWithType.add(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId())));
         }
 
         ItemLoader.MTS_TRANSFER.saveItems(itemsWithType, characterId);
-        final Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("DELETE FROM mts_cart WHERE characterid = ?");
-        ps.setInt(1, characterId);
-        ps.execute();
-        ps.close();
-        ps = con.prepareStatement("INSERT INTO mts_cart VALUES(DEFAULT, ?, ?)");
-        ps.setInt(1, characterId);
-        for (int i : cart) {
-            ps.setInt(2, i);
-            ps.executeUpdate();
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM mts_cart WHERE characterid = ?")) {
+                ps.setInt(1, characterId);
+                ps.execute();
+            }
+            try (PreparedStatement ps = con.prepareStatement("INSERT INTO mts_cart VALUES(DEFAULT, ?, ?)")) {
+                ps.setInt(1, characterId);
+                for (int i : cart) {
+                    ps.setInt(2, i);
+                    ps.executeUpdate();
+                }
+                if (owedNX > 0) {
+                    ps.setInt(2, -owedNX);
+                    ps.executeUpdate();
+                }
+            }
         }
-        if (owedNX > 0) {
-            ps.setInt(2, -owedNX);
-            ps.executeUpdate();
-        }
-        ps.close();
         //notYetSold shouldnt be saved here
     }
 
-    public void loadCart() throws SQLException {
-        final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM mts_cart WHERE characterid = ?");
-        ps.setInt(1, characterId);
-        final ResultSet rs = ps.executeQuery();
-        int iId;
-        while (rs.next()) {
-            iId = rs.getInt("itemid");
-            if (iId < 0) {
-                owedNX -= iId;
-            } else if (MTSStorage.getInstance().check(iId)) {
-                cart.add(iId);
+    // private: called from the constructor, and nothing outside MTSCart calls
+    // either loader - an overridable call there is a 'this' escape.
+    private void loadCart() throws SQLException {
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_cart WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                int iId;
+                while (rs.next()) {
+                    iId = rs.getInt("itemid");
+                    if (iId < 0) {
+                        owedNX -= iId;
+                    } else if (MTSStorage.getInstance().check(iId)) {
+                        cart.add(iId);
+                    }
+                }
             }
         }
-        rs.close();
-        ps.close();
     }
 
-    public void loadNotYetSold() throws SQLException {
-        final PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("SELECT * FROM mts_items WHERE characterid = ?");
-        ps.setInt(1, characterId);
-        final ResultSet rs = ps.executeQuery();
-        int pId;
-        while (rs.next()) {
-            pId = rs.getInt("id");
-            if (MTSStorage.getInstance().check(pId)) {
-                notYetSold.add(pId);
+    private void loadNotYetSold() throws SQLException {
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM mts_items WHERE characterid = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                int pId;
+                while (rs.next()) {
+                    pId = rs.getInt("id");
+                    if (MTSStorage.getInstance().check(pId)) {
+                        notYetSold.add(pId);
+                    }
+                }
             }
         }
-        rs.close();
-        ps.close();
     }
 
     public void changeInfo(final int tab, final int type, final int page) {

@@ -23,7 +23,7 @@ package tools.packet;
 import client.MapleCharacter;
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
-import handling.world.World;
+import handling.world.Family;
 import handling.world.family.MapleFamily;
 import handling.world.family.MapleFamilyBuff;
 import handling.world.family.MapleFamilyBuff.MapleFamilyBuffEntry;
@@ -68,7 +68,7 @@ public class FamilyPacket {
         mplew.writeShort(chr.getNoJuniors());
         mplew.writeShort(2);
         mplew.writeShort(chr.getNoJuniors());
-        MapleFamily family = World.Family.getFamily(chr.getFamilyId());
+        MapleFamily family = Family.getFamily(chr.getFamilyId());
         if (family != null) {
             mplew.writeInt(family.getLeaderId()); //??? 9D 60 03 00
             mplew.writeMapleAsciiString(family.getLeaderName());
@@ -103,7 +103,7 @@ public class FamilyPacket {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
         mplew.writeShort(SendPacketOpcode.SEND_PEDIGREE.getValue());
         mplew.writeInt(chr.getId());
-        MapleFamily family = World.Family.getFamily(chr.getFamilyId());
+        MapleFamily family = Family.getFamily(chr.getFamilyId());
         int descendants = 2, gens = 0, generations = 0;
         if (family == null) {
             mplew.writeInt(2);
@@ -207,6 +207,8 @@ public class FamilyPacket {
 
         mplew.writeShort(SendPacketOpcode.FAMILY_INVITE.getValue());
         mplew.writeInt(cid); //the inviter
+        // 逆向出來的線路格式筆記：其他版本的邀請封包還帶邀請者的等級與職業，v113 沒有；
+        // 參數 otherLevel / otherJob 因此在 v113 未被使用。
 //	mplew.writeInt(otherLevel);
 //	mplew.writeInt(otherJob);
         mplew.writeMapleAsciiString(inviter);
@@ -261,6 +263,40 @@ public class FamilyPacket {
         mplew.writeShort(SendPacketOpcode.FAMILY_USE_REQUEST.getValue());
         mplew.writeMapleAsciiString(name);
         mplew.writeMapleAsciiString(mapname);
+        return mplew.getPacket();
+    }
+
+    // ----- E5：以下由 tools.MaplePacketCreator 搬入 -----
+
+    public static MaplePacket sendLevelup(boolean family, int level, String name) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.LEVEL_UPDATE.getValue());
+        mplew.write(family ? 1 : 2);
+        mplew.writeInt(level);
+        mplew.writeMapleAsciiString(name);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket sendMarriage(boolean family, String name) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.MARRIAGE_UPDATE.getValue());
+        mplew.write(family ? 1 : 0);
+        mplew.writeMapleAsciiString(name);
+
+        return mplew.getPacket();
+    }
+
+    public static MaplePacket sendJobup(boolean family, int jobid, String name) {
+        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
+
+        mplew.writeShort(SendPacketOpcode.JOB_UPDATE.getValue());
+        mplew.write(family ? 1 : 0);
+        mplew.writeInt(jobid); //or is this a short
+        mplew.writeMapleAsciiString(name);
+
         return mplew.getPacket();
     }
 }

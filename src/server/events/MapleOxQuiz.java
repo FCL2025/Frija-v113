@@ -25,11 +25,13 @@ import client.MapleCharacter;
 import client.MapleStat;
 import java.util.Map.Entry;
 import java.util.concurrent.ScheduledFuture;
-import server.Timer.EventTimer;
+import server.Timer;
 import server.events.MapleOxQuizFactory.MapleOxQuizEntry;
 import server.maps.MapleMap;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.ChatPacket;
+import tools.packet.EventPacket;
+import tools.packet.MapPacket;
 
 public class MapleOxQuiz extends MapleEvent {
 
@@ -87,55 +89,47 @@ public class MapleOxQuiz extends MapleEvent {
         if (oxSchedule2 != null) {
             oxSchedule2.cancel(false);
         }
-        oxSchedule2 = EventTimer.getInstance().schedule(new Runnable() {
-
-            public void run() {
-                int number = 0;
-                for (MapleCharacter mc : toSend.getCharactersThreadsafe()) {
-                    if (mc.isGM() || !mc.isAlive()) {
-                        number++;
-                    }
+        oxSchedule2 = Timer.EVENT.schedule(() -> {
+            int number = 0;
+            for (MapleCharacter mc : toSend.getCharactersThreadsafe()) {
+                if (mc.isGM() || !mc.isAlive()) {
+                    number++;
                 }
-                if (toSend.getCharactersSize() - number <= 1 || timesAsked == 10) {
-                    toSend.broadcastMessage(MaplePacketCreator.serverNotice(6, "The event has ended"));
-                    unreset();
-                    for (MapleCharacter chr : toSend.getCharactersThreadsafe()) {
-                        if (chr != null && !chr.isGM() && chr.isAlive()) {
-                            chr.canTalk(true);
-                            //chr.finishAchievement(19);
-                            givePrize(chr);
-                            warpBack(chr);
-                        }
-                    }
-                    //prizes here
-                    return;
-                }
-                final Entry<Pair<Integer, Integer>, MapleOxQuizEntry> question = MapleOxQuizFactory.getInstance().grabRandomQuestion();
-                toSend.broadcastMessage(MaplePacketCreator.showOXQuiz(question.getKey().left, question.getKey().right, true));
-                toSend.broadcastMessage(MaplePacketCreator.getClock(12)); //quickly change to 12
-                if (oxSchedule != null) {
-                    oxSchedule.cancel(false);
-                }
-                oxSchedule = EventTimer.getInstance().schedule(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        toSend.broadcastMessage(MaplePacketCreator.showOXQuiz(question.getKey().left, question.getKey().right, false));
-                        timesAsked++;
-                        for (MapleCharacter chr : toSend.getCharactersThreadsafe()) {
-                            if (chr != null && !chr.isGM() && chr.isAlive()) { // make sure they aren't null... maybe something can happen in 12 seconds.
-                                if (!isCorrectAnswer(chr, question.getValue().getAnswer())) {
-                                    chr.getStat().setHp((short) 0);
-                                    chr.updateSingleStat(MapleStat.HP, 0);
-                                } else {
-                                    chr.gainExp(3000, true, true, false);
-                                }
-                            }
-                        }
-                        sendQuestion();
-                    }
-                }, 12000); // Time to answer = 30 seconds ( Ox Quiz packet shows a 30 second timer.
             }
+            if (toSend.getCharactersSize() - number <= 1 || timesAsked == 10) {
+                toSend.broadcastMessage(ChatPacket.serverNotice(6, "The event has ended"));
+                unreset();
+                for (MapleCharacter chr : toSend.getCharactersThreadsafe()) {
+                    if (chr != null && !chr.isGM() && chr.isAlive()) {
+                        chr.canTalk(true);
+                        givePrize(chr);
+                        warpBack(chr);
+                    }
+                }
+                //prizes here
+                return;
+            }
+            final Entry<Pair<Integer, Integer>, MapleOxQuizEntry> question = MapleOxQuizFactory.getInstance().grabRandomQuestion();
+            toSend.broadcastMessage(EventPacket.showOXQuiz(question.getKey().left, question.getKey().right, true));
+            toSend.broadcastMessage(MapPacket.getClock(12)); //quickly change to 12
+            if (oxSchedule != null) {
+                oxSchedule.cancel(false);
+            }
+            oxSchedule = Timer.EVENT.schedule(() -> {
+                toSend.broadcastMessage(EventPacket.showOXQuiz(question.getKey().left, question.getKey().right, false));
+                timesAsked++;
+                for (MapleCharacter chr : toSend.getCharactersThreadsafe()) {
+                    if (chr != null && !chr.isGM() && chr.isAlive()) { // make sure they aren't null... maybe something can happen in 12 seconds.
+                        if (!isCorrectAnswer(chr, question.getValue().getAnswer())) {
+                            chr.getStat().setHp((short) 0);
+                            chr.updateSingleStat(MapleStat.HP, 0);
+                        } else {
+                            chr.gainExp(3000, true, true, false);
+                        }
+                    }
+                }
+                sendQuestion();
+            }, 12000); // Time to answer = 30 seconds ( Ox Quiz packet shows a 30 second timer.
         }, 10000);
     }
 

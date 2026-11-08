@@ -34,14 +34,17 @@ import server.life.MobSkill;
 import server.life.MobSkillFactory;
 import server.maps.MapleNodes.MapleNodeInfo;
 import server.movement.LifeMovementFragment;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.ChatPacket;
+import tools.packet.MapPacket;
 import tools.packet.MobPacket;
 import tools.data.input.SeekableLittleEndianAccessor;
 
 public class MobHandler {
 
-    public static final void MoveMonster(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    private static final System.Logger LOG = System.getLogger(MobHandler.class.getName());
+
+    public static final void moveMonster(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         if (chr == null || chr.getMap() == null) {
             return; //?
         }
@@ -133,12 +136,14 @@ public class MobHandler {
         final Point startPos = slea.readPos();
         final List<LifeMovementFragment> res = MovementParse.parseMovement(slea, 2);
 
-        c.getSession().write(MobPacket.moveMonsterResponse(monster.getObjectId(), moveid, monster.getMp(), monster.isControllerHasAggro(), realskill, level));
+        c.send(MobPacket.moveMonsterResponse(monster.getObjectId(), moveid, monster.getMp(), monster.isControllerHasAggro(), realskill, level));
 
         if (res != null && chr != null) {
             if (slea.available() < 9 || slea.available() > 17) { //9.. 0 -> endPos? -> endPos again? -> 0 -> 0
-                System.out.println("slea.available != 17 (movement parsing error)");
-                System.out.println(slea.toString(true));
+                // One event, one record: the complaint and the packet dump
+                // belong together and two threads could otherwise interleave.
+                LOG.log(System.Logger.Level.INFO, "slea.available != 17 (movement parsing error)"
+                        + System.lineSeparator() + slea.toString(true));
                 c.getSession().close();
                 return;
             }
@@ -147,12 +152,10 @@ public class MobHandler {
             MovementParse.updatePosition(res, monster, -1);
             map.moveMonster(monster, monster.getPosition());
             map.broadcastMessage(chr, MobPacket.moveMonster(useSkill, skill, skill1, skill2, skill3, skill4, monster.getObjectId(), startPos, monster.getPosition(), res), monster.getPosition());
-            //if(!chr.isGM())
-            //    chr.getCheatTracker().checkMoveMonster(monster.getPosition());
         }
     }
 
-    public static final void FriendlyDamage(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void friendlyDamage(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMap map = chr.getMap();
         if (map == null) {
             return;
@@ -181,7 +184,7 @@ public class MobHandler {
                     break;
                 }
             }
-            map.broadcastMessage(MaplePacketCreator.serverNotice(6, "Your party has failed to protect the monster."));
+            map.broadcastMessage(ChatPacket.serverNotice(6, "Your party has failed to protect the monster."));
             final MapleMap mapp = chr.getClient().getChannelServer().getMapFactory().getMap(921120001);
             for (MapleCharacter chrz : map.getCharactersThreadsafe()) {
                 chrz.changeMap(mapp, mapp.getPortal(0));
@@ -191,7 +194,7 @@ public class MobHandler {
         }
     }
 
-    public static final void MonsterBomb(final int oid, final MapleCharacter chr) {
+    public static final void monsterBomb(final int oid, final MapleCharacter chr) {
         final MapleMonster monster = chr.getMap().getMonsterByOid(oid);
 
         if (monster == null || !chr.isAlive() || chr.isHidden()) {
@@ -203,7 +206,7 @@ public class MobHandler {
         }
     }
 
-    public static final void AutoAggro(final int monsteroid, final MapleCharacter chr) {
+    public static final void autoAggro(final int monsteroid, final MapleCharacter chr) {
         if (chr == null || chr.getMap() == null || chr.isHidden()) { //no evidence :)
             return;
         }
@@ -222,7 +225,7 @@ public class MobHandler {
         }
     }
 
-    public static final void HypnotizeDmg(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void hypnotizeDmg(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         slea.skip(4); // Player ID
         final int to = slea.readInt(); // mobto
@@ -242,14 +245,14 @@ public class MobHandler {
         }
     }
 
-    public static final void DisplayNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void displayNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         if (mob_from != null) {
-            chr.getClient().getSession().write(MaplePacketCreator.getNodeProperties(mob_from, chr.getMap()));
+            chr.getClient().send(MapPacket.getNodeProperties(mob_from, chr.getMap()));
         }
     }
 
-    public static final void MobNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void mobNode(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         final MapleMonster mob_from = chr.getMap().getMonsterByOid(slea.readInt()); // From
         final int newNode = slea.readInt();
         final int nodeSize = chr.getMap().getNodes().size();
@@ -286,7 +289,7 @@ public class MobHandler {
 
                 }
                 if (newMap > 0) {
-                    chr.getMap().broadcastMessage(MaplePacketCreator.serverNotice(5, "Proceed to the next stage."));
+                    chr.getMap().broadcastMessage(ChatPacket.serverNotice(5, "Proceed to the next stage."));
                     chr.getMap().removeMonster(mob_from);
                 }
             }

@@ -7,15 +7,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 import client.inventory.Equip;
 import client.inventory.IItem;
 import client.inventory.ItemFlag;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.MapleCharacter;
 import client.MapleClient;
 import client.inventory.MapleInventoryType;
-import java.util.LinkedList;
 import provider.MapleData;
 import provider.MapleDataDirectoryEntry;
 import provider.MapleDataFileEntry;
@@ -28,6 +28,8 @@ import tools.StringUtil;
 
 public class MapleItemInformationProvider {
 
+    private static final System.Logger LOG = System.getLogger(MapleItemInformationProvider.class.getName());
+
     private final static MapleItemInformationProvider instance = new MapleItemInformationProvider();
     protected final MapleDataProvider etcData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Etc.wz"));
     protected final MapleDataProvider itemData = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Item.wz"));
@@ -39,48 +41,57 @@ public class MapleItemInformationProvider {
     protected final MapleData etcStringData = stringData.getData("Etc.img");
     protected final MapleData insStringData = stringData.getData("Ins.img");
     protected final MapleData petStringData = stringData.getData("Pet.img");
-    protected final Map<Integer, List<Integer>> scrollReqCache = new HashMap<Integer, List<Integer>>();
-    protected final Map<Integer, Short> slotMaxCache = new HashMap<Integer, Short>();
-    protected final Map<Integer, List<StructPotentialItem>> potentialCache = new HashMap<Integer, List<StructPotentialItem>>();
-    protected final Map<Integer, MapleStatEffect> itemEffects = new HashMap<Integer, MapleStatEffect>();
-    protected final Map<Integer, Map<String, Integer>> equipStatsCache = new HashMap<Integer, Map<String, Integer>>();
-    protected final Map<Integer, Map<String, Byte>> itemMakeStatsCache = new HashMap<Integer, Map<String, Byte>>();
-    protected final Map<Integer, Short> itemMakeLevel = new HashMap<Integer, Short>();
-    protected final Map<Integer, Equip> equipCache = new HashMap<Integer, Equip>();
-    protected final Map<Integer, Double> priceCache = new HashMap<Integer, Double>();
-    protected final Map<Integer, Integer> wholePriceCache = new HashMap<Integer, Integer>();
-    protected final Map<Integer, Integer> projectileWatkCache = new HashMap<Integer, Integer>();
-    protected final Map<Integer, Integer> monsterBookID = new HashMap<Integer, Integer>();
-    protected final Map<Integer, String> nameCache = new HashMap<Integer, String>();
-    protected final Map<Integer, String> descCache = new HashMap<Integer, String>();
-    protected final Map<Integer, String> msgCache = new HashMap<Integer, String>();
-    protected final Map<Integer, MapleInventoryType> inventoryTypeCache = new HashMap<>();
-    protected final Map<Integer, Short> petFlagInfo = new HashMap<Integer, Short>();
-	
-    protected final Map<Integer, Map<String, Integer>> SkillStatsCache = new HashMap<Integer, Map<String, Integer>>();
-    protected final Map<Integer, Byte> consumeOnPickupCache = new HashMap<Integer, Byte>();
-    protected final Map<Integer, Boolean> dropRestrictionCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, Boolean> accCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, Boolean> pickupRestrictionCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, Integer> stateChangeCache = new HashMap<Integer, Integer>();
-    protected final Map<Integer, Integer> mesoCache = new HashMap<Integer, Integer>();
-    protected final Map<Integer, Boolean> notSaleCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, Integer> karmaEnabledCache = new HashMap<Integer, Integer>();
-    protected final Map<Integer, Boolean> isQuestItemCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, Boolean> blockPickupCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, List<Integer>> petsCanConsumeCache = new HashMap<Integer, List<Integer>>();
-    protected final Map<Integer, Boolean> logoutExpireCache = new HashMap<Integer, Boolean>();
-    protected final Map<Integer, List<Pair<Integer, Integer>>> summonMobCache = new HashMap<Integer, List<Pair<Integer, Integer>>>();
-    protected final List<Pair<Integer, String>> itemNameCache = new ArrayList<Pair<Integer, String>>();
-    protected final Map<Integer, Map<Integer, Map<String, Integer>>> equipIncsCache = new HashMap<Integer, Map<Integer, Map<String, Integer>>>();
-    protected final Map<Integer, Map<Integer, List<Integer>>> equipSkillsCache = new HashMap<Integer, Map<Integer, List<Integer>>>();
-    protected final Map<Integer, Pair<Integer, List<StructRewardItem>>> RewardItem = new HashMap<Integer, Pair<Integer, List<StructRewardItem>>>();
-    protected final Map<Byte, StructSetItem> setItems = new HashMap<Byte, StructSetItem>();
-    protected final Map<Integer, Pair<Integer, List<Integer>>> questItems = new HashMap<Integer, Pair<Integer, List<Integer>>>();
-	protected final Map<Integer, String> faceList = new HashMap();
+    // All caches below are read/populated from up to 16 concurrent packet-handler
+    // threads (MINA's default ExecutorFilter pool), so every one of them is backed
+    // by ConcurrentHashMap rather than plain HashMap/LinkedHashMap. A few
+    // (nameCache/descCache/msgCache) deliberately cache a "not found" answer as
+    // null; since ConcurrentHashMap forbids null values, those use the NULL_STRING
+    // sentinel below instead. itemNameCache is left as a plain ArrayList: nothing
+    // in this class ever writes to it (getAllItems() always recomputes into a
+    // fresh local list), so it is not actually a concurrently-modified cache.
+    private static final String NULL_STRING = new String("MapleItemInformationProvider#NULL_STRING");
+    protected final Map<Integer, List<Integer>> scrollReqCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Short> slotMaxCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, List<StructPotentialItem>> potentialCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, MapleStatEffect> itemEffects = new ConcurrentHashMap<>();
+    protected final Map<Integer, Map<String, Integer>> equipStatsCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Map<String, Byte>> itemMakeStatsCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Short> itemMakeLevel = new ConcurrentHashMap<>();
+    protected final Map<Integer, Equip> equipCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Double> priceCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Integer> wholePriceCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Integer> projectileWatkCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Integer> monsterBookID = new ConcurrentHashMap<>();
+    protected final Map<Integer, String> nameCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, String> descCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, String> msgCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, MapleInventoryType> inventoryTypeCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Short> petFlagInfo = new ConcurrentHashMap<>();
+
+    protected final Map<Integer, Map<String, Integer>> SkillStatsCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Byte> consumeOnPickupCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> dropRestrictionCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> accCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> pickupRestrictionCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Integer> stateChangeCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Integer> mesoCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> notSaleCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Integer> karmaEnabledCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> isQuestItemCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> blockPickupCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, List<Integer>> petsCanConsumeCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Boolean> logoutExpireCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, List<Pair<Integer, Integer>>> summonMobCache = new ConcurrentHashMap<>();
+    protected final List<Pair<Integer, String>> itemNameCache = new ArrayList<>();
+    protected final Map<Integer, Map<Integer, Map<String, Integer>>> equipIncsCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Map<Integer, List<Integer>>> equipSkillsCache = new ConcurrentHashMap<>();
+    protected final Map<Integer, Pair<Integer, List<StructRewardItem>>> RewardItem = new ConcurrentHashMap<>();
+    protected final Map<Byte, StructSetItem> setItems = new ConcurrentHashMap<>();
+    protected final Map<Integer, Pair<Integer, List<Integer>>> questItems = new ConcurrentHashMap<>();
+    protected final Map<Integer, String> faceList = new ConcurrentHashMap<>();
 
     protected MapleItemInformationProvider() {
-        System.out.println("Loading MapleItemInformationProvider :::");
+        LOG.log(System.Logger.Level.INFO, "Loading MapleItemInformationProvider :::");
     }
 
     public final void load() {
@@ -208,39 +219,39 @@ public class MapleItemInformationProvider {
         if (itemNameCache.size() != 0) {
             return itemNameCache;
         }
-        final List<Pair<Integer, String>> itemPairs = new ArrayList<Pair<Integer, String>>();
+        final List<Pair<Integer, String>> itemPairs = new ArrayList<>();
         MapleData itemsData;
 
         itemsData = stringData.getData("Cash.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Consume.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Eqp.img").getChildByPath("Eqp");
         for (final MapleData eqpType : itemsData.getChildren()) {
             for (final MapleData itemFolder : eqpType.getChildren()) {
-                itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+                itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
             }
         }
 
         itemsData = stringData.getData("Etc.img").getChildByPath("Etc");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Ins.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
 
         itemsData = stringData.getData("Pet.img");
         for (final MapleData itemFolder : itemsData.getChildren()) {
-            itemPairs.add(new Pair<Integer, String>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
+            itemPairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), MapleDataTool.getString("name", itemFolder, "NO-NAME")));
         }
         return itemPairs;
     }
@@ -354,8 +365,9 @@ public class MapleItemInformationProvider {
      * returns the maximum of items in one slot
      */
     public final short getSlotMax(final MapleClient c, final int itemId) {
-        if (slotMaxCache.containsKey(itemId)) {
-            return slotMaxCache.get(itemId);
+        final Short cached = slotMaxCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         short ret = 0;
         final MapleData item = getItemData(itemId);
@@ -376,8 +388,9 @@ public class MapleItemInformationProvider {
     }
 
     public final int getWholePrice(final int itemId) {
-        if (wholePriceCache.containsKey(itemId)) {
-            return wholePriceCache.get(itemId);
+        final Integer cached = wholePriceCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final MapleData item = getItemData(itemId);
         if (item == null) {
@@ -395,8 +408,9 @@ public class MapleItemInformationProvider {
     }
 
     public final double getPrice(final int itemId) {
-        if (priceCache.containsKey(itemId)) {
-            return priceCache.get(itemId);
+        final Double cached = priceCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final MapleData item = getItemData(itemId);
         if (item == null) {
@@ -425,13 +439,14 @@ public class MapleItemInformationProvider {
     }
 
     public final Map<String, Byte> getItemMakeStats(final int itemId) {
-        if (itemMakeStatsCache.containsKey(itemId)) {
-            return itemMakeStatsCache.get(itemId);
+        final Map<String, Byte> cached = itemMakeStatsCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         if (itemId / 10000 != 425) {
             return null;
         }
-        final Map<String, Byte> ret = new LinkedHashMap<String, Byte>();
+        final Map<String, Byte> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -461,7 +476,7 @@ public class MapleItemInformationProvider {
     }
 
     private int rand(int min, int max) {
-        return Math.abs((int) Randomizer.rand(min, max));
+        return Math.abs(Randomizer.rand(min, max));
     }
 
     public Equip levelUpEquip(Equip equip, Map<String, Integer> sta) {
@@ -505,16 +520,19 @@ public class MapleItemInformationProvider {
             }
         } catch (NullPointerException e) {
             //catch npe because obviously the wz have some error XD
-            e.printStackTrace();
+            // ERROR: the remaining stats are skipped, so the equip comes back
+            // levelled only as far as the bad entry.
+            LOG.log(System.Logger.Level.ERROR, "Error levelling up equip " + nEquip.getItemId(), e);
         }
         return nEquip;
     }
 
     public final Map<Integer, Map<String, Integer>> getEquipIncrements(final int itemId) {
-        if (equipIncsCache.containsKey(itemId)) {
-            return equipIncsCache.get(itemId);
+        final Map<Integer, Map<String, Integer>> cached = equipIncsCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
-        final Map<Integer, Map<String, Integer>> ret = new LinkedHashMap<Integer, Map<String, Integer>>();
+        final Map<Integer, Map<String, Integer>> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -524,7 +542,7 @@ public class MapleItemInformationProvider {
             return null;
         }
         for (MapleData dat : info.getChildren()) {
-            Map<String, Integer> incs = new HashMap<String, Integer>();
+            Map<String, Integer> incs = new HashMap<>();
             for (MapleData data : dat.getChildren()) { //why we have to do this? check if number has skills or not
                 if (data.getName().length() > 3) {
                     incs.put(data.getName().substring(3), MapleDataTool.getIntConvert(data.getName(), dat, 0));
@@ -537,10 +555,11 @@ public class MapleItemInformationProvider {
     }
 
     public final Map<Integer, List<Integer>> getEquipSkills(final int itemId) {
-        if (equipSkillsCache.containsKey(itemId)) {
-            return equipSkillsCache.get(itemId);
+        final Map<Integer, List<Integer>> cached = equipSkillsCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
-        final Map<Integer, List<Integer>> ret = new LinkedHashMap<Integer, List<Integer>>();
+        final Map<Integer, List<Integer>> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -552,7 +571,7 @@ public class MapleItemInformationProvider {
         for (MapleData dat : info.getChildren()) {
             for (MapleData data : dat.getChildren()) { //why we have to do this? check if number has skills or not
                 if (data.getName().length() == 1) { //the numbers all them are one digit. everything else isnt so we're lucky here..
-                    List<Integer> adds = new ArrayList<Integer>();
+                    List<Integer> adds = new ArrayList<>();
                     for (MapleData skil : data.getChildByPath("Skill").getChildren()) {
                         adds.add(MapleDataTool.getIntConvert("id", skil, 0));
                     }
@@ -565,10 +584,11 @@ public class MapleItemInformationProvider {
     }
 
     public final Map<String, Integer> getEquipStats(final int itemId) {
-        if (equipStatsCache.containsKey(itemId)) {
-            return equipStatsCache.get(itemId);
+        final Map<String, Integer> cached = equipStatsCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
-        final Map<String, Integer> ret = new LinkedHashMap<String, Integer>();
+        final Map<String, Integer> ret = new LinkedHashMap<>();
         final MapleData item = getItemData(itemId);
         if (item == null) {
             return null;
@@ -598,7 +618,7 @@ public class MapleItemInformationProvider {
         ret.put("equipTradeBlock", MapleDataTool.getInt("equipTradeBlock", info, 0));
         ret.put("durability", MapleDataTool.getInt("durability", info, -1));
 
-        if (GameConstants.isMagicWeapon(itemId)) {
+        if (ItemConstants.isMagicWeapon(itemId)) {
             ret.put("elemDefault", MapleDataTool.getInt("elemDefault", info, 100));
             ret.put("incRMAS", MapleDataTool.getInt("incRMAS", info, 100)); // Poison
             ret.put("incRMAF", MapleDataTool.getInt("incRMAF", info, 100)); // Fire
@@ -647,10 +667,11 @@ public class MapleItemInformationProvider {
     }
 
     public final List<Integer> getScrollReqs(final int itemId) {
-        if (scrollReqCache.containsKey(itemId)) {
-            return scrollReqCache.get(itemId);
+        final List<Integer> cached = scrollReqCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
-        final List<Integer> ret = new ArrayList<Integer>();
+        final List<Integer> ret = new ArrayList<>();
         final MapleData data = getItemData(itemId).getChildByPath("req");
 
         if (data == null) {
@@ -668,10 +689,10 @@ public class MapleItemInformationProvider {
             final Equip nEquip = (Equip) equip;
             final Map<String, Integer> stats = getEquipStats(scrollId.getItemId());
             final Map<String, Integer> eqstats = getEquipStats(equip.getItemId());
-            final int succ = (GameConstants.isTablet(scrollId.getItemId()) ? GameConstants.getSuccessTablet(scrollId.getItemId(), nEquip.getLevel()) : ((GameConstants.isEquipScroll(scrollId.getItemId()) || GameConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("success"))));
-            final int curse = (GameConstants.isTablet(scrollId.getItemId()) ? GameConstants.getCurseTablet(scrollId.getItemId(), nEquip.getLevel()) : ((GameConstants.isEquipScroll(scrollId.getItemId()) || GameConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("cursed"))));
+            final int succ = (ItemConstants.isTablet(scrollId.getItemId()) ? ItemConstants.getSuccessTablet(scrollId.getItemId(), nEquip.getLevel()) : ((ItemConstants.isEquipScroll(scrollId.getItemId()) || ItemConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("success"))));
+            final int curse = (ItemConstants.isTablet(scrollId.getItemId()) ? ItemConstants.getCurseTablet(scrollId.getItemId(), nEquip.getLevel()) : ((ItemConstants.isEquipScroll(scrollId.getItemId()) || ItemConstants.isPotentialScroll(scrollId.getItemId()) ? 0 : stats.get("cursed"))));
             int success = succ + (vegas == 5610000 && succ == 10 ? 20 : (vegas == 5610001 && succ == 60 ? 30 : 0));
-            if (GameConstants.isPotentialScroll(scrollId.getItemId()) || GameConstants.isEquipScroll(scrollId.getItemId()) || Randomizer.nextInt(100) <= success) {
+            if (ItemConstants.isPotentialScroll(scrollId.getItemId()) || ItemConstants.isEquipScroll(scrollId.getItemId()) || Randomizer.nextInt(100) <= success) {
                 switch (scrollId.getItemId()) {
                     case 2049000:
                     case 2049001:
@@ -695,20 +716,20 @@ public class MapleItemInformationProvider {
                     case 2040727: // Spikes on shoe, prevents slip
                     {
                         byte flag = nEquip.getFlag();
-                        flag |= ItemFlag.SPIKES.getValue();
+                        flag = (byte) (flag | ItemFlag.SPIKES.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
                         nEquip.setFlag(flag);
                         break;
                     }
                     case 2041058: // Cape for Cold protection
                     {
                         byte flag = nEquip.getFlag();
-                        flag |= ItemFlag.COLD.getValue();
+                        flag = (byte) (flag | ItemFlag.COLD.getValue()); // ItemFlag 的值都 <= 0x10，位元或不會超出 byte
                         nEquip.setFlag(flag);
                         break;
                     }
                     default: {
-                        if (GameConstants.isChaosScroll(scrollId.getItemId())) {
-                            final int z = GameConstants.getChaosNumber(scrollId.getItemId());
+                        if (ItemConstants.isChaosScroll(scrollId.getItemId())) {
+                            final int z = ItemConstants.getChaosNumber(scrollId.getItemId());
                             if (nEquip.getStr() > 0) {
                                 nEquip.setStr((short) (nEquip.getStr() + Randomizer.nextInt(z) * (Randomizer.nextBoolean() ? 1 : -1)));
                             }
@@ -752,7 +773,7 @@ public class MapleItemInformationProvider {
                                 nEquip.setMp((short) (nEquip.getMp() + Randomizer.nextInt(z) * (Randomizer.nextBoolean() ? 1 : -1)));
                             }
                             break;
-                        } else if (GameConstants.isEquipScroll(scrollId.getItemId())) {
+                        } else if (ItemConstants.isEquipScroll(scrollId.getItemId())) {
                             final int chanc = Math.max((scrollId.getItemId() == 2049300 ? 100 : 80) - (nEquip.getEnhance() * 10), 10);
                             if (Randomizer.nextInt(100) > chanc) {
                                 return null; //destroyed, nib
@@ -769,13 +790,13 @@ public class MapleItemInformationProvider {
                             if (nEquip.getLuk() > 0 || Randomizer.nextInt(50) == 1) { //1/50
                                 nEquip.setLuk((short) (nEquip.getLuk() + Randomizer.nextInt(5)));
                             }
-                            if (nEquip.getWatk() > 0 && GameConstants.isWeapon(nEquip.getItemId())) {
+                            if (nEquip.getWatk() > 0 && ItemConstants.isWeapon(nEquip.getItemId())) {
                                 nEquip.setWatk((short) (nEquip.getWatk() + Randomizer.nextInt(5)));
                             }
                             if (nEquip.getWdef() > 0 || Randomizer.nextInt(40) == 1) { //1/40
                                 nEquip.setWdef((short) (nEquip.getWdef() + Randomizer.nextInt(5)));
                             }
-                            if (nEquip.getMatk() > 0 && GameConstants.isWeapon(nEquip.getItemId())) {
+                            if (nEquip.getMatk() > 0 && ItemConstants.isWeapon(nEquip.getItemId())) {
                                 nEquip.setMatk((short) (nEquip.getMatk() + Randomizer.nextInt(5)));
                             }
                             if (nEquip.getMdef() > 0 || Randomizer.nextInt(40) == 1) { //1/40
@@ -801,7 +822,7 @@ public class MapleItemInformationProvider {
                             }
                             nEquip.setEnhance((byte) (nEquip.getEnhance() + 1));
                             break;
-                        } else if (GameConstants.isPotentialScroll(scrollId.getItemId())) {
+                        } else if (ItemConstants.isPotentialScroll(scrollId.getItemId())) {
                             if (nEquip.getState() == 0) {
                                 final int chanc = scrollId.getItemId() == 2049400 ? 90 : 70;
                                 if (Randomizer.nextInt(100) > chanc) {
@@ -852,12 +873,12 @@ public class MapleItemInformationProvider {
                         }
                     }
                 }
-                if (!GameConstants.isCleanSlate(scrollId.getItemId()) && !GameConstants.isSpecialScroll(scrollId.getItemId()) && !GameConstants.isEquipScroll(scrollId.getItemId()) && !GameConstants.isPotentialScroll(scrollId.getItemId())) {
+                if (!ItemConstants.isCleanSlate(scrollId.getItemId()) && !ItemConstants.isSpecialScroll(scrollId.getItemId()) && !ItemConstants.isEquipScroll(scrollId.getItemId()) && !ItemConstants.isPotentialScroll(scrollId.getItemId())) {
                     nEquip.setUpgradeSlots((byte) (nEquip.getUpgradeSlots() - 1));
                     nEquip.setLevel((byte) (nEquip.getLevel() + 1));
                 }
             } else {
-                if (!ws && !GameConstants.isCleanSlate(scrollId.getItemId()) && !GameConstants.isSpecialScroll(scrollId.getItemId()) && !GameConstants.isEquipScroll(scrollId.getItemId()) && !GameConstants.isPotentialScroll(scrollId.getItemId())) {
+                if (!ws && !ItemConstants.isCleanSlate(scrollId.getItemId()) && !ItemConstants.isSpecialScroll(scrollId.getItemId()) && !ItemConstants.isEquipScroll(scrollId.getItemId()) && !ItemConstants.isPotentialScroll(scrollId.getItemId())) {
                     nEquip.setUpgradeSlots((byte) (nEquip.getUpgradeSlots() - 1));
                 }
                 if (Randomizer.nextInt(99) < curse) {
@@ -963,26 +984,33 @@ public class MapleItemInformationProvider {
                 return null;
             }
             ret = MapleStatEffect.loadItemEffectFromData(item.getChildByPath("spec"), itemId);
-            itemEffects.put(Integer.valueOf(itemId), ret);
+            // loadItemEffectFromData() can come back null; ConcurrentHashMap can't
+            // hold a null value, and the original code effectively never cached
+            // it either (the ret == null check above re-triggers a reload every
+            // time), so just skip caching that case, same net effect as before.
+            if (ret != null) {
+                itemEffects.put(Integer.valueOf(itemId), ret);
+            }
         }
         return ret;
     }
 
     public final List<Pair<Integer, Integer>> getSummonMobs(final int itemId) {
-        if (summonMobCache.containsKey(Integer.valueOf(itemId))) {
-            return summonMobCache.get(itemId);
+        final List<Pair<Integer, Integer>> cached = summonMobCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
-        if (!GameConstants.isSummonSack(itemId)) {
+        if (!ItemConstants.isSummonSack(itemId)) {
             return null;
         }
         final MapleData data = getItemData(itemId).getChildByPath("mob");
         if (data == null) {
             return null;
         }
-        final List<Pair<Integer, Integer>> mobPairs = new ArrayList<Pair<Integer, Integer>>();
+        final List<Pair<Integer, Integer>> mobPairs = new ArrayList<>();
 
         for (final MapleData child : data.getChildren()) {
-            mobPairs.add(new Pair<Integer, Integer>(
+            mobPairs.add(new Pair<>(
                     MapleDataTool.getIntConvert("id", child),
                     MapleDataTool.getIntConvert("prob", child)));
         }
@@ -994,8 +1022,9 @@ public class MapleItemInformationProvider {
         if (id == 0) {
             return 0;
         }
-        if (monsterBookID.containsKey(id)) {
-            return monsterBookID.get(id);
+        final Integer cached = monsterBookID.get(id);
+        if (cached != null) {
+            return cached;
         }
         final MapleData data = getItemData(id);
         final int monsterid = MapleDataTool.getIntConvert("info/mob", data, 0);
@@ -1004,7 +1033,7 @@ public class MapleItemInformationProvider {
             return 0;
         }
         monsterBookID.put(id, monsterid);
-        return monsterBookID.get(id);
+        return monsterid;
     }
 
     public final int getWatkForProjectile(final int itemId) {
@@ -1023,47 +1052,54 @@ public class MapleItemInformationProvider {
     }
 
     public final String getName(final int itemId) {
-        if (nameCache.containsKey(itemId)) {
-            return nameCache.get(itemId);
+        final String cached = nameCache.get(itemId);
+        if (cached != null) {
+            return cached == NULL_STRING ? null : cached;
         }
         final MapleData strings = getStringData(itemId);
         if (strings == null) {
+            nameCache.put(itemId, NULL_STRING);
             return null;
         }
         final String ret = MapleDataTool.getString("name", strings, null);
-        nameCache.put(itemId, ret);
+        nameCache.put(itemId, ret == null ? NULL_STRING : ret);
         return ret;
     }
 
     public final String getDesc(final int itemId) {
-        if (descCache.containsKey(itemId)) {
-            return descCache.get(itemId);
+        final String cached = descCache.get(itemId);
+        if (cached != null) {
+            return cached == NULL_STRING ? null : cached;
         }
         final MapleData strings = getStringData(itemId);
         if (strings == null) {
+            descCache.put(itemId, NULL_STRING);
             return null;
         }
         final String ret = MapleDataTool.getString("desc", strings, null);
-        descCache.put(itemId, ret);
+        descCache.put(itemId, ret == null ? NULL_STRING : ret);
         return ret;
     }
 
     public final String getMsg(final int itemId) {
-        if (msgCache.containsKey(itemId)) {
-            return msgCache.get(itemId);
+        final String cached = msgCache.get(itemId);
+        if (cached != null) {
+            return cached == NULL_STRING ? null : cached;
         }
         final MapleData strings = getStringData(itemId);
         if (strings == null) {
+            msgCache.put(itemId, NULL_STRING);
             return null;
         }
         final String ret = MapleDataTool.getString("msg", strings, null);
-        msgCache.put(itemId, ret);
+        msgCache.put(itemId, ret == null ? NULL_STRING : ret);
         return ret;
     }
 
     public final short getItemMakeLevel(final int itemId) {
-        if (itemMakeLevel.containsKey(itemId)) {
-            return itemMakeLevel.get(itemId);
+        final Short cached = itemMakeLevel.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         if (itemId / 10000 != 400) {
             return 0;
@@ -1075,8 +1111,9 @@ public class MapleItemInformationProvider {
 
     public final byte isConsumeOnPickup(final int itemId) {
         // 0 = not, 1 = consume on pickup, 2 = consume + party
-        if (consumeOnPickupCache.containsKey(itemId)) {
-            return consumeOnPickupCache.get(itemId);
+        final Byte cached = consumeOnPickupCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final MapleData data = getItemData(itemId);
         byte consume = (byte) MapleDataTool.getIntConvert("spec/consumeOnPickup", data, 0);
@@ -1093,8 +1130,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isDropRestricted(final int itemId) {
-        if (dropRestrictionCache.containsKey(itemId)) {
-            return dropRestrictionCache.get(itemId);
+        final Boolean cached = dropRestrictionCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final MapleData data = getItemData(itemId);
 
@@ -1107,8 +1145,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isPickupRestricted(final int itemId) {
-        if (pickupRestrictionCache.containsKey(itemId)) {
-            return pickupRestrictionCache.get(itemId);
+        final Boolean cached = pickupRestrictionCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final boolean bRestricted = MapleDataTool.getIntConvert("info/only", getItemData(itemId), 0) == 1;
 
@@ -1117,8 +1156,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isAccountShared(final int itemId) {
-        if (accCache.containsKey(itemId)) {
-            return accCache.get(itemId);
+        final Boolean cached = accCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final boolean bRestricted = MapleDataTool.getIntConvert("info/accountSharable", getItemData(itemId), 0) == 1;
 
@@ -1127,8 +1167,9 @@ public class MapleItemInformationProvider {
     }
 
     public final int getStateChangeItem(final int itemId) {
-        if (stateChangeCache.containsKey(itemId)) {
-            return stateChangeCache.get(itemId);
+        final Integer cached = stateChangeCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final int triggerItem = MapleDataTool.getIntConvert("info/stateChangeItem", getItemData(itemId), 0);
         stateChangeCache.put(itemId, triggerItem);
@@ -1136,8 +1177,9 @@ public class MapleItemInformationProvider {
     }
 
     public final int getMeso(final int itemId) {
-        if (mesoCache.containsKey(itemId)) {
-            return mesoCache.get(itemId);
+        final Integer cached = mesoCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final int triggerItem = MapleDataTool.getIntConvert("info/meso", getItemData(itemId), 0);
         mesoCache.put(itemId, triggerItem);
@@ -1145,8 +1187,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isKarmaEnabled(final int itemId) {
-        if (karmaEnabledCache.containsKey(itemId)) {
-            return karmaEnabledCache.get(itemId) == 1;
+        final Integer cached = karmaEnabledCache.get(itemId);
+        if (cached != null) {
+            return cached == 1;
         }
         final int iRestricted = MapleDataTool.getIntConvert("info/tradeAvailable", getItemData(itemId), 0);
 
@@ -1155,8 +1198,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isPKarmaEnabled(final int itemId) {
-        if (karmaEnabledCache.containsKey(itemId)) {
-            return karmaEnabledCache.get(itemId) == 2;
+        final Integer cached = karmaEnabledCache.get(itemId);
+        if (cached != null) {
+            return cached == 2;
         }
         final int iRestricted = MapleDataTool.getIntConvert("info/tradeAvailable", getItemData(itemId), 0);
 
@@ -1165,8 +1209,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isPickupBlocked(final int itemId) {
-        if (blockPickupCache.containsKey(itemId)) {
-            return blockPickupCache.get(itemId);
+        final Boolean cached = blockPickupCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final boolean iRestricted = MapleDataTool.getIntConvert("info/pickUpBlock", getItemData(itemId), 0) == 1;
 
@@ -1175,8 +1220,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isLogoutExpire(final int itemId) {
-        if (logoutExpireCache.containsKey(itemId)) {
-            return logoutExpireCache.get(itemId);
+        final Boolean cached = logoutExpireCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final boolean iRestricted = MapleDataTool.getIntConvert("info/expireOnLogout", getItemData(itemId), 0) == 1;
 
@@ -1185,8 +1231,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean cantSell(final int itemId) { //true = cant sell, false = can sell
-        if (notSaleCache.containsKey(itemId)) {
-            return notSaleCache.get(itemId);
+        final Boolean cached = notSaleCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final boolean bRestricted = MapleDataTool.getIntConvert("info/notSale", getItemData(itemId), 0) == 1;
 
@@ -1195,8 +1242,9 @@ public class MapleItemInformationProvider {
     }
 
     public final Pair<Integer, List<StructRewardItem>> getRewardItem(final int itemid) {
-        if (RewardItem.containsKey(itemid)) {
-            return RewardItem.get(itemid);
+        final Pair<Integer, List<StructRewardItem>> cached = RewardItem.get(itemid);
+        if (cached != null) {
+            return cached;
         }
         final MapleData data = getItemData(itemid);
         if (data == null) {
@@ -1207,30 +1255,33 @@ public class MapleItemInformationProvider {
             return null;
         }
         int totalprob = 0; // As there are some rewards with prob above 2000, we can't assume it's always 100
-        List<StructRewardItem> all = new ArrayList<StructRewardItem>();
+        List<StructRewardItem> all = new ArrayList<>();
 
         for (final MapleData reward : rewards) {
-            StructRewardItem struct = new StructRewardItem();
+            // 讀取順序與改成 record 之前逐欄位指派時完全一致；
+            // prob 保留原本的 (byte) 轉型（欄位型別是 short，byte 會加寬）。
+            final int rewardItemId = MapleDataTool.getInt("item", reward, 0);
+            final short prob = (byte) MapleDataTool.getInt("prob", reward, 0);
+            final short quantity = (short) MapleDataTool.getInt("count", reward, 0);
+            final String effect = MapleDataTool.getString("Effect", reward, "");
+            final String worldmsg = MapleDataTool.getString("worldMsg", reward, null);
+            final long period = MapleDataTool.getInt("period", reward, -1);
 
-            struct.itemid = MapleDataTool.getInt("item", reward, 0);
-            struct.prob = (byte) MapleDataTool.getInt("prob", reward, 0);
-            struct.quantity = (short) MapleDataTool.getInt("count", reward, 0);
-            struct.effect = MapleDataTool.getString("Effect", reward, "");
-            struct.worldmsg = MapleDataTool.getString("worldMsg", reward, null);
-            struct.period = MapleDataTool.getInt("period", reward, -1);
+            final StructRewardItem struct = new StructRewardItem(rewardItemId, period, prob, quantity, effect, worldmsg);
 
-            totalprob += struct.prob;
+            totalprob += struct.prob();
 
             all.add(struct);
         }
-        Pair<Integer, List<StructRewardItem>> toreturn = new Pair<Integer, List<StructRewardItem>>(totalprob, all);
+        Pair<Integer, List<StructRewardItem>> toreturn = new Pair<>(totalprob, all);
         RewardItem.put(itemid, toreturn);
         return toreturn;
     }
 
     public final Map<String, Integer> getSkillStats(final int itemId) {
-        if (SkillStatsCache.containsKey(itemId)) {
-            return SkillStatsCache.get(itemId);
+        final Map<String, Integer> cached = SkillStatsCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         if (!(itemId / 10000 == 228 || itemId / 10000 == 229 || itemId / 10000 == 562)) { // Skillbook and mastery book
             return null;
@@ -1243,7 +1294,7 @@ public class MapleItemInformationProvider {
         if (info == null) {
             return null;
         }
-        final Map<String, Integer> ret = new LinkedHashMap<String, Integer>();
+        final Map<String, Integer> ret = new LinkedHashMap<>();
         for (final MapleData data : info.getChildren()) {
             if (data.getName().startsWith("inc")) {
                 ret.put(data.getName().substring(3), MapleDataTool.getIntConvert(data));
@@ -1263,10 +1314,11 @@ public class MapleItemInformationProvider {
     }
 
     public final List<Integer> petsCanConsume(final int itemId) {
-        if (petsCanConsumeCache.get(itemId) != null) {
-            return petsCanConsumeCache.get(itemId);
+        final List<Integer> cached = petsCanConsumeCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
-        final List<Integer> ret = new ArrayList<Integer>();
+        final List<Integer> ret = new ArrayList<>();
         final MapleData data = getItemData(itemId);
         if (data == null || data.getChildByPath("spec") == null) {
             return ret;
@@ -1289,8 +1341,9 @@ public class MapleItemInformationProvider {
     }
 
     public final boolean isQuestItem(final int itemId) {
-        if (isQuestItemCache.containsKey(itemId)) {
-            return isQuestItemCache.get(itemId);
+        final Boolean cached = isQuestItemCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         final boolean questItem = MapleDataTool.getIntConvert("info/quest", getItemData(itemId), 0) == 1;
         isQuestItemCache.put(itemId, questItem);
@@ -1298,8 +1351,9 @@ public class MapleItemInformationProvider {
     }
 
     public final Pair<Integer, List<Integer>> questItemInfo(final int itemId) {
-        if (questItems.containsKey(itemId)) {
-            return questItems.get(itemId);
+        final Pair<Integer, List<Integer>> cached = questItems.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         if (itemId / 10000 != 422 || getItemData(itemId) == null) {
             return null;
@@ -1308,11 +1362,11 @@ public class MapleItemInformationProvider {
         if (itemD == null || itemD.getChildByPath("consumeItem") == null) {
             return null;
         }
-        final List<Integer> consumeItems = new ArrayList<Integer>();
+        final List<Integer> consumeItems = new ArrayList<>();
         for (MapleData consume : itemD.getChildByPath("consumeItem")) {
             consumeItems.add(MapleDataTool.getInt(consume, 0));
         }
-        final Pair<Integer, List<Integer>> questItem = new Pair<Integer, List<Integer>>(MapleDataTool.getIntConvert("questId", itemD, 0), consumeItems);
+        final Pair<Integer, List<Integer>> questItem = new Pair<>(MapleDataTool.getIntConvert("questId", itemD, 0), consumeItems);
         questItems.put(itemId, questItem);
         return questItem;
     }
@@ -1323,53 +1377,54 @@ public class MapleItemInformationProvider {
         }
         return getItemData(itemId) != null;
     }
-	public final void loadStyles(boolean reload)
-	{
-		if (reload) {
-			faceList.clear();
-		}
-		if (!faceList.isEmpty()) {
-			return;
-		}
-		final List<String> types = new ArrayList<String>();
-		types.add("Face");
-		for (final String type : types) {
-			for (MapleData c : stringData.getData("Eqp.img").getChildByPath("Eqp/" + type)) {
-				if (this.equipData.getData(type + "/" + StringUtil.getLeftPaddedStr(new StringBuilder().append(c.getName()).append(".img").toString(), '0', 12)) != null)
-				{
-					int dataid = Integer.parseInt(c.getName());
-					String name = MapleDataTool.getString("name", c, "無名稱");
-					if (type.equals("Face")) {
-						faceList.put(Integer.valueOf(dataid), name);
-					}
-				}
-			}
-		}
-	}
+    public final void loadStyles(boolean reload)
+    {
+        if (reload) {
+            faceList.clear();
+        }
+        if (!faceList.isEmpty()) {
+            return;
+        }
+        final List<String> types = new ArrayList<>();
+        types.add("Face");
+        for (final String type : types) {
+            for (MapleData c : stringData.getData("Eqp.img").getChildByPath("Eqp/" + type)) {
+                if (this.equipData.getData(type + "/" + StringUtil.getLeftPaddedStr(new StringBuilder().append(c.getName()).append(".img").toString(), '0', 12)) != null)
+                {
+                    int dataid = Integer.parseInt(c.getName());
+                    String name = MapleDataTool.getString("name", c, "無名稱");
+                    if (type.equals("Face")) {
+                        faceList.put(Integer.valueOf(dataid), name);
+                    }
+                }
+            }
+        }
+    }
   
-	public boolean faceExists(int face)
-	{
-		if (faceList.isEmpty()) {
-			loadStyles(false);
-		}
-		return faceList.containsKey(Integer.valueOf(face));
-	}
+    public boolean faceExists(int face)
+    {
+        if (faceList.isEmpty()) {
+            loadStyles(false);
+        }
+        return faceList.containsKey(Integer.valueOf(face));
+    }
   
-	public final Map<Integer, String> getFaceList()
-	{
-		Map<Integer, String> list = new HashMap();
-		list.putAll(faceList);
-		return list;
-	}
+    public final Map<Integer, String> getFaceList()
+    {
+        Map<Integer, String> list = new HashMap<>();
+        list.putAll(faceList);
+        return list;
+    }
     public final boolean isCash(final int itemId) {
         if (getEquipStats(itemId) == null) {
             return getInventoryType(itemId) == MapleInventoryType.CASH;
         }
         return getInventoryType(itemId) == MapleInventoryType.CASH || getEquipStats(itemId).get("cash") > 0;
     }
-	public final MapleInventoryType getInventoryType(int itemId) {
-        if (inventoryTypeCache.containsKey(itemId)) {
-            return inventoryTypeCache.get(itemId);
+    public final MapleInventoryType getInventoryType(int itemId) {
+        final MapleInventoryType cached = inventoryTypeCache.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         MapleInventoryType ret;
         String idStr = "0" + String.valueOf(itemId);
@@ -1401,10 +1456,13 @@ public class MapleItemInformationProvider {
         inventoryTypeCache.put(itemId, ret);
         return ret;
     }
-	public short getPetFlagInfo(int itemId) {
-		System.out.println("ItemID = " + itemId);
-        if (this.petFlagInfo.containsKey(itemId)) {
-            return (this.petFlagInfo.get(itemId));
+    public short getPetFlagInfo(int itemId) {
+        // A leftover debug print, kept because removing it changes what is
+        // reported; as a record it can now be silenced from Libs/logging.properties.
+        LOG.log(System.Logger.Level.INFO, "ItemID = " + itemId);
+        final Short cached = this.petFlagInfo.get(itemId);
+        if (cached != null) {
+            return cached;
         }
         short flag = 0;
         if (itemId / 10000 != 500) {
@@ -1438,8 +1496,8 @@ public class MapleItemInformationProvider {
         this.petFlagInfo.put(itemId, flag);
         return flag;
     }
-	
-	public boolean isCashItem(int itemId) {
+    
+    public boolean isCashItem(int itemId) {
 
         MapleData item = getItemData(itemId);
         if (item == null) {

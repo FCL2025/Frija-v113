@@ -25,9 +25,9 @@ import java.util.Map.Entry;
 
 import client.MapleClient;
 import handling.channel.ChannelServer;
-import server.Timer.PingTimer;
+import server.Timer;
+import tools.packet.ChatPacket;
 import tools.packet.LoginPacket;
-import tools.MaplePacketCreator;
 
 public class LoginWorker {
 
@@ -35,8 +35,8 @@ public class LoginWorker {
 
     public static void registerClient(final MapleClient c) {
         if (LoginServer.isAdminOnly() && !c.isGm()) {
-            c.getSession().write(MaplePacketCreator.serverNotice(1, "The server is currently set to Admin login only.\r\nWe are currently testing some issues.\r\nPlease try again later."));
-            c.getSession().write(LoginPacket.getLoginFailed(7));
+            c.send(ChatPacket.serverNotice(1, "The server is currently set to Admin login only.\r\nWe are currently testing some issues.\r\nPlease try again later."));
+            c.send(LoginPacket.getLoginFailed(7));
             return;
         }
 
@@ -46,7 +46,7 @@ public class LoginWorker {
             int usersOn = 0;
             if (load == null || load.size() <= 0) { // In an unfortunate event that client logged in before load
                 lastUpdate = 0;
-                c.getSession().write(LoginPacket.getLoginFailed(7));
+                c.send(LoginPacket.getLoginFailed(7));
                 return;
             }
             final double loadFactor = 1200 / ((double) LoginServer.getUserLimit() / load.size());
@@ -60,20 +60,19 @@ public class LoginWorker {
 
         if (c.finishLogin() == 0) {
             if (c.getSecondPassword() == null) {
-                c.getSession().write(LoginPacket.getGenderNeeded(c));
+                c.send(LoginPacket.getGenderNeeded(c));
             } else {
-                c.getSession().write(LoginPacket.getAuthSuccessRequest(c));
-                c.getSession().write(LoginPacket.getServerList(0, LoginServer.getServerName(), LoginServer.getLoad()));
-                c.getSession().write(LoginPacket.getEndOfServerList());
+                c.send(LoginPacket.getAuthSuccessRequest(c));
+                c.send(LoginPacket.getServerList(0, LoginServer.getServerName(), LoginServer.getLoad()));
+                c.send(LoginPacket.getEndOfServerList());
             }
-            c.setIdleTask(PingTimer.getInstance().schedule(new Runnable() {
-
-                public void run() {
+            // 刻意保留：這個閒置計時器原本是要在登入畫面待太久時把連線關掉，
+            // 呼叫被註解掉之後任務本體是空的，等於只佔一個排程名額。
+            c.setIdleTask(Timer.PING.schedule(() -> {
 //                    c.getSession().close();
-                }
             }, 10 * 60 * 10000));
         } else {
-            c.getSession().write(LoginPacket.getLoginFailed(7));
+            c.send(LoginPacket.getLoginFailed(7));
             return;
         }
     }

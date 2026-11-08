@@ -19,9 +19,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-importPackage(org.rise.server.maps);
-importPackage(org.rise.net.channel);
-importPackage(org.rise.tools);
+importPackage(Packages.server.maps);
+importPackage(Packages.handling.channel);
+importPackage(Packages.tools.packet);
 
 /*
 Amoria: 2nd stage to 3rd stage portal
@@ -36,7 +36,7 @@ function enter(pi) {
 	var avail = eim.getProperty("3stageclear");
 	if (avail == null) {
 		// do nothing; send message to player
-		pi.getClient().getSession().write(MaplePacketCreator.serverNotice(6, "This door is closed."));
+		pi.getClient().send(ChatPacket.serverNotice(6, "This door is closed."));
 		return false;	}
 	else {
 		pi.getPlayer().changeMap(target, targetPortal);

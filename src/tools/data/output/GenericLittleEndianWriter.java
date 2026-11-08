@@ -1,6 +1,6 @@
 /*
  This file is part of the OdinMS Maple Story Server
- Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc> 
+ Copyright (C) 2008 ~ 2010 Patrick Huy <patrick.huy@frz.cc>
  Matthias Butz <matze@odinms.de>
  Jan Christian Meyer <vimes@odinms.de>
 
@@ -21,10 +21,22 @@
 package tools.data.output;
 
 import java.awt.Point;
-import java.nio.charset.Charset;
+import java.io.ByteArrayOutputStream;
+
+import tools.Encodings;
 
 /**
- * Provides a generic writer of a little-endian sequence of bytes.
+ * Writes a little-endian sequence of bytes - the write half of the wire format.
+ *
+ * <p>The bytes land in a {@link ByteArrayOutputStream}, which grows as the
+ * packet does. This used to reach it through a {@code ByteOutputStream}
+ * interface with one implementation, set after construction by a protected
+ * setter; the stream is now a final field taken in the constructor, which is
+ * also what retires the {@code -Xlint:this-escape} hazard that setter created
+ * for {@link MaplePacketLittleEndianWriter}.
+ *
+ * <p>Instances are not shared: a packet builder creates one, fills it, and
+ * turns it into a {@code MaplePacket}.
  *
  * @author Frz
  * @version 1.0
@@ -32,166 +44,142 @@ import java.nio.charset.Charset;
  */
 public class GenericLittleEndianWriter implements LittleEndianWriter {
 
-    // See http://java.sun.com/j2se/1.4.2/docs/api/java/nio/charset/Charset.html
-    private static final Charset ASCII = Charset.forName("BIG5"); // ISO-8859-1, UTF-8
-    private ByteOutputStream bos;
-
-    public static final int getlength(final String str) {
-        byte[] bt = str.getBytes(ASCII);
-        return bt.length;
-    }
+    private final ByteArrayOutputStream baos;
 
     /**
-     * Class constructor - Protected to prevent instantiation with no arguments.
+     * The length of <code>str</code> in BIG5 bytes, which is what a
+     * maple-convention string's length prefix counts. Not the character count:
+     * every CJK character is two bytes.
      */
-    protected GenericLittleEndianWriter() {
-        // Blah!
+    public static int getlength(final String str) {
+        return str.getBytes(Encodings.BIG5).length;
     }
 
     /**
-     * Sets the byte-output stream for this instance of the object.
+     * Class constructor - the only public one.
      *
-     * @param bos The new output stream to set.
+     * @param bos The stream to wrap this object around.
      */
-    protected void setByteOutputStream(final ByteOutputStream bos) {
-        this.bos = bos;
+    public GenericLittleEndianWriter(final BAOSByteOutputStream bos) {
+        this(bos.baos);
     }
 
     /**
-     * Class constructor - only this one can be used.
+     * For {@link MaplePacketLittleEndianWriter}, which has to keep the stream
+     * itself so it can read the finished packet back out of it.
      *
-     * @param bos The stream to wrap this objecr around.
+     * @param baos The stream to write into.
      */
-    public GenericLittleEndianWriter(final ByteOutputStream bos) {
-        this.bos = bos;
+    GenericLittleEndianWriter(final ByteArrayOutputStream baos) {
+        this.baos = baos;
     }
 
     /**
-     * Write the number of zero bytes
-     *
-     * @param b The bytes to write.
+     * Write <code>i</code> zero bytes.
      */
     @Override
     public final void writeZeroBytes(final int i) {
         for (int x = 0; x < i; x++) {
-            bos.writeByte((byte) 0);
+            baos.write(0);
         }
     }
 
-    /**
-     * Write an array of bytes to the stream.
-     *
-     * @param b The bytes to write.
-     */
     @Override
     public final void write(final byte[] b) {
-        for (int x = 0; x < b.length; x++) {
-            bos.writeByte(b[x]);
-        }
+        baos.writeBytes(b);
     }
 
-    /**
-     * Write a byte to the stream.
-     *
-     * @param b The byte to write.
-     */
     @Override
     public final void write(final byte b) {
-        bos.writeByte(b);
+        baos.write(b);
     }
 
     @Override
     public final void write(final int b) {
-        bos.writeByte((byte) b);
+        baos.write(b);
     }
 
-    /**
-     * Write a short integer to the stream.
-     *
-     * @param i The short integer to write.
-     */
     @Override
     public final void writeShort(final short i) {
-        bos.writeByte((byte) (i & 0xFF));
-        bos.writeByte((byte) ((i >>> 8) & 0xFF));
+        baos.write(i & 0xFF);
+        baos.write((i >>> 8) & 0xFF);
     }
 
     @Override
     public final void writeShort(final int i) {
-        bos.writeByte((byte) (i & 0xFF));
-        bos.writeByte((byte) ((i >>> 8) & 0xFF));
+        baos.write(i & 0xFF);
+        baos.write((i >>> 8) & 0xFF);
     }
 
-    /**
-     * Writes an integer to the stream.
-     *
-     * @param i The integer to write.
-     */
     @Override
     public final void writeInt(final int i) {
-        bos.writeByte((byte) (i & 0xFF));
-        bos.writeByte((byte) ((i >>> 8) & 0xFF));
-        bos.writeByte((byte) ((i >>> 16) & 0xFF));
-        bos.writeByte((byte) ((i >>> 24) & 0xFF));
+        baos.write(i & 0xFF);
+        baos.write((i >>> 8) & 0xFF);
+        baos.write((i >>> 16) & 0xFF);
+        baos.write((i >>> 24) & 0xFF);
+    }
+
+    @Override
+    public final void writeLong(final long l) {
+        baos.write((int) (l & 0xFF));
+        baos.write((int) ((l >>> 8) & 0xFF));
+        baos.write((int) ((l >>> 16) & 0xFF));
+        baos.write((int) ((l >>> 24) & 0xFF));
+        baos.write((int) ((l >>> 32) & 0xFF));
+        baos.write((int) ((l >>> 40) & 0xFF));
+        baos.write((int) ((l >>> 48) & 0xFF));
+        baos.write((int) ((l >>> 56) & 0xFF));
     }
 
     /**
-     * Writes an ASCII string the the stream.
-     *
-     * @param s The ASCII string to write.
+     * Writes a string as BIG5 bytes, with no length prefix.
      */
     @Override
     public final void writeAsciiString(final String s) {
-        write(s.getBytes(ASCII));
+        write(s.getBytes(Encodings.BIG5));
     }
 
+    /**
+     * Writes a string into a fixed <code>max</code>-byte field, zero-padded.
+     *
+     * <p>Note that the truncation is by <em>characters</em> and the padding by
+     * <em>bytes</em>, so a CJK string longer than the field still writes more
+     * than <code>max</code> bytes, and one whose byte length exceeds
+     * <code>max</code> while its character length does not throws out of
+     * {@code substring}. That is what this has always done and what the callers
+     * - fixed-width name fields, all of them short ASCII in practice - were
+     * written against.
+     */
     @Override
     public final void writeAsciiString(String s, final int max) {
-        if (s.getBytes(ASCII).length > max) {
+        byte[] b = s.getBytes(Encodings.BIG5);
+        if (b.length > max) {
             s = s.substring(0, max);
+            b = s.getBytes(Encodings.BIG5);
         }
-        write(s.getBytes(ASCII));
-        for (int i = s.getBytes(ASCII).length; i < max; i++) {
+        write(b);
+        for (int i = b.length; i < max; i++) {
             write(0);
         }
     }
 
     /**
-     * Writes a maple-convention ASCII string to the stream.
-     *
-     * @param s The ASCII string to use maple-convention to write.
+     * Writes a maple-convention string: a short integer giving the length
+     * <em>in BIG5 bytes</em>, then those bytes.
      */
     @Override
     public final void writeMapleAsciiString(final String s) {
-        writeShort((short) s.getBytes(ASCII).length);
-        writeAsciiString(s);
+        final byte[] b = s.getBytes(Encodings.BIG5);
+        writeShort((short) b.length);
+        write(b);
     }
 
     /**
-     * Writes a 2D 4 byte position information
-     *
-     * @param s The Point position to write.
+     * Writes a 2D 4 byte position information.
      */
     @Override
     public final void writePos(final Point s) {
         writeShort(s.x);
         writeShort(s.y);
-    }
-
-    /**
-     * Write a long integer to the stream.
-     *
-     * @param l The long integer to write.
-     */
-    @Override
-    public final void writeLong(final long l) {
-        bos.writeByte((byte) (l & 0xFF));
-        bos.writeByte((byte) ((l >>> 8) & 0xFF));
-        bos.writeByte((byte) ((l >>> 16) & 0xFF));
-        bos.writeByte((byte) ((l >>> 24) & 0xFF));
-        bos.writeByte((byte) ((l >>> 32) & 0xFF));
-        bos.writeByte((byte) ((l >>> 40) & 0xFF));
-        bos.writeByte((byte) ((l >>> 48) & 0xFF));
-        bos.writeByte((byte) ((l >>> 56) & 0xFF));
     }
 }

@@ -21,8 +21,8 @@
 package server.life;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import provider.MapleData;
 import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
@@ -34,16 +34,21 @@ public class MobAttackInfoFactory {
 
     private static final MobAttackInfoFactory instance = new MobAttackInfoFactory();
     private static final MapleDataProvider dataSource = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Mob.wz"));
-    private static Map<Pair<Integer, Integer>, MobAttackInfo> mobAttacks = new HashMap<Pair<Integer, Integer>, MobAttackInfo>();
+    private static final Map<Pair<Integer, Integer>, MobAttackInfo> mobAttacks = new ConcurrentHashMap<>();
+    // ConcurrentHashMap can't hold a null value, but this cache deliberately
+    // remembers "no attack info found" so it isn't recomputed every call; use
+    // a sentinel instance instead of null for that case.
+    private static final MobAttackInfo NOT_FOUND = new MobAttackInfo();
 
     public static MobAttackInfoFactory getInstance() {
         return instance;
     }
 
     public MobAttackInfo getMobAttackInfo(MapleMonster mob, int attack) {
-        MobAttackInfo ret = mobAttacks.get(new Pair<Integer, Integer>(Integer.valueOf(mob.getId()), Integer.valueOf(attack)));
+        final Pair<Integer, Integer> key = new Pair<>(Integer.valueOf(mob.getId()), Integer.valueOf(attack));
+        MobAttackInfo ret = mobAttacks.get(key);
         if (ret != null) {
-            return ret;
+            return ret == NOT_FOUND ? null : ret;
         }
 
         MapleData mobData = dataSource.getData(StringUtil.getLeftPaddedStr(Integer.toString(mob.getId()) + ".img", '0', 11));
@@ -63,7 +68,7 @@ public class MobAttackInfoFactory {
                 ret.setMpCon(MapleDataTool.getInt("conMP", attackData, 0));
             }
         }
-        mobAttacks.put(new Pair<Integer, Integer>(Integer.valueOf(mob.getId()), Integer.valueOf(attack)), ret);
+        mobAttacks.put(key, ret == null ? NOT_FOUND : ret);
 
         return ret;
     }

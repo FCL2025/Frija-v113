@@ -20,7 +20,7 @@
  */
 package client;
 
-import constants.GameConstants;
+import constants.JobConstants;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,9 +31,10 @@ import server.life.Element;
 
 public class Skill implements ISkill {
 
+    // 用途不明，保留待查：這棵樹裡沒有任何地方參考 Skill.skills，也看不出這組技能 id 的用意。
     //public static final int[] skills = new int[]{4311003, 4321000, 4331002, 4331005, 4341004, 4341007};
     private String name = "";
-    private final List<MapleStatEffect> effects = new ArrayList<MapleStatEffect>();
+    private final List<MapleStatEffect> effects = new ArrayList<>();
     private Element element;
     private byte level;
     private int id, animationTime, requiredSkill, masterLevel;
@@ -267,23 +268,23 @@ public class Skill implements ISkill {
     public boolean canBeLearnedBy(int job) {
         int jid = job;
         int skillForJob = id / 10000;
-	if( skillForJob == 0 || skillForJob == 1000 || skillForJob == 2000 || skillForJob == 2001 || skillForJob == 3000){
+    if( skillForJob == 0 || skillForJob == 1000 || skillForJob == 2000 || skillForJob == 2001 || skillForJob == 3000){
             return true;
-	}else if (skillForJob == 2001 && GameConstants.isEvan(job)) {
+    }else if (skillForJob == 2001 && JobConstants.isEvan(job)) {
             return true; //special exception for evan -.-
         } else if (jid / 100 != skillForJob / 100) { // wrong job
             return false;
         } else if (jid / 1000 != skillForJob / 1000) { // wrong job
             return false;
-        } else if (GameConstants.isAdventurer(skillForJob) && !GameConstants.isAdventurer(job)) {
+        } else if (JobConstants.isAdventurer(skillForJob) && !JobConstants.isAdventurer(job)) {
             return false;
-        } else if (GameConstants.isKOC(skillForJob) && !GameConstants.isKOC(job)) {
+        } else if (JobConstants.isKOC(skillForJob) && !JobConstants.isKOC(job)) {
             return false;
-        } else if (GameConstants.isAran(skillForJob) && !GameConstants.isAran(job)) {
+        } else if (JobConstants.isAran(skillForJob) && !JobConstants.isAran(job)) {
             return false;
-        } else if (GameConstants.isEvan(skillForJob) && !GameConstants.isEvan(job)) {
+        } else if (JobConstants.isEvan(skillForJob) && !JobConstants.isEvan(job)) {
             return false;
-        } else if (GameConstants.isResist(skillForJob) && !GameConstants.isResist(job)) {
+        } else if (JobConstants.isResist(skillForJob) && !JobConstants.isResist(job)) {
             return false;
         } else if ((skillForJob / 10) % 10 > (jid / 10) % 10) { // wrong 2nd job
             return false;

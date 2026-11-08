@@ -6,7 +6,6 @@ package server;
 
 import java.lang.ref.WeakReference;
 import client.MapleCharacter;
-import handling.world.MapleParty;
 import handling.world.MaplePartyCharacter;
 
 /**
@@ -20,7 +19,7 @@ public class MapleCarnivalChallenge {
     String challengeinfo = "";
 
     public MapleCarnivalChallenge(MapleCharacter challenger) {
-        this.challenger = new WeakReference<MapleCharacter>(challenger);
+        this.challenger = new WeakReference<>(challenger);
         challengeinfo += "#b";
         for (MaplePartyCharacter pc : challenger.getParty().getMembers()) {
             MapleCharacter c = challenger.getMap().getCharacterById(pc.getId());

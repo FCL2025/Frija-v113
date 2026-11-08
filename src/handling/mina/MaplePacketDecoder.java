@@ -22,13 +22,21 @@ package handling.mina;
 
 import client.MapleClient;
 import tools.MapleAESOFB;
-import tools.MapleCustomEncryption;
 
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.IoSession;
+import org.apache.mina.core.buffer.IoBuffer;
+import org.apache.mina.core.session.IoSession;
 import org.apache.mina.filter.codec.CumulativeProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolDecoderOutput;
 
+/**
+ * MINA 2's {@link CumulativeProtocolDecoder} keeps the 1.1 contract exactly -
+ * return {@code true} for "I consumed a whole message, call me again",
+ * {@code false} for "not enough bytes yet, keep the rest for next time" - and
+ * still insists that a {@code true} return has advanced the position. Only the
+ * buffer type changed, from {@code org.apache.mina.common.ByteBuffer} to
+ * {@link IoBuffer}; both are big-endian by default, so {@code getInt()} reads
+ * the same four bytes the same way and {@link MapleAESOFB} is untouched.
+ */
 public class MaplePacketDecoder extends CumulativeProtocolDecoder {
 
     public static final String DECODER_STATE_KEY = MaplePacketDecoder.class.getName() + ".STATE";
@@ -39,7 +47,7 @@ public class MaplePacketDecoder extends CumulativeProtocolDecoder {
     }
 
     @Override
-    protected boolean doDecode(IoSession session, ByteBuffer in, ProtocolDecoderOutput out) throws Exception {
+    protected boolean doDecode(IoSession session, IoBuffer in, ProtocolDecoderOutput out) throws Exception {
         final DecoderState decoderState = (DecoderState) session.getAttribute(DECODER_STATE_KEY);
 
         /*	if (decoderState == null) {
@@ -52,7 +60,10 @@ public class MaplePacketDecoder extends CumulativeProtocolDecoder {
             if (in.remaining() >= 4) {
                 final int packetHeader = in.getInt();
                 if (!client.getReceiveCrypto().checkPacket(packetHeader)) {
-                    session.close();
+                    // MINA 2: close() is deprecated in favour of the explicit
+                    // closeNow() / closeOnFlush() pair. This one is the old
+                    // close(), i.e. closeNow().
+                    session.closeNow();
                     return false;
                 }
                 decoderState.packetlength = MapleAESOFB.getPacketLength(packetHeader);
@@ -66,6 +77,8 @@ public class MaplePacketDecoder extends CumulativeProtocolDecoder {
             decoderState.packetlength = -1;
 
             client.getReceiveCrypto().crypt(decryptedPacket);
+// D9：v113 不套第二層 MapleCustomEncryption，只有 AES-OFB。MaplePacketEncoder 有
+// 對稱的一行。兩行一起記錄了這個版本的線路格式，不要以為是忘了打開。
 //	    MapleCustomEncryption.decryptData(decryptedPacket);
             out.write(decryptedPacket);
             return true;

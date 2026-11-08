@@ -29,13 +29,11 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
-import java.io.Serializable;
 
 import database.DatabaseConnection;
-import tools.MaplePacketCreator;
-import tools.Pair;
+import tools.packet.BuddyPacket;
 
-public class BuddyList implements Serializable {
+public class BuddyList {
 
     public static enum BuddyOperation {
 
@@ -46,10 +44,9 @@ public class BuddyList implements Serializable {
 
         BUDDYLIST_FULL, ALREADY_ON_LIST, OK
     }
-    private static final long serialVersionUID = 1413738569L;
-    private Map<Integer, BuddylistEntry> buddies = new LinkedHashMap<Integer, BuddylistEntry>();
+    private Map<Integer, BuddylistEntry> buddies = new LinkedHashMap<>();
     private byte capacity;
-    private Deque<CharacterNameAndId> pendingRequests = new LinkedList<CharacterNameAndId>();
+    private Deque<CharacterNameAndId> pendingRequests = new LinkedList<>();
 
     public BuddyList(byte capacity) {
         super();
@@ -131,28 +128,26 @@ public class BuddyList implements Serializable {
 
     public void loadFromDb(int characterId) throws SQLException {
         //try{
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("SELECT b.buddyid, b.pending, c.name as buddyname, c.job as buddyjob, c.level as buddylevel, b.groupname FROM buddies as b, characters as c WHERE c.id = b.buddyid AND b.characterid = ?");
-        ps.setInt(1, characterId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            int buddyid = rs.getInt("buddyid");
-            String buddyname = rs.getString("buddyname");
-            if (rs.getInt("pending") == 1) {
-                pendingRequests.push(new CharacterNameAndId(buddyid, buddyname, rs.getInt("buddylevel"), rs.getInt("buddyjob"), rs.getString("groupname")));
-            } else {
-                put(new BuddylistEntry(buddyname, buddyid, rs.getString("groupname"), -1, true, rs.getInt("buddylevel"), rs.getInt("buddyjob")));
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT b.buddyid, b.pending, c.name as buddyname, c.job as buddyjob, c.level as buddylevel, b.groupname FROM buddies as b, characters as c WHERE c.id = b.buddyid AND b.characterid = ?")) {
+                ps.setInt(1, characterId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        int buddyid = rs.getInt("buddyid");
+                        String buddyname = rs.getString("buddyname");
+                        if (rs.getInt("pending") == 1) {
+                            pendingRequests.push(new CharacterNameAndId(buddyid, buddyname, rs.getInt("buddylevel"), rs.getInt("buddyjob"), rs.getString("groupname")));
+                        } else {
+                            put(new BuddylistEntry(buddyname, buddyid, rs.getString("groupname"), -1, true, rs.getInt("buddylevel"), rs.getInt("buddyjob")));
+                        }
+                    }
+                }
+            }
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM buddies WHERE pending = 1 AND characterid = ?")) {
+                ps.setInt(1, characterId);
+                ps.executeUpdate();
             }
         }
-        rs.close();
-        ps.close();
-        ps = con.prepareStatement("DELETE FROM buddies WHERE pending = 1 AND characterid = ?");
-        ps.setInt(1, characterId);
-        ps.executeUpdate();
-        ps.close();
-        /*} catch (SQLException ex) {
-         ex.printStackTrace();
-         }*/
     }
 
     public CharacterNameAndId pollPendingRequest() {
@@ -162,7 +157,7 @@ public class BuddyList implements Serializable {
     public void addBuddyRequest(MapleClient c, int cidFrom, String nameFrom, int channelFrom, int levelFrom, int jobFrom) {
         put(new BuddylistEntry(nameFrom, cidFrom, "其他", channelFrom, false, levelFrom, jobFrom));
         if (pendingRequests.isEmpty()) {
-            c.getSession().write(MaplePacketCreator.requestBuddylistAdd(cidFrom, nameFrom, levelFrom, jobFrom));
+            c.send(BuddyPacket.requestBuddylistAdd(cidFrom, nameFrom, levelFrom, jobFrom));
         } else {
             pendingRequests.push(new CharacterNameAndId(cidFrom, nameFrom, levelFrom, jobFrom, "其他"));
         }

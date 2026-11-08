@@ -28,11 +28,10 @@ import client.MapleCharacter;
 import client.MapleClient;
 import client.SkillFactory;
 import handling.MaplePacket;
-import java.lang.ref.WeakReference;
 import server.MapleStatEffect;
 import server.life.MapleMonster;
 import server.life.MobSkill;
-import tools.MaplePacketCreator;
+import tools.packet.MapPacket;
 
 public class MapleMist extends AbstractMapleMapObject {
 
@@ -139,17 +138,17 @@ public class MapleMist extends AbstractMapleMapObject {
     }
 
     public MaplePacket fakeSpawnData(int level) {
-        return MaplePacketCreator.spawnMist(this);
+        return MapPacket.spawnMist(this);
     }
 
     @Override
     public void sendSpawnData(final MapleClient c) {
-        c.getSession().write(MaplePacketCreator.spawnMist(this));
+        c.send(MapPacket.spawnMist(this));
     }
 
     @Override
     public void sendDestroyData(final MapleClient c) {
-        c.getSession().write(MaplePacketCreator.removeMist(getObjectId(), false));
+        c.send(MapPacket.removeMist(getObjectId(), false));
     }
 
     public boolean makeChanceResult() {

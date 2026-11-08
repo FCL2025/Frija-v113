@@ -12,9 +12,9 @@ function action(mode, type, selection) {
 	return;
     }
     if (status == 0) {
-	cm.sendNext("å®‰å®‰ æˆ‘æ˜¯é˜¿å‹’ç±³  I know how to make the firecrackers!  If you can gather and give me Power Keg then, we can have a fireworks!  Please get all the powder kegs that you get from the monsters.");
+	cm.sendNext("¦w¦w §Ú¬Oªü°Ç¦Ì  I know how to make the firecrackers!  If you can gather and give me Power Keg then, we can have a fireworks!  Please get all the powder kegs that you get from the monsters.");
     } else if (status == 1) {
-	cm.sendSimple("Each time users collect required powder keg, we can set a firework! \n\r #b#L0#æˆ‘è¦++ç«è—¥æ¡¶#l#k \n\r #b#L1#æˆ‘è¦å¯Ÿçœ‹ç›®å‰çš„é€²åº¦#l#k");
+	cm.sendSimple("Each time users collect required powder keg, we can set a firework! \n\r #b#L0#§Ú­n++¤õÃÄ±í#l#k \n\r #b#L1#§Ú­n¹î¬İ¥Ø«eªº¶i«×#l#k");
     } else if (status == 2) {
 	if (selection == 1) {
 	    cm.sendNext("Status of Powder Keg Collection \n\r #B"+cm.getKegs()+"# \n\r If we collect them all, we can start the firework...");

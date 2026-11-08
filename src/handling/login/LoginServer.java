@@ -20,37 +20,30 @@
  */
 package handling.login;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import database.DatabaseConnection;
 import handling.MapleServerHandler;
-import handling.mina.MapleCodecFactory;
-import java.rmi.NotBoundException;
-import org.apache.mina.common.ByteBuffer;
-import org.apache.mina.common.SimpleByteBufferAllocator;
-import org.apache.mina.common.IoAcceptor;
-
-import org.apache.mina.filter.codec.ProtocolCodecFilter;
-import org.apache.mina.transport.socket.nio.SocketAcceptorConfig;
-import org.apache.mina.transport.socket.nio.SocketAcceptor;
+import handling.mina.MapleAcceptor;
 import server.ServerProperties;
 
 public class LoginServer {
 
+    private static final System.Logger LOG = System.getLogger(LoginServer.class.getName());
+
     public static final int PORT = 8484;
     private static InetSocketAddress InetSocketadd;
-    private static IoAcceptor acceptor;
-    private static Map<Integer, Integer> load = new HashMap<Integer, Integer>();
-    private static String serverName, eventMessage;
-    private static byte flag;
-    private static int maxCharacters, userLimit, usersOn = 0;
-    private static boolean finishedShutdown = true, adminOnly = false;
+    /**
+     * Per-channel population, written by every channel's own thread and read by
+     * the login threads answering SERVERSTATUS_REQUEST - so, concurrent.
+     */
+    private static volatile Map<Integer, Integer> load = new ConcurrentHashMap<>();
+    private static volatile String serverName, eventMessage;
+    private static volatile byte flag;
+    private static volatile int maxCharacters, userLimit, usersOn = 0;
+    private static volatile boolean finishedShutdown = true, adminOnly = false;
 
     public static final void addChannel(final int channel) {
         load.put(channel, 0);
@@ -61,12 +54,6 @@ public class LoginServer {
     }
 
     public static final void run_startup_configurations() {
-        /*userLimit = Integer.parseInt(ServerProperties.getProperty("net.sf.odinms.login.userlimit"));
-         serverName = ServerProperties.getProperty("net.sf.odinms.login.serverName");
-         eventMessage = ServerProperties.getProperty("net.sf.odinms.login.eventMessage");
-         flag = Byte.parseByte(ServerProperties.getProperty("net.sf.odinms.login.flag"));
-         adminOnly = Boolean.parseBoolean(ServerProperties.getProperty("net.sf.odinms.world.admin", "false"));
-         maxCharacters = Integer.parseInt(ServerProperties.getProperty("net.sf.odinms.login.maxCharacters"));*/
         userLimit = Integer.parseInt(ServerProperties.getProperty("tms.UserLimit"));
         serverName = ServerProperties.getProperty("tms.ServerName");
         eventMessage = ServerProperties.getProperty("tms.EventMessage");
@@ -74,21 +61,14 @@ public class LoginServer {
         adminOnly = Boolean.parseBoolean(ServerProperties.getProperty("tms.Admin", "false"));
         maxCharacters = Integer.parseInt(ServerProperties.getProperty("tms.MaxCharacters"));
 
-        ByteBuffer.setUseDirectBuffers(false);
-        ByteBuffer.setAllocator(new SimpleByteBufferAllocator());
-
-        acceptor = new SocketAcceptor();
-        final SocketAcceptorConfig cfg = new SocketAcceptorConfig();
-        cfg.getSessionConfig().setTcpNoDelay(true);
-        cfg.setDisconnectOnUnbind(true);
-        cfg.getFilterChain().addLast("codec", new ProtocolCodecFilter(new MapleCodecFactory()));
-
         try {
-            InetSocketadd = new InetSocketAddress(PORT);
-            acceptor.bind(InetSocketadd, new MapleServerHandler(-1, false), cfg);
-            System.out.println("Login   1: Listening on port " + PORT);
+            InetSocketadd = MapleAcceptor.bind(PORT, new MapleServerHandler(-1, false));
+            LOG.log(System.Logger.Level.INFO, "Login   1: Listening on port " + PORT);
         } catch (IOException e) {
-            System.err.println("Binding to port " + PORT + " failed" + e);
+            // Deliberately terse: this one has only ever reported e.toString(),
+            // so the Throwable is not attached. The port is not listening
+            // afterwards, hence ERROR rather than WARNING.
+            LOG.log(System.Logger.Level.ERROR, "Binding to port " + PORT + " failed" + e);
         }
     }
 
@@ -96,8 +76,8 @@ public class LoginServer {
         if (finishedShutdown) {
             return;
         }
-        System.out.println("Shutting down login...");
-        acceptor.unbindAll();
+        LOG.log(System.Logger.Level.INFO, "Shutting down login...");
+        MapleAcceptor.unbind(InetSocketadd);
         finishedShutdown = true; //nothing. lol
     }
 
@@ -122,7 +102,7 @@ public class LoginServer {
     }
 
     public static void setLoad(final Map<Integer, Integer> load_, final int usersOn_) {
-        load = load_;
+        load = new ConcurrentHashMap<>(load_);
         usersOn = usersOn_;
     }
 
@@ -147,7 +127,7 @@ public class LoginServer {
     }
 
     public static final int getNumberOfSessions() {
-        return acceptor.getManagedSessions(InetSocketadd).size();
+        return MapleAcceptor.getManagedSessionCount(InetSocketadd);
     }
 
     public static final boolean isAdminOnly() {

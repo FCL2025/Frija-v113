@@ -24,25 +24,27 @@ package handling.channel.handler;
 import client.MapleCharacter;
 import client.MapleClient;
 import handling.MaplePacket;
-import handling.world.World;
+import handling.world.Alliance;
+import handling.world.Guild;
 import handling.world.guild.MapleGuild;
-import handling.world.guild.MapleGuildSummary;
-import tools.MaplePacketCreator;
 import tools.data.input.SeekableLittleEndianAccessor;
+import tools.packet.CharacterPacket;
+import tools.packet.GuildPacket;
 
 public class AllianceHandler {
 
-    public static final void HandleAlliance(final SeekableLittleEndianAccessor slea, final MapleClient c, boolean denied) {
+    private static final System.Logger LOG = System.getLogger(AllianceHandler.class.getName());
+
+    public static final void handleAlliance(final SeekableLittleEndianAccessor slea, final MapleClient c, boolean denied) {
         if (c.getPlayer().getGuildId() <= 0) {
-            c.getSession().write(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
-        final MapleGuild gs = World.Guild.getGuild(c.getPlayer().getGuildId());
+        final MapleGuild gs = Guild.getGuild(c.getPlayer().getGuildId());
         if (gs == null) {
-            c.getSession().write(MaplePacketCreator.enableActions());
+            c.send(CharacterPacket.enableActions());
             return;
         }
-        //System.out.println("Unhandled GuildAlliance \n" + slea.toString());
         byte op = slea.readByte();
         if (c.getPlayer().getGuildRank() != 1 && op != 1) { //only updating doesn't need guild leader
             return;
@@ -52,7 +54,7 @@ public class AllianceHandler {
         }
         int leaderid = 0;
         if (gs.getAllianceId() > 0) {
-            leaderid = World.Alliance.getAllianceLeader(gs.getAllianceId());
+            leaderid = Alliance.getAllianceLeader(gs.getAllianceId());
         }
         //accept invite, and deny invite don't need allianceid.
         if (op != 4 && !denied) {
@@ -63,7 +65,7 @@ public class AllianceHandler {
             return;
         }
         if (denied) {
-            DenyInvite(c, gs);
+            denyInvite(c, gs);
             return;
         }
         MapleCharacter chr;
@@ -71,29 +73,29 @@ public class AllianceHandler {
         switch (op) {
             case 1: //load... must be in world op
 
-                for (MaplePacket pack : World.Alliance.getAllianceInfo(gs.getAllianceId(), false)) {
+                for (MaplePacket pack : Alliance.getAllianceInfo(gs.getAllianceId(), false)) {
                     if (pack != null) {
-                        c.getSession().write(pack);
+                        c.send(pack);
                     }
                 }
                 break;
             case 3: //invite
-                final int newGuild = World.Guild.getGuildLeader(slea.readMapleAsciiString());
+                final int newGuild = Guild.getGuildLeader(slea.readMapleAsciiString());
                 if (newGuild > 0 && c.getPlayer().getAllianceRank() == 1 && leaderid == c.getPlayer().getId()) {
                     chr = c.getChannelServer().getPlayerStorage().getCharacterById(newGuild);
-                    if (chr != null && chr.getGuildId() > 0 && World.Alliance.canInvite(gs.getAllianceId())) {
-                        chr.getClient().getSession().write(MaplePacketCreator.sendAllianceInvite(World.Alliance.getAlliance(gs.getAllianceId()).getName(), c.getPlayer()));
-                        World.Guild.setInvitedId(chr.getGuildId(), gs.getAllianceId());
+                    if (chr != null && chr.getGuildId() > 0 && Alliance.canInvite(gs.getAllianceId())) {
+                        chr.getClient().send(GuildPacket.sendAllianceInvite(Alliance.getAlliance(gs.getAllianceId()).getName(), c.getPlayer()));
+                        Guild.setInvitedId(chr.getGuildId(), gs.getAllianceId());
                     }
                 }
                 break;
             case 4: //accept invite... guildid that invited(int, a/b check) -> guildname that was invited? but we dont care about that
-                inviteid = World.Guild.getInvitedId(c.getPlayer().getGuildId());
+                inviteid = Guild.getInvitedId(c.getPlayer().getGuildId());
                 if (inviteid > 0) {
-                    if (!World.Alliance.addGuildToAlliance(inviteid, c.getPlayer().getGuildId())) {
+                    if (!Alliance.addGuildToAlliance(inviteid, c.getPlayer().getGuildId())) {
                         c.getPlayer().dropMessage(5, "An error occured when adding guild.");
                     }
-                    World.Guild.setInvitedId(c.getPlayer().getGuildId(), 0);
+                    Guild.setInvitedId(c.getPlayer().getGuildId(), 0);
                 }
                 break;
             case 2: //leave; nothing
@@ -108,14 +110,14 @@ public class AllianceHandler {
                     gid = c.getPlayer().getGuildId();
                 }
                 if (c.getPlayer().getAllianceRank() <= 2 && (c.getPlayer().getAllianceRank() == 1 || c.getPlayer().getGuildId() == gid)) {
-                    if (!World.Alliance.removeGuildFromAlliance(gs.getAllianceId(), gid, c.getPlayer().getGuildId() != gid)) {
+                    if (!Alliance.removeGuildFromAlliance(gs.getAllianceId(), gid, c.getPlayer().getGuildId() != gid)) {
                         c.getPlayer().dropMessage(5, "An error occured when removing guild.");
                     }
                 }
                 break;
             case 7: //change leader
                 if (c.getPlayer().getAllianceRank() == 1 && leaderid == c.getPlayer().getId()) {
-                    if (!World.Alliance.changeAllianceLeader(gs.getAllianceId(), slea.readInt())) {
+                    if (!Alliance.changeAllianceLeader(gs.getAllianceId(), slea.readInt())) {
                         c.getPlayer().dropMessage(5, "An error occured when changing leader.");
                     }
                 }
@@ -126,12 +128,12 @@ public class AllianceHandler {
                     for (int i = 0; i < 5; i++) {
                         ranks[i] = slea.readMapleAsciiString();
                     }
-                    World.Alliance.updateAllianceRanks(gs.getAllianceId(), ranks);
+                    Alliance.updateAllianceRanks(gs.getAllianceId(), ranks);
                 }
                 break;
             case 9:
                 if (c.getPlayer().getAllianceRank() <= 2) {
-                    if (!World.Alliance.changeAllianceRank(gs.getAllianceId(), slea.readInt(), slea.readByte())) {
+                    if (!Alliance.changeAllianceRank(gs.getAllianceId(), slea.readInt(), slea.readByte())) {
                         c.getPlayer().dropMessage(5, "An error occured when changing rank.");
                     }
                 }
@@ -142,28 +144,26 @@ public class AllianceHandler {
                     if (notice.length() > 100) {
                         break;
                     }
-                    World.Alliance.updateAllianceNotice(gs.getAllianceId(), notice);
+                    Alliance.updateAllianceNotice(gs.getAllianceId(), notice);
                 }
                 break;
             default:
-                System.out.println("Unhandled GuildAlliance op: " + op + ", \n" + slea.toString());
+                LOG.log(System.Logger.Level.INFO, "Unhandled GuildAlliance op: " + op + ", \n" + slea.toString());
                 break;
         }
-        //c.getSession().write(MaplePacketCreator.enableActions());
     }
 
-    public static final void DenyInvite(MapleClient c, final MapleGuild gs) { //playername that invited -> guildname that was invited but we also don't care
-        final int inviteid = World.Guild.getInvitedId(c.getPlayer().getGuildId());
+    public static final void denyInvite(MapleClient c, final MapleGuild gs) { //playername that invited -> guildname that was invited but we also don't care
+        final int inviteid = Guild.getInvitedId(c.getPlayer().getGuildId());
         if (inviteid > 0) {
-            final int newAlliance = World.Alliance.getAllianceLeader(inviteid);
+            final int newAlliance = Alliance.getAllianceLeader(inviteid);
             if (newAlliance > 0) {
                 final MapleCharacter chr = c.getChannelServer().getPlayerStorage().getCharacterById(newAlliance);
                 if (chr != null) {
                     chr.dropMessage(5, gs.getName() + " Guild has rejected the Guild Union invitation.");
                 }
-                World.Guild.setInvitedId(c.getPlayer().getGuildId(), 0);
+                Guild.setInvitedId(c.getPlayer().getGuildId(), 0);
             }
         }
-        //c.getSession().write(MaplePacketCreator.enableActions());
     }
 }

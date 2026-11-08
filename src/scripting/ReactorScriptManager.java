@@ -24,13 +24,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
+import java.util.concurrent.ConcurrentHashMap;
 
 import client.MapleClient;
 import database.DatabaseConnection;
@@ -40,8 +37,16 @@ import tools.FileoutputUtil;
 
 public class ReactorScriptManager extends AbstractScriptManager {
 
+    private static final System.Logger LOG = System.getLogger(ReactorScriptManager.class.getName());
+
     private static final ReactorScriptManager instance = new ReactorScriptManager();
-    private final Map<Integer, List<ReactorDropEntry>> drops = new HashMap<Integer, List<ReactorDropEntry>>();
+    /**
+     * Any Maple-Handler-N thread that hits a reactor fills this in, and
+     * {@code !reloaddrops} or a drop edit in the panel empties it from a
+     * Panel-Worker-N thread. Concurrent for that reason alone - the lists in it
+     * are built and finished before they ever go into the map.
+     */
+    private final Map<Integer, List<ReactorDropEntry>> drops = new ConcurrentHashMap<>();
 
     public static final ReactorScriptManager getInstance() {
         return instance;
@@ -49,18 +54,17 @@ public class ReactorScriptManager extends AbstractScriptManager {
 
     public final void act(final MapleClient c, final MapleReactor reactor) {
         try {
-            final Invocable iv = getInvocable("reactor/" + reactor.getReactorId() + ".js", c);
+            final ScriptScope iv = getInvocable("reactor/" + reactor.getReactorId() + ".js", c);
 
             if (iv == null) {
                 return;
             }
-            final ScriptEngine scriptengine = (ScriptEngine) iv;
             ReactorActionManager rm = new ReactorActionManager(c, reactor);
 
-            scriptengine.put("rm", rm);
+            iv.put("rm", rm);
             iv.invokeFunction("act");
         } catch (Exception e) {
-            System.err.println("Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing reactor script. ReactorID: " + reactor.getReactorId() + ", ReactorName: " + reactor.getName() + ":" + e);
         }
     }
@@ -70,37 +74,23 @@ public class ReactorScriptManager extends AbstractScriptManager {
         if (ret != null) {
             return ret;
         }
-        ret = new LinkedList<ReactorDropEntry>();
+        ret = new LinkedList<>();
 
-        PreparedStatement ps = null;
-        ResultSet rs = null;
-
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            ps = con.prepareStatement("SELECT * FROM reactordrops WHERE reactorid = ?");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM reactordrops WHERE reactorid = ?")) {
             ps.setInt(1, rid);
-            rs = ps.executeQuery();
-
-            while (rs.next()) {
-                ret.add(new ReactorDropEntry(rs.getInt("itemid"), rs.getInt("chance"), rs.getInt("questid")));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ret.add(new ReactorDropEntry(rs.getInt("itemid"), rs.getInt("chance"), rs.getInt("questid")));
+                }
             }
-            rs.close();
-            ps.close();
         } catch (final SQLException e) {
-            System.err.println("Could not retrieve drops for reactor " + rid + e);
+            LOG.log(System.Logger.Level.ERROR, "Could not retrieve drops for reactor " + rid + e);
             return ret;
-        } finally {
-            try {
-                if (rs != null) {
-                    rs.close();
-                }
-                if (ps != null) {
-                    ps.close();
-                }
-            } catch (SQLException ignore) {
-                return ret;
-            }
         }
+        // Miss-then-put, not computeIfAbsent: the query above borrows a
+        // connection and that must not happen under the map's bin lock. A race
+        // costs one extra query and stores an equal list.
         drops.put(rid, ret);
         return ret;
     }

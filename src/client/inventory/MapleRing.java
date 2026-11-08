@@ -21,20 +21,20 @@
 package client.inventory;
 
 import client.MapleCharacter;
-import com.mysql.jdbc.exceptions.MySQLIntegrityConstraintViolationException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.io.Serializable;
 
 import database.DatabaseConnection;
 import java.util.Comparator;
 import server.MapleInventoryManipulator;
 
-public class MapleRing implements Serializable {
+public class MapleRing {
 
-    private static final long serialVersionUID = 9179541993413738579L;
+    private static final System.Logger LOG = System.getLogger(MapleRing.class.getName());
+
     private int ringId;
     private int ringId2;
     private int partnerId;
@@ -55,47 +55,46 @@ public class MapleRing implements Serializable {
     }
 
     public static MapleRing loadFromDb(int ringId, boolean equipped) {
-        try {
-            Connection con = DatabaseConnection.getConnection(); // Get a connection to the database
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM rings WHERE ringId = ?"); // Get details..
+        try (Connection con = DatabaseConnection.getConnection(); // Get a connection to the database
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM rings WHERE ringId = ?")) { // Get details..
             ps.setInt(1, ringId);
 
-            ResultSet rs = ps.executeQuery();
-            MapleRing ret = null;
-            if (rs.next()) {
-                ret = new MapleRing(ringId, rs.getInt("partnerRingId"), rs.getInt("partnerChrId"), rs.getInt("itemid"), rs.getString("partnerName"));
-                ret.setEquipped(equipped);
+            try (ResultSet rs = ps.executeQuery()) {
+                MapleRing ret = null;
+                if (rs.next()) {
+                    ret = new MapleRing(ringId, rs.getInt("partnerRingId"), rs.getInt("partnerChrId"), rs.getInt("itemid"), rs.getString("partnerName"));
+                    ret.setEquipped(equipped);
+                }
+                return ret;
             }
-            rs.close();
-            ps.close();
-
-            return ret;
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            // ERROR: the ring is abandoned and comes back as null.
+            LOG.log(System.Logger.Level.ERROR, "Error loading ring " + ringId + " from the database", ex);
 
             return null;
         }
     }
 
     public static void addToDB(int itemid, MapleCharacter chr, String player, int id, int[] ringId) throws SQLException {
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("INSERT INTO rings (ringId, itemid, partnerChrId, partnerName, partnerRingId) VALUES (?, ?, ?, ?, ?)");
-        ps.setInt(1, ringId[0]);
-        ps.setInt(2, itemid);
-        ps.setInt(3, chr.getId());
-        ps.setString(4, chr.getName());
-        ps.setInt(5, ringId[1]);
-        ps.executeUpdate();
-        ps.close();
-
-        ps = con.prepareStatement("INSERT INTO rings (ringId, itemid, partnerChrId, partnerName, partnerRingId) VALUES (?, ?, ?, ?, ?)");
-        ps.setInt(1, ringId[1]);
-        ps.setInt(2, itemid);
-        ps.setInt(3, id);
-        ps.setString(4, player);
-        ps.setInt(5, ringId[0]);
-        ps.executeUpdate();
-        ps.close();
+        final String sql = "INSERT INTO rings (ringId, itemid, partnerChrId, partnerName, partnerRingId) VALUES (?, ?, ?, ?, ?)";
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setInt(1, ringId[0]);
+                ps.setInt(2, itemid);
+                ps.setInt(3, chr.getId());
+                ps.setString(4, chr.getName());
+                ps.setInt(5, ringId[1]);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = con.prepareStatement(sql)) {
+                ps.setInt(1, ringId[1]);
+                ps.setInt(2, itemid);
+                ps.setInt(3, id);
+                ps.setString(4, player);
+                ps.setInt(5, ringId[0]);
+                ps.executeUpdate();
+            }
+        }
     }
 
     public static int createRing(int itemid, MapleCharacter partner1, String partner2, String msg, int id2, int sn) {
@@ -107,7 +106,9 @@ public class MapleRing implements Serializable {
             }
             return makeRing(itemid, partner1, partner2, id2, msg, sn);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            // ERROR: the ring pair was not created and createRing gives up with 0.
+            // partner2 is a plain name, so nothing here can throw a second time.
+            LOG.log(System.Logger.Level.ERROR, "Error creating ring " + itemid + " with " + partner2, ex);
             return 0;
         }
     }
@@ -117,7 +118,7 @@ public class MapleRing implements Serializable {
         //[1] = partner1, [0] = partner2
         try {
             addToDB(itemid, partner1, partner2, id2, ringID);
-        } catch (MySQLIntegrityConstraintViolationException mslcve) {
+        } catch (SQLIntegrityConstraintViolationException mslcve) {
             return 0;
         }
         MapleInventoryManipulator.addRing(partner1, itemid, ringID[1], sn);
@@ -173,31 +174,31 @@ public class MapleRing implements Serializable {
     }
 
     public static void removeRingFromDb(MapleCharacter player) {
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM rings WHERE partnerChrId = ?");
-            ps.setInt(1, player.getId());
-            ResultSet rs = ps.executeQuery();
-            if (!rs.next()) {
-                ps.close();
-                rs.close();
-                return;
+        try (Connection con = DatabaseConnection.getConnection()) {
+            final int otherId;
+            final int otherotherId;
+            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM rings WHERE partnerChrId = ?")) {
+                ps.setInt(1, player.getId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return;
+                    }
+                    otherId = rs.getInt("partnerRingId");
+                    otherotherId = rs.getInt("ringId");
+                }
             }
-            int otherId = rs.getInt("partnerRingId");
-            int otherotherId = rs.getInt("ringId");
-            rs.close();
-            ps.close();
-            ps = con.prepareStatement("DELETE FROM rings WHERE ringId = ? OR ringId = ?");
-            ps.setInt(1, otherotherId);
-            ps.setInt(2, otherId);
-            ps.executeUpdate();
-            ps.close();
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM rings WHERE ringId = ? OR ringId = ?")) {
+                ps.setInt(1, otherotherId);
+                ps.setInt(2, otherId);
+                ps.executeUpdate();
+            }
         } catch (SQLException sex) {
-            sex.printStackTrace();
+            // ERROR: the pair of ring rows survives, so the ring stays half-removed.
+            LOG.log(System.Logger.Level.ERROR, "Error removing the rings of character " + player.getId(), sex);
         }
     }
 
-    public static class RingComparator implements Comparator<MapleRing>, Serializable {
+    public static class RingComparator implements Comparator<MapleRing> {
 
         @Override
         public int compare(MapleRing o1, MapleRing o2) {

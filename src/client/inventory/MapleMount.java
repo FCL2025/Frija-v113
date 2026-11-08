@@ -26,23 +26,21 @@ import java.lang.ref.WeakReference;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.io.Serializable;
 import java.util.concurrent.ScheduledFuture;
 
-import server.Timer.BuffTimer;
 import database.DatabaseConnection;
 import server.Randomizer;
-import tools.MaplePacketCreator;
+import server.Timer;
+import tools.packet.BuffPacket;
 
-public class MapleMount implements Serializable {
+public class MapleMount {
 
-    private static final long serialVersionUID = 9179541993413738569L;
     private int itemid, skillid, exp;
     private byte fatigue, level;
-    private transient boolean changed = false;
+    private boolean changed = false;
     private long lastFatigue = 0;
-    private transient ScheduledFuture<?> tirednessSchedule = null;
-    private transient WeakReference<MapleCharacter> owner;
+    private ScheduledFuture<?> tirednessSchedule = null;
+    private WeakReference<MapleCharacter> owner;
 
     public MapleMount(MapleCharacter owner, int id, int skillid, byte fatigue, byte level, int exp) {
         this.itemid = id;
@@ -50,21 +48,21 @@ public class MapleMount implements Serializable {
         this.fatigue = fatigue;
         this.level = level;
         this.exp = exp;
-        this.owner = new WeakReference<MapleCharacter>(owner);
+        this.owner = new WeakReference<>(owner);
     }
 
     public void saveMount(final int charid) throws SQLException {
         if (!changed) {
             return;
         }
-        Connection con = DatabaseConnection.getConnection();
-        PreparedStatement ps = con.prepareStatement("UPDATE mountdata set `Level` = ?, `Exp` = ?, `Fatigue` = ? WHERE characterid = ?");
-        ps.setByte(1, level);
-        ps.setInt(2, exp);
-        ps.setByte(3, fatigue);
-        ps.setInt(4, charid);
-        ps.executeUpdate();
-        ps.close();
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("UPDATE mountdata set `Level` = ?, `Exp` = ?, `Fatigue` = ? WHERE characterid = ?")) {
+            ps.setByte(1, level);
+            ps.setInt(2, exp);
+            ps.setByte(3, fatigue);
+            ps.setInt(4, charid);
+            ps.executeUpdate();
+        }
     }
 
     public int getItemId() {
@@ -124,19 +122,16 @@ public class MapleMount implements Serializable {
     }
 
      public void startSchedule() {
-		final BuffTimer timerManager = BuffTimer.getInstance();
-		tirednessSchedule = timerManager.getInstance().register(new Runnable() {
-
-			public void run() {
-				increaseFatigue();
-			}
-		}, 30000, 30000);
+        final Timer timerManager = Timer.BUFF;
+        tirednessSchedule = timerManager.register(() -> {
+            increaseFatigue();
+        }, 30000, 30000);
     }
 
     public void cancelSchedule() {
-		if (tirednessSchedule != null) {
-			tirednessSchedule.cancel(false);
-		}
+        if (tirednessSchedule != null) {
+            tirednessSchedule.cancel(false);
+        }
     }
 
     public void increaseExp() {
@@ -156,8 +151,7 @@ public class MapleMount implements Serializable {
     public void update() {
         final MapleCharacter chr = owner.get();
         if (chr != null) {
-//	    cancelSchedule();
-            chr.getMap().broadcastMessage(MaplePacketCreator.updateMount(chr, false));
+            chr.getMap().broadcastMessage(BuffPacket.updateMount(chr, false));
         }
     }
 }

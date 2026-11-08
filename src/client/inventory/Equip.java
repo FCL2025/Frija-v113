@@ -20,11 +20,10 @@
  */
 package client.inventory;
 
-import constants.GameConstants;
-import java.io.Serializable;
+import constants.ItemConstants;
 import server.Randomizer;
 
-public class Equip extends Item implements IEquip, Serializable {
+public class Equip extends Item implements IEquip {
 
     private byte upgradeSlots = 0, level = 0, vicioushammer = 0, enhance = 0;
     private short str = 0, dex = 0, _int = 0, luk = 0, hp = 0, mp = 0, watk = 0, matk = 0, wdef = 0, mdef = 0, acc = 0, avoid = 0, hands = 0, speed = 0, jump = 0, potential1 = 0, potential2 = 0, potential3 = 0, hpR = 0, mpR = 0;
@@ -304,7 +303,7 @@ public class Equip extends Item implements IEquip, Serializable {
             return 0;
         }
         //aproximate value
-        if (GameConstants.isWeapon(getItemId())) {
+        if (ItemConstants.isWeapon(getItemId())) {
             return itemEXP / IEquip.WEAPON_RATIO;
         } else {
             return itemEXP / IEquip.ARMOR_RATIO;
@@ -317,9 +316,9 @@ public class Equip extends Item implements IEquip, Serializable {
             return 0;
         }
         int expz = getEquipExp();
-        for (int i = getBaseLevel(); i <= GameConstants.getMaxLevel(getItemId()); i++) {
-            if (expz >= GameConstants.getExpForLevel(i, getItemId())) {
-                expz -= GameConstants.getExpForLevel(i, getItemId());
+        for (int i = getBaseLevel(); i <= ItemConstants.getMaxLevel(getItemId()); i++) {
+            if (expz >= ItemConstants.getExpForLevel(i, getItemId())) {
+                expz -= ItemConstants.getExpForLevel(i, getItemId());
             } else { //for 0, dont continue;
                 break;
             }
@@ -329,25 +328,25 @@ public class Equip extends Item implements IEquip, Serializable {
 
     @Override
     public int getExpPercentage() {
-        if (getEquipLevel() < getBaseLevel() || getEquipLevel() > GameConstants.getMaxLevel(getItemId()) || GameConstants.getExpForLevel(getEquipLevel(), getItemId()) <= 0) {
+        if (getEquipLevel() < getBaseLevel() || getEquipLevel() > ItemConstants.getMaxLevel(getItemId()) || ItemConstants.getExpForLevel(getEquipLevel(), getItemId()) <= 0) {
             return 0;
         }
-        return getEquipExpForLevel() * 100 / GameConstants.getExpForLevel(getEquipLevel(), getItemId());
+        return getEquipExpForLevel() * 100 / ItemConstants.getExpForLevel(getEquipLevel(), getItemId());
     }
 
     @Override
     public int getEquipLevel() {
-        if (GameConstants.getMaxLevel(getItemId()) <= 0) {
+        if (ItemConstants.getMaxLevel(getItemId()) <= 0) {
             return 0;
         } else if (getEquipExp() <= 0) {
             return getBaseLevel();
         }
         int levelz = getBaseLevel();
         int expz = getEquipExp();
-        for (int i = levelz; (GameConstants.getStatFromWeapon(getItemId()) == null ? (i <= GameConstants.getMaxLevel(getItemId())) : (i < GameConstants.getMaxLevel(getItemId()))); i++) {
-            if (expz >= GameConstants.getExpForLevel(i, getItemId())) {
+        for (int i = levelz; (ItemConstants.getStatFromWeapon(getItemId()) == null ? (i <= ItemConstants.getMaxLevel(getItemId())) : (i < ItemConstants.getMaxLevel(getItemId()))); i++) {
+            if (expz >= ItemConstants.getExpForLevel(i, getItemId())) {
                 levelz++;
-                expz -= GameConstants.getExpForLevel(i, getItemId());
+                expz -= ItemConstants.getExpForLevel(i, getItemId());
             } else { //for 0, dont continue;
                 break;
             }
@@ -357,7 +356,7 @@ public class Equip extends Item implements IEquip, Serializable {
 
     @Override
     public int getBaseLevel() {
-        return (GameConstants.getStatFromWeapon(getItemId()) == null ? 1 : 0);
+        return (ItemConstants.getStatFromWeapon(getItemId()) == null ? 1 : 0);
     }
 
     @Override

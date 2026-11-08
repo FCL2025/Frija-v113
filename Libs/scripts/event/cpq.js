@@ -114,10 +114,10 @@ function start(eim) {
 
 function monsterKilled(eim, chr, cp) {
     chr.getCarnivalParty().addCP(chr, cp);
-    chr.CPUpdate(false, chr.getAvailableCP(), chr.getTotalCP(), 0);
+    chr.cpUpdate(false, chr.getAvailableCP(), chr.getTotalCP(), 0);
     var iter = eim.getPlayers().iterator();
     while (iter.hasNext()) {
-        iter.next().CPUpdate(true, chr.getCarnivalParty().getAvailableCP(), chr.getCarnivalParty().getTotalCP(), chr.getCarnivalParty().getTeam());
+        iter.next().cpUpdate(true, chr.getCarnivalParty().getAvailableCP(), chr.getCarnivalParty().getTotalCP(), chr.getCarnivalParty().getTeam());
     }
 }
 
@@ -179,7 +179,7 @@ function playerRevive(eim, player) {
     player.getCarnivalParty().useCP(player,10);
     var iter = eim.getPlayers().iterator();
     while (iter.hasNext()) {
-        iter.next().CPUpdate(true, player.getCarnivalParty().getAvailableCP(), player.getCarnivalParty().getTotalCP(), player.getCarnivalParty().getTeam());
+        iter.next().cpUpdate(true, player.getCarnivalParty().getAvailableCP(), player.getCarnivalParty().getTotalCP(), player.getCarnivalParty().getTeam());
     }
 	player.addHP(50);
 	player.changeMap(eim.getMapInstance(reviveMap), eim.getMapInstance(reviveMap).getPortal(0));

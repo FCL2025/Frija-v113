@@ -20,10 +20,6 @@
  */
 package handling.world;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -40,14 +36,54 @@ import tools.Pair;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CharacterTransfer implements Externalizable {
+/**
+ * 換頻道／進出商城時，角色交給目的地頻道的那份資料。
+ *
+ * <p>流程是：來源端 {@code MapleCharacter.changeChannel} 或
+ * {@code InterServerHandler.EnterCS} 建一個 CharacterTransfer，
+ * {@code World.ChannelChange_Data} 把它登記成目的地 {@code PlayerStorage} 的
+ * pending 角色，客戶端接上新的埠之後 {@code InterServerHandler.Loggedin} 取出它，
+ * 由 {@code MapleCharacter.ReconstructChr} 重建成一個新的 MapleCharacter。沒取走
+ * 的（客戶端沒接上來）由 {@code PlayerStorage.PersistingTask} 依 TranferTime 在
+ * 40 秒後掃掉。整條路徑不經過資料庫，也不經過序列化。
+ *
+ * <h2>為什麼是一份欄位清單，而不是直接交遞活的 MapleCharacter</h2>
+ *
+ * <p>E10 評估過「改成交遞 MapleCharacter + rebind(client)」，結論是不改。理由是
+ * 來源頻道並沒有把角色從舊頻道摘乾淨：
+ *
+ * <ul>
+ * <li>{@code changeChannel} 走的是 {@code changeRemoval()}，不是斷線用的
+ *     {@code MapleClient.removalTask()}，所以 {@code cancelAllTimers()} 沒有被呼叫。
+ *     離開的角色身上 fairySchedule、mapTimeLimitTask、fishing、BerserkSchedule、
+ *     dragonBloodSchedule、beholder* 這些 ScheduledFuture 全部還活著，而且它們抓著
+ *     {@code this}、{@code map} 與舊的 {@code client}。現在這些計時器只是繼續戳一個
+ *     沒人在讀的屍體物件（到期前算是洩漏，但不會弄壞任何東西）；如果改成交遞同一個
+ *     物件，它們就變成對玩家正在用的角色的活寫入，而且 {@code map} 指著舊頻道的
+ *     {@code MapleMap}。
+ * <li>相對地，{@code ReconstructChr} 是在目的地頻道的 {@code MapleMapFactory} 上
+ *     重新解析 {@code map}，其餘的頻道綁定狀態（controlled、summons、
+ *     visibleMapObjects、doors、clones、anticheat、pets、effects、eventInstance）
+ *     則由 {@code MapleCharacter(boolean)} 建構子重新開一份。「哪些東西該重算」因此
+ *     是被這份清單明確定義的，而不是靠離開流程有沒有記得清。
+ * </ul>
+ *
+ * <p>要注意這份清單只有「淺」的意義：inventorys、storage、cs、keymap、mbook、
+ * InfoQuest、savedlocation／wishlist／rocks／regrocks／petStore 交出去的都是離開那個
+ * 角色身上的同一個物件（Quest 的值則是在 ReconstructChr 裡逐欄重建的）。這些都是
+ * 玩家私有的葉節點狀態，身上沒有指回 MapleMap／MapleClient／ChannelServer 的參考，
+ * 所以是安全的；被刻意丟掉的正好就是那些綁頻道的東西。
+ *
+ * <p>buff、冷卻與異常狀態不走這裡，由 {@code PlayerBuffStorage} 另外遞送。
+ */
+public class CharacterTransfer {
 
     public int characterid, accountid, exp,
             beans, meso, hair, face, mapid, guildid,
             partyid, messengerid, mBookCover, dojo, ACash, MaplePoints,
             mount_itemid, mount_exp, points, vpoints, marriageId,
             familyid, seniorid, junior1, junior2, currentrep, totalrep, expression, constellation, blood, month, day, battleshipHP,prefix,
-			gachexp;
+            gachexp;
     public byte channel, dojoRecord, gender, gmLevel, guildrank, alliancerank, clonez, fairyExp, buddysize, world, initialSpawnPoint, skinColor, mount_level, mount_Fatigue, subcategory;
     public long lastfametime, TranferTime;
     public String name, accountname, BlessOfFairy, chalkboard, charmessage;
@@ -55,16 +91,13 @@ public class CharacterTransfer implements Externalizable {
     public Object inventorys, skillmacro, storage, cs;
     public int[] savedlocation, wishlist, rocks, remainingSp, regrocks;
     public byte[] petStore;
-    public Map<Integer, Integer> mbook = new LinkedHashMap<Integer, Integer>();
-    public Map<Integer, Pair<Byte, Integer>> keymap = new LinkedHashMap<Integer, Pair<Byte, Integer>>();
-    public final List<Integer> finishedAchievements = new ArrayList<Integer>(), famedcharacters = new ArrayList<Integer>();
-    public final Map<CharacterNameAndId, Boolean> buddies = new LinkedHashMap<CharacterNameAndId, Boolean>();
-    public final Map<Integer, Object> Quest = new LinkedHashMap<Integer, Object>(); // Questid instead of MapleQuest, as it's huge. Cant be transporting MapleQuest.java
-    public Map<Integer, String> InfoQuest = new LinkedHashMap<Integer, String>();
-    public final Map<Integer, SkillEntry> Skills = new LinkedHashMap<Integer, SkillEntry>(); // Skillid instead of Skill.java, as it's huge. Cant be transporting Skill.java and MapleStatEffect.java
-
-    public CharacterTransfer() {
-    }
+    public Map<Integer, Integer> mbook = new LinkedHashMap<>();
+    public Map<Integer, Pair<Byte, Integer>> keymap = new LinkedHashMap<>();
+    public final List<Integer> finishedAchievements = new ArrayList<>(), famedcharacters = new ArrayList<>();
+    public final Map<CharacterNameAndId, Boolean> buddies = new LinkedHashMap<>();
+    public final Map<Integer, Object> Quest = new LinkedHashMap<>(); // Questid instead of MapleQuest, as it's huge. Cant be transporting MapleQuest.java
+    public Map<Integer, String> InfoQuest = new LinkedHashMap<>();
+    public final Map<Integer, SkillEntry> Skills = new LinkedHashMap<>(); // Skillid instead of Skill.java, as it's huge. Cant be transporting Skill.java and MapleStatEffect.java
 
     public CharacterTransfer(final MapleCharacter chr) {
         this.characterid = chr.getId();
@@ -76,7 +109,7 @@ public class CharacterTransfer implements Externalizable {
         this.vpoints = chr.getVPoints();
         this.name = chr.getName();
         this.fame = chr.getFame();
-        this.gender = (byte) chr.getGender();
+        this.gender = chr.getGender();
         this.level = chr.getLevel();
         this.str = chr.getStat().getStr();
         this.dex = chr.getStat().getDex();
@@ -101,8 +134,8 @@ public class CharacterTransfer implements Externalizable {
         this.marriageId = chr.getMarriageId();
         this.world = chr.getWorld();
         this.guildid = chr.getGuildId();
-        this.guildrank = (byte) chr.getGuildRank();
-        this.alliancerank = (byte) chr.getAllianceRank();
+        this.guildrank = chr.getGuildRank();
+        this.alliancerank = chr.getAllianceRank();
         this.gmLevel = (byte) chr.getGMLevel();
         this.points = chr.getPoints();
         this.fairyExp = chr.getFairyExp();
@@ -123,7 +156,7 @@ public class CharacterTransfer implements Externalizable {
         this.day = chr.getday();
         this.battleshipHP = chr.currentBattleshipHP();
         this.prefix = chr.getPrefix();
-		this.gachexp = chr.getGachExp();
+        this.gachexp = chr.getGachExp();
         boolean uneq = false;
         for (int i = 0; i < this.petStore.length; i++) {
             final MaplePet pet = chr.getPet(i);
@@ -152,9 +185,15 @@ public class CharacterTransfer implements Externalizable {
             this.messengerid = 0;
         }
 
-        /*for (final Integer zz : chr.getFinishedAchievements()) {
-         this.finishedAchievements.add(zz);
-         }*/
+        // E10：這個迴圈原本是註解掉的，而 ReconstructChr 照樣讀 ct.finishedAchievements，
+        // 所以換頻之後角色的成就列表是空的。成就的 UI 那一套 API 確實是死的，但這個
+        // 欄位不是：loadCharFromDB 會照 accountid 把 achievements 載滿，saveToDB 則是
+        // 「DELETE FROM achievements WHERE accountid = ? 之後把這份清單寫回去」。
+        // 兩件事湊起來，換頻（或進出商城）之後的第一次存檔會清空整個帳號的成就列。
+        // 補回來之後，換頻路徑跟登入路徑拿到的是同一份清單。
+        for (final Integer zz : chr.getFinishedAchievements()) {
+            this.finishedAchievements.add(zz);
+        }
         this.mBookCover = chr.getMonsterBookCover();
         this.dojo = chr.getDojo();
         this.dojoRecord = (byte) chr.getDojoRecord();
@@ -175,7 +214,7 @@ public class CharacterTransfer implements Externalizable {
         this.BlessOfFairy = chr.getBlessOfFairyOrigin();
         this.chalkboard = chr.getChalkboard();
         this.skillmacro = chr.getMacros();
-        this.keymap = chr.getKeyLayout().Layout();
+        this.keymap = chr.getKeyLayout().layout();
         this.savedlocation = chr.getSavedLocations();
         this.wishlist = chr.getWishlist();
         this.rocks = chr.getRocks();
@@ -193,325 +232,5 @@ public class CharacterTransfer implements Externalizable {
         this.mount_level = mount.getLevel();
         this.mount_exp = mount.getExp();
         TranferTime = System.currentTimeMillis();
-    }
-
-    @Override
-    public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
-        this.characterid = in.readInt();
-        this.accountid = in.readInt();
-        this.accountname = in.readUTF();
-        this.channel = in.readByte();
-        this.ACash = in.readInt();
-        this.MaplePoints = in.readInt();
-        this.name = in.readUTF();
-        this.fame = in.readShort();
-        this.gender = in.readByte();
-        this.level = in.readShort();
-        this.str = in.readShort();
-        this.dex = in.readShort();
-        this.int_ = in.readShort();
-        this.luk = in.readShort();
-        this.hp = in.readShort();
-        this.mp = in.readShort();
-        this.maxhp = in.readShort();
-        this.maxmp = in.readShort();
-        this.exp = in.readInt();
-        this.hpApUsed = in.readShort();
-        this.remainingAp = in.readShort();
-        this.remainingSp = new int[in.readByte()];
-        for (int i = 0; i < this.remainingSp.length; i++) {
-            this.remainingSp[i] = in.readInt();
-        }
-        this.beans = in.readInt();
-        this.meso = in.readInt();
-        this.skinColor = in.readByte();
-        this.job = in.readShort();
-        this.hair = in.readInt();
-        this.face = in.readInt();
-        this.mapid = in.readInt();
-        this.initialSpawnPoint = in.readByte();
-        this.world = in.readByte();
-        this.guildid = in.readInt();
-        this.guildrank = in.readByte();
-        this.alliancerank = in.readByte();
-        this.gmLevel = in.readByte();
-        this.points = in.readInt();
-        this.vpoints = in.readInt();
-        if (in.readByte() == 1) {
-            this.BlessOfFairy = in.readUTF();
-        } else {
-            this.BlessOfFairy = null;
-        }
-        if (in.readByte() == 1) {
-            this.chalkboard = in.readUTF();
-        } else {
-            this.chalkboard = null;
-        }
-        this.clonez = in.readByte();
-        this.skillmacro = in.readObject();
-        this.lastfametime = in.readLong();
-        this.storage = in.readObject();
-        this.cs = in.readObject();
-        this.mount_itemid = in.readInt();
-        this.mount_Fatigue = in.readByte();
-        this.mount_level = in.readByte();
-        this.mount_exp = in.readInt();
-        this.partyid = in.readInt();
-        this.messengerid = in.readInt();
-        this.mBookCover = in.readInt();
-        this.dojo = in.readInt();
-        this.dojoRecord = in.readByte();
-        this.inventorys = in.readObject();
-        this.fairyExp = in.readByte();
-        this.subcategory = in.readByte();
-        this.marriageId = in.readInt();
-        this.familyid = in.readInt();
-        this.seniorid = in.readInt();
-        this.junior1 = in.readInt();
-        this.junior2 = in.readInt();
-        this.currentrep = in.readInt();
-        this.totalrep = in.readInt();
-        this.charmessage = in.readUTF();
-        this.expression = in.readByte();
-        this.constellation = in.readInt();
-        this.blood = in.readInt();
-        this.month = in.readInt();
-        this.day = in.readInt();
-        this.battleshipHP = in.readInt();
-        this.prefix = in.readInt();
-
-        final int mbooksize = in.readShort();
-        for (int i = 0; i < mbooksize; i++) {
-            this.mbook.put(in.readInt(), in.readInt());
-        }
-
-        final int skillsize = in.readShort();
-        for (int i = 0; i < skillsize; i++) {
-            this.Skills.put(in.readInt(), new SkillEntry(in.readByte(), in.readByte(), in.readLong()));
-        }
-
-        this.buddysize = in.readByte();
-        final short addedbuddysize = in.readShort();
-        for (int i = 0; i < addedbuddysize; i++) {
-            buddies.put(new CharacterNameAndId(in.readInt(), in.readUTF(), in.readInt(), in.readInt(), in.readUTF()), in.readBoolean());
-        }
-
-        final int questsize = in.readShort();
-        for (int i = 0; i < questsize; i++) {
-            this.Quest.put(in.readInt(), in.readObject());
-        }
-
-        final int achievesize = in.readShort();
-        for (int i = 0; i < achievesize; i++) {
-            this.finishedAchievements.add(in.readInt());
-        }
-
-        final int famesize = in.readInt();
-        for (int i = 0; i < famesize; i++) {
-            this.famedcharacters.add(in.readInt());
-        }
-
-        final int savesize = in.readShort();
-        savedlocation = new int[savesize];
-        for (int i = 0; i < savesize; i++) {
-            savedlocation[i] = in.readInt();
-        }
-
-        final int wsize = in.readShort();
-        wishlist = new int[wsize];
-        for (int i = 0; i < wsize; i++) {
-            wishlist[i] = in.readInt();
-        }
-
-        final int rsize = in.readShort();
-        rocks = new int[rsize];
-        for (int i = 0; i < rsize; i++) {
-            rocks[i] = in.readInt();
-        }
-
-        final int resize = in.readShort();
-        regrocks = new int[resize];
-        for (int i = 0; i < resize; i++) {
-            regrocks[i] = in.readInt();
-        }
-
-        final int infosize = in.readShort();
-        for (int i = 0; i < infosize; i++) {
-            this.InfoQuest.put(in.readInt(), in.readUTF());
-        }
-
-        final int keysize = in.readInt();
-        for (int i = 0; i < keysize; i++) {
-            this.keymap.put(in.readInt(), new Pair<Byte, Integer>(in.readByte(), in.readInt()));
-        }
-        this.petStore = new byte[in.readByte()];
-        for (int i = 0; i < 3; i++) {
-            this.petStore[i] = in.readByte();
-        }
-        TranferTime = System.currentTimeMillis();
-    }
-
-    @Override
-    public void writeExternal(final ObjectOutput out) throws IOException {
-        out.writeInt(this.characterid);
-        out.writeInt(this.accountid);
-        out.writeUTF(this.accountname);
-        out.writeByte(this.channel);
-        out.writeInt(this.ACash);
-        out.writeInt(this.MaplePoints);
-        out.writeUTF(this.name);
-        out.writeShort(this.fame);
-        out.writeByte(this.gender);
-        out.writeShort(this.level);
-        out.writeShort(this.str);
-        out.writeShort(this.dex);
-        out.writeShort(this.int_);
-        out.writeShort(this.luk);
-        out.writeShort(this.hp);
-        out.writeShort(this.mp);
-        out.writeShort(this.maxhp);
-        out.writeShort(this.maxmp);
-        out.writeInt(this.exp);
-        out.writeShort(this.hpApUsed);
-        out.writeShort(this.remainingAp);
-        out.writeByte(this.remainingSp.length);
-        for (int i = 0; i < this.remainingSp.length; i++) {
-            out.writeInt(this.remainingSp[i]);
-        }
-        out.writeInt(this.beans);
-        out.writeInt(this.meso);
-        out.writeByte(this.skinColor);
-        out.writeShort(this.job);
-        out.writeInt(this.hair);
-        out.writeInt(this.face);
-        out.writeInt(this.mapid);
-        out.writeByte(this.initialSpawnPoint);
-        out.writeByte(this.world);
-        out.writeInt(this.guildid);
-        out.writeByte(this.guildrank);
-        out.writeByte(this.alliancerank);
-        out.writeByte(this.gmLevel);
-        out.writeInt(this.points);
-        out.writeInt(this.vpoints);
-        out.writeByte(this.BlessOfFairy == null ? 0 : 1);
-        if (this.BlessOfFairy != null) {
-            out.writeUTF(this.BlessOfFairy);
-        }
-        out.writeByte(this.chalkboard == null ? 0 : 1);
-        if (this.chalkboard != null) {
-            out.writeUTF(this.chalkboard);
-        }
-        out.writeByte(this.clonez);
-
-        out.writeObject(this.skillmacro);
-        out.writeLong(this.lastfametime);
-        out.writeObject(this.storage);
-        out.writeObject(this.cs);
-        out.writeInt(this.mount_itemid);
-        out.writeByte(this.mount_Fatigue);
-        out.writeByte(this.mount_level);
-        out.writeInt(this.mount_exp);
-        out.writeInt(this.partyid);
-        out.writeInt(this.messengerid);
-        out.writeInt(this.mBookCover);
-        out.writeInt(this.dojo);
-        out.writeByte(this.dojoRecord);
-        out.writeObject(this.inventorys);
-        out.writeByte(this.fairyExp);
-        out.writeByte(this.subcategory);
-        out.writeInt(this.marriageId);
-        out.writeInt(this.familyid);
-        out.writeInt(this.seniorid);
-        out.writeInt(this.junior1);
-        out.writeInt(this.junior2);
-        out.writeInt(this.currentrep);
-        out.writeInt(this.totalrep);
-        out.writeInt(this.battleshipHP);
-        out.writeUTF(this.charmessage);
-        out.writeInt(this.expression);
-        out.writeInt(this.constellation);
-        out.writeInt(this.blood);
-        out.writeInt(this.month);
-        out.writeInt(this.day);
-        out.writeInt(this.prefix);
-
-        out.writeShort(this.mbook.size());
-        for (Map.Entry<Integer, Integer> ms : this.mbook.entrySet()) {
-            out.writeInt(ms.getKey());
-            out.writeInt(ms.getValue());
-        }
-
-        out.writeShort(this.Skills.size());
-        for (final Map.Entry<Integer, SkillEntry> qs : this.Skills.entrySet()) {
-            out.writeInt(qs.getKey()); // Questid instead of Skill, as it's huge :(
-            out.writeByte(qs.getValue().skillevel);
-            out.writeByte(qs.getValue().masterlevel);
-            out.writeLong(qs.getValue().expiration);
-            // Bless of fairy is transported here too.
-        }
-
-        out.writeByte(this.buddysize);
-        out.writeShort(this.buddies.size());
-        for (final Map.Entry<CharacterNameAndId, Boolean> qs : this.buddies.entrySet()) {
-            out.writeInt(qs.getKey().getId());
-            out.writeUTF(qs.getKey().getName());
-            out.writeInt(qs.getKey().getLevel());
-            out.writeInt(qs.getKey().getJob());
-            out.writeUTF(qs.getKey().getGroup());
-            out.writeBoolean(qs.getValue());
-        }
-
-        out.writeShort(this.Quest.size());
-        for (final Map.Entry<Integer, Object> qs : this.Quest.entrySet()) {
-            out.writeInt(qs.getKey()); // Questid instead of MapleQuest, as it's huge :(
-            out.writeObject(qs.getValue());
-        }
-
-        out.writeShort(this.finishedAchievements.size());
-        for (final Integer zz : finishedAchievements) {
-            out.writeInt(zz.intValue());
-        }
-
-        out.writeInt(this.famedcharacters.size());
-        for (final Integer zz : famedcharacters) {
-            out.writeInt(zz.intValue());
-        }
-
-        out.writeShort(this.savedlocation.length);
-        for (int zz : savedlocation) {
-            out.writeInt(zz);
-        }
-
-        out.writeShort(this.wishlist.length);
-        for (int zz : wishlist) {
-            out.writeInt(zz);
-        }
-
-        out.writeShort(this.rocks.length);
-        for (int zz : rocks) {
-            out.writeInt(zz);
-        }
-
-        out.writeShort(this.regrocks.length);
-        for (int zz : regrocks) {
-            out.writeInt(zz);
-        }
-
-        out.writeShort(this.InfoQuest.size());
-        for (final Map.Entry<Integer, String> qs : this.InfoQuest.entrySet()) {
-            out.writeInt(qs.getKey());
-            out.writeUTF(qs.getValue());
-        }
-
-        out.writeInt(this.keymap.size());
-        for (final Map.Entry<Integer, Pair<Byte, Integer>> qs : this.keymap.entrySet()) {
-            out.writeInt(qs.getKey());
-            out.writeByte(qs.getValue().left);
-            out.writeInt(qs.getValue().right);
-        }
-        out.writeByte(petStore.length);
-        for (int i = 0; i < petStore.length; i++) {
-            out.writeByte(petStore[i]);
-        }
     }
 }

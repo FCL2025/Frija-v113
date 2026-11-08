@@ -1,6 +1,6 @@
 /*
  This file is part of the OdinMS Maple Story Server
- Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc> 
+ Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
  Matthias Butz <matze@odinms.de>
  Jan Christian Meyer <vimes@odinms.de>
 
@@ -20,148 +20,52 @@
  */
 package tools;
 
-import java.net.SocketAddress;
-
-import org.apache.mina.common.CloseFuture;
-import org.apache.mina.common.IoFilterChain;
-import org.apache.mina.common.IoHandler;
-import org.apache.mina.common.IoService;
-import org.apache.mina.common.IoServiceConfig;
-import org.apache.mina.common.IoSessionConfig;
-import org.apache.mina.common.TransportType;
-import org.apache.mina.common.WriteFuture;
-import org.apache.mina.common.IoFilter.WriteRequest;
-import org.apache.mina.common.support.BaseIoSession;
+import org.apache.mina.core.future.DefaultWriteFuture;
+import org.apache.mina.core.future.WriteFuture;
+import org.apache.mina.core.session.DummySession;
 
 /**
- * Represents a mock version of an IOSession to use a MapleClient instance
- * without an active connection (faekchar, etc).
+ * A session for a {@code MapleClient} that has no connection behind it - clone
+ * characters ({@code MapleCharacter.cloneLooks}) and the offline player NPCs
+ * built by {@code !makeofflinep}.
  *
- * Most methods return void, or when they return something, null. Therefore,
- * this class is mostly undocumented, due to the fact that each and every
- * function does squat.
+ * <p>This used to be 167 lines of {@code BaseIoSession} subclass returning null
+ * from every method, because MINA 1.1 shipped nothing like it. MINA 2 has
+ * {@link DummySession} - the same idea, written by the MINA project and kept
+ * working by it - so all that is left here is the one behaviour this fork
+ * actually needs on top of it.
+ *
+ * <p>That behaviour is {@link #write}. {@code DummySession} would accept a
+ * write, walk its (empty) filter chain and fire {@code messageSent} into a
+ * do-nothing handler; correct, but pure waste, and a clone standing on a busy
+ * map is written to constantly. So writes are dropped here instead - which is
+ * also what the old class did, and what the callers assume: a clone client is
+ * built with {@code new MapleClient(null, null, ...)}, i.e. with no send
+ * cipher, so there is nothing that could encrypt a packet for it anyway.
+ *
+ * <p>Dropping is not the same as failing. The future handed back is already
+ * marked written, so a caller that waits on one or chains a listener onto it
+ * does not block and does not see an exception. Nothing does today -
+ * {@code MapleClient.send} discards the result - but the old class returned a
+ * bare {@code null} here, which would have been an NPE the moment anything did.
+ *
+ * <p>Everything else is inherited: {@code closeNow()} works, attributes work,
+ * and {@code getRemoteAddress()} answers MINA's anonymous address ({@code "?"})
+ * rather than the {@code null} the old class returned, so the handful of places
+ * that format a client's address no longer have to guard against one.
  *
  * @author Frz
  * @since Revision 518
- * @version 1.0
+ * @version 2.0
  */
-public class MockIOSession extends BaseIoSession {
+public class MockIOSession extends DummySession {
 
     /**
-     * Does nothing.
+     * Silently discards the packet. See the class javadoc - the returned future
+     * reports success rather than being null or failed.
      */
     @Override
-    protected void updateTrafficMask() {
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public IoSessionConfig getConfig() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public IoFilterChain getFilterChain() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public IoHandler getHandler() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public SocketAddress getLocalAddress() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public SocketAddress getRemoteAddress() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public IoService getService() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public SocketAddress getServiceAddress() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public IoServiceConfig getServiceConfig() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public TransportType getTransportType() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public CloseFuture close() {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    protected void close0() {
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    public WriteFuture write(Object message, SocketAddress remoteAddress) {
-        return null;
-    }
-
-    /**
-     * "Fake writes" a packet to the client, only running the OnSend event of
-     * the packet.
-     */
-    @Override
-    public WriteFuture write(Object message) {
-        return null;
-    }
-
-    /**
-     * Does nothing.
-     */
-    @Override
-    protected void write0(WriteRequest writeRequest) {
+    public WriteFuture write(final Object message) {
+        return DefaultWriteFuture.newWrittenFuture(this);
     }
 }

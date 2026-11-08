@@ -31,8 +31,10 @@ import database.DatabaseConnection;
 
 public class MapleGuildRanking {
 
+    private static final System.Logger LOG = System.getLogger(MapleGuildRanking.class.getName());
+
     private static MapleGuildRanking instance = new MapleGuildRanking();
-    private List<GuildRankingInfo> ranks = new LinkedList<GuildRankingInfo>();
+    private List<GuildRankingInfo> ranks = new LinkedList<>();
 
     public static MapleGuildRanking getInstance() {
         return instance;
@@ -47,10 +49,9 @@ public class MapleGuildRanking {
 
     private void reload() {
         ranks.clear();
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM guilds ORDER BY `GP` DESC LIMIT 50");
-            ResultSet rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+                PreparedStatement ps = con.prepareStatement("SELECT * FROM guilds ORDER BY `GP` DESC LIMIT 50");
+                ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 final GuildRankingInfo rank = new GuildRankingInfo(
@@ -63,11 +64,8 @@ public class MapleGuildRanking {
 
                 ranks.add(rank);
             }
-            ps.close();
-            rs.close();
         } catch (SQLException e) {
-            System.err.println("Error handling guildRanking");
-            e.printStackTrace();
+            LOG.log(System.Logger.Level.ERROR, "Error handling guildRanking", e);
         }
     }
 

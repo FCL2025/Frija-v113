@@ -1,12 +1,13 @@
 package server.quest;
 
 import constants.GameConstants;
+import constants.JobConstants;
 import java.io.File;
-import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import client.MapleCharacter;
 import client.MapleQuestStatus;
@@ -17,13 +18,17 @@ import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
 import provider.MapleDataTool;
 import tools.FileoutputUtil;
-import tools.MaplePacketCreator;
 import tools.Pair;
+import tools.packet.CharacterPacket;
 
-public class MapleQuest implements Serializable {
+public class MapleQuest {
 
-    private static final long serialVersionUID = 9179541993413738569L;
-    private static Map<Integer, MapleQuest> quests = new LinkedHashMap<Integer, MapleQuest>();
+    private static final System.Logger LOG = System.getLogger(MapleQuest.class.getName());
+
+    // Was a LinkedHashMap, but nothing in this class ever iterates `quests`
+    // in insertion order (only get/put by id), so ConcurrentHashMap is a
+    // drop-in, race-free replacement.
+    private static final Map<Integer, MapleQuest> quests = new ConcurrentHashMap<>();
     protected int id;
     protected List<MapleQuestRequirement> startReqs;
     protected List<MapleQuestRequirement> completeReqs;
@@ -36,19 +41,28 @@ public class MapleQuest implements Serializable {
     private boolean repeatable = false, customend = false;
     private int viewMedalItem = 0, selectedSkillID = 0;
     protected String name = "";
-    private static MapleDataProvider questData;
-    private static MapleData actions;
-    private static MapleData requirements;
-    private static MapleData info;
-    private static MapleData pinfo;
+    // clearQuests()/initQuests() (from !reloadquests) reassign these from
+    // whatever thread runs the GM command while other threads may be reading
+    // them inside loadQuest(); volatile at least guarantees each individual
+    // field's new value becomes visible instead of a thread being stuck with
+    // a stale reference indefinitely. It does NOT make the 5-field swap
+    // atomic as a whole - a reader could still observe requirements from the
+    // new dataset alongside actions from the old one during a reload. Fixing
+    // that fully would need the fields bundled into one object swapped with
+    // a single reference assignment (or reads/writes taken under a lock).
+    private static volatile MapleDataProvider questData;
+    private static volatile MapleData actions;
+    private static volatile MapleData requirements;
+    private static volatile MapleData info;
+    private static volatile MapleData pinfo;
 
     protected MapleQuest(final int id) {
-        relevantMobs = new LinkedHashMap<Integer, Integer>();
-        startReqs = new LinkedList<MapleQuestRequirement>();
-        completeReqs = new LinkedList<MapleQuestRequirement>();
-        startActs = new LinkedList<MapleQuestAction>();
-        completeActs = new LinkedList<MapleQuestAction>();
-        partyQuestInfo = new LinkedHashMap<String, List<Pair<String, Pair<String, Integer>>>>();
+        relevantMobs = new LinkedHashMap<>();
+        startReqs = new LinkedList<>();
+        completeReqs = new LinkedList<>();
+        startActs = new LinkedList<>();
+        completeActs = new LinkedList<>();
+        partyQuestInfo = new LinkedHashMap<>();
         this.id = id;
     }
 
@@ -133,11 +147,11 @@ public class MapleQuest implements Serializable {
         final MapleData pquestInfo = pinfo.getChildByPath(String.valueOf(id));
         if (pquestInfo != null) {
             for (MapleData d : pquestInfo.getChildByPath("rank")) {
-                List<Pair<String, Pair<String, Integer>>> pInfo = new ArrayList<Pair<String, Pair<String, Integer>>>();
+                List<Pair<String, Pair<String, Integer>>> pInfo = new ArrayList<>();
                 //LinkedHashMap<String, List<Pair<String, Pair<String, Integer>>>>
                 for (MapleData c : d) {
                     for (MapleData b : c) {
-                        pInfo.add(new Pair<String, Pair<String, Integer>>(c.getName(), new Pair<String, Integer>(b.getName(), MapleDataTool.getInt(b, 0))));
+                        pInfo.add(new Pair<>(c.getName(), new Pair<>(b.getName(), MapleDataTool.getInt(b, 0))));
                     }
                 }
                 ret.partyQuestInfo.put(d.getName(), pInfo);
@@ -174,22 +188,32 @@ public class MapleQuest implements Serializable {
 
     public static MapleQuest getInstance(int id) {
         MapleQuest ret = quests.get(id);
-        if (ret == null) {
-            ret = new MapleQuest(id);
-            try {
-                if (GameConstants.isCustomQuest(id) || !loadQuest(ret, id)) {
-                    ret = new MapleCustomQuest(id);
-                }
-                quests.put(id, ret);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
-                FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Caused by questID " + id);
-                System.out.println("Caused by questID " + id);
-                return new MapleCustomQuest(id);
-            }
+        if (ret != null) {
+            return ret;
         }
-        return ret;
+        // loadQuest()/the MapleQuestRequirement/MapleQuestAction constructors it
+        // calls can plausibly look up other quests, so this must not use
+        // computeIfAbsent (which would deadlock/throw if it re-entered `quests`
+        // from inside its own mapping function). A plain load-outside-the-map
+        // + putIfAbsent tolerates that re-entrancy and any redundant load a
+        // race causes, while still letting every caller converge on one
+        // canonical instance per id.
+        MapleQuest built;
+        try {
+            built = new MapleQuest(id);
+            if (GameConstants.isCustomQuest(id) || !loadQuest(built, id)) {
+                built = new MapleCustomQuest(id);
+            }
+        } catch (Exception ex) {
+            // One record where there were two console prints (a trace and the
+            // line naming the quest); the two ScriptEx_Log entries are unchanged.
+            LOG.log(System.Logger.Level.ERROR, "Caused by questID " + id, ex);
+            FileoutputUtil.outputFileError(FileoutputUtil.ScriptEx_Log, ex);
+            FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Caused by questID " + id);
+            return new MapleCustomQuest(id);
+        }
+        final MapleQuest existing = quests.putIfAbsent(id, built);
+        return existing != null ? existing : built;
     }
 
     public boolean canStart(MapleCharacter c, Integer npcid) {
@@ -216,9 +240,9 @@ public class MapleQuest implements Serializable {
         return true;
     }
 
-    public final void RestoreLostItem(final MapleCharacter c, final int itemid) {
+    public final void restoreLostItem(final MapleCharacter c, final int itemid) {
         for (final MapleQuestAction a : startActs) {
-            if (a.RestoreLostItem(c, itemid)) {
+            if (a.restoreLostItem(c, itemid)) {
                 break;
             }
         }
@@ -260,8 +284,8 @@ public class MapleQuest implements Serializable {
             // we save forfeits only for logging purposes, they shouldn't matter anymore
             // completion time is set by the constructor
 
-            c.getClient().getSession().write(MaplePacketCreator.showSpecialEffect(9)); // Quest completion
-            c.getMap().broadcastMessage(c, MaplePacketCreator.showSpecialEffect(c.getId(), 9), false);
+            c.getClient().send(CharacterPacket.showSpecialEffect(9)); // Quest completion
+            c.getMap().broadcastMessage(c, CharacterPacket.showSpecialEffect(c.getId(), 9), false);
         }
     }
 
@@ -300,7 +324,7 @@ public class MapleQuest implements Serializable {
 
     private boolean checkNPCOnMap(MapleCharacter player, int npcid) {
         //mir = 1013000
-        return (GameConstants.isEvan(player.getJob()) && npcid == 1013000) || (player.getMap() != null && player.getMap().containsNPC(npcid));
+        return (JobConstants.isEvan(player.getJob()) && npcid == 1013000) || (player.getMap() != null && player.getMap().containsNPC(npcid));
     }
 
     public int getMedalItem() {

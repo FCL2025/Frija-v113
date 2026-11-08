@@ -21,7 +21,6 @@
  */
 package server;
 
-import java.io.Serializable;
 import client.inventory.Equip;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -29,9 +28,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Calendar;
 import client.inventory.IItem;
-import constants.GameConstants;
+import constants.ItemConstants;
 import client.inventory.MaplePet;
 import client.inventory.Item;
 import client.inventory.ItemLoader;
@@ -41,16 +39,16 @@ import client.inventory.MapleInventoryIdentifier;
 import client.inventory.MapleInventoryType;
 import database.DatabaseConnection;
 import tools.packet.MTSCSPacket;
-import tools.MaplePacketCreator;
 import tools.Pair;
 
-public class CashShop implements Serializable {
+public class CashShop {
 
-    private static final long serialVersionUID = 231541893513373579L;
+    private static final System.Logger LOG = System.getLogger(CashShop.class.getName());
+
     private int accountId, characterId;
     private ItemLoader factory;
-    private List<IItem> inventory = new ArrayList<IItem>();
-    private List<Integer> uniqueids = new ArrayList<Integer>();
+    private List<IItem> inventory = new ArrayList<>();
+    private List<Integer> uniqueids = new ArrayList<>();
 
     public CashShop(int accountId, int characterId, int jobType) throws SQLException {
         this.accountId = accountId;
@@ -94,16 +92,16 @@ public class CashShop implements Serializable {
     }
 
     public void checkExpire(MapleClient c) {
-        List<IItem> toberemove = new ArrayList<IItem>();
+        List<IItem> toberemove = new ArrayList<>();
         for (IItem item : inventory) {
-            if (item != null && !GameConstants.isPet(item.getItemId()) && item.getExpiration() > 0 && item.getExpiration() < System.currentTimeMillis()) {
+            if (item != null && !ItemConstants.isPet(item.getItemId()) && item.getExpiration() > 0 && item.getExpiration() < System.currentTimeMillis()) {
                 toberemove.add(item);
             }
         }
         if (toberemove.size() > 0) {
             for (IItem item : toberemove) {
                 removeFromInventory(item);
-                c.getSession().write(MTSCSPacket.cashItemExpired(item.getUniqueId()));
+                c.send(MTSCSPacket.cashItemExpired(item.getUniqueId()));
             }
             toberemove.clear();
         }
@@ -126,18 +124,18 @@ public class CashShop implements Serializable {
             uniqueid = MapleInventoryIdentifier.getInstance();
         }
         long period = cItem.getPeriod();
-        if (/*period <= 0 || */GameConstants.isPet(cItem.getId())) {
+        if (/*period <= 0 || */ItemConstants.isPet(cItem.getId())) {
             period = 45;
         }
         IItem ret = null;
-        if (GameConstants.getInventoryType(cItem.getId()) == MapleInventoryType.EQUIP) {
+        if (ItemConstants.getInventoryType(cItem.getId()) == MapleInventoryType.EQUIP) {
             Equip eq = (Equip) MapleItemInformationProvider.getInstance().getEquipById(cItem.getId());
             eq.setUniqueId(uniqueid);
             if(period != 0){
-				eq.setExpiration((long) (System.currentTimeMillis() + (long) (period * 24 * 60 * 60 * 1000)));
-			}
+                eq.setExpiration((System.currentTimeMillis() + (period * 24 * 60 * 60 * 1000)));
+            }
             eq.setGiftFrom(gift);
-            if (GameConstants.isEffectRing(cItem.getId()) && uniqueid > 0) {
+            if (ItemConstants.isEffectRing(cItem.getId()) && uniqueid > 0) {
                 MapleRing ring = MapleRing.loadFromDb(uniqueid);
                 if (ring != null) {
                     eq.setRing(ring);
@@ -147,10 +145,10 @@ public class CashShop implements Serializable {
         } else {
             Item item = new Item(cItem.getId(), (byte) 0, (short) cItem.getCount(), (byte) 0, uniqueid);
             if(period != 0){
-				item.setExpiration((long) (System.currentTimeMillis() + (long) (period * 24 * 60 * 60 * 1000)));
-			}
+                item.setExpiration((System.currentTimeMillis() + (period * 24 * 60 * 60 * 1000)));
+            }
             item.setGiftFrom(gift);
-            if (GameConstants.isPet(cItem.getId())) {
+            if (ItemConstants.isPet(cItem.getId())) {
                 final MaplePet pet = MaplePet.createPet(cItem.getId(), uniqueid);
                 if (pet != null) {
                     item.setPet(pet);
@@ -174,52 +172,52 @@ public class CashShop implements Serializable {
     }
 
     public void gift(int recipient, String from, String message, int sn, int uniqueid) {
-        try {
-            PreparedStatement ps = DatabaseConnection.getConnection().prepareStatement("INSERT INTO `gifts` VALUES (DEFAULT, ?, ?, ?, ?, ?)");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("INSERT INTO `gifts` VALUES (DEFAULT, ?, ?, ?, ?, ?)")) {
             ps.setInt(1, recipient);
             ps.setString(2, from);
             ps.setString(3, message);
             ps.setInt(4, sn);
             ps.setInt(5, uniqueid);
             ps.executeUpdate();
-            ps.close();
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            // ERROR: the gift row was never written, so the recipient never gets it.
+            LOG.log(System.Logger.Level.ERROR, "Error sending a cash gift to character " + recipient, sqle);
         }
     }
 
     public List<Pair<IItem, String>> loadGifts() {
-        List<Pair<IItem, String>> gifts = new ArrayList<Pair<IItem, String>>();
-        Connection con = DatabaseConnection.getConnection();
-        try {
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM `gifts` WHERE `recipient` = ?");
-            ps.setInt(1, characterId);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                CashItemInfo cItem = CashItemFactory.getInstance().getItem(rs.getInt("sn"));
-                IItem item = toItem(cItem, rs.getInt("uniqueid"), rs.getString("from"));
-                gifts.add(new Pair<IItem, String>(item, rs.getString("message")));
-                uniqueids.add(item.getUniqueId());
-                List<CashItemInfo> packages = CashItemFactory.getInstance().getPackageItems(cItem.getId());
-                if (packages != null && packages.size() > 0) {
-                    for (CashItemInfo packageItem : packages) {
-                        addToInventory(toItem(packageItem, rs.getString("from")));
+        List<Pair<IItem, String>> gifts = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM `gifts` WHERE `recipient` = ?")) {
+                ps.setInt(1, characterId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        CashItemInfo cItem = CashItemFactory.getInstance().getItem(rs.getInt("sn"));
+                        IItem item = toItem(cItem, rs.getInt("uniqueid"), rs.getString("from"));
+                        gifts.add(new Pair<>(item, rs.getString("message")));
+                        uniqueids.add(item.getUniqueId());
+                        List<CashItemInfo> packages = CashItemFactory.getInstance().getPackageItems(cItem.getId());
+                        if (packages != null && packages.size() > 0) {
+                            for (CashItemInfo packageItem : packages) {
+                                addToInventory(toItem(packageItem, rs.getString("from")));
+                            }
+                        } else {
+                            addToInventory(item);
+                        }
                     }
-                } else {
-                    addToInventory(item);
                 }
             }
 
-            rs.close();
-            ps.close();
-            ps = con.prepareStatement("DELETE FROM `gifts` WHERE `recipient` = ?");
-            ps.setInt(1, characterId);
-            ps.executeUpdate();
-            ps.close();
+            try (PreparedStatement ps = con.prepareStatement("DELETE FROM `gifts` WHERE `recipient` = ?")) {
+                ps.setInt(1, characterId);
+                ps.executeUpdate();
+            }
             save();
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            // ERROR: whatever was read is handed back, but the DELETE and the
+            // save may not have run, so gifts can be delivered twice or lost.
+            LOG.log(System.Logger.Level.ERROR, "Error loading the cash gifts of character " + characterId, sqle);
         }
         return gifts;
     }
@@ -237,10 +235,10 @@ public class CashShop implements Serializable {
     }
 
     public void save() throws SQLException {
-        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<Pair<IItem, MapleInventoryType>>();
+        List<Pair<IItem, MapleInventoryType>> itemsWithType = new ArrayList<>();
 
         for (IItem item : inventory) {
-            itemsWithType.add(new Pair<IItem, MapleInventoryType>(item, GameConstants.getInventoryType(item.getItemId())));
+            itemsWithType.add(new Pair<>(item, ItemConstants.getInventoryType(item.getItemId())));
         }
 
         factory.saveItems(itemsWithType, accountId);

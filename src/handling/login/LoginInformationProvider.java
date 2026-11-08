@@ -25,23 +25,22 @@ import java.util.List;
 import java.util.ArrayList;
 
 import provider.MapleData;
-import provider.MapleDataDirectoryEntry;
-import provider.MapleDataFileEntry;
-import provider.MapleDataProvider;
 import provider.MapleDataProviderFactory;
 import provider.MapleDataTool;
 
 public class LoginInformationProvider {
 
+    private static final System.Logger LOG = System.getLogger(LoginInformationProvider.class.getName());
+
     private final static LoginInformationProvider instance = new LoginInformationProvider();
-    protected final List<String> ForbiddenName = new ArrayList<String>();
+    protected final List<String> ForbiddenName = new ArrayList<>();
 
     public static LoginInformationProvider getInstance() {
         return instance;
     }
 
     protected LoginInformationProvider() {
-        System.out.println("Loading LoginInformationProvider :::");
+        LOG.log(System.Logger.Level.INFO, "Loading LoginInformationProvider :::");
         final String WZpath = System.getProperty("net.sf.odinms.wzpath");
         final MapleData nameData = MapleDataProviderFactory.getDataProvider(new File(WZpath + "/Etc.wz")).getData("ForbiddenName.img");
         for (final MapleData data : nameData.getChildren()) {

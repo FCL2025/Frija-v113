@@ -35,12 +35,14 @@ import tools.Pair;
 
 public class MapleOxQuizFactory {
 
+    private static final System.Logger LOG = System.getLogger(MapleOxQuizFactory.class.getName());
+
     private boolean initialized = false;
     private Map<Pair<Integer, Integer>, MapleOxQuizEntry> questionCache;
     private static MapleOxQuizFactory instance = new MapleOxQuizFactory();
 
     public MapleOxQuizFactory() {
-        questionCache = new HashMap<Pair<Integer, Integer>, MapleOxQuizEntry>();
+        questionCache = new HashMap<>();
     }
 
     public static MapleOxQuizFactory getInstance() {
@@ -66,42 +68,41 @@ public class MapleOxQuizFactory {
         if (initialized) {
             return;
         }
-        System.out.println("Loading OX Quiz :::");
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement("SELECT * FROM wz_oxdata");
-            ResultSet rs = ps.executeQuery();
+        LOG.log(System.Logger.Level.INFO, "Loading OX Quiz :::");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT * FROM wz_oxdata");
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                questionCache.put(new Pair<Integer, Integer>(rs.getInt("questionset"), rs.getInt("questionid")), get(rs));
+                questionCache.put(new Pair<>(rs.getInt("questionset"), rs.getInt("questionid")), get(rs));
             }
-            rs.close();
-            ps.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: initialized is set anyway below, so a half-read question
+            // cache is what the OX event will run with until a restart.
+            LOG.log(System.Logger.Level.ERROR, "Error loading wz_oxdata", e);
         }
+        // Not converted: a bare print with a carriage return and no newline, so
+        // the next line overwrites it. A log record is always one whole line.
         System.out.print("Done\r");
         initialized = true;
     }
 
     public MapleOxQuizEntry getFromSQL(String sql) {
         MapleOxQuizEntry ret = null;
-        try {
-            Connection con = DatabaseConnection.getConnection();
-            PreparedStatement ps = con.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 ret = get(rs);
             }
-            rs.close();
-            ps.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            // ERROR: the entry is abandoned and comes back as null.
+            LOG.log(System.Logger.Level.ERROR, "Error reading an OX quiz entry", e);
         }
         return ret;
     }
 
     public static MapleOxQuizEntry getOxEntry(int questionSet, int questionId) {
-        return getInstance().getOxQuizEntry(new Pair<Integer, Integer>(questionSet, questionId));
+        return getInstance().getOxQuizEntry(new Pair<>(questionSet, questionId));
     }
 
     public static MapleOxQuizEntry getOxEntry(Pair<Integer, Integer> pair) {

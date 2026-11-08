@@ -20,19 +20,8 @@
  */
 package scripting;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-
 import client.MapleClient;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import tools.FileoutputUtil;
-import tools.StringUtil;
 
 /**
  *
@@ -40,43 +29,50 @@ import tools.StringUtil;
  */
 public abstract class AbstractScriptManager {
 
-    private static final ScriptEngineManager sem = new ScriptEngineManager();
+    private static final System.Logger LOG = System.getLogger(AbstractScriptManager.class.getName());
 
-    protected Invocable getInvocable(String path, MapleClient c) {
+    protected ScriptScope getInvocable(String path, MapleClient c) {
         return getInvocable(path, c, false);
     }
 
-    protected Invocable getInvocable(String path, MapleClient c, boolean npc) {
+    /**
+     * The script at {@code path}, ready to be called, in a scope private to
+     * {@code c} - or null if it does not exist, cannot be read or will not
+     * compile, which is what every caller already handles.
+     *
+     * <p>This used to build a whole Nashorn engine here, per conversation, and
+     * read and evaluate the file into it. It now asks {@link ScriptCache} for
+     * the script's compiled form - read and parsed once for the whole server -
+     * and gives the conversation only its own Nashorn Global to put that
+     * script's {@code var}s in. The engine is shared; the globals are not, so
+     * two players in the same NPC still cannot see each other's {@code status}.
+     *
+     * <p>{@code c == null} means an event script, which has no client to be
+     * private to and is asked for once per channel at startup; it gets a fresh
+     * scope every call, exactly as it used to get a fresh engine.
+     */
+    protected ScriptScope getInvocable(String path, MapleClient c, boolean npc) {
         try {
-            
-            path = "Libs/scripts/" + path;
-            ScriptEngine engine = null;
+            path = ScriptCache.ROOT + path;
+            ScriptScope scope = null;
 
             if (c != null) {
-                engine = c.getScriptEngine(path);
+                scope = c.getScriptScope(path);
             }
-            if (engine == null) {
-                File scriptFile = new File(path);
-                if (!scriptFile.exists()) {
+            if (scope == null) {
+                scope = ScriptCache.load(path);
+                if (scope == null) {
                     return null;
                 }
-                engine = sem.getEngineByName("nashorn");
-                
                 if (c != null) {
-                    c.setScriptEngine(path, engine);
+                    c.setScriptScope(path, scope);
                 }
-
-				StringBuilder builder = new StringBuilder();
-				builder.append("load('nashorn:mozilla_compat.js');" + System.lineSeparator());
-				builder.append(StringUtil.readFileAsString(path));
-
-				engine.eval(builder.toString());
             } else if (c != null && npc) {
                 c.getPlayer().dropMessage(1,"角色狀態異常，請使用@解卡/@ea 來解除異常狀態");
             }
-            return (Invocable) engine;
+            return scope;
         } catch (Exception e) {
-            System.err.println("Error executing script. Path: " + path + "\nException " + e);
+            LOG.log(System.Logger.Level.ERROR, "Error executing script. Path: " + path + "\nException " + e);
             FileoutputUtil.log(FileoutputUtil.ScriptEx_Log, "Error executing script. Path: " + path + "\nException " + e);
             return null;
         }

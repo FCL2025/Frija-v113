@@ -32,6 +32,6 @@ public interface LifeMovement extends LifeMovementFragment {
     int getDuration();
 
     int getType();
-	
-	int getNewFh();
+    
+    int getNewFh();
 }

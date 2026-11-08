@@ -40,7 +40,7 @@ public class MapleMiniGame extends AbstractPlayerStore {
     private int[] points;
     private int GameType = 0;
     private int[][] piece = new int[15][15];
-    private List<Integer> matchcards = new ArrayList<Integer>();
+    private List<Integer> matchcards = new ArrayList<>();
     int loser = 0;
     int turn = 1;
     int piecetype = 0;
@@ -57,7 +57,8 @@ public class MapleMiniGame extends AbstractPlayerStore {
         reset();
     }
 
-    public void reset() {
+    // private: the constructor calls it, and nothing outside this class does.
+    private void reset() {
         for (int i = 0; i < slots; i++) {
             points[i] = 0;
             exitAfter[i] = false;
@@ -162,7 +163,7 @@ public class MapleMiniGame extends AbstractPlayerStore {
             closeShop(false, false);
             return;
         }
-        c.getSession().write(PlayerShopPacket.getMiniGame(c, this));
+        c.send(PlayerShopPacket.getMiniGame(c, this));
     }
 
     public void setReady(int slot) {

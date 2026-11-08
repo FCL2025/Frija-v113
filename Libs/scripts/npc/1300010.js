@@ -30,7 +30,7 @@ function action(mode, type, selection) {
 	if(status == 0){
 		cm.sendYesNo("Are you going to use the #bKiller Mushroom Spore#k?....#e#r* Take Note#n..Please do not apply directly on the body!..If swallowed, please see the nearest doctor!");
 	}if(status == 1)
-		cm.PlayerToNpc("Awesome, the barrier is broken!!!");
+		cm.playerToNpc("Awesome, the barrier is broken!!!");
 	if(status == 2){
 		cm.playerMessage("The Mushroom Forest Barrier has been removed, and penetrated.");
 		cm.dispose();

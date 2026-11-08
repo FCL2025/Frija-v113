@@ -34,11 +34,13 @@ import java.util.Map.Entry;
 
 public class CPUSampler {
 
-    private List<String> included = new LinkedList<String>();
+    private static final System.Logger LOG = System.getLogger(CPUSampler.class.getName());
+
+    private List<String> included = new LinkedList<>();
     private static CPUSampler instance = new CPUSampler();
     private long interval = 5;
     private SamplerThread sampler = null;
-    private Map<StackTrace, Integer> recorded = new HashMap<StackTrace, Integer>();
+    private Map<StackTrace, Integer> recorded = new HashMap<>();
     private int totalSamples = 0;
 
     public static CPUSampler getInstance() {
@@ -78,7 +80,7 @@ public class CPUSampler {
     }
 
     public SampledStacktraces getTopConsumers() {
-        List<StacktraceWithCount> ret = new ArrayList<StacktraceWithCount>();
+        List<StacktraceWithCount> ret = new ArrayList<>();
         Set<Entry<StackTrace, Integer>> entrySet = recorded.entrySet();
         for (Entry<StackTrace, Integer> entry : entrySet) {
             ret.add(new StacktraceWithCount(entry.getValue(), entry.getKey()));
@@ -239,7 +241,7 @@ public class CPUSampler {
             try {
                 rthread.join();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                LOG.log(System.Logger.Level.ERROR, "Interrupted while waiting for the CPU sampling thread to stop", e);
             }
         }
 
@@ -287,6 +289,11 @@ public class CPUSampler {
             }
             final StacktraceWithCount o = (StacktraceWithCount) oth;
             return count == o.count;
+        }
+
+        @Override
+        public int hashCode() {
+            return count;
         }
 
         @Override

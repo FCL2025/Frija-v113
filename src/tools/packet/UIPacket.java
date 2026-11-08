@@ -102,7 +102,7 @@ public class UIPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket ShowWZEffect(final String data) {
+    public static final MaplePacket showWZEffect(final String data) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_ITEM_GAIN_INCHAT.getValue());

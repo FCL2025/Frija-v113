@@ -89,7 +89,7 @@ public class GuildHandler {
     private static final java.util.List<Invited> invited = new java.util.LinkedList<Invited>();
     private static long nextPruneTime = System.currentTimeMillis() + 20 * 60 * 1000;
 
-    public static final void Guild(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void guild(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         if (System.currentTimeMillis() >= nextPruneTime) {
             invited.removeIf(inv -> System.currentTimeMillis() >= inv.expiration);
             nextPruneTime = System.currentTimeMillis() + 20 * 60 * 1000;

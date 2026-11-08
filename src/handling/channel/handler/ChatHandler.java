@@ -104,7 +104,7 @@ public class ChatHandler {
         }
     }
 
-    public static final void Messenger(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void messenger(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         String input;
         MapleMessenger messenger = c.getPlayer().getMessenger();
 

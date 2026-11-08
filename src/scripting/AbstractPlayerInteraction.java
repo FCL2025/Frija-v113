@@ -930,7 +930,7 @@ public abstract class AbstractPlayerInteraction {
 
     /** 劇情演出效果（模式 0x12），路徑在 {@code Effect/Direction*.img/…}。見 {@link #showAvatarOrientedEffect}。 */
     public final void showWZEffect(final String data) {
-        c.send(UIPacket.ShowWZEffect(data));
+        c.send(UIPacket.showWZEffect(data));
     }
 
     public final void earnTitleMsg(final String data) {

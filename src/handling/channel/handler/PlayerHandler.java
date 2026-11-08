@@ -914,7 +914,7 @@ public class PlayerHandler {
         }
     }
 
-    public static final void Heal(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
+    public static final void heal(final SeekableLittleEndianAccessor slea, final MapleCharacter chr) {
         if (chr == null) {
             return;
         }

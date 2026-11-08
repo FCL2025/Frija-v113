@@ -16,7 +16,7 @@ import tools.packet.MTSCSPacket;
 
 public class MTSOperation {
 
-    public static void MTSOperation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static void mtsOperation(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         final MTSCart cart = MTSStorage.getInstance().getCart(c.getPlayer().getId());
         if (slea.available() <= 0) {
             doMTSPackets(cart, c);

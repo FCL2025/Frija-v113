@@ -184,7 +184,7 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.PASSIVE_ENERGY, (slea, c, cs) -> PlayerHandler.closeRangeAttack(slea, c, c.getPlayer(), true));
         put(RecvPacketOpcode.FACE_EXPRESSION, (slea, c, cs) -> PlayerHandler.changeEmotion(slea.readInt(), c.getPlayer()));
         put(RecvPacketOpcode.TAKE_DAMAGE, (slea, c, cs) -> PlayerHandler.takeDamage(slea, c, c.getPlayer()));
-        put(RecvPacketOpcode.HEAL_OVER_TIME, (slea, c, cs) -> PlayerHandler.Heal(slea, c.getPlayer()));
+        put(RecvPacketOpcode.HEAL_OVER_TIME, (slea, c, cs) -> PlayerHandler.heal(slea, c.getPlayer()));
         put(RecvPacketOpcode.CANCEL_BUFF, (slea, c, cs) -> PlayerHandler.cancelBuffHandler(slea.readInt(), c.getPlayer()));
         put(RecvPacketOpcode.CANCEL_ITEM_EFFECT, (slea, c, cs) -> PlayerHandler.cancelItemEffect(slea.readInt(), c.getPlayer()));
         put(RecvPacketOpcode.USE_CHAIR, (slea, c, cs) -> PlayerHandler.useChair(slea.readInt(), c, c.getPlayer()));
@@ -280,7 +280,7 @@ public final class PacketHandlerRegistry {
         });
         put(RecvPacketOpcode.PARTYCHAT, (slea, c, cs) -> ChatHandler.others(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.WHISPER, (slea, c, cs) -> ChatHandler.whisper_Find(slea, c));
-        put(RecvPacketOpcode.MESSENGER, (slea, c, cs) -> ChatHandler.Messenger(slea, c));
+        put(RecvPacketOpcode.MESSENGER, (slea, c, cs) -> ChatHandler.messenger(slea, c));
         put(RecvPacketOpcode.AUTO_ASSIGN_AP, (slea, c, cs) -> StatsHandling.autoAssignAP(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.DISTRIBUTE_AP, (slea, c, cs) -> StatsHandling.distributeAP(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.DISTRIBUTE_SP, (slea, c, cs) -> {
@@ -288,7 +288,7 @@ public final class PacketHandlerRegistry {
             StatsHandling.distributeSP(slea.readInt(), c, c.getPlayer());
         });
         put(RecvPacketOpcode.PLAYER_INTERACTION, (slea, c, cs) -> PlayerInteractionHandler.playerInteraction(slea, c, c.getPlayer()));
-        put(RecvPacketOpcode.GUILD_OPERATION, (slea, c, cs) -> GuildHandler.Guild(slea, c));
+        put(RecvPacketOpcode.GUILD_OPERATION, (slea, c, cs) -> GuildHandler.guild(slea, c));
         put(RecvPacketOpcode.UPDATE_CHAR_INFO, (slea, c, cs) -> PlayersHandler.updateCharInfo(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.DENY_GUILD_REQUEST, (slea, c, cs) -> {
             slea.skip(1);
@@ -299,7 +299,7 @@ public final class PacketHandlerRegistry {
         put(RecvPacketOpcode.BBS_OPERATION, (slea, c, cs) -> BBSHandler.bbsOperatopn(slea, c));
         put(RecvPacketOpcode.PARTY_OPERATION, (slea, c, cs) -> PartyHandler.partyOperatopn(slea, c));
         put(RecvPacketOpcode.DENY_PARTY_REQUEST, (slea, c, cs) -> PartyHandler.denyPartyRequest(slea, c));
-        put(RecvPacketOpcode.BUDDYLIST_MODIFY, (slea, c, cs) -> BuddyListHandler.BuddyOperation(slea, c));
+        put(RecvPacketOpcode.BUDDYLIST_MODIFY, (slea, c, cs) -> BuddyListHandler.buddyOperation(slea, c));
         put(RecvPacketOpcode.CYGNUS_SUMMON, (slea, c, cs) -> UserInterfaceHandler.cygnusSummon_NPCRequest(c));
         put(RecvPacketOpcode.SHIP_OBJECT, (slea, c, cs) -> UserInterfaceHandler.shipObjectRequest(slea.readInt(), c));
         put(RecvPacketOpcode.BUY_CS_ITEM, (slea, c, cs) -> CashShopOperation.buyCashItem(slea, c, c.getPlayer()));
@@ -311,7 +311,7 @@ public final class PacketHandlerRegistry {
         });
         put(RecvPacketOpcode.CS_UPDATE, (slea, c, cs) -> CashShopOperation.csUpdate(c));
         put(RecvPacketOpcode.TOUCHING_MTS, (slea, c, cs) -> MTSOperation.mtsUpdate(MTSStorage.getInstance().getCart(c.getPlayer().getId()), c));
-        put(RecvPacketOpcode.MTS_TAB, (slea, c, cs) -> MTSOperation.MTSOperation(slea, c));
+        put(RecvPacketOpcode.MTS_TAB, (slea, c, cs) -> MTSOperation.mtsOperation(slea, c));
         put(RecvPacketOpcode.DAMAGE_SUMMON, (slea, c, cs) -> {
             slea.skip(4);
             SummonHandler.damageSummon(slea, c.getPlayer());
@@ -327,7 +327,7 @@ public final class PacketHandlerRegistry {
             }
             PetHandler.petChat((int) slea.readLong(), slea.readShort(), slea.readMapleAsciiString(), c.getPlayer());
         });
-        put(RecvPacketOpcode.PET_COMMAND, (slea, c, cs) -> PetHandler.PetCommand(slea, c, c.getPlayer()));
+        put(RecvPacketOpcode.PET_COMMAND, (slea, c, cs) -> PetHandler.petCommand(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.PET_FOOD, (slea, c, cs) -> PetHandler.petFood(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.PET_LOOT, (slea, c, cs) -> InventoryHandler.pickup_Pet(slea, c, c.getPlayer()));
         put(RecvPacketOpcode.PET_AUTO_POT, (slea, c, cs) -> PetHandler.pet_AutoPotion(slea, c, c.getPlayer()));

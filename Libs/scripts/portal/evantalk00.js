@@ -3,6 +3,6 @@ function enter(pi) {
 		return false;
 	}
 	pi.updateEvanIntroState("mo00=o");
-        pi.ShowWZEffect("Effect/OnUserEff.img/guideEffect/evanTutorial/evanBalloon00");
+        pi.showAvatarOrientedEffect("Effect/OnUserEff.img/guideEffect/evanTutorial/evanBalloon00");
 	return true;
 }

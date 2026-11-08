@@ -455,43 +455,6 @@ public final class MapleMonster extends AbstractLoadedMapleLife {
             controll.getClient().send(MobPacket.stopControllingMonster(getObjectId()));
             controll.stopControllingMonster(this);
         }
-        // 刻意保留：這一整段（achievement 變數、下面的 switch、再下面被註解掉的發成就區塊）
-        // 記錄了「打倒這四隻王會給成就」這個功能存在，但整個成就系統在
-        // MapleCharacter 裡是整段註解掉的（setAchievementFinished / finishAchievement 都不存在），
-        // 所以這裡的 switch 目前是個空殼，四個 case 都不做事。
-        // 要復活的話得先把 MapleCharacter 與 MapleAchievements 那兩段解開。
-        //int achievement = 0;
-
-        switch (getId()) {
-            case 9400121:
-                //achievement = 12;
-            //break;
-            case 8500002:
-                //achievement = 13;
-            //break;
-            case 8510000:
-            case 8520000:
-                //achievement = 14;
-            //break;
-            default:
-                break;
-        }
-
-        /*if (achievement != 0) {
-         if (killer != null && killer.getParty() != null) {
-         for (MaplePartyCharacter mp : killer.getParty().getMembers()) {
-         final MapleCharacter mpc = killer.getMap().getCharacterById(mp.getId());
-         if (mpc != null) {
-         mpc.finishAchievement(achievement);
-         }
-         }
-         } else if (killer != null) {
-         killer.finishAchievement(achievement);
-         }
-         }
-         if (killer != null && stats.isBoss()) {
-         killer.finishAchievement(18);
-         }*/
         spawnRevives(getMap());
         if (eventInstance != null) {
             eventInstance.unregisterMonster(this);

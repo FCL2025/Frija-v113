@@ -98,41 +98,6 @@ public class MapleCharacterUtil {
         return -1;
     }
 
-    public static final boolean promptPoll(final int accountid) {
-        boolean prompt = false;
-        try (Connection con = DatabaseConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement("SELECT * from game_poll_reply where AccountId = ?")) {
-            ps.setInt(1, accountid);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                prompt = rs.next() ? false : true;
-            }
-        } catch (SQLException e) {
-            // ERROR: abandoned, and the caller is told not to prompt. Terse.
-            LOG.log(System.Logger.Level.ERROR, "error 'PromptPoll' " + e);
-        }
-        return prompt;
-    }
-
-    public static final boolean setPoll(final int accountid, final int selection) {
-        if (!promptPoll(accountid)) { // Hacking OR spamming the db.
-            return false;
-        }
-
-        try (Connection con = DatabaseConnection.getConnection();
-                PreparedStatement ps = con.prepareStatement("INSERT INTO game_poll_reply (AccountId, SelectAns) VALUES (?, ?)")) {
-            ps.setInt(1, accountid);
-            ps.setInt(2, selection);
-
-            ps.execute();
-        } catch (SQLException e) {
-            // ERROR: the reply row was never inserted, yet true is returned
-            // below - this line is the only trace of the lost answer. Terse.
-            LOG.log(System.Logger.Level.ERROR, "error 'SetPoll' " + e);
-        }
-        return true;
-    }
-
     // -2 = An unknown error occured
     // -1 = Account not found on database
     // 0 = You do not have a second password set currently.

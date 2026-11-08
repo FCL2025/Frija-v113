@@ -1,4 +1,4 @@
 function enter(pi) {
-	pi.ShowWZEffect("UI/tutorial.img/26");
+	pi.showAvatarOrientedEffect("UI/tutorial.img/26");
 	return true;
 }

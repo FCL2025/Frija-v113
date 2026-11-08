@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,33 +38,11 @@ public class CashShopDumper {
 
     private static final MapleDataProvider data = MapleDataProviderFactory.getDataProvider(new File(System.getProperty("net.sf.odinms.wzpath") + "/Etc.wz"));
 
-    public static final CashModInfo getModInfo(int sn) {
-        CashModInfo ret = null;
-
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT * FROM cashshop_modified_items WHERE serial = ?")) {
-            ps.setInt(1, sn);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    ret = new CashModInfo(sn, rs.getInt("discount_price"), rs.getInt("mark"), rs.getInt("showup") > 0, rs.getInt("itemid"), rs.getInt("priority"), rs.getInt("package") > 0, rs.getInt("period"), rs.getInt("gender"), rs.getInt("count"), rs.getInt("meso"), rs.getInt("unk_1"), rs.getInt("unk_2"), rs.getInt("unk_3"), rs.getInt("extra_flags"));
-
-                }
-            }
-
-        } catch (Exception ex) {
-            System.out.println(ex);
-        }
-
-        return ret;
-    }
-
     public static void main(String[] args) {
-        CashModInfo m = getModInfo(20000393);
         CashItemFactory.getInstance().initialize();
         Collection<CashModInfo> list = CashItemFactory.getInstance().getAllModInfo();
 
         final List<Integer> itemids = new ArrayList<>();
-        List<Integer> qq = new ArrayList<>();
 
         Map<Integer, List<String>> dics = new HashMap<>();
 
@@ -80,10 +57,9 @@ public class CashShopDumper {
                     final int period = MapleDataTool.getIntConvert("Period", field, 0);
                     final int gender = MapleDataTool.getIntConvert("Gender", field, -1);
                     final int meso = MapleDataTool.getIntConvert("Meso", field, 0);
-                    // 保留作為紀錄：原本會用 qq 把同一個 itemId 的重複 SN 跳過，這個去重被關掉了，
-                    // 所以同一個 itemId 的每個 SN 都會各自產生一列。qq 現在只被寫入、沒人讀。
-                    //if(qq.contains(itemId))
-                    //    continue;
+                    // A29：這裡以前有一個「同一個 itemId 只留第一個 SN」的去重（qq 清單），被註解掉了，
+                    // qq 只剩寫入。去重關著才是對的：cashshop_modified_items 以 serial 為主鍵，
+                    // 同一件道具的不同 SN 是不同的商品（期限、數量、價格各異），本來就該各一列。
                     if (itemId == 0) {
                         continue;
                     }
@@ -122,7 +98,6 @@ public class CashShopDumper {
                         ps.setInt(8, meso);
                         ps.setInt(9, price);
 
-                        qq.add(itemId);
                         ps.setInt(10, 0);
                         ps.setInt(11, 0);
                         ps.setInt(12, 0);

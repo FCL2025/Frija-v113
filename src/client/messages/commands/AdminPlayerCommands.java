@@ -298,7 +298,8 @@ public class AdminPlayerCommands {
         @Override
         public int execute(MapleClient c, String[] splitted) {
             MapleCharacter player = c.getPlayer();
-            if (splitted.length < 2) {
+            // 兩個參數都要有：以前檢查的是 length < 2，於是 "!fame 名字" 會在 splitted[2] 丟 AIOOBE
+            if (splitted.length < 3) {
                 c.getPlayer().dropMessage(6, "Syntax: !fame <player> <amount>");
                 return 0;
             }
@@ -310,11 +311,19 @@ public class AdminPlayerCommands {
                 c.getPlayer().dropMessage(6, "Invalid Number... baka.");
                 return 0;
             }
-            if (victim != null && player.allowedToTarget(victim)) {
-                // 用途不明，保留待查：addFame 仍存在，但被註解掉後這個指令只會重送一次現有人氣，
-                // 等於沒有作用。是刻意停用還是漏掉，無從判斷，先不動。
-                //victim.addFame(fame);
+            if (victim == null) {
+                c.getPlayer().dropMessage(6, "找不到玩家 " + splitted[1] + "（只找本頻道）");
+                return 0;
+            }
+            if (player.allowedToTarget(victim)) {
+                // A26：addFame 以前被註解掉，這個指令只會把現有人氣重送一次，GM 送人氣完全沒有作用。
+                // 名聲是 16 位元（DB 讀 getShort、封包 writeShort），直接相加會在 32767 溢位成負數，
+                // 所以比照玩家互給人氣的 PlayersHandler 夾在 ±30000 內。
+                final int current = victim.getFame();
+                final int clamped = Math.max(-30000, Math.min(30000, current + fame));
+                victim.addFame(clamped - current);
                 victim.updateSingleStat(MapleStat.FAME, victim.getFame());
+                c.getPlayer().dropMessage(6, victim.getName() + " 的名聲：" + current + " → " + victim.getFame());
             }
             return 1;
         }

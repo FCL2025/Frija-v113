@@ -62,6 +62,16 @@ BIG5 位元組寬度補位、`LoginCrypto`、面板的 `IniFile` 與 `Json`、op
   
   資料庫名稱沒有獨立的設定項，它是 `tms.Url` 這條 JDBC 網址裡 `3306/` 後面那一段。
   要改名字就改那一行，並把 `sql/twmsv113.sql` 開頭的 `CREATE DATABASE` / `USE` 改成一樣。
+
+  已經用舊版 `sql/twmsv113.sql` 匯入過的資料庫不會自己跟著變。`sql/migrations/` 底下每一次
+  schema 變更都有一支檔案（刪掉不再使用的表、零日期改 NULL、修好 `cheatlog` 的檢視表……），
+  都可以重複執行，而且刻意不指定資料庫，要在命令列帶上名稱：
+
+  ```
+  mysql -u root -p twmsv113 < sql/migrations/i3-zero-dates.sql
+  ```
+
+  每支檔案開頭都寫了它在做什麼、跑之前要不要先備份。
 - `wz/`（XML 解出來的 WZ 資料，未納入版控）
 
 `dist\lib\` 內的相依：MINA 2.2、Nashorn（JDK 15 起已從 JDK 移除，改由 `nashorn-core` 提供）、
@@ -119,7 +129,7 @@ SN 各發一次 `SELECT … WHERE serial = ?`，等於為一張 6653 列的表�
 | 設定檔 | `Settings.ini` 逐項檢視與修改，保留 BOM、CRLF、註解與對齊；每項標明「即時 / 記憶體 / 需重啟」 |
 | 帳號與角色 | `accounts` / `characters` 的查詢與編輯（密碼欄位不會離開伺服器）、踢人、IP / MAC 封鎖清單；線上角色拒絕寫入，因為記憶體才是真相 |
 | 掉寶與商店 | `drop_data` / `drop_data_global` / `shops` + `shopitems` / `cashshop_modified_items` 的編輯器，道具、怪物、NPC 都用名稱搜尋；每次寫入自動清掉對應的快取 |
-| 腳本 | `Libs/scripts/` 的 2456 支腳本：檔案瀏覽、全文搜尋、CodeMirror 編輯；以 UTF-8 編輯、存檔轉回 BIG5，無法以 BIG5 表示的字元會擋下並指出行列 |
+| 腳本 | `Libs/scripts/` 的 2454 支腳本：檔案瀏覽、全文搜尋、CodeMirror 編輯；以 UTF-8 編輯、存檔轉回 BIG5，無法以 BIG5 表示的字元會擋下並指出行列 |
 
 設定項（都在 `Settings.ini`，見 `Settings.ini.example` 的說明）：`tms.PanelPort`（預設 8080，`0` 停用）、
 `tms.PanelThreads`、`tms.PanelToken`（固定 Token；不設就每次啟動隨機產生）。

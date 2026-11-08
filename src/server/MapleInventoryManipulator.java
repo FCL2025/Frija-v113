@@ -692,13 +692,6 @@ public class MapleInventoryManipulator {
                 chr.cancelBuffStats(MapleBuffStat.LIGHTNING_CHARGE);
             }
         }
-        /*if (ItemConstants.isDragonItem(source.getItemId())) {
-         chr.finishAchievement(8);
-         } else if (ItemConstants.isReverseItem(source.getItemId())) {
-         chr.finishAchievement(9);
-         } else if (ItemConstants.isTimelessItem(source.getItemId())) {
-         chr.finishAchievement(10);
-         } else */
         if (source.getItemId() == 1122017) {
             chr.startFairySchedule(true, true);
         }

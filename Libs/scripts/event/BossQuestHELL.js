@@ -188,7 +188,6 @@ function allMonstersDead(eim) {
     } else {
 	eim.saveBossQuest(1500);
 	eim.broadcastPlayerMsg(5, "你的隊伍挑戰地獄模式成功，獲得 1500 BOSS點");
-	eim.giveAchievement(22);
 	}
 // When invoking unregisterMonster(MapleMonster mob) OR killed
 // Happens only when size = 0

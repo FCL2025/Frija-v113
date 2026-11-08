@@ -139,20 +139,4 @@ public class GameConstants {
                 return true;
         }
     }
-
-    /**
-     * 活動地圖判斷——E8 拆分時刻意沒有跟著搬到 {@code MapConstants}。
-     *
-     * <p>{@code MapConstants} 早就有一個同簽章的 {@code isEventMap}，實作卻
-     * 不一樣：這一個多了 {@code 809040000..809040100}（婚禮地圖）那一段。
-     * 兩者無法共存於同一個類別，而唯一的呼叫端
-     * {@code handling.channel.handler.PlayerHandler} 用的是
-     * {@code MapConstants} 的版本——搬過去就會覆蓋掉它，變成行為變更。
-     *
-     * <p>這一個在整棵樹（含 {@code Libs/scripts}）零呼叫端，所以原地留著。
-     * 要收掉它請先確認 {@code PlayerHandler} 那行想要的是哪一種範圍。
-     */
-    public static boolean isEventMap(final int mapid) {
-        return (mapid >= 109010000 && mapid < 109050000) || (mapid > 109050001 && mapid < 109090000) || (mapid >= 809040000 && mapid <= 809040100);
-    }
 }

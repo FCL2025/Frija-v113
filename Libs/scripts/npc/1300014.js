@@ -33,7 +33,7 @@ function action(mode, type, selection) {
 		}
 	}if(status == 1){
 		if(cm.isQuestActive(2314)){
-			cm.ShowWZEffect("Effect/OnUserEff.img/normalEffect/mushroomcastle/chatBalloon1");
+			cm.showAvatarOrientedEffect("Effect/OnUserEff.img/normalEffect/mushroomcastle/chatBalloon1");
 			cm.forceCompleteQuest(2314);
 			cm.dispose();
 		} else {

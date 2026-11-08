@@ -28,7 +28,7 @@ import server.maps.MapleMapObjectType;
 /**
  * 地圖相關的常數與判斷。
  *
- * <p>從 {@code GameConstants} 拆出來的一部分，加上這個類別原本就有的兩個
+ * <p>從 {@code GameConstants} 拆出來的一部分，加上這個類別原本就有的
  * 活動地圖判斷。收的是拿 mapId 去分類的東西（{@link #isForceRespawn}、
  * {@link #isEventMap}、{@link #blockedMaps}）、視野範圍
  * （{@link #maxViewRangeSq()}），以及地圖物件的廣播型別清單
@@ -39,31 +39,16 @@ import server.maps.MapleMapObjectType;
  */
 public class MapConstants {
 
-    public static boolean isStartingEventMap(final int mapid) {
-        switch (mapid) {
-            case 109010000:
-            case 109020001:
-            case 109030001:
-            case 109030101:
-            case 109030201:
-            case 109030301:
-            case 109030401:
-            case 109040000:
-            case 109060001:
-            case 109060002:
-            case 109060003:
-            case 109060004:
-            case 109060005:
-            case 109060006:
-            case 109080000:
-            case 109080001:
-            case 109080002:
-            case 109080003:
-                return true;
-        }
-        return false;
-    }
-
+    /**
+     * 活動地圖（109xxxxxx 那一帶）。唯一的呼叫端是 {@code PlayerHandler}，
+     * 用來決定死亡時能不能用原地復活術（5510000）——在活動地圖裡不行，一律回城。
+     *
+     * <p>A33：{@code GameConstants} 以前有一個同簽章、零呼叫端的 {@code isEventMap}，
+     * 多算了 {@code 809040000..809040100}，註解說那是婚禮地圖。查證後兩件事都不成立：
+     * {@code String.wz} 裡那兩個 id 的名字是「サバイバルイベント」（求生活動），
+     * 而且 v113 的 {@code Map.wz} 根本沒有這兩張地圖。所以兩個版本在這台伺服器上
+     * 沒有任何可觀察的差別，已刪掉那一個。
+     */
     public static boolean isEventMap(final int mapid) {
         return mapid >= 109010000 && mapid < 109050000 || mapid > 109050001 && mapid < 109090000;
     }

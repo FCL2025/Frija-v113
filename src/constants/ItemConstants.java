@@ -215,10 +215,6 @@ public class ItemConstants {
         return id >= 2040000 && id < 2050000;
     }
 
-    public static boolean isGun(final int id) {
-        return id >= 1492000 && id < 1500000;
-    }
-
     public static boolean isUse(final int id) {
         return id >= 2000000 && id <= 2490000;
     }
@@ -237,10 +233,6 @@ public class ItemConstants {
 
     public static int getCardShortId(final int id) {
         return id % 10000;
-    }
-
-    public static boolean isSpear(final int itemId){
-        return (getWeaponType(itemId) == MapleWeaponType.SPEAR) || (getWeaponType(itemId) == MapleWeaponType.POLE_ARM);
     }
 
     public static boolean isGem(final int id) {
@@ -601,31 +593,6 @@ public class ItemConstants {
         4031648, 1, // Salmon (288cm)
         4031629, 1 // Pot
     };
-
-    public static boolean isDragonItem(int itemId) {
-        switch (itemId) {
-            case 1372032:
-            case 1312031:
-            case 1412026:
-            case 1302059:
-            case 1442045:
-            case 1402036:
-            case 1432038:
-            case 1422028:
-            case 1472051:
-            case 1472052:
-            case 1332049:
-            case 1332050:
-            case 1322052:
-            case 1452044:
-            case 1462039:
-            case 1382036:
-            case 1342010:
-                return true;
-            default:
-                return false;
-        }
-    }
 
     public static boolean isReverseItem(int itemId) {
         switch (itemId) {

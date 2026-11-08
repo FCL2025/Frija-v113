@@ -23,12 +23,13 @@ package client.anticheat;
 public class CheatingOffenseEntry {
 
     private CheatingOffense offense;
-    private int count = 0;
+    // E17：由違規玩家的執行緒改寫、由 CheatingOffensePersister 的計時器執行緒讀取，所以是 volatile。
+    private volatile int count = 0;
     private int characterid;
-    private long lastOffense;
+    private volatile long lastOffense;
     private long firstOffense;
-    private String param;
-    private int dbid = -1;
+    private volatile String param;
+    private volatile int dbid = -1;
 
     public CheatingOffenseEntry(CheatingOffense offense, int characterid) {
         super();

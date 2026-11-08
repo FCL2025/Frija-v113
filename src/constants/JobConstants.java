@@ -26,7 +26,7 @@ package constants;
  * <p>從 {@code GameConstants} 拆出來的一半：凡是拿 jobId 或 skillId 去分類的
  * 都收在這裡。包含五大職業族群的判斷（{@link #isAdventurer}、{@link #isKOC}、
  * {@link #isAran}、{@link #isEvan}、{@link #isResist}）、轉職階級換算
- * （{@link #getJobShortValue}、{@link #getJobNumber}）、技能書與精通技能
+ * （{@link #getJobNumber}）、技能書與精通技能
  * （{@link #getSkillBook}、{@link #getMasterySkill}），以及攻擊／召喚獸的
  * 攻擊延遲表（{@link #getAttackDelay}、{@link #getSummonAttackDelay}）。
  *
@@ -143,21 +143,6 @@ public class JobConstants {
                 return 2300000;
         }
         return 2100000; // Default, in case GM
-    }
-
-    public static int getJobShortValue(int job) {
-        if (job >= 1000) {
-            job -= (job / 1000) * 1000;
-        }
-        job /= 100;
-        if (job == 4) { // For some reason dagger/ claw is 8.. IDK
-            job *= 2;
-        } else if (job == 3) {
-            job += 1;
-        } else if (job == 5) {
-            job += 11; // 16
-        }
-        return job;
     }
 
     public static boolean isPyramidSkill(final int skill) {

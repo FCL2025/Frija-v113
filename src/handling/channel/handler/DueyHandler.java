@@ -87,21 +87,19 @@ public class DueyHandler {
                 final int finalcost = mesos + GameConstants.getTaxAmount(mesos) + (quickdelivery ? 0 : 5000);
 
                 if (mesos >= 0 && mesos <= 100000000 && c.getPlayer().getMeso() >= finalcost) {
-                    final int accid = MapleCharacterUtil.getIdByName(recipient);
-                    if (accid != -1) {
-                        if (accid != c.getAccID()) {
-                            boolean recipientOn = false;
-                            MapleClient rClient = null;
-                            /*        try {
-                             int channel = c.getChannelServer().getWorldInterface().find(recipient);
-                             if (channel > -1) {
-                             recipientOn = true;
-                             ChannelServer rcserv = ChannelServer.getInstance(channel);
-                             rClient = rcserv.getPlayerStorage().getCharacterByName(recipient).getClient();
-                             }
-                             } catch (RemoteException re) {
-                             c.getChannelServer().reconnectWorld();
-                             }*/
+                    // E20：以前用 getIdByName 取得的是收件人的「角色」id，卻拿去和寄件人的「帳號」id 比，
+                    // 於是 15（同帳號）這個檢查形同虛設：寄給自己帳號的其他角色不會被擋，而收件人角色 id
+                    // 碰巧等於寄件人帳號 id 時反而會被誤擋。改用商城送禮同一個查法，角色 id 與帳號 id 一起拿。
+                    final Pair<Integer, Pair<Integer, Integer>> info = MapleCharacterUtil.getInfoByName(recipient, c.getPlayer().getWorld());
+                    final int recipientId = info == null ? -1 : info.getLeft();
+                    if (recipientId != -1) {
+                        if (info.getRight().getLeft() != c.getAccID()) {
+                            // 收件人在線上時應該通知他「有包裹」，但 RMI 時代那段通知被註解掉之後就沒有了，
+                            // 所以 recipientOn 一律是 false（Checked 欄位一律寫 1）。要補的話，找人的方法現在是
+                            // Find.findChannel(recipient) 再 ChannelServer.getInstance(ch).getPlayerStorage()
+                            // .getCharacterByName(recipient)（同 ChatHandler 的寫法）；缺的是封包——v113 的 DUEY
+                            // 「包裹送達」子操作碼在這棵樹裡沒有任何來源，要用真實客戶端確認後才能補。
+                            final boolean recipientOn = false;
 
                             if (inventId > 0) {
                                 final MapleInventoryType inv = MapleInventoryType.getByType(inventId);
@@ -118,7 +116,7 @@ public class DueyHandler {
                                 if (c.getPlayer().getItemQuantity(item.getItemId(), false) >= amount) {
                                     final MapleItemInformationProvider ii = MapleItemInformationProvider.getInstance();
                                     if (!ii.isDropRestricted(item.getItemId()) && !ii.isAccountShared(item.getItemId())) {
-                                        if (addItemToDB(item, amount, mesos, c.getPlayer().getName(), accid, recipientOn)) {
+                                        if (addItemToDB(item, amount, mesos, c.getPlayer().getName(), recipientId, recipientOn)) {
                                             if (ItemConstants.isThrowingStar(item.getItemId()) || ItemConstants.isBullet(item.getItemId())) {
                                                 MapleInventoryManipulator.removeFromSlot(c, inv, (byte) itemPos, item.getQuantity(), true);
                                             } else {
@@ -136,7 +134,7 @@ public class DueyHandler {
                                     c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                                 }
                             } else {
-                                if (addMesoToDB(mesos, c.getPlayer().getName(), accid, recipientOn)) {
+                                if (addMesoToDB(mesos, c.getPlayer().getName(), recipientId, recipientOn)) {
                                     c.getPlayer().gainMeso(-finalcost, false);
 
                                     c.send(NPCPacket.sendDuey((byte) 19, null)); // Successfull
@@ -144,9 +142,6 @@ public class DueyHandler {
                                     c.send(NPCPacket.sendDuey((byte) 17, null)); // Unsuccessfull
                                 }
                             }
-        //                            if (recipientOn && rClient != null) {
-                            //                              rClient.send(MaplePacketCreator.sendDueyMSG(Actions.PACKAGE_MSG.getCode()));
-                            //                        }
                         } else {
                             c.send(NPCPacket.sendDuey((byte) 15, null)); // Same acc error
                         }

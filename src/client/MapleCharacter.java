@@ -150,7 +150,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     long lastfametime;
     private long lastCombo, keydown_skill;
     byte dojoRecord, gmLevel, gender, initialSpawnPoint, skinColor, guildrank = 5, allianceRank = 5, world, subcategory; // Make this a quest record, TODO : Transfer it somehow with the current data
-    private byte fairyExp = 10, numClones;
+    private byte fairyExp = 10;
     short level, fame, hpApUsed, job, remainingAp;
     private short mulung_energy, combo, availableCP, totalCP;
     int accountid, id, meso, exp, hair, face, mapid, bookCover, dojo,
@@ -182,8 +182,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     private final Object currencyLock = new Object();
     private int fallcounter = 0, chair, itemEffect, marriageItemId = 0,
             linkMid = 0, coconutteam = 0, followid = 0, battleshipHP = 0,
-            challenge, guildContribution = 0, beansNum, beansRange;
-    private boolean canSetBeansNum;
+            challenge, guildContribution = 0;
     private Point old = new Point(0, 0);
     private boolean smega, hidden, hasSummon = false;
     int[] wishlist, rocks, savedLocations, regrocks, remainingSp = new int[10];
@@ -204,8 +203,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     // 共用：World.handleCooldowns 在 Timer.WORLD 上走訪、MapleMap.addPlayer 與
     // CharacterPacket/PetPacket 在「別人」的 handler thread 上走訪，本人只在自己的執行緒增刪。
     List<MaplePet> pets;
-    // 固定長度陣列，元素只是參考覆寫（addClone/disposeClones），沒有結構性改動 → 不需要同步。
-    private WeakReference<MapleCharacter>[] clones;
+    // E4d：分身（clones 陣列與 numClones）搬到 PlayerClones；這裡只留同簽章的轉呼叫。
+    private final PlayerClones playerClones;
     // 共用：MapleMonster.switchController 由「攻擊者」的 handler thread 摘掉原控制者的怪，
     // MapleMap.updateMonsterController 由 Respawn（Timer.WORLD）指派，MapleMap.removePlayer
     // 還會拿 iterator 邊走邊 remove → 需要 iterator 支援移除的並行 Set。
@@ -236,7 +235,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     // 換 ConcurrentHashMap 後 get(null) 會丟 NPE，故 getSkillLevel/getMasterLevel 補了 null 判斷，
     // 行為與 LinkedHashMap.get(null) 回 null 完全一致。
     Map<ISkill, SkillEntry> skills = new ConcurrentHashMap<>();
-    private Map<MapleBuffStat, MapleBuffStatValueHolder> effects = new ConcurrentEnumMap<>(MapleBuffStat.class);
+    // E4b：buff 登錄表（原本的 effects 欄位）與管理它的方法搬到 PlayerBuffs；這裡只留同簽章的轉呼叫。
+    private final PlayerBuffs playerBuffs = new PlayerBuffs(this);
     // 共用：別人進地圖時在他的 handler thread 上走訪（sendSpawnData）、MapleMap.removePlayer 也走訪，
     // 同時 Timer.BUFF 的 CancelEffectAction → deregisterBuffStats 會移除 → 需要並行 Map。
     private Map<Integer, MapleSummon> summons;
@@ -264,8 +264,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     MapleStorage storage;
     private MapleTrade trade;
     MapleMount mount;
-    // 只有本人：成就功能整段被註解掉了，現在只剩換頻時 CharacterTransfer 的複製會碰它。
-    List<Integer> finishedAchievements = new ArrayList<>();
     private MapleMessenger messenger;
     byte[] petStore;
     private IMaplePlayerShop playerShop;
@@ -277,8 +275,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     MapleInventory[] inventory;
     SkillMacro[] skillMacros = new SkillMacro[5];
     MapleKeyLayout keylayout;
-    private ScheduledFuture<?> beholderHealingSchedule, beholderBuffSchedule, BerserkSchedule,
-            dragonBloodSchedule, fairySchedule, mapTimeLimitTask, fishing;
+    // E4c：七個 ScheduledFuture 欄位（暗之守護者 ×2、狂暴、龍之魂、小精靈墜飾、地圖時限、釣魚）
+    // 與它們的啟動／取消邏輯搬到 PlayerSchedules；這裡只留同簽章的轉呼叫。
+    private final PlayerSchedules playerSchedules = new PlayerSchedules(this);
     private long nextConsume = 0, pqStartTime = 0;
     private Event_PyramidSubway pyramidSubway = null;
     // 只有本人：expirationTask() 兩個階段都在登入／換頻那條 handler thread 上跑
@@ -299,6 +298,8 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         quests = new ConcurrentHashMap<>(); // Stupid erev quest.
         stats = new PlayerStats(this);
+        // E4d：陣列仍然只在頻道伺服器的角色上建立（見 PlayerClones 的建構子），與搬家前相同。
+        playerClones = new PlayerClones(this, ChannelServer);
         for (int i = 0; i < remainingSp.length; i++) {
             remainingSp[i] = 0;
         }
@@ -315,13 +316,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             wishlist = new int[10];
             rocks = new int[10];
             regrocks = new int[5];
-            // 泛型陣列無法直接 new；陣列元素只由本類別以 WeakReference<MapleCharacter> 寫入，故轉型安全
-            @SuppressWarnings("unchecked")
-            final WeakReference<MapleCharacter>[] clonesArray = (WeakReference<MapleCharacter>[]) new WeakReference<?>[25];
-            clones = clonesArray;
-            for (int i = 0; i < clones.length; i++) {
-                clones[i] = new WeakReference<>(null);
-            }
             inst = new AtomicInteger();
             inst.set(0); // 1 = NPC/ Quest, 2 = Duey, 3 = Hired Merch store, 4 = Storage
             keylayout = new MapleKeyLayout();
@@ -513,9 +507,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         for (final Map.Entry<Integer, SkillEntry> qs : ct.Skills.entrySet()) {
             ret.skills.put(SkillFactory.getSkill(qs.getKey()), qs.getValue());
         }
-        for (final Integer zz : ct.finishedAchievements) {
-            ret.finishedAchievements.add(zz);
-        }
         ret.monsterbook = new MonsterBook(ct.mbook);
         ret.inventory = (MapleInventory[]) ct.inventorys;
         ret.BlessOfFairy_Origin = ct.BlessOfFairy;
@@ -538,7 +529,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         client.setAccountName(ct.accountname);
         ret.acash = ct.ACash;
         ret.maplepoints = ct.MaplePoints;
-        ret.numClones = ct.clonez;
+        ret.playerClones.setNumClones(ct.clonez);
         ret.mount = new MapleMount(ret, ct.mount_itemid, JobConstants.isKOC(ret.job) ? 10001004 : (JobConstants.isAran(ret.job) ? 20001004 : (JobConstants.isEvan(ret.job) ? 20011004 : 1004)), ct.mount_Fatigue, ct.mount_level, ct.mount_exp);
 
         ret.stats.recalcLocalStats(true);
@@ -671,47 +662,27 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public boolean isActiveBuffedValue(int skillid) {
-        LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.isSkill() && mbsvh.effect.getSourceId() == skillid) {
-                return true;
-            }
-        }
-        return false;
+        return playerBuffs.isActiveBuffedValue(skillid);
     }
 
     public Integer getBuffedValue(MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        return mbsvh == null ? null : Integer.valueOf(mbsvh.value);
+        return playerBuffs.getBuffedValue(effect);
     }
 
     public final Integer getBuffedSkill_X(final MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        if (mbsvh == null) {
-            return null;
-        }
-        return mbsvh.effect.getX();
+        return playerBuffs.getBuffedSkill_X(effect);
     }
 
     public final Integer getBuffedSkill_Y(final MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        if (mbsvh == null) {
-            return null;
-        }
-        return mbsvh.effect.getY();
+        return playerBuffs.getBuffedSkill_Y(effect);
     }
 
     public boolean isBuffFrom(MapleBuffStat stat, ISkill skill) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(stat);
-        if (mbsvh == null) {
-            return false;
-        }
-        return mbsvh.effect.isSkill() && mbsvh.effect.getSourceId() == skill.getId();
+        return playerBuffs.isBuffFrom(stat, skill);
     }
 
     public int getBuffSource(MapleBuffStat stat) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(stat);
-        return mbsvh == null ? -1 : mbsvh.effect.getSourceId();
+        return playerBuffs.getBuffSource(stat);
     }
 
     public int getItemQuantity(int itemid, boolean checkEquipped) {
@@ -723,88 +694,31 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void setBuffedValue(MapleBuffStat effect, int value) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        if (mbsvh == null) {
-            return;
-        }
-        mbsvh.value = value;
+        playerBuffs.setBuffedValue(effect, value);
     }
 
     public Long getBuffedStarttime(MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        return mbsvh == null ? null : Long.valueOf(mbsvh.startTime);
+        return playerBuffs.getBuffedStarttime(effect);
     }
 
     public MapleStatEffect getStatForBuff(MapleBuffStat effect) {
-        final MapleBuffStatValueHolder mbsvh = effects.get(effect);
-        return mbsvh == null ? null : mbsvh.effect;
-    }
-
-    private void prepareDragonBlood(final MapleStatEffect bloodEffect) {
-        if (dragonBloodSchedule != null) {
-            dragonBloodSchedule.cancel(false);
-        }
-        dragonBloodSchedule = Timer.BUFF.register(() -> {
-            if (stats.getHp() - bloodEffect.getX() > 1) {
-                cancelBuffStats(MapleBuffStat.DRAGONBLOOD);
-            } else {
-                addHP(-bloodEffect.getX());
-                client.send(CharacterPacket.showOwnBuffEffect(bloodEffect.getSourceId(), 5));
-                map.broadcastMessage(MapleCharacter.this, CharacterPacket.showBuffeffect(getId(), bloodEffect.getSourceId(), 5), false);
-            }
-        }, 4000, 4000);
+        return playerBuffs.getStatForBuff(effect);
     }
 
     public void startMapTimeLimitTask(int time, final MapleMap to) {
-        client.send(MapPacket.getClock(time));
-
-        time *= 1000;
-        mapTimeLimitTask = Timer.MAP.register(() -> {
-            changeMap(to, to.getPortal(0));
-        }, time, time);
+        playerSchedules.startMapTimeLimitTask(time, to);
     }
 
     public void startFishingTask(final boolean VIP) {
-        final int time = GameConstants.getFishingTime(VIP, isGM());
-        cancelFishingTask();
-
-        fishing = Timer.ETC.register(() -> {
-            final boolean expMulti = haveItem(2300001, 1, false, true);
-            if (!expMulti && !haveItem(2300000, 1, false, true)) {
-                cancelFishingTask();
-                return;
-            }
-            MapleInventoryManipulator.removeById(client, MapleInventoryType.USE, expMulti ? 2300001 : 2300000, 1, false, false);
-
-            final int randval = RandomRewards.getInstance().getFishingReward();
-
-            switch (randval) {
-                case 0: // Meso
-                    final int money = Randomizer.rand(expMulti ? 15 : 10, expMulti ? 7500 : 5000);
-                    gainMeso(money, true);
-                    break;
-                case 1: // EXP
-                    final int experi = Randomizer.nextInt(Math.abs(GameConstants.getExpNeededForLevel(level) / 400) + 1);
-                    gainExp(expMulti ? (experi * 3 / 2) : experi, true, false, true);
-                    break;
-                default:
-                    MapleInventoryManipulator.addById(client, randval, (short) 1);
-                    break;
-            }
-            map.broadcastMessage(UIPacket.fishingCaught(id));
-        }, time, time);
+        playerSchedules.startFishingTask(VIP);
     }
 
     public void cancelMapTimeLimitTask() {
-        if (mapTimeLimitTask != null) {
-            mapTimeLimitTask.cancel(false);
-        }
+        playerSchedules.cancelMapTimeLimitTask();
     }
 
     public void cancelFishingTask() {
-        if (fishing != null) {
-            fishing.cancel(false);
-        }
+        playerSchedules.cancelFishingTask();
     }
 
     public void registerEffect(MapleStatEffect effect, long starttime, ScheduledFuture<?> schedule) {
@@ -816,13 +730,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             this.hidden = true;
             map.broadcastMessage(this, CharacterPacket.removePlayerFromMap(getId()), false);
         } else if (effect.isDragonBlood()) {
-            prepareDragonBlood(effect);
+            playerSchedules.prepareDragonBlood(effect);
         } else if (effect.isBerserk()) {
             checkBerserk();
         } else if (effect.isMonsterRiding_()) {
             getMount().startSchedule();
         } else if (effect.isBeholder()) {
-            prepareBeholderEffect();
+            playerSchedules.prepareBeholderEffect();
         }
         int clonez = 0;
         for (Pair<MapleBuffStat, Integer> statup : statups) {
@@ -835,7 +749,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     battleshipHP = value; //copy this as well
                 }
             }
-            effects.put(statup.getLeft(), new MapleBuffStatValueHolder(effect, starttime, schedule, value));
+            playerBuffs.put(statup.getLeft(), new MapleBuffStatValueHolder(effect, starttime, schedule, value));
         }
         if (clonez > 0) {
             int cloneSize = Math.max(getNumClones(), getCloneSize());
@@ -849,73 +763,37 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public List<MapleBuffStat> getBuffStats(final MapleStatEffect effect, final long startTime) {
-        final List<MapleBuffStat> bstats = new ArrayList<>();
-        // C12：不能寫 new EnumMap<>(effects)。EnumMap 的複製建構子對「來源也是 EnumMap」
-        // 走的是直接複製對方 vals/size 欄位的快速路徑，完全不經過 ConcurrentEnumMap 覆寫的
-        // 方法，讀鎖形同不存在，會拿到 size 與陣列對不上的複本。entrySet() 現在本身就是
-        // 鎖內做好的不可變快照，直接走訪它即可。
-        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> stateffect : effects.entrySet()) {
-            final MapleBuffStatValueHolder mbsvh = stateffect.getValue();
-            if (mbsvh.effect.sameSource(effect) && (startTime == -1 || startTime == mbsvh.startTime)) {
-                bstats.add(stateffect.getKey());
-            }
-        }
-        return bstats;
+        return playerBuffs.getBuffStats(effect, startTime);
     }
 
-    private boolean deregisterBuffStats(List<MapleBuffStat> stats) {
-        boolean clonez = false;
-        List<MapleBuffStatValueHolder> effectsToCancel = new ArrayList<>(stats.size());
-        for (MapleBuffStat stat : stats) {
-            final MapleBuffStatValueHolder mbsvh = effects.remove(stat);
-            if (mbsvh != null) {
-                boolean addMbsvh = true;
-                for (MapleBuffStatValueHolder contained : effectsToCancel) {
-                    if (mbsvh.startTime == contained.startTime && contained.effect == mbsvh.effect) {
-                        addMbsvh = false;
-                    }
-                }
-                if (addMbsvh) {
-                    effectsToCancel.add(mbsvh);
-                }
-                if (stat == MapleBuffStat.SUMMON || stat == MapleBuffStat.PUPPET || stat == MapleBuffStat.REAPER) {
-                    final int summonId = mbsvh.effect.getSourceId();
-                    final MapleSummon summon = summons.get(summonId);
-                    if (summon != null) {
-                        map.broadcastMessage(MapPacket.removeSummon(summon, true));
-                        map.removeMapObject(summon);
-                        removeVisibleMapObject(summon);
-                        summons.remove(summonId);
-                        if (summon.getSkill() == 1321007) {
-                            if (beholderHealingSchedule != null) {
-                                beholderHealingSchedule.cancel(false);
-                                beholderHealingSchedule = null;
-                            }
-                            if (beholderBuffSchedule != null) {
-                                beholderBuffSchedule.cancel(false);
-                                beholderBuffSchedule = null;
-                            }
-                        }
-                    }
-                } else if (stat == MapleBuffStat.DRAGONBLOOD) {
-                    if (dragonBloodSchedule != null) {
-                        dragonBloodSchedule.cancel(false);
-                        dragonBloodSchedule = null;
-                    }
-                } else if (stat == MapleBuffStat.ILLUSION) {
-                    disposeClones();
-                    clonez = true;
+    /**
+     * E4b：{@link PlayerBuffs#deregisterBuffStats} 每移除一個 buff stat 就回頭呼叫這裡，
+     * 做屬於角色本身的善後：召喚獸（含暗之守護者的兩個計時器）、龍之魂、分身。
+     * 內容是搬家前 deregisterBuffStats 迴圈裡那一段 if 鏈，逐字相同；呼叫時機也相同——
+     * 仍然是「移除一個 stat、立刻善後、再移除下一個」，沒有改成先全部移除再一起善後。
+     *
+     * @return {@code true} 表示這一次把分身（ILLUSION）收掉了
+     */
+    boolean buffStatDeregistered(final MapleBuffStat stat, final MapleBuffStatValueHolder mbsvh) {
+        if (stat == MapleBuffStat.SUMMON || stat == MapleBuffStat.PUPPET || stat == MapleBuffStat.REAPER) {
+            final int summonId = mbsvh.effect.getSourceId();
+            final MapleSummon summon = summons.get(summonId);
+            if (summon != null) {
+                map.broadcastMessage(MapPacket.removeSummon(summon, true));
+                map.removeMapObject(summon);
+                removeVisibleMapObject(summon);
+                summons.remove(summonId);
+                if (summon.getSkill() == 1321007) {
+                    playerSchedules.cancelBeholderSchedules();
                 }
             }
+        } else if (stat == MapleBuffStat.DRAGONBLOOD) {
+            playerSchedules.cancelDragonBloodSchedule();
+        } else if (stat == MapleBuffStat.ILLUSION) {
+            disposeClones();
+            return true;
         }
-        for (MapleBuffStatValueHolder cancelEffectCancelTasks : effectsToCancel) {
-            if (getBuffStats(cancelEffectCancelTasks.effect, cancelEffectCancelTasks.startTime).size() == 0) {
-                if (cancelEffectCancelTasks.schedule != null) {
-                    cancelEffectCancelTasks.schedule.cancel(false);
-                }
-            }
-        }
-        return clonez;
+        return false;
     }
 
     /**
@@ -941,7 +819,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         if (buffstats.size() <= 0) {
             return;
         }
-        final boolean clonez = deregisterBuffStats(buffstats);
+        final boolean clonez = playerBuffs.deregisterBuffStats(buffstats);
         if (effect.isMagicDoor()) {
             // remove for all on maps
             if (!getDoors().isEmpty()) {
@@ -978,7 +856,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                         map.broadcastMessage(this, PetPacket.showPet(this, pet, false, false), false);
                     }
                 }
-                for (final WeakReference<MapleCharacter> chr : clones) {
+                for (final WeakReference<MapleCharacter> chr : playerClones.getClones()) {
                     if (chr.get() != null) {
                         map.broadcastMessage(chr.get(), CharacterPacket.spawnPlayerMapobject(chr.get()), false);
                     }
@@ -986,7 +864,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             }
         }
         if (!clonez) {
-            for (WeakReference<MapleCharacter> chr : clones) {
+            for (WeakReference<MapleCharacter> chr : playerClones.getClones()) {
                 if (chr.get() != null) {
                     chr.get().cancelEffect(effect, overwrite, startTime);
                 }
@@ -996,14 +874,12 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void cancelBuffStats(MapleBuffStat... stat) {
         List<MapleBuffStat> buffStatList = Arrays.asList(stat);
-        deregisterBuffStats(buffStatList);
+        playerBuffs.deregisterBuffStats(buffStatList);
         cancelPlayerBuffs(buffStatList);
     }
 
     public void cancelEffectFromBuffStat(MapleBuffStat stat) {
-        if (effects.get(stat) != null) {
-            cancelEffect(effects.get(stat).effect, false, -1);
-        }
+        playerBuffs.cancelEffectFromBuffStat(stat);
     }
 
     private void cancelPlayerBuffs(List<MapleBuffStat> buffstats) {
@@ -1022,144 +898,48 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void dispel() {
-        if (!isHidden()) {
-            final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-            for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-                if (mbsvh.effect.isSkill() && mbsvh.schedule != null && !mbsvh.effect.isMorph()) {
-                    cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                }
-            }
-        }
+        playerBuffs.dispel();
     }
 
     public void dispelSkill(int skillid) {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (skillid == 0) {
-                if (mbsvh.effect.isSkill() && (mbsvh.effect.getSourceId() == 4331003 || mbsvh.effect.getSourceId() == 4331002 || mbsvh.effect.getSourceId() == 4341002 || mbsvh.effect.getSourceId() == 22131001 || mbsvh.effect.getSourceId() == 1321007 || mbsvh.effect.getSourceId() == 2121005 || mbsvh.effect.getSourceId() == 2221005 || mbsvh.effect.getSourceId() == 2311006 || mbsvh.effect.getSourceId() == 2321003 || mbsvh.effect.getSourceId() == 3111002 || mbsvh.effect.getSourceId() == 3111005 || mbsvh.effect.getSourceId() == 3211002 || mbsvh.effect.getSourceId() == 3211005 || mbsvh.effect.getSourceId() == 4111002)) {
-                    cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                    break;
-                }
-            } else {
-                if (mbsvh.effect.isSkill() && mbsvh.effect.getSourceId() == skillid) {
-                    cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                    break;
-                }
-            }
-        }
+        playerBuffs.dispelSkill(skillid);
     }
 
     public void dispelBuff(int skillid) {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.getSourceId() == skillid) {
-                cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                break;
-            }
-        }
+        playerBuffs.dispelBuff(skillid);
     }
 
     public void cancelAllBuffs_() {
-        effects.clear();
+        playerBuffs.clear();
         cancelAllTimers();
     }
     
     public void cancelAllTimers() {
-        cancelFishingTask();
-        cancelMapTimeLimitTask();
-
-        if (fairySchedule != null) {
-            fairySchedule.cancel(false);
-        }
-        if (dragonBloodSchedule != null) {
-            dragonBloodSchedule.cancel(false);
-            dragonBloodSchedule = null;
-        }
-        if (BerserkSchedule != null) {
-            BerserkSchedule.cancel(false);
-            BerserkSchedule = null;
-        }
-        if (beholderHealingSchedule != null) {
-            beholderHealingSchedule.cancel(false);
-            beholderHealingSchedule = null;
-        }
-        if (beholderBuffSchedule != null) {
-            beholderBuffSchedule.cancel(false);
-            beholderBuffSchedule = null;
-        }
-        if (dragonBloodSchedule != null) {
-            dragonBloodSchedule.cancel(false);
-            dragonBloodSchedule = null;
-        }
+        playerSchedules.cancelAll();
     }
 
     public void cancelAllBuffs() {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-        }
+        playerBuffs.cancelAllBuffs();
     }
 
     public void cancelMorphs() {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            switch (mbsvh.effect.getSourceId()) {
-                case 5101007:
-                case 5111005:
-                case 5121003:
-                case 15111002:
-                case 13111005:
-                    return; // Since we can't have more than 1, save up on loops
-                default:
-                    if (mbsvh.effect.isMorph()) {
-                        cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                        continue;
-                    }
-            }
-        }
+        playerBuffs.cancelMorphs();
     }
 
     public int getMorphState() {
-        LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.isMorph()) {
-                return mbsvh.effect.getSourceId();
-            }
-        }
-        return -1;
+        return playerBuffs.getMorphState();
     }
 
     public void silentGiveBuffs(List<PlayerBuffValueHolder> buffs) {
-        if (buffs == null) {
-            return;
-        }
-        for (PlayerBuffValueHolder mbsvh : buffs) {
-            mbsvh.effect.silentApplyBuff(this, mbsvh.startTime);
-        }
+        playerBuffs.silentGiveBuffs(buffs);
     }
 
     public List<PlayerBuffValueHolder> getAllBuffs() {
-        List<PlayerBuffValueHolder> ret = new ArrayList<>();
-        LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            ret.add(new PlayerBuffValueHolder(mbsvh.startTime, mbsvh.effect));
-        }
-        return ret;
+        return playerBuffs.getAllBuffs();
     }
 
     public void cancelMagicDoor() {
-        final LinkedList<MapleBuffStatValueHolder> allBuffs = new LinkedList<>(effects.values());
-
-        for (MapleBuffStatValueHolder mbsvh : allBuffs) {
-            if (mbsvh.effect.isMagicDoor()) {
-                cancelEffect(mbsvh.effect, false, mbsvh.startTime);
-                break;
-            }
-        }
+        playerBuffs.cancelMagicDoor();
     }
 
     public int getSkillLevel(int skillid) {
@@ -1512,9 +1292,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void addFame(int famechange) {
         this.fame = (short) (this.fame + famechange); // 名聲欄位是 16 bit：PlayersHandler 已把 |fame| 夾在 30000 內，封包也是 writeShort
-        /*if (this.fame >= 50) {
-         finishAchievement(7);
-         }*/
     }
 
     public void changeMapBanish(final int mapid, final String portal, final String msg) {
@@ -2530,19 +2307,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         int level = getLevel();
 
-        // 成就系統
-        /*if (level == 30) {
-         finishAchievement(2);
-         }
-         if (level == 70) {
-         finishAchievement(3);
-         }
-         if (level == 120) {
-         finishAchievement(4);
-         }
-         if (level == 200) {
-         finishAchievement(5);
-         }*/
         if (level == 200 && !isGM()) {
             final StringBuilder sb = new StringBuilder("[恭喜] ");
             final IItem medal = getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -21);
@@ -2864,7 +2628,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     @Override
     public void sendDestroyData(MapleClient client) {
         client.send(CharacterPacket.removePlayerFromMap(this.getObjectId()));
-        for (final WeakReference<MapleCharacter> chr : clones) {
+        for (final WeakReference<MapleCharacter> chr : playerClones.getClones()) {
             if (chr.get() != null) {
                 chr.get().sendDestroyData(client);
             }
@@ -2882,7 +2646,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                     client.send(PetPacket.petComplete(this, pet));
                 }
             }
-            for (final WeakReference<MapleCharacter> chr : clones) {
+            for (final WeakReference<MapleCharacter> chr : playerClones.getClones()) {
                 if (chr.get() != null) {
                     chr.get().sendSpawnData(client);
                 }
@@ -3027,19 +2791,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public final List<Integer> getFamedCharacters() {
         return lastmonthfameids;
-    }
-
-    /**
-     * E10：成就列表。遊戲端拿成就的整套 API（setAchievementFinished /
-     * finishAchievement / getFinishedAchievements）在本樹裡是整段註解掉的，但
-     * 這個欄位本身並不是死的——CharacterRepository.loadCharFromDB 會照 accountid
-     * 把 achievements 整個帳號載進來，saveToDB 又會「先 DELETE 整個帳號再把這份
-     * 清單寫回去」。所以它必須跟著換頻走，否則換頻之後的第一次存檔會把整個帳號
-     * 的成就清空。這個 getter 是為了 CharacterTransfer（在 handling.world，碰不到
-     * package-private 欄位）而留的。
-     */
-    public final List<Integer> getFinishedAchievements() {
-        return finishedAchievements;
     }
 
     public FameStatus canGiveFame(MapleCharacter from) {
@@ -3651,61 +3402,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void checkBerserk() {
-        if (BerserkSchedule != null) {
-            BerserkSchedule.cancel(false);
-            BerserkSchedule = null;
-        }
-
-        final ISkill BerserkX = SkillFactory.getSkill(1320006);
-        final int skilllevel = getSkillLevel(BerserkX);
-        if (skilllevel >= 1) {
-            final MapleStatEffect ampStat = BerserkX.getEffect(skilllevel);
-            stats.Berserk = stats.getHp() * 100 / stats.getMaxHp() <= ampStat.getX();
-            client.send(CharacterPacket.showOwnBuffEffect(1320006, 1, (byte) (stats.Berserk ? 1 : 0)));
-            map.broadcastMessage(this, CharacterPacket.showBuffeffect(getId(), 1320006, 1, (byte) (stats.Berserk ? 1 : 0)), false);
-
-            BerserkSchedule = Timer.BUFF.schedule(() -> {
-                checkBerserk();
-            }, 10000);
-        }
-    }
-
-    private void prepareBeholderEffect() {
-        if (beholderHealingSchedule != null) {
-            beholderHealingSchedule.cancel(false);
-        }
-        if (beholderBuffSchedule != null) {
-            beholderBuffSchedule.cancel(false);
-        }
-        ISkill bHealing = SkillFactory.getSkill(1320008);
-        final int bHealingLvl = getSkillLevel(bHealing);
-        final int berserkLvl = getSkillLevel(SkillFactory.getSkill(1320006));
-
-        if (bHealingLvl > 0) {
-            final MapleStatEffect healEffect = bHealing.getEffect(bHealingLvl);
-            int healInterval = healEffect.getX() * 15000;
-            beholderHealingSchedule = Timer.BUFF.register(() -> {
-                int remhppercentage = (int) Math.ceil((getStat().getHp() * 100.0) / getStat().getMaxHp());
-                if (berserkLvl == 0 || remhppercentage >= berserkLvl + 10) {
-                    addHP(healEffect.getHp());
-                }
-                client.send(CharacterPacket.showOwnBuffEffect(1321007, 2));
-                map.broadcastMessage(MapPacket.summonSkill(getId(), 1321007, 5));
-                map.broadcastMessage(MapleCharacter.this, CharacterPacket.showBuffeffect(getId(), 1321007, 2), false);
-            }, healInterval, healInterval);
-        }
-        ISkill bBuff = SkillFactory.getSkill(1320009);
-        final int bBuffLvl = getSkillLevel(bBuff);
-        if (bBuffLvl > 0) {
-            final MapleStatEffect buffEffect = bBuff.getEffect(bBuffLvl);
-            int buffInterval = buffEffect.getX() * 10000;
-            beholderBuffSchedule = Timer.BUFF.register(() -> {
-                buffEffect.applyTo(MapleCharacter.this);
-                client.send(CharacterPacket.showOwnBuffEffect(1321007, 2));
-                map.broadcastMessage(MapPacket.summonSkill(getId(), 1321007, Randomizer.nextInt(3) + 6));
-                map.broadcastMessage(MapleCharacter.this, CharacterPacket.showBuffeffect(getId(), 1321007, 2), false);
-            }, buffInterval, buffInterval);
-        }
+        playerSchedules.checkBerserk();
     }
 
     public void setChalkboard(String text) {
@@ -3952,38 +3649,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         client.send(MonsterCarnivalPacket.playerDiedMessage(name, lostCP, team));
     }
 
-    /*public void setAchievementFinished(int id) {
-     if (!finishedAchievements.contains(id)) {
-     finishedAchievements.add(id);
-     }
-     }
-
-     public boolean achievementFinished(int achievementid) {
-     return finishedAchievements.contains(achievementid);
-     }
-
-     public void finishAchievement(int id) {
-     if (!achievementFinished(id)) {
-     if (isAlive() && !isClone()) {
-     MapleAchievements.getInstance().getById(id).finishAchievement(this);
-     }
-     }
-     }
-
-     public List<Integer> getFinishedAchievements() {
-     return finishedAchievements;
-     }
-
-     public void modifyAchievementCSPoints(int type, int quantity) {
-     switch (type) {
-     case 1:
-     acash += quantity;
-     break;
-     case 2:
-     maplepoints += quantity;
-     break;
-     }
-     }*/
     public boolean getCanTalk() {
         return this.canTalk;
     }
@@ -4006,9 +3671,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void setPoints(int p) {
         this.points = p;
-        /*if (this.points >= 1) {
-         finishAchievement(1);
-         }*/
     }
 
     public int getPoints() {
@@ -4108,41 +3770,24 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void startFairySchedule(boolean exp) {
-        startFairySchedule(exp, false);
+        playerSchedules.startFairySchedule(exp);
     }
 
     public void startFairySchedule(boolean exp, boolean equipped) {
-        cancelFairySchedule(exp);
-        if (fairyExp < 30 && stats.equippedFairy) {
-            if (equipped) {
-                dropMessage(5, "The Fairy Pendant's experience points will increase to " + (fairyExp + 10) + "% after one hour.");
-            }
-            fairySchedule = Timer.ETC.schedule(() -> {
-                if (fairyExp < 30 && stats.equippedFairy) {
-                    fairyExp += 10;
-                    dropMessage(5, "The Fairy Pendant's EXP was boosted to " + fairyExp + "%.");
-                    startFairySchedule(false, true);
-                } else {
-                    cancelFairySchedule(!stats.equippedFairy);
-                }
-            }, 60 * 60 * 1000);
-        } else {
-            cancelFairySchedule(!stats.equippedFairy);
-        }
+        playerSchedules.startFairySchedule(exp, equipped);
     }
 
     public void cancelFairySchedule(boolean exp) {
-        if (fairySchedule != null) {
-            fairySchedule.cancel(false);
-            fairySchedule = null;
-        }
-        if (exp) {
-            this.fairyExp = 10;
-        }
+        playerSchedules.cancelFairySchedule(exp);
     }
 
     public byte getFairyExp() {
         return fairyExp;
+    }
+
+    /** E4c：PlayerSchedules 的小精靈墜飾計時器用。fairyExp 本身是角色狀態（換頻時跟著 CharacterTransfer 走），所以留在這裡。 */
+    void setFairyExp(final byte fairyExp) {
+        this.fairyExp = fairyExp;
     }
 
     public int getCoconutTeam() {
@@ -4281,7 +3926,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public WeakReference<MapleCharacter>[] getClones() {
-        return clones;
+        return playerClones.getClones();
     }
 
     public MapleCharacter cloneLooks() {
@@ -4326,23 +3971,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         ret.currentrep = currentrep;
         ret.totalrep = totalrep;
         ret.stats = stats;
-        // C12：同上——putAll 對 EnumMap 來源也走那條繞過讀鎖的快速路徑，所以逐筆從
-        // entrySet() 的快照複製。分身只有一隻、buff 數量是個位數，成本可以忽略。
-        for (Entry<MapleBuffStat, MapleBuffStatValueHolder> buff : effects.entrySet()) {
-            ret.effects.put(buff.getKey(), buff.getValue());
-        }
-        if (ret.effects.get(MapleBuffStat.ILLUSION) != null) {
-            ret.effects.remove(MapleBuffStat.ILLUSION);
-        }
-        if (ret.effects.get(MapleBuffStat.SUMMON) != null) {
-            ret.effects.remove(MapleBuffStat.SUMMON);
-        }
-        if (ret.effects.get(MapleBuffStat.REAPER) != null) {
-            ret.effects.remove(MapleBuffStat.REAPER);
-        }
-        if (ret.effects.get(MapleBuffStat.PUPPET) != null) {
-            ret.effects.remove(MapleBuffStat.PUPPET);
-        }
+        ret.playerBuffs.copyForClone(playerBuffs);
         ret.guildrank = guildrank;
         ret.allianceRank = allianceRank;
         ret.hidden = hidden;
@@ -4376,55 +4005,23 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public final void cloneLook() {
-        if (clone) {
-            return;
-        }
-        for (int i = 0; i < clones.length; i++) {
-            if (clones[i].get() == null) {
-                final MapleCharacter newp = cloneLooks();
-                map.addPlayer(newp);
-                map.broadcastMessage(CharacterPacket.updateCharLook(newp));
-                map.movePlayer(newp, getPosition());
-                clones[i] = new WeakReference<>(newp);
-                return;
-            }
-        }
+        playerClones.cloneLook();
     }
 
     public final void disposeClones() {
-        numClones = 0;
-        for (int i = 0; i < clones.length; i++) {
-            if (clones[i].get() != null) {
-                map.removePlayer(clones[i].get());
-                clones[i].get().getClient().disconnect(false, false);
-                clones[i] = new WeakReference<>(null);
-                numClones++;
-            }
-        }
+        playerClones.disposeClones();
     }
 
     public final int getCloneSize() {
-        int z = 0;
-        for (int i = 0; i < clones.length; i++) {
-            if (clones[i].get() != null) {
-                z++;
-            }
-        }
-        return z;
+        return playerClones.getCloneSize();
     }
 
     public void spawnClones() {
-        if (numClones == 0 && stats.hasClone) {
-            cloneLook(); //once and never again
-        }
-        for (int i = 0; i < numClones; i++) {
-            cloneLook();
-        }
-        numClones = 0;
+        playerClones.spawnClones();
     }
 
     public byte getNumClones() {
-        return numClones;
+        return playerClones.getNumClones();
     }
 
     public void setDragon(MapleDragon d) {
@@ -4889,6 +4486,20 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         disposeClones();
         NPCScriptManager.getInstance().dispose(client);
+        // E4c：換頻道（changeChannel）與進商城（InterServerHandler.enterCS）走的是這裡，不是
+        // 斷線用的 MapleClient.removalTask()，所以以前 cancelAllTimers() 從來不會被呼叫：
+        // 留在原頻道的這個物件身上，小精靈墜飾（最長一小時、會自己續排）、狂暴（每 10 秒續排、
+        // 會對原地圖廣播狂暴特效）、龍之魂（每 4 秒，會扣這個物件的 HP 並對原地圖廣播）都還在跑，
+        // 而且全都抓著 this、map 與舊的 client（E10 查出來的）。
+        // 逐一確認過到達端會重新排上該排的：小精靈由 InterServerHandler.loggedin 的
+        // startFairySchedule(false) 重排（fairyExp 跟著 CharacterTransfer 走，cancelAll 不重設它）；
+        // 狂暴由同一處的 checkBerserk()（黑騎士）重排；龍之魂由 silentGiveBuffs → registerEffect
+        // → prepareDragonBlood 重排；地圖時限由 MapleMap.addPlayer 依新地圖的 timeLimit 重排；
+        // 釣魚與暗之守護者本來就會在這條路徑上被收掉（leaveMap、上面取消 SUMMON），到了新頻道
+        // 也不會再出現。所以這裡全部取消不會讓玩家少掉任何東西。dc == true（removalTask）時
+        // cancelAllBuffs_ 已經取消過一次，再取消一次沒有作用。
+        // 注意：getAllBuffs() 在這之後才被呼叫，所以這裡絕不能動 buff 本身（PlayerBuffs）。
+        playerSchedules.cancelAll();
     }
 
     public void updateTick(int newTick) {
@@ -5058,45 +4669,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void setBeans(int s) {
         beans = s;
-    }
-
-    public int getBeansNum() {
-        return beansNum;
-    }
-
-    /**
-     * @param beansNum the beansNum to set
-     */
-    public void setBeansNum(int beansNum) {
-        beansNum = beansNum;
-    }
-
-    /**
-     * @return the beansRange
-     */
-    public int getBeansRange() {
-        return beansRange;
-    }
-
-    /**
-     * @param beansRange the beansRange to set
-     */
-    public void setBeansRange(int beansRange) {
-        beansRange = beansRange;
-    }
-
-    /**
-     * @return the canSetBeansNum
-     */
-    public boolean isCanSetBeansNum() {
-        return canSetBeansNum;
-    }
-
-    /**
-     * @param canSetBeansNum the canSetBeansNum to set
-     */
-    public void setCanSetBeansNum(boolean canSetBeansNum) {
-        canSetBeansNum = canSetBeansNum;
     }
 
     public boolean haveGM() {

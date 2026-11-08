@@ -27,7 +27,7 @@ function action(mode, type, selection) {
 	    cm.sendNextPrevS("This is the road that leads to Edelstein, where I live! Let''s get out of here before the Black Wings follow us.", 2);
         } else if (status == 2) {
 	    cm.updateInfoQuest(23007, "vel00=2;vel01=3");
-	    cm.ShowWZEffect("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow1");
+	    cm.showAvatarOrientedEffect("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow1");
 	    cm.dispose();
 	}
     } else {

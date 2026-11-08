@@ -61,6 +61,11 @@ import java.util.List;
  *     沒人在讀的屍體物件（到期前算是洩漏，但不會弄壞任何東西）；如果改成交遞同一個
  *     物件，它們就變成對玩家正在用的角色的活寫入，而且 {@code map} 指著舊頻道的
  *     {@code MapleMap}。
+ *     <br>E4c（2026-11）之後 {@code changeRemoval()} 會呼叫 {@code PlayerSchedules.cancelAll()}，
+ *     上面這七個計時器在離開時就取消了。但這個結論仍然成立：每個 buff 自己的到期排程
+ *     （{@code PlayerBuffs} 那張表裡的 {@code MapleBuffStatValueHolder.schedule}）刻意沒有取消——
+ *     {@code getAllBuffs()} 在 {@code changeRemoval()} 之後才打包 buff——它們同樣抓著舊的角色物件，
+ *     換成交遞同一個物件一樣會變成活寫入。
  * <li>相對地，{@code ReconstructChr} 是在目的地頻道的 {@code MapleMapFactory} 上
  *     重新解析 {@code map}，其餘的頻道綁定狀態（controlled、summons、
  *     visibleMapObjects、doors、clones、anticheat、pets、effects、eventInstance）
@@ -93,7 +98,7 @@ public class CharacterTransfer {
     public byte[] petStore;
     public Map<Integer, Integer> mbook = new LinkedHashMap<>();
     public Map<Integer, Pair<Byte, Integer>> keymap = new LinkedHashMap<>();
-    public final List<Integer> finishedAchievements = new ArrayList<>(), famedcharacters = new ArrayList<>();
+    public final List<Integer> famedcharacters = new ArrayList<>();
     public final Map<CharacterNameAndId, Boolean> buddies = new LinkedHashMap<>();
     public final Map<Integer, Object> Quest = new LinkedHashMap<>(); // Questid instead of MapleQuest, as it's huge. Cant be transporting MapleQuest.java
     public Map<Integer, String> InfoQuest = new LinkedHashMap<>();
@@ -185,15 +190,6 @@ public class CharacterTransfer {
             this.messengerid = 0;
         }
 
-        // E10：這個迴圈原本是註解掉的，而 ReconstructChr 照樣讀 ct.finishedAchievements，
-        // 所以換頻之後角色的成就列表是空的。成就的 UI 那一套 API 確實是死的，但這個
-        // 欄位不是：loadCharFromDB 會照 accountid 把 achievements 載滿，saveToDB 則是
-        // 「DELETE FROM achievements WHERE accountid = ? 之後把這份清單寫回去」。
-        // 兩件事湊起來，換頻（或進出商城）之後的第一次存檔會清空整個帳號的成就列。
-        // 補回來之後，換頻路徑跟登入路徑拿到的是同一份清單。
-        for (final Integer zz : chr.getFinishedAchievements()) {
-            this.finishedAchievements.add(zz);
-        }
         this.mBookCover = chr.getMonsterBookCover();
         this.dojo = chr.getDojo();
         this.dojoRecord = (byte) chr.getDojoRecord();

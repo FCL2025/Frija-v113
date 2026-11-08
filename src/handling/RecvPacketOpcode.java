@@ -171,7 +171,6 @@ public enum RecvPacketOpcode implements WritableIntValueHolder {
     USE_MAGNIFY_GLASS,
     USE_POTENTIAL_SCROLL,
     USE_EQUIP_SCROLL,
-    GAME_POLL,
     OWL,
     OWL_WARP,
     //XMAS_SURPRISE, //header -> uniqueid(long) is entire structure

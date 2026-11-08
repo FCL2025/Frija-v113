@@ -858,7 +858,7 @@ public class MapScriptMethods {
         c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000016), (byte) -1, (byte) 0);
         c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000017), (byte) -1, (byte) 0);
         c.getPlayer().changeSkillLevel(SkillFactory.getSkill(20000018), (byte) -1, (byte) 0);
-        c.send(UIPacket.ShowWZEffect("Effect/Direction1.img/aranTutorial/ClickLirin"));
+        c.send(UIPacket.showWZEffect("Effect/Direction1.img/aranTutorial/ClickLirin"));
         c.send(UIPacket.introDisableUI(false));
         c.send(UIPacket.introLock(false));
         c.send(CharacterPacket.enableActions());
@@ -905,7 +905,7 @@ public class MapScriptMethods {
     private static void showIntro(final MapleClient c, final String data) {
         c.send(UIPacket.introDisableUI(true));
         c.send(UIPacket.introLock(true));
-        c.send(UIPacket.ShowWZEffect(data));
+        c.send(UIPacket.showWZEffect(data));
     }
 
     private static void sendDojoClock(MapleClient c, int time) {

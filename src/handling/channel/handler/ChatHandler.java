@@ -53,9 +53,6 @@ public class ChatHandler {
                     chr.getCheatTracker().checkMsg();
                     chr.getMap().broadcastMessage(ChatPacket.getChatText(chr.getId(), text, c.getPlayer().isGM(), unk), c.getPlayer().getPosition());
                 }
-                /*if (text.equalsIgnoreCase(c.getChannelServer().getServerName() + " rocks")) {
-                 chr.finishAchievement(11);
-                 }*/
             } else {
                 c.send(ChatPacket.serverNotice(6, "You have been muted and are therefore unable to talk."));
             }
@@ -104,7 +101,7 @@ public class ChatHandler {
         }
     }
 
-    public static final void Messenger(final SeekableLittleEndianAccessor slea, final MapleClient c) {
+    public static final void messenger(final SeekableLittleEndianAccessor slea, final MapleClient c) {
         String input;
         MapleMessenger messenger = c.getPlayer().getMessenger();
 

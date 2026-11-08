@@ -23,7 +23,6 @@ package tools.packet;
 import handling.MaplePacket;
 import handling.SendPacketOpcode;
 import tools.data.output.MaplePacketLittleEndianWriter;
-import constants.ServerConstants;
 
 public class UIPacket {
 
@@ -102,7 +101,7 @@ public class UIPacket {
         return mplew.getPacket();
     }
 
-    public static final MaplePacket ShowWZEffect(final String data) {
+    public static final MaplePacket showWZEffect(final String data) {
         MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
 
         mplew.writeShort(SendPacketOpcode.SHOW_ITEM_GAIN_INCHAT.getValue());
@@ -202,30 +201,6 @@ public class UIPacket {
         mplew.writeShort(width);
         mplew.writeShort(height);
         mplew.write(1);
-
-        return mplew.getPacket();
-    }
-
-    public static MaplePacket getPollQuestion() {
-        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
-
-        mplew.writeShort(SendPacketOpcode.GAME_POLL_QUESTION.getValue());
-        mplew.writeInt(1);
-        mplew.writeInt(14);
-        mplew.writeMapleAsciiString(ServerConstants.Poll_Question);
-        mplew.writeInt(ServerConstants.Poll_Answers.length); // pollcount
-        for (byte i = 0; i < ServerConstants.Poll_Answers.length; i++) {
-            mplew.writeMapleAsciiString(ServerConstants.Poll_Answers[i]);
-        }
-
-        return mplew.getPacket();
-    }
-
-    public static MaplePacket getPollReply(String message) {
-        MaplePacketLittleEndianWriter mplew = new MaplePacketLittleEndianWriter();
-
-        mplew.writeShort(SendPacketOpcode.GAME_POLL_REPLY.getValue());
-        mplew.writeMapleAsciiString(message);
 
         return mplew.getPacket();
     }

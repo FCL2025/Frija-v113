@@ -31,6 +31,13 @@
 --   * mulungdojo - 武陵道場進度；實際資料存在 characters 的 dojo_pts / dojoRecord。
 --   * reports - 玩家檢舉；程式裡沒有任何檢舉處理程式。
 --
+-- 2026-11（M5）又移除兩張整個功能都拿掉了的資料表，並修正一組檢視表：
+--   * game_poll_reply（E16）- 問卷半成品整組移除。
+--   * achievements（E18）- 成就系統整套移除（遊戲端早就整段被註解掉，只剩載入／存檔空轉）。
+--   * readable_cheatlog / readable_last_hour_cheatlog（E17）- join 改用 cl.characterid，
+--     最近一小時那個改成依角色加總；cheatlog 從 E17 起真的會被寫入。
+--   已經匯入過的資料庫請跑 sql/migrations/ 底下對應的檔案。
+--
 -- 另有 8 個名字同樣零引用，但「刻意保留」，各自的 CREATE TABLE 上方都有一行說明：
 --   * blocklogin / blockuse / loginlog / uselog / invitecodedata / ipvotelog
 --     - 外部網頁會員後台與註冊頁在用（欄位是 varchar(255)+active 那一套風格，
@@ -124,18 +131,6 @@ CREATE TABLE `accounts` (
   `password_otp` varchar(255) DEFAULT '',
   `expiration` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
-
--- --------------------------------------------------------
-
---
--- 資料表結構 `achievements`
---
-
-CREATE TABLE `achievements` (
-  `achievementid` int(9) NOT NULL DEFAULT '0',
-  `charid` int(9) NOT NULL DEFAULT '0',
-  `accountid` int(11) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24457,18 +24452,6 @@ CREATE TABLE `families` (
 -- --------------------------------------------------------
 
 --
--- 資料表結構 `game_poll_reply`
---
-
-CREATE TABLE `game_poll_reply` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `AccountId` int(10) UNSIGNED NOT NULL,
-  `SelectAns` tinyint(5) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `gifts`
 --
 
@@ -30377,7 +30360,7 @@ INSERT INTO `wz_oxdata` (`questionset`, `questionid`, `question`, `display`, `an
 --
 DROP TABLE IF EXISTS `readable_cheatlog`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `readable_cheatlog`  AS  select `a`.`name` AS `accountname`,`a`.`id` AS `accountid`,`c`.`name` AS `name`,`c`.`id` AS `characterid`,`cl`.`offense` AS `offense`,`cl`.`count` AS `count`,`cl`.`lastoffensetime` AS `lastoffensetime`,`cl`.`param` AS `param` from ((`cheatlog` `cl` join `characters` `c`) join `accounts` `a`) where ((`cl`.`id` = `c`.`id`) and (`a`.`id` = `c`.`accountid`) and (`a`.`banned` = 0)) ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `readable_cheatlog`  AS  select `a`.`name` AS `accountname`,`a`.`id` AS `accountid`,`c`.`name` AS `name`,`c`.`id` AS `characterid`,`cl`.`offense` AS `offense`,`cl`.`count` AS `count`,`cl`.`lastoffensetime` AS `lastoffensetime`,`cl`.`param` AS `param` from ((`cheatlog` `cl` join `characters` `c`) join `accounts` `a`) where ((`cl`.`characterid` = `c`.`id`) and (`a`.`id` = `c`.`accountid`) and (`a`.`banned` = 0)) ;
 
 -- --------------------------------------------------------
 
@@ -30386,7 +30369,7 @@ CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW 
 --
 DROP TABLE IF EXISTS `readable_last_hour_cheatlog`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `readable_last_hour_cheatlog`  AS  select `a`.`name` AS `accountname`,`a`.`id` AS `accountid`,`c`.`name` AS `name`,`c`.`id` AS `characterid`,sum(`cl`.`count`) AS `numrepos` from ((`cheatlog` `cl` join `characters` `c`) join `accounts` `a`) where ((`cl`.`id` = `c`.`id`) and (`a`.`id` = `c`.`accountid`) and (timestampdiff(HOUR,`cl`.`lastoffensetime`,now()) < 1) and (`a`.`banned` = 0)) group by `cl`.`id` order by sum(`cl`.`count`) desc ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `readable_last_hour_cheatlog`  AS  select `a`.`name` AS `accountname`,`a`.`id` AS `accountid`,`c`.`name` AS `name`,`c`.`id` AS `characterid`,sum(`cl`.`count`) AS `numrepos` from ((`cheatlog` `cl` join `characters` `c`) join `accounts` `a`) where ((`cl`.`characterid` = `c`.`id`) and (`a`.`id` = `c`.`accountid`) and (timestampdiff(HOUR,`cl`.`lastoffensetime`,now()) < 1) and (`a`.`banned` = 0)) group by `a`.`id`,`c`.`id` order by sum(`cl`.`count`) desc ;
 
 --
 -- 已匯出資料表的索引
@@ -30399,12 +30382,6 @@ ALTER TABLE `accounts`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `name` (`name`),
   ADD KEY `ranking1` (`id`,`banned`,`gm`);
-
---
--- 資料表索引 `achievements`
---
-ALTER TABLE `achievements`
-  ADD PRIMARY KEY (`achievementid`,`charid`);
 
 --
 -- 資料表索引 `alliances`
@@ -30543,12 +30520,6 @@ ALTER TABLE `famelog`
 --
 ALTER TABLE `families`
   ADD PRIMARY KEY (`familyid`);
-
---
--- 資料表索引 `game_poll_reply`
---
-ALTER TABLE `game_poll_reply`
-  ADD PRIMARY KEY (`id`);
 
 --
 -- 資料表索引 `gifts`
@@ -30970,11 +30941,6 @@ ALTER TABLE `famelog`
 --
 ALTER TABLE `families`
   MODIFY `familyid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `game_poll_reply`
---
-ALTER TABLE `game_poll_reply`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 --
 -- 使用資料表 AUTO_INCREMENT `gifts`
 --

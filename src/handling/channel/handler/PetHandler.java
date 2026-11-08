@@ -93,7 +93,7 @@ public class PetHandler {
         chr.getMap().broadcastMessage(chr, PetPacket.petChat(chr.getId(), command, text, chr.getPetIndex(petid)), true);
     }
 
-    public static final void PetCommand(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
+    public static final void petCommand(final SeekableLittleEndianAccessor slea, final MapleClient c, final MapleCharacter chr) {
         final byte petIndex = chr.getPetIndex(slea.readInt());
         if (petIndex == -1) {
             return;

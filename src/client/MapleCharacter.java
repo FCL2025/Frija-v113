@@ -276,8 +276,9 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     MapleInventory[] inventory;
     SkillMacro[] skillMacros = new SkillMacro[5];
     MapleKeyLayout keylayout;
-    private ScheduledFuture<?> beholderHealingSchedule, beholderBuffSchedule, BerserkSchedule,
-            dragonBloodSchedule, fairySchedule, mapTimeLimitTask, fishing;
+    // E4c：七個 ScheduledFuture 欄位（暗之守護者 ×2、狂暴、龍之魂、小精靈墜飾、地圖時限、釣魚）
+    // 與它們的啟動／取消邏輯搬到 PlayerSchedules；這裡只留同簽章的轉呼叫。
+    private final PlayerSchedules playerSchedules = new PlayerSchedules(this);
     private long nextConsume = 0, pqStartTime = 0;
     private Event_PyramidSubway pyramidSubway = null;
     // 只有本人：expirationTask() 兩個階段都在登入／換頻那條 handler thread 上跑
@@ -710,71 +711,20 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         return playerBuffs.getStatForBuff(effect);
     }
 
-    private void prepareDragonBlood(final MapleStatEffect bloodEffect) {
-        if (dragonBloodSchedule != null) {
-            dragonBloodSchedule.cancel(false);
-        }
-        dragonBloodSchedule = Timer.BUFF.register(() -> {
-            if (stats.getHp() - bloodEffect.getX() > 1) {
-                cancelBuffStats(MapleBuffStat.DRAGONBLOOD);
-            } else {
-                addHP(-bloodEffect.getX());
-                client.send(CharacterPacket.showOwnBuffEffect(bloodEffect.getSourceId(), 5));
-                map.broadcastMessage(MapleCharacter.this, CharacterPacket.showBuffeffect(getId(), bloodEffect.getSourceId(), 5), false);
-            }
-        }, 4000, 4000);
-    }
-
     public void startMapTimeLimitTask(int time, final MapleMap to) {
-        client.send(MapPacket.getClock(time));
-
-        time *= 1000;
-        mapTimeLimitTask = Timer.MAP.register(() -> {
-            changeMap(to, to.getPortal(0));
-        }, time, time);
+        playerSchedules.startMapTimeLimitTask(time, to);
     }
 
     public void startFishingTask(final boolean VIP) {
-        final int time = GameConstants.getFishingTime(VIP, isGM());
-        cancelFishingTask();
-
-        fishing = Timer.ETC.register(() -> {
-            final boolean expMulti = haveItem(2300001, 1, false, true);
-            if (!expMulti && !haveItem(2300000, 1, false, true)) {
-                cancelFishingTask();
-                return;
-            }
-            MapleInventoryManipulator.removeById(client, MapleInventoryType.USE, expMulti ? 2300001 : 2300000, 1, false, false);
-
-            final int randval = RandomRewards.getInstance().getFishingReward();
-
-            switch (randval) {
-                case 0: // Meso
-                    final int money = Randomizer.rand(expMulti ? 15 : 10, expMulti ? 7500 : 5000);
-                    gainMeso(money, true);
-                    break;
-                case 1: // EXP
-                    final int experi = Randomizer.nextInt(Math.abs(GameConstants.getExpNeededForLevel(level) / 400) + 1);
-                    gainExp(expMulti ? (experi * 3 / 2) : experi, true, false, true);
-                    break;
-                default:
-                    MapleInventoryManipulator.addById(client, randval, (short) 1);
-                    break;
-            }
-            map.broadcastMessage(UIPacket.fishingCaught(id));
-        }, time, time);
+        playerSchedules.startFishingTask(VIP);
     }
 
     public void cancelMapTimeLimitTask() {
-        if (mapTimeLimitTask != null) {
-            mapTimeLimitTask.cancel(false);
-        }
+        playerSchedules.cancelMapTimeLimitTask();
     }
 
     public void cancelFishingTask() {
-        if (fishing != null) {
-            fishing.cancel(false);
-        }
+        playerSchedules.cancelFishingTask();
     }
 
     public void registerEffect(MapleStatEffect effect, long starttime, ScheduledFuture<?> schedule) {
@@ -786,13 +736,13 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
             this.hidden = true;
             map.broadcastMessage(this, CharacterPacket.removePlayerFromMap(getId()), false);
         } else if (effect.isDragonBlood()) {
-            prepareDragonBlood(effect);
+            playerSchedules.prepareDragonBlood(effect);
         } else if (effect.isBerserk()) {
             checkBerserk();
         } else if (effect.isMonsterRiding_()) {
             getMount().startSchedule();
         } else if (effect.isBeholder()) {
-            prepareBeholderEffect();
+            playerSchedules.prepareBeholderEffect();
         }
         int clonez = 0;
         for (Pair<MapleBuffStat, Integer> statup : statups) {
@@ -840,21 +790,11 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
                 removeVisibleMapObject(summon);
                 summons.remove(summonId);
                 if (summon.getSkill() == 1321007) {
-                    if (beholderHealingSchedule != null) {
-                        beholderHealingSchedule.cancel(false);
-                        beholderHealingSchedule = null;
-                    }
-                    if (beholderBuffSchedule != null) {
-                        beholderBuffSchedule.cancel(false);
-                        beholderBuffSchedule = null;
-                    }
+                    playerSchedules.cancelBeholderSchedules();
                 }
             }
         } else if (stat == MapleBuffStat.DRAGONBLOOD) {
-            if (dragonBloodSchedule != null) {
-                dragonBloodSchedule.cancel(false);
-                dragonBloodSchedule = null;
-            }
+            playerSchedules.cancelDragonBloodSchedule();
         } else if (stat == MapleBuffStat.ILLUSION) {
             disposeClones();
             return true;
@@ -981,32 +921,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
     
     public void cancelAllTimers() {
-        cancelFishingTask();
-        cancelMapTimeLimitTask();
-
-        if (fairySchedule != null) {
-            fairySchedule.cancel(false);
-        }
-        if (dragonBloodSchedule != null) {
-            dragonBloodSchedule.cancel(false);
-            dragonBloodSchedule = null;
-        }
-        if (BerserkSchedule != null) {
-            BerserkSchedule.cancel(false);
-            BerserkSchedule = null;
-        }
-        if (beholderHealingSchedule != null) {
-            beholderHealingSchedule.cancel(false);
-            beholderHealingSchedule = null;
-        }
-        if (beholderBuffSchedule != null) {
-            beholderBuffSchedule.cancel(false);
-            beholderBuffSchedule = null;
-        }
-        if (dragonBloodSchedule != null) {
-            dragonBloodSchedule.cancel(false);
-            dragonBloodSchedule = null;
-        }
+        playerSchedules.cancelAll();
     }
 
     public void cancelAllBuffs() {
@@ -3493,61 +3408,7 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void checkBerserk() {
-        if (BerserkSchedule != null) {
-            BerserkSchedule.cancel(false);
-            BerserkSchedule = null;
-        }
-
-        final ISkill BerserkX = SkillFactory.getSkill(1320006);
-        final int skilllevel = getSkillLevel(BerserkX);
-        if (skilllevel >= 1) {
-            final MapleStatEffect ampStat = BerserkX.getEffect(skilllevel);
-            stats.Berserk = stats.getHp() * 100 / stats.getMaxHp() <= ampStat.getX();
-            client.send(CharacterPacket.showOwnBuffEffect(1320006, 1, (byte) (stats.Berserk ? 1 : 0)));
-            map.broadcastMessage(this, CharacterPacket.showBuffeffect(getId(), 1320006, 1, (byte) (stats.Berserk ? 1 : 0)), false);
-
-            BerserkSchedule = Timer.BUFF.schedule(() -> {
-                checkBerserk();
-            }, 10000);
-        }
-    }
-
-    private void prepareBeholderEffect() {
-        if (beholderHealingSchedule != null) {
-            beholderHealingSchedule.cancel(false);
-        }
-        if (beholderBuffSchedule != null) {
-            beholderBuffSchedule.cancel(false);
-        }
-        ISkill bHealing = SkillFactory.getSkill(1320008);
-        final int bHealingLvl = getSkillLevel(bHealing);
-        final int berserkLvl = getSkillLevel(SkillFactory.getSkill(1320006));
-
-        if (bHealingLvl > 0) {
-            final MapleStatEffect healEffect = bHealing.getEffect(bHealingLvl);
-            int healInterval = healEffect.getX() * 15000;
-            beholderHealingSchedule = Timer.BUFF.register(() -> {
-                int remhppercentage = (int) Math.ceil((getStat().getHp() * 100.0) / getStat().getMaxHp());
-                if (berserkLvl == 0 || remhppercentage >= berserkLvl + 10) {
-                    addHP(healEffect.getHp());
-                }
-                client.send(CharacterPacket.showOwnBuffEffect(1321007, 2));
-                map.broadcastMessage(MapPacket.summonSkill(getId(), 1321007, 5));
-                map.broadcastMessage(MapleCharacter.this, CharacterPacket.showBuffeffect(getId(), 1321007, 2), false);
-            }, healInterval, healInterval);
-        }
-        ISkill bBuff = SkillFactory.getSkill(1320009);
-        final int bBuffLvl = getSkillLevel(bBuff);
-        if (bBuffLvl > 0) {
-            final MapleStatEffect buffEffect = bBuff.getEffect(bBuffLvl);
-            int buffInterval = buffEffect.getX() * 10000;
-            beholderBuffSchedule = Timer.BUFF.register(() -> {
-                buffEffect.applyTo(MapleCharacter.this);
-                client.send(CharacterPacket.showOwnBuffEffect(1321007, 2));
-                map.broadcastMessage(MapPacket.summonSkill(getId(), 1321007, Randomizer.nextInt(3) + 6));
-                map.broadcastMessage(MapleCharacter.this, CharacterPacket.showBuffeffect(getId(), 1321007, 2), false);
-            }, buffInterval, buffInterval);
-        }
+        playerSchedules.checkBerserk();
     }
 
     public void setChalkboard(String text) {
@@ -3915,41 +3776,24 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     }
 
     public void startFairySchedule(boolean exp) {
-        startFairySchedule(exp, false);
+        playerSchedules.startFairySchedule(exp);
     }
 
     public void startFairySchedule(boolean exp, boolean equipped) {
-        cancelFairySchedule(exp);
-        if (fairyExp < 30 && stats.equippedFairy) {
-            if (equipped) {
-                dropMessage(5, "The Fairy Pendant's experience points will increase to " + (fairyExp + 10) + "% after one hour.");
-            }
-            fairySchedule = Timer.ETC.schedule(() -> {
-                if (fairyExp < 30 && stats.equippedFairy) {
-                    fairyExp += 10;
-                    dropMessage(5, "The Fairy Pendant's EXP was boosted to " + fairyExp + "%.");
-                    startFairySchedule(false, true);
-                } else {
-                    cancelFairySchedule(!stats.equippedFairy);
-                }
-            }, 60 * 60 * 1000);
-        } else {
-            cancelFairySchedule(!stats.equippedFairy);
-        }
+        playerSchedules.startFairySchedule(exp, equipped);
     }
 
     public void cancelFairySchedule(boolean exp) {
-        if (fairySchedule != null) {
-            fairySchedule.cancel(false);
-            fairySchedule = null;
-        }
-        if (exp) {
-            this.fairyExp = 10;
-        }
+        playerSchedules.cancelFairySchedule(exp);
     }
 
     public byte getFairyExp() {
         return fairyExp;
+    }
+
+    /** E4c：PlayerSchedules 的小精靈墜飾計時器用。fairyExp 本身是角色狀態（換頻時跟著 CharacterTransfer 走），所以留在這裡。 */
+    void setFairyExp(final byte fairyExp) {
+        this.fairyExp = fairyExp;
     }
 
     public int getCoconutTeam() {
@@ -4680,6 +4524,20 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         disposeClones();
         NPCScriptManager.getInstance().dispose(client);
+        // E4c：換頻道（changeChannel）與進商城（InterServerHandler.enterCS）走的是這裡，不是
+        // 斷線用的 MapleClient.removalTask()，所以以前 cancelAllTimers() 從來不會被呼叫：
+        // 留在原頻道的這個物件身上，小精靈墜飾（最長一小時、會自己續排）、狂暴（每 10 秒續排、
+        // 會對原地圖廣播狂暴特效）、龍之魂（每 4 秒，會扣這個物件的 HP 並對原地圖廣播）都還在跑，
+        // 而且全都抓著 this、map 與舊的 client（E10 查出來的）。
+        // 逐一確認過到達端會重新排上該排的：小精靈由 InterServerHandler.loggedin 的
+        // startFairySchedule(false) 重排（fairyExp 跟著 CharacterTransfer 走，cancelAll 不重設它）；
+        // 狂暴由同一處的 checkBerserk()（黑騎士）重排；龍之魂由 silentGiveBuffs → registerEffect
+        // → prepareDragonBlood 重排；地圖時限由 MapleMap.addPlayer 依新地圖的 timeLimit 重排；
+        // 釣魚與暗之守護者本來就會在這條路徑上被收掉（leaveMap、上面取消 SUMMON），到了新頻道
+        // 也不會再出現。所以這裡全部取消不會讓玩家少掉任何東西。dc == true（removalTask）時
+        // cancelAllBuffs_ 已經取消過一次，再取消一次沒有作用。
+        // 注意：getAllBuffs() 在這之後才被呼叫，所以這裡絕不能動 buff 本身（PlayerBuffs）。
+        playerSchedules.cancelAll();
     }
 
     public void updateTick(int newTick) {

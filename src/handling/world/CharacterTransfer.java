@@ -61,6 +61,11 @@ import java.util.List;
  *     沒人在讀的屍體物件（到期前算是洩漏，但不會弄壞任何東西）；如果改成交遞同一個
  *     物件，它們就變成對玩家正在用的角色的活寫入，而且 {@code map} 指著舊頻道的
  *     {@code MapleMap}。
+ *     <br>E4c（2026-11）之後 {@code changeRemoval()} 會呼叫 {@code PlayerSchedules.cancelAll()}，
+ *     上面這七個計時器在離開時就取消了。但這個結論仍然成立：每個 buff 自己的到期排程
+ *     （{@code PlayerBuffs} 那張表裡的 {@code MapleBuffStatValueHolder.schedule}）刻意沒有取消——
+ *     {@code getAllBuffs()} 在 {@code changeRemoval()} 之後才打包 buff——它們同樣抓著舊的角色物件，
+ *     換成交遞同一個物件一樣會變成活寫入。
  * <li>相對地，{@code ReconstructChr} 是在目的地頻道的 {@code MapleMapFactory} 上
  *     重新解析 {@code map}，其餘的頻道綁定狀態（controlled、summons、
  *     visibleMapObjects、doors、clones、anticheat、pets、effects、eventInstance）

@@ -594,31 +594,6 @@ public class ItemConstants {
         4031629, 1 // Pot
     };
 
-    public static boolean isDragonItem(int itemId) {
-        switch (itemId) {
-            case 1372032:
-            case 1312031:
-            case 1412026:
-            case 1302059:
-            case 1442045:
-            case 1402036:
-            case 1432038:
-            case 1422028:
-            case 1472051:
-            case 1472052:
-            case 1332049:
-            case 1332050:
-            case 1322052:
-            case 1452044:
-            case 1462039:
-            case 1382036:
-            case 1342010:
-                return true;
-            default:
-                return false;
-        }
-    }
-
     public static boolean isReverseItem(int itemId) {
         switch (itemId) {
             case 1002790:

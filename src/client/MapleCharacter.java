@@ -264,8 +264,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
     MapleStorage storage;
     private MapleTrade trade;
     MapleMount mount;
-    // 只有本人：成就功能整段被註解掉了，現在只剩換頻時 CharacterTransfer 的複製會碰它。
-    List<Integer> finishedAchievements = new ArrayList<>();
     private MapleMessenger messenger;
     byte[] petStore;
     private IMaplePlayerShop playerShop;
@@ -512,9 +510,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         for (final Map.Entry<Integer, SkillEntry> qs : ct.Skills.entrySet()) {
             ret.skills.put(SkillFactory.getSkill(qs.getKey()), qs.getValue());
-        }
-        for (final Integer zz : ct.finishedAchievements) {
-            ret.finishedAchievements.add(zz);
         }
         ret.monsterbook = new MonsterBook(ct.mbook);
         ret.inventory = (MapleInventory[]) ct.inventorys;
@@ -1512,9 +1507,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void addFame(int famechange) {
         this.fame = (short) (this.fame + famechange); // 名聲欄位是 16 bit：PlayersHandler 已把 |fame| 夾在 30000 內，封包也是 writeShort
-        /*if (this.fame >= 50) {
-         finishAchievement(7);
-         }*/
     }
 
     public void changeMapBanish(final int mapid, final String portal, final String msg) {
@@ -2530,19 +2522,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         }
         int level = getLevel();
 
-        // 成就系統
-        /*if (level == 30) {
-         finishAchievement(2);
-         }
-         if (level == 70) {
-         finishAchievement(3);
-         }
-         if (level == 120) {
-         finishAchievement(4);
-         }
-         if (level == 200) {
-         finishAchievement(5);
-         }*/
         if (level == 200 && !isGM()) {
             final StringBuilder sb = new StringBuilder("[恭喜] ");
             final IItem medal = getInventory(MapleInventoryType.EQUIPPED).getItem((byte) -21);
@@ -3027,19 +3006,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public final List<Integer> getFamedCharacters() {
         return lastmonthfameids;
-    }
-
-    /**
-     * E10：成就列表。遊戲端拿成就的整套 API（setAchievementFinished /
-     * finishAchievement / getFinishedAchievements）在本樹裡是整段註解掉的，但
-     * 這個欄位本身並不是死的——CharacterRepository.loadCharFromDB 會照 accountid
-     * 把 achievements 整個帳號載進來，saveToDB 又會「先 DELETE 整個帳號再把這份
-     * 清單寫回去」。所以它必須跟著換頻走，否則換頻之後的第一次存檔會把整個帳號
-     * 的成就清空。這個 getter 是為了 CharacterTransfer（在 handling.world，碰不到
-     * package-private 欄位）而留的。
-     */
-    public final List<Integer> getFinishedAchievements() {
-        return finishedAchievements;
     }
 
     public FameStatus canGiveFame(MapleCharacter from) {
@@ -3952,38 +3918,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
         client.send(MonsterCarnivalPacket.playerDiedMessage(name, lostCP, team));
     }
 
-    /*public void setAchievementFinished(int id) {
-     if (!finishedAchievements.contains(id)) {
-     finishedAchievements.add(id);
-     }
-     }
-
-     public boolean achievementFinished(int achievementid) {
-     return finishedAchievements.contains(achievementid);
-     }
-
-     public void finishAchievement(int id) {
-     if (!achievementFinished(id)) {
-     if (isAlive() && !isClone()) {
-     MapleAchievements.getInstance().getById(id).finishAchievement(this);
-     }
-     }
-     }
-
-     public List<Integer> getFinishedAchievements() {
-     return finishedAchievements;
-     }
-
-     public void modifyAchievementCSPoints(int type, int quantity) {
-     switch (type) {
-     case 1:
-     acash += quantity;
-     break;
-     case 2:
-     maplepoints += quantity;
-     break;
-     }
-     }*/
     public boolean getCanTalk() {
         return this.canTalk;
     }
@@ -4006,9 +3940,6 @@ public class MapleCharacter extends AbstractAnimatedMapleMapObject {
 
     public void setPoints(int p) {
         this.points = p;
-        /*if (this.points >= 1) {
-         finishAchievement(1);
-         }*/
     }
 
     public int getPoints() {

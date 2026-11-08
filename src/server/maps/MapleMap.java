@@ -596,9 +596,6 @@ public final class MapleMap {
         SpeedRunType type = SpeedRunType.NULL;
         if (mobid == 8810018 && mapid == 240060200) { // Horntail
           Broadcast.broadcastMessage(ChatPacket.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍終於擊破了闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
-            /*for (MapleCharacter c : getCharactersThreadsafe()) {
-             c.finishAchievement(16);
-             }*/
             FileoutputUtil.log(FileoutputUtil.Horntail_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.Horntail;
@@ -608,9 +605,6 @@ public final class MapleMap {
             }
         } else if (mobid == 8810122 && mapid == 240060201) { // Horntail
             Broadcast.broadcastMessage(ChatPacket.serverNotice(6, "經過無數次的挑戰，"+ chr.getName() +"所帶領的隊伍最終擊破了混屯闇黑龍王的遠征隊！你們才是龍之林的真正英雄~").getBytes());
-            /*for (MapleCharacter c : getCharactersThreadsafe()) {
-             c.finishAchievement(24);
-             }*/
             FileoutputUtil.log(FileoutputUtil.Horntail_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.ChaosHT;
@@ -682,9 +676,6 @@ public final class MapleMap {
             //INSERT HERE: 2095_tokyo
         } else if (mobid == 8820001 && mapid == 270050100) {
             Broadcast.broadcastMessage(ChatPacket.serverNotice(6, chr.getName() + " 經過帶領的隊伍經過無數次的挑戰，終於擊破了時間的寵兒－皮卡丘的遠征隊！你們才是時間神殿的真正英雄~").getBytes());
-            /*for (MapleCharacter c : getCharactersThreadsafe()) {
-             c.finishAchievement(17);
-             }*/
             if (speedRunStart > 0) {
                 type = SpeedRunType.Pink_Bean;
             }
@@ -693,9 +684,6 @@ public final class MapleMap {
             }
             FileoutputUtil.log(FileoutputUtil.Pinkbean_Log, mapDebug_Log());
         } else if (mobid == 8800002 && mapid == 280030000) {
-            /*for (MapleCharacter c : getCharactersThreadsafe()) {
-             c.finishAchievement(15);
-             }*/
             FileoutputUtil.log(FileoutputUtil.Zakum_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.Zakum;
@@ -704,9 +692,6 @@ public final class MapleMap {
                 doShrine(true);
             }
         } else if (mobid == 8800102 && mapid == 280030001) {
-            /*for (MapleCharacter c : getCharactersThreadsafe()) {
-             c.finishAchievement(23);
-             }*/
             FileoutputUtil.log(FileoutputUtil.Zakum_Log, mapDebug_Log());
             if (speedRunStart > 0) {
                 type = SpeedRunType.Chaos_Zakum;

@@ -189,14 +189,6 @@ public class CharacterRepository {
                 for (int i = 0; i < ret.petStore.length; i++) {
                     ret.petStore[i] = Byte.parseByte(pets[i]);
                 }
-                rs.close();
-                ps.close();
-                ps = con.prepareStatement("SELECT * FROM achievements WHERE accountid = ?");
-                ps.setInt(1, ret.accountid);
-                rs = ps.executeQuery();
-                while (rs.next()) {
-                    ret.finishedAchievements.add(rs.getInt("achievementid"));
-                }
 
             }
             rs.close();
@@ -914,39 +906,6 @@ public class CharacterRepository {
                     ps.setInt(3, chr.savedLocations[savedLocationType.getValue()]);
                     ps.addBatch();
                 }
-            }
-            ps.executeBatch();
-            ps.close();
-
-            // FIXME(I4-4)：以 accountid 刪除、卻以這隻角色的 charid 寫回。
-            // 載入端也是整個帳號一起載（loadCharFromDB 的
-            // "SELECT * FROM achievements WHERE accountid = ?"），所以不會掉成就，
-            // 但每存一次檔，全帳號每一列的 charid 都會被改寫成「最後存檔的那隻角色」，
-            // 這個欄位因此毫無意義。
-            //
-            // 這裡沒有「最小且不改行為」的修法，原因有三，全部是 schema 決定而非重構：
-            //   1. achievements 的 PRIMARY KEY 是 (achievementid, charid)。要保留每一列
-            //      原本的 charid，就得在 DELETE 前先讀回來（多一次查詢），而且同一個
-            //      achievementid 會因為不同 charid 而合法地存在多列。
-            //   2. finishedAchievements 是 List<Integer>，只裝 achievementid，沒有出處。
-            //      要保留 charid 就得改它的型別，那是載入路徑的改動。
-            //   3. 真正要決定的是「成就屬於帳號還是屬於角色」：屬於帳號的話 PK 應該是
-            //      (achievementid, accountid) 且 charid 該刪掉；屬於角色的話載入就不該
-            //      用 accountid。在那之前，維持現狀比半修更誠實。
-            //
-            // 附帶的危險：若資料表裡真的出現同一個 achievementid 掛在兩個 charid 上，
-            // 載入會把它 add 兩次（List 不去重），下面這個 batch 就會撞 PK 而讓整次存檔
-            // rollback。現行「刪光整個帳號再用同一個 charid 寫回」剛好使這種列不會存在。
-            ps = con.prepareStatement("DELETE FROM achievements WHERE accountid = ?");
-            ps.setInt(1, chr.accountid);
-            ps.executeUpdate();
-            ps.close();
-            ps = con.prepareStatement("INSERT INTO achievements(charid, achievementid, accountid) VALUES(?, ?, ?)");
-            for (Integer achid : chr.finishedAchievements) {
-                ps.setInt(1, chr.id);
-                ps.setInt(2, achid);
-                ps.setInt(3, chr.accountid);
-                ps.addBatch();
             }
             ps.executeBatch();
             ps.close();

@@ -1,41 +1,44 @@
 package server.panel;
 
+import database.DatabaseConnection;
 import handling.channel.ChannelServer;
 import handling.login.LoginServer;
+import handling.mina.MapleAcceptor;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
+import server.LiveSettings;
 import server.ServerProperties;
 
 /**
- * Reads and writes {@code Settings.ini}, and applies what can be applied to
- * the running server.
+ * Reads and writes {@code Settings.ini}, and puts what is saved into effect.
  *
- * <p>Every key falls into one of three classes, and the panel shows which,
- * because "saved" and "in effect" are different things here:
+ * <p>What a key means and how it is applied lives in {@link LiveSettings},
+ * shared with the {@code Settings.ini} watcher and {@code !reloadsettings};
+ * this class is the HTTP face of it plus the line-preserving file write. Every
+ * key is one of:
  *
  * <dl>
- * <dt>{@code live}</dt><dd>There is a setter on a running object: the four
- * rates on every {@code ChannelServer}, the login-screen fields on
- * {@code LoginServer}. Saving and applying makes the change felt now.</dd>
- * <dt>{@code memory}</dt><dd>Only {@code ServerProperties.setProperty} - the
- * code reads the property again each time it needs it, so the change takes
- * effect for the next use without a restart, but nothing already computed
- * from the old value moves.</dd>
- * <dt>{@code restart}</dt><dd>Read once at startup into a field, or before
- * the panel even exists (ports, the database URL, thread pool sizes). The
- * file changes; the process does not.</dd>
+ * <dt>{@code live}</dt><dd>Applied to the running server on save - every key
+ * the code reads, except one.</dd>
+ * <dt>{@code restart}</dt><dd>{@code tms.Url} only: the database itself
+ * cannot change under a running world. The file changes; the process does
+ * not.</dd>
+ * <dt>{@code none}</dt><dd>Nothing reads it.</dd>
  * </dl>
+ *
+ * <p>A save always applies. There used to be a "save without applying"
+ * button; with the watcher applying every change to the file a couple of
+ * seconds later anyway, that button could only ever have meant "apply, but
+ * not where I can see the result".
  *
  * <p>{@code tms.ServerMessage} is deliberately not a setting here.
  * {@code ChannelServer.setServerMessage} broadcasts to the channel the moment
- * it is called, so it is a "send" action in {@link ActionsApi}'s neighbour
- * {@link #serverMessage}, never something a form auto-saves.
+ * it is called, so it is a "send" action ({@link #serverMessage}), never
+ * something a form saves.
  *
  * <p>Writes go through {@link IniFile}, which keeps every byte of the file it
  * is not asked to change - the BOM, the CRLFs, the comments that are the only
@@ -45,93 +48,7 @@ final class SettingsApi {
 
     private static final System.Logger LOG = System.getLogger(SettingsApi.class.getName());
 
-    static final Path INI = Path.of("Settings.ini");
-
-    private enum Apply {
-        LIVE("live"), MEMORY("memory"), RESTART("restart");
-
-        final String name;
-
-        Apply(final String name) {
-            this.name = name;
-        }
-    }
-
-    /** One known key: how it applies, what it is for, and how to apply it. */
-    private record Spec(Apply apply, String description, Consumer<String> live) {
-    }
-
-    private static final Map<String, Spec> SPECS = new LinkedHashMap<>();
-    /** Never leave the server. Writes are still allowed; reads come back blank. */
-    private static final Set<String> SECRET = Set.of("tms.Pass", "tms.PanelToken");
-    private static final Set<String> RATE_KEYS = Set.of("tms.Exp", "tms.Meso", "tms.Drop", "tms.Cash");
-
-    static {
-        spec("tms.Url", Apply.RESTART, "JDBC 連線字串；資料庫名稱、主機與埠號都在這裡");
-        spec("tms.User", Apply.RESTART, "資料庫帳號");
-        spec("tms.Pass", Apply.RESTART, "資料庫密碼");
-        spec("tms.Count", Apply.RESTART, "頻道數");
-        spec("tms.Exp", Apply.LIVE, "經驗倍率", v -> rate(v, (cs, n) -> cs.setExpRate(n)));
-        spec("tms.Meso", Apply.LIVE, "楓幣倍率", v -> rate(v, (cs, n) -> cs.setMesoRate(n)));
-        spec("tms.Drop", Apply.LIVE, "掉寶倍率", v -> rate(v, (cs, n) -> cs.setDropRate(n)));
-        spec("tms.Cash", Apply.LIVE, "點數倍率", v -> rate(v, (cs, n) -> cs.setCashRate(n)));
-        spec("tms.ServerName", Apply.RESTART, "伺服器名稱（登入畫面與頻道各存一份，啟動時讀取）");
-        spec("tms.EventMessage", Apply.LIVE, "登入畫面的活動訊息", LoginServer::setEventMessage);
-        spec("tms.ServerMessage", Apply.LIVE, "頻道公告（改了會立刻廣播，請用「送出公告」）");
-        spec("tms.Events", Apply.MEMORY, "啟動時載入的事件腳本清單；改完按「重載事件」才會重新編譯");
-        spec("tms.Flag", Apply.LIVE, "登入畫面的伺服器旗標（0 無、1 活動、2 新、3 熱門）",
-                v -> LoginServer.setFlag(Byte.parseByte(v.trim())));
-        spec("tms.AutoRegister", Apply.MEMORY, "帳號不存在時自動註冊（每次登入時讀取）");
-        spec("tms.WFlags", Apply.RESTART, "世界旗標");
-        spec("tms.Admin", Apply.RESTART, "只允許 GM 登入");
-        spec("tms.UserLimit", Apply.LIVE, "同時上線人數上限", v -> LoginServer.setUserLimit(Integer.parseInt(v.trim())));
-        spec("tms.MaxCharacters", Apply.RESTART, "每個帳號的角色數上限");
-        spec("tms.Port", Apply.RESTART, "（無作用）頻道 port 由 tms.Port<n> 決定，預設 8585+n");
-        spec("tms.LPort", Apply.RESTART, "（無作用）登入 port 固定 8484");
-        spec("tms.IP", Apply.MEMORY, "告訴客戶端要連的 IP（換頻道時讀取）");
-        spec("tms.Packet", Apply.RESTART, "（無作用）");
-        spec("tms.Debug", Apply.RESTART, "把每個收到的封包印成十六進位");
-        spec("tms.HandlerThreads", Apply.RESTART, "封包處理執行緒數");
-        spec("tms.TimerThreads", Apply.RESTART, "每個排程池的執行緒數");
-        spec("tms.DbPoolSize", Apply.RESTART, "資料庫連線池上限");
-        spec("tms.DbPoolTimeout", Apply.RESTART, "等待連線的逾時（毫秒）");
-        spec("tms.PanelPort", Apply.RESTART, "管理面板 port（0 停用）");
-        spec("tms.PanelThreads", Apply.RESTART, "管理面板執行緒數");
-        spec("tms.PanelToken", Apply.RESTART, "固定的面板登入 Token");
-    }
-
-    private static void spec(final String key, final Apply apply, final String description) {
-        SPECS.put(key, new Spec(apply, description, null));
-    }
-
-    private static void spec(final String key, final Apply apply, final String description, final Consumer<String> live) {
-        SPECS.put(key, new Spec(apply, description, live));
-    }
-
-    private interface RateSetter {
-
-        void set(ChannelServer cs, int rate);
-    }
-
-    private static void rate(final String value, final RateSetter setter) {
-        final int n = parseRate(value);
-        for (final ChannelServer cs : ChannelServer.getAllInstances()) {
-            setter.set(cs, n);
-        }
-    }
-
-    private static int parseRate(final String value) {
-        final int n;
-        try {
-            n = Integer.parseInt(value.trim());
-        } catch (final NumberFormatException e) {
-            throw new Router.HttpError(400, "倍率必須是整數");
-        }
-        if (n < 1 || n > 100000) {
-            throw new Router.HttpError(400, "倍率必須介於 1 到 100000");
-        }
-        return n;
-    }
+    static final Path INI = Path.of(ServerProperties.SETTINGS_FILE);
 
     private SettingsApi() {
     }
@@ -173,29 +90,28 @@ final class SettingsApi {
 
     private static Map<String, Object> entry(final String key, final String value, final boolean active,
             final String commentedDefault) {
-        final Spec spec = SPECS.get(key);
-        final boolean secret = SECRET.contains(key);
-        final String liveValue = liveValue(key);
+        final boolean secret = LiveSettings.isSecret(key);
         return Json.obj(
                 "key", key,
                 "value", secret ? null : value,
                 "active", active,
                 "secret", secret,
                 "commentedDefault", commentedDefault,
-                "apply", spec == null ? Apply.RESTART.name : spec.apply().name,
-                "description", spec == null ? "" : spec.description(),
-                "runtimeValue", secret ? null : liveValue,
-                "known", spec != null);
+                "apply", LiveSettings.mode(key).wire,
+                "description", LiveSettings.description(key),
+                "runtimeValue", secret ? null : liveValue(key),
+                "known", LiveSettings.isKnown(key));
     }
 
     /**
      * What the running server is actually using, for the keys where that can
-     * differ from the file: the rates (per channel, but the panel sets them
-     * together, so channel 1 stands for all), and the memory-only ones through
-     * {@code ServerProperties}.
+     * differ from the file: the rates (per channel, but they are set together,
+     * so the lowest channel stands for all), the values held in fields, and
+     * everything else through {@code ServerProperties}.
      */
     private static String liveValue(final String key) {
         final ChannelServer first = ChannelServer.getAllInstances().stream()
+                .filter(cs -> !cs.isShutdown())
                 .min((a, b) -> Integer.compare(a.getChannel(), b.getChannel())).orElse(null);
         switch (key) {
             case "tms.Exp":
@@ -216,18 +132,28 @@ final class SettingsApi {
                 return String.valueOf(LoginServer.getUserLimit());
             case "tms.ServerName":
                 return LoginServer.getServerName();
+            case "tms.Count":
+                return String.valueOf(ChannelServer.getAllInstances().stream().filter(cs -> !cs.isShutdown()).count());
+            case "tms.HandlerThreads":
+                return String.valueOf(MapleAcceptor.getHandlerThreads());
+            case "tms.DbPoolSize":
+                return String.valueOf(DatabaseConnection.getPoolSize());
+            case "tms.PanelPort": {
+                final PanelServer p = PanelServer.getInstance();
+                return p == null ? "0" : String.valueOf(p.getPort());
+            }
             default:
                 return ServerProperties.getProperty(key);
         }
     }
 
     /**
-     * Saves one key, and applies it when asked and possible. The reply keeps
-     * the two outcomes apart: a full disk and a stopped channel are different
-     * failures, and "saved but not applied" is a state the UI has to be able
-     * to show rather than round down to "needs restart".
+     * Saves one key and puts it into effect. The reply keeps the two outcomes
+     * apart: a full disk and a refused value are different failures, and
+     * "saved but not applied" is a state the UI has to be able to show rather
+     * than round down to "needs restart".
      */
-    private static Map<String, Object> put(final String key, final Map<String, Object> body) throws IOException {
+    private static Map<String, Object> put(final String key, final Map<String, Object> body) {
         validateKey(key);
         final Object raw = body.get("value");
         if (raw == null) {
@@ -240,21 +166,34 @@ final class SettingsApi {
         if (key.equals("tms.ServerMessage")) {
             throw new Router.HttpError(400, "頻道公告請用「送出公告」，它會立刻廣播給線上玩家");
         }
-        final boolean apply = Boolean.TRUE.equals(body.get("apply"));
-        final Spec spec = SPECS.get(key);
 
         // Validate before touching anything: a value the server cannot parse
         // must not reach the file, or the next restart dies on it.
-        validateValue(key, value);
+        if (value.trim().endsWith("\\")) {
+            // A Properties line continuation: it would swallow the next key.
+            throw new Router.HttpError(400, "值不可以反斜線結尾");
+        }
+        try {
+            LiveSettings.validate(key, value);
+        } catch (final IllegalArgumentException e) {
+            throw new Router.HttpError(400, e.getMessage());
+        }
 
         final Map<String, Object> saved = save(key, value);
-        final Map<String, Object> applied = apply ? applyOne(key, value, spec) : Json.obj("ok", false, "skipped", true);
+        final LiveSettings.Outcome outcome = LiveSettings.apply(key, value);
         return Json.obj(
                 "key", key,
-                "value", SECRET.contains(key) ? null : value,
-                "apply", spec == null ? Apply.RESTART.name : spec.apply().name,
+                "value", LiveSettings.isSecret(key) ? null : value,
+                "apply", LiveSettings.mode(key).wire,
                 "saved", saved,
-                "applied", applied);
+                "applied", applied(outcome));
+    }
+
+    /** The {@code applied} half of a reply: {@code ok}, {@code mode}, and {@code note} or {@code error}. */
+    private static Map<String, Object> applied(final LiveSettings.Outcome o) {
+        return o.ok()
+                ? Json.obj("ok", true, "mode", o.mode().wire, "note", o.message())
+                : Json.obj("ok", false, "mode", o.mode().wire, "error", o.message());
     }
 
     private static Map<String, Object> save(final String key, final String value) {
@@ -290,66 +229,55 @@ final class SettingsApi {
 
     private static final Object INI_LOCK = new Object();
 
-    private static Map<String, Object> applyOne(final String key, final String value, final Spec spec) {
-        final Apply mode = spec == null ? Apply.RESTART : spec.apply();
-        if (mode == Apply.RESTART) {
-            return Json.obj("ok", false, "mode", mode.name, "error", "這個設定只能重啟後生效");
-        }
-        try {
-            ServerProperties.setProperty(key, value);
-            if (spec.live() != null) {
-                spec.live().accept(value);
-            }
-            return Json.obj("ok", true, "mode", mode.name);
-        } catch (final Router.HttpError e) {
-            throw e;
-        } catch (final RuntimeException e) {
-            return Json.obj("ok", false, "mode", mode.name, "error", String.valueOf(e));
-        }
-    }
-
     /**
      * All four rates at once, applied to every channel and written back, with
      * the two outcomes reported separately - see {@link #put}.
      */
     private static Map<String, Object> rates(final Map<String, Object> body) {
-        final Map<String, Integer> wanted = new LinkedHashMap<>();
+        final Map<String, String> wanted = new LinkedHashMap<>();
+        final Map<String, Integer> echo = new LinkedHashMap<>();
         for (final String field : List.of("exp", "meso", "drop", "cash")) {
             final Object v = body.get(field);
-            if (v != null) {
-                wanted.put(field, parseRate(String.valueOf(v)));
+            if (v == null) {
+                continue;
             }
+            final String key = "tms." + Character.toUpperCase(field.charAt(0)) + field.substring(1);
+            final String value = String.valueOf(v).trim();
+            try {
+                LiveSettings.validate(key, value);
+            } catch (final IllegalArgumentException e) {
+                throw new Router.HttpError(400, e.getMessage());
+            }
+            wanted.put(key, value);
+            echo.put(field, Integer.valueOf(value));
         }
         if (wanted.isEmpty()) {
             throw new Router.HttpError(400, "至少要給 exp / meso / drop / cash 其中一個");
         }
-        final List<ChannelServer> channels = new ArrayList<>(ChannelServer.getAllInstances());
-        for (final ChannelServer cs : channels) {
-            if (wanted.containsKey("exp")) {
-                cs.setExpRate(wanted.get("exp"));
-            }
-            if (wanted.containsKey("meso")) {
-                cs.setMesoRate(wanted.get("meso"));
-            }
-            if (wanted.containsKey("drop")) {
-                cs.setDropRate(wanted.get("drop"));
-            }
-            if (wanted.containsKey("cash")) {
-                cs.setCashRate(wanted.get("cash"));
+        final List<String> failed = new ArrayList<>();
+        for (final Map.Entry<String, String> e : wanted.entrySet()) {
+            final LiveSettings.Outcome o = LiveSettings.apply(e.getKey(), e.getValue());
+            if (!o.ok()) {
+                failed.add(e.getKey() + "：" + o.message());
             }
         }
-        final Map<String, String> toSave = new LinkedHashMap<>();
-        for (final Map.Entry<String, Integer> e : wanted.entrySet()) {
-            final String key = "tms." + Character.toUpperCase(e.getKey().charAt(0)) + e.getKey().substring(1);
-            ServerProperties.setProperty(key, String.valueOf(e.getValue()));
-            toSave.put(key, String.valueOf(e.getValue()));
-        }
-        return Json.obj("applied", Json.obj("ok", true, "channels", channels.size()), "saved", save(toSave), "rates", wanted);
+        final int channels = ChannelServer.getAllInstances().size();
+        return Json.obj(
+                "applied", failed.isEmpty()
+                        ? Json.obj("ok", true, "channels", channels)
+                        : Json.obj("ok", false, "channels", channels, "error", String.join("；", failed)),
+                "saved", save(wanted),
+                "rates", echo);
     }
 
     /**
      * Sets the channel notice on every channel - which broadcasts it at once -
      * and, when asked, writes it to the file as {@code tms.ServerMessage}.
+     *
+     * <p>A notice that is only sent leaves {@code ServerProperties} alone on
+     * purpose. The watcher compares the file with {@code ServerProperties};
+     * had the one-off notice gone in there, the next unrelated edit of the
+     * file would have found the file's notice "changed" and broadcast it again.
      */
     private static Map<String, Object> serverMessage(final Map<String, Object> body) {
         final String message = ActionsApi.string(body, "message");
@@ -360,54 +288,25 @@ final class SettingsApi {
             throw new Router.HttpError(400, "公告不可含換行");
         }
         final List<ChannelServer> channels = new ArrayList<>(ChannelServer.getAllInstances());
-        for (final ChannelServer cs : channels) {
-            cs.setServerMessage(message);
+        if (!Boolean.TRUE.equals(body.get("save"))) {
+            for (final ChannelServer cs : channels) {
+                cs.setServerMessage(message);
+            }
+            return Json.obj("applied", Json.obj("ok", true, "channels", channels.size()),
+                    "saved", Json.obj("ok", false, "skipped", true));
         }
-        ServerProperties.setProperty("tms.ServerMessage", message);
-        final boolean persist = Boolean.TRUE.equals(body.get("save"));
-        final Map<String, Object> saved = persist ? save("tms.ServerMessage", message) : Json.obj("ok", false, "skipped", true);
-        return Json.obj("applied", Json.obj("ok", true, "channels", channels.size()), "saved", saved);
+        final Map<String, Object> saved = save("tms.ServerMessage", message);
+        final LiveSettings.Outcome o = LiveSettings.apply("tms.ServerMessage", message);
+        return Json.obj(
+                "applied", o.ok()
+                        ? Json.obj("ok", true, "channels", channels.size())
+                        : Json.obj("ok", false, "channels", channels.size(), "error", o.message()),
+                "saved", saved);
     }
 
     private static void validateKey(final String key) {
         if (key == null || key.isBlank() || key.length() > 64 || !key.matches("[A-Za-z0-9_.-]+")) {
             throw new Router.HttpError(400, "不合法的設定名稱");
-        }
-    }
-
-    private static final Set<String> INT_KEYS = Set.of("tms.Count", "tms.UserLimit", "tms.MaxCharacters",
-            "tms.WFlags", "tms.HandlerThreads", "tms.TimerThreads", "tms.DbPoolSize", "tms.DbPoolTimeout",
-            "tms.PanelPort", "tms.PanelThreads", "tms.Port", "tms.LPort");
-    private static final Set<String> BOOL_KEYS = Set.of("tms.AutoRegister", "tms.Admin", "tms.Debug", "tms.Packet");
-
-    /** Mirrors how the server parses each key at startup, so what is saved will load. */
-    private static void validateValue(final String key, final String value) {
-        final String v = value.trim();
-        if (v.endsWith("\\")) {
-            // A Properties line continuation: it would swallow the next key.
-            throw new Router.HttpError(400, "值不可以反斜線結尾");
-        }
-        if (RATE_KEYS.contains(key)) {
-            parseRate(v);
-        } else if (key.equals("tms.Flag")) {
-            try {
-                final byte b = Byte.parseByte(v);
-                if (b < 0 || b > 3) {
-                    throw new Router.HttpError(400, "tms.Flag 必須是 0 到 3");
-                }
-            } catch (final NumberFormatException e) {
-                throw new Router.HttpError(400, "tms.Flag 必須是 0 到 3");
-            }
-        } else if (INT_KEYS.contains(key) || key.matches("tms\\.Port\\d+")) {
-            try {
-                Integer.parseInt(v);
-            } catch (final NumberFormatException e) {
-                throw new Router.HttpError(400, key + " 必須是整數");
-            }
-        } else if (BOOL_KEYS.contains(key)) {
-            if (!v.isEmpty() && !v.equalsIgnoreCase("true") && !v.equalsIgnoreCase("false")) {
-                throw new Router.HttpError(400, key + " 必須是 true 或 false");
-            }
         }
     }
 }

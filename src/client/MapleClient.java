@@ -98,7 +98,7 @@ public class MapleClient {
     private String accountName;
     private long lastPong = 0, lastPing = 0;
     private boolean monitored = false, receiving = true;
-    private boolean gm;
+    private volatile boolean gm;
     private byte greason = 1, gender = -1;
     public short loginAttempt = 0;
     private List<Integer> allowedChar = new LinkedList<>();
@@ -1226,6 +1226,16 @@ public class MapleClient {
 
     public final boolean isGm() {
         return gm;
+    }
+
+    /**
+     * The account's {@code accounts.gm} flag, for an account that is already
+     * logged in. It was only ever read at login; the panel now pushes a change
+     * into the live client too, so "GM-only mode" and the ban checks that look
+     * at it agree with the row straight away.
+     */
+    public final void setGm(final boolean gm) {
+        this.gm = gm;
     }
 
     public final void setScriptScope(final String name, final ScriptScope e) {

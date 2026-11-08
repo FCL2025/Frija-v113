@@ -31,8 +31,10 @@ import java.sql.SQLTransientConnectionException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Semaphore;
@@ -201,6 +203,119 @@ public final class DatabaseConnection {
         return p == null ? 0 : p.size;
     }
 
+    /**
+     * Resizes the pool while it is running. Growing takes effect at once.
+     * Shrinking withdraws the permits as they come back: connections already
+     * out stay out until their borrower closes them, and nobody new is let in
+     * until the count is under the new bound. {@code size <= 0} means the
+     * default.
+     */
+    public static void setPoolSize(final int size) {
+        pool().resize(size <= 0 ? DEFAULT_POOL_SIZE : size);
+    }
+
+    /** How long a borrow waits for a free connection, from the next borrow on. {@code <= 0} means the default. */
+    public static void setPoolTimeout(final int millis) {
+        pool().borrowTimeout = Math.max(1000, millis <= 0 ? DEFAULT_POOL_TIMEOUT : millis);
+    }
+
+    /**
+     * Switches the pool to new database credentials without a restart.
+     *
+     * <p>The new pair is tried first, on a connection of its own with short
+     * timeouts, and nothing changes unless that works - a typo here must not
+     * take the running server's database away. After the switch every idle
+     * connection is closed, connections that are out finish what they are
+     * doing and are closed rather than pooled when they come back, and every
+     * new borrow logs in with the new pair.
+     *
+     * <p>The URL is deliberately not part of this. Pointing a running server at
+     * a different database is not a credential change: every online character,
+     * guild and auto-increment id in memory came from the old one and would be
+     * saved into the new one.
+     *
+     * @throws SQLException with the driver's own reason when the new pair
+     * cannot log in; the pool is then untouched.
+     */
+    public static void setCredentials(final String user, final String password) throws SQLException {
+        final Pool p = pool();
+        final Properties props = credentials(user, password);
+        try (Connection probe = DriverManager.getConnection(probeUrl(p.config.url), props)) {
+            if (!probe.isValid(VALIDATION_TIMEOUT)) {
+                throw new SQLException("The database accepted the login but the connection is not usable.");
+            }
+        }
+        p.reconfigure(new Config(p.config.url, props));
+    }
+
+    /**
+     * {@code url} with the options that make a failed connect slow taken out
+     * and short timeouts put in - for the one connection
+     * {@link #setCredentials} opens to try a new login.
+     *
+     * <p>The shipped {@code tms.Url} carries
+     * {@code autoReconnect=true&maxReconnects=999}, and with those Connector/J
+     * retries even the initial connect, so a wrong password does not fail: it
+     * hangs for about half an hour. That is tolerable at startup and not at
+     * all on a request thread of the running server.
+     */
+    static String probeUrl(final String url) {
+        final int q = url.indexOf('?');
+        final StringBuilder sb = new StringBuilder(q < 0 ? url : url.substring(0, q));
+        char sep = '?';
+        if (q >= 0) {
+            for (final String option : url.substring(q + 1).split("&")) {
+                if (option.isEmpty()) {
+                    continue;
+                }
+                final int eq = option.indexOf('=');
+                final String name = (eq < 0 ? option : option.substring(0, eq)).toLowerCase(Locale.ROOT);
+                if (PROBE_DROPPED.contains(name)) {
+                    continue;
+                }
+                sb.append(sep).append(option);
+                sep = '&';
+            }
+        }
+        return sb.append(sep).append("connectTimeout=5000&socketTimeout=10000").toString();
+    }
+
+    /** Lower-cased: Connector/J matches option names case-insensitively. */
+    private static final Set<String> PROBE_DROPPED = Set.of(
+            "autoreconnect", "autoreconnectforpools", "maxreconnects", "initialtimeout",
+            "connecttimeout", "sockettimeout");
+
+    private static Properties credentials(final String user, final String password) {
+        final Properties props = new Properties();
+        props.put("user", String.valueOf(user));
+        props.put("password", String.valueOf(password));
+        return props;
+    }
+
+    /** Where to connect and as whom. Immutable, so a borrow can tell which one it was made under. */
+    private record Config(String url, Properties props) {
+    }
+
+    /**
+     * A semaphore whose permit count can be taken down as well as up -
+     * {@code reducePermits} is protected, so this is the only way to reach it.
+     * {@link Semaphore} is Serializable, so this inherits that like
+     * {@code tools.ConcurrentEnumMap} does from {@code EnumMap}; nothing ever
+     * serialises one.
+     */
+    private static final class ResizableSemaphore extends Semaphore {
+
+        private static final long serialVersionUID = 1L;
+
+        ResizableSemaphore(final int permits) {
+            super(permits, true);
+        }
+
+        void shrink(final int by) {
+            reducePermits(by);
+        }
+    }
+
     private static Pool pool() {
         Pool p = pool;
         if (p == null) {
@@ -240,23 +355,45 @@ public final class DatabaseConnection {
          * a connection at a time until it stopped handing anything out.
          */
         private final Map<Thread, Handle> owners = new ConcurrentHashMap<>();
-        private final Semaphore permits;
-        private final int size;
-        private final long borrowTimeout;
-        private final String url;
-        private final Properties props;
+        private final ResizableSemaphore permits;
+        /** Written only under the pool's monitor ({@link #resize}); read without it for diagnostics. */
+        private volatile int size;
+        private volatile long borrowTimeout;
+        /** Swapped whole by {@link #reconfigure}; each {@link Handle} remembers the one it was opened under. */
+        private volatile Config config;
         private volatile boolean closed;
 
         Pool() {
             final int size = Math.max(1, intProperty(POOL_SIZE_PROPERTY, DEFAULT_POOL_SIZE));
-            this.permits = new Semaphore(size, true);
+            this.permits = new ResizableSemaphore(size);
             this.size = size;
             this.borrowTimeout = Math.max(1000, intProperty(POOL_TIMEOUT_PROPERTY, DEFAULT_POOL_TIMEOUT));
-            this.url = ServerProperties.getProperty("tms.Url");
-            this.props = new Properties();
-            this.props.put("user", String.valueOf(ServerProperties.getProperty("tms.User")));
-            this.props.put("password", String.valueOf(ServerProperties.getProperty("tms.Pass")));
+            this.config = new Config(ServerProperties.getProperty("tms.Url"),
+                    credentials(ServerProperties.getProperty("tms.User"), ServerProperties.getProperty("tms.Pass")));
             touchDriver();
+        }
+
+        synchronized void resize(final int newSize) {
+            final int target = Math.max(1, newSize);
+            final int delta = target - size;
+            if (delta > 0) {
+                permits.release(delta);
+            } else if (delta < 0) {
+                // May take the available count below zero: that is the "nobody
+                // new until enough borrowers have given back" state, and every
+                // release() then pays the debt down before anyone gets in.
+                permits.shrink(-delta);
+            }
+            size = target;
+        }
+
+        /** Every new connection uses {@code next}; idle ones made under the old config are closed now. */
+        void reconfigure(final Config next) {
+            config = next;
+            Connection con;
+            while ((con = idle.poll()) != null) {
+                closeQuietly(con);
+            }
         }
 
         /**
@@ -301,10 +438,11 @@ public final class DatabaseConnection {
             }
             boolean handedOut = false;
             try {
-                final Connection raw = takeLive();
+                final Config cfg = config;
+                final Connection raw = takeLive(cfg);
                 active.incrementAndGet();
                 handedOut = true;
-                final Handle handle = new Handle(this, raw);
+                final Handle handle = new Handle(this, raw, cfg);
                 BOUND.set(handle);
                 owners.put(Thread.currentThread(), handle);
                 return handle.proxy();
@@ -315,8 +453,13 @@ public final class DatabaseConnection {
             }
         }
 
-        /** Pops idle connections until one is still alive, else opens a new one. */
-        private Connection takeLive() throws SQLException {
+        /**
+         * Pops idle connections until one is still alive, else opens a new one.
+         * The idle deque only ever holds connections made under the current
+         * config - {@link #reconfigure} empties it and {@link #release} will not
+         * put an outdated one back.
+         */
+        private Connection takeLive(final Config cfg) throws SQLException {
             Connection con;
             while ((con = idle.pollLast()) != null) {
                 try {
@@ -328,7 +471,7 @@ public final class DatabaseConnection {
                 }
                 closeQuietly(con);
             }
-            return DriverManager.getConnection(url, props);
+            return DriverManager.getConnection(cfg.url, cfg.props);
         }
 
         /**
@@ -354,7 +497,7 @@ public final class DatabaseConnection {
             owners.remove(handle.owner, handle);
             active.decrementAndGet();
             try {
-                if (closed || raw.isClosed()) {
+                if (closed || handle.config != config || raw.isClosed()) {
                     closeQuietly(raw);
                 } else {
                     reset(raw);
@@ -408,6 +551,8 @@ public final class DatabaseConnection {
 
         private final Pool pool;
         private final Connection raw;
+        /** What {@link #raw} logged in with; compared on release to decide whether it may be pooled again. */
+        private final Config config;
         /**
          * Statements opened through this handle. The legacy call sites are not
          * uniformly careful about closing their own, and a statement left open
@@ -427,9 +572,10 @@ public final class DatabaseConnection {
         /** The thread this handle is bound to, so the reaper can identify it. */
         private final Thread owner = Thread.currentThread();
 
-        private Handle(final Pool pool, final Connection raw) {
+        private Handle(final Pool pool, final Connection raw, final Config config) {
             this.pool = pool;
             this.raw = raw;
+            this.config = config;
             this.proxy = (Connection) Proxy.newProxyInstance(
                     Handle.class.getClassLoader(),
                     new Class<?>[]{Connection.class},

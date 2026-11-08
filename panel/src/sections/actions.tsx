@@ -325,8 +325,9 @@ const RELOADS: { target: ReloadTarget; label: string; hint: string }[] = [
   { target: 'portal', label: '傳送點', hint: '清掉傳送點腳本快取' },
   { target: 'shops', label: '商店', hint: '清掉 NPC 商店快取，下次開店重讀資料庫' },
   { target: 'quests', label: '任務', hint: '清掉任務資料快取' },
-  { target: 'events', label: '事件腳本', hint: '每個頻道重新編譯 tms.Events 的腳本（約 2 秒）' },
+  { target: 'events', label: '事件腳本', hint: '每個頻道重新編譯 tms.Events 的全部腳本（約 2 秒）；已在進行中的副本用舊版跑完' },
   { target: 'ipmonitor', label: 'IP 監控', hint: '重新讀 Logs/LogIPs.txt' },
+  { target: 'settings', label: '設定檔', hint: '重新讀 Settings.ini 並套用有變更的設定（存檔後伺服器本來就會在幾秒內自動做）' },
 ]
 
 function ReloadCard() {
@@ -372,6 +373,14 @@ function ReloadCard() {
                       {res.errors.map((e, i) => (
                         <span key={i} className="text-xs text-red-600 dark:text-red-400">
                           {e}
+                        </span>
+                      ))}
+                      {res.applied && res.applied.length === 0 && (
+                        <span className="text-xs text-muted-foreground">檔案和執行中的設定一致</span>
+                      )}
+                      {res.applied?.map((a, i) => (
+                        <span key={i} className="text-xs text-muted-foreground">
+                          {a}
                         </span>
                       ))}
                     </div>

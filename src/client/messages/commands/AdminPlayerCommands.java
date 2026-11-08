@@ -8,7 +8,11 @@ import client.MapleDisease;
 import client.MapleStat;
 import client.SkillFactory;
 import client.messages.CommandProcessorUtil;
+import database.DatabaseConnection;
 import handling.channel.ChannelServer;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -115,6 +119,58 @@ public class AdminPlayerCommands {
                     return 0;
                 }
             }
+        }
+    }
+
+    /**
+     * {@code !setgm <角色名> <0-3>}: changes a character's GM level - at once
+     * if they are online on any channel (the next command they type is checked
+     * against the new level, and the next save stores it), or in the
+     * {@code characters} row if they are not.
+     */
+    public static class SetGM extends CommandExecute {
+
+        @Override
+        public int execute(MapleClient c, String[] splitted) {
+            if (splitted.length < 3) {
+                c.getPlayer().dropMessage(5, "[Syntax] !setgm <角色名> <等級 0～3>");
+                return 0;
+            }
+            final int level;
+            try {
+                level = Integer.parseInt(splitted[2]);
+            } catch (final NumberFormatException e) {
+                c.getPlayer().dropMessage(5, "等級必須是 0～3 的整數。");
+                return 0;
+            }
+            if (level < 0 || level > 3) {
+                c.getPlayer().dropMessage(5, "等級必須是 0～3。");
+                return 0;
+            }
+            for (final ChannelServer cs : ChannelServer.getAllInstances()) {
+                final MapleCharacter target = cs.getPlayerStorage().getCharacterByName(splitted[1]);
+                if (target != null) {
+                    target.setGMLevel(level);
+                    target.dropMessage(6, "你的 GM 等級已變更為 " + level + "。");
+                    c.getPlayer().dropMessage(6, "[SetGM] " + target.getName() + "（頻道 " + cs.getChannel()
+                            + "）的 GM 等級已即時改為 " + level + "。");
+                    return 1;
+                }
+            }
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement ps = con.prepareStatement("UPDATE characters SET gm = ? WHERE name = ?")) {
+                ps.setInt(1, level);
+                ps.setString(2, splitted[1]);
+                if (ps.executeUpdate() == 0) {
+                    c.getPlayer().dropMessage(5, "[SetGM] 找不到角色 " + splitted[1] + "。");
+                    return 0;
+                }
+            } catch (final SQLException e) {
+                c.getPlayer().dropMessage(5, "[SetGM] 寫入資料庫失敗：" + e.getMessage());
+                return 0;
+            }
+            c.getPlayer().dropMessage(6, "[SetGM] " + splitted[1] + " 不在線上，已寫入資料庫，下次登入生效。");
+            return 1;
         }
     }
 

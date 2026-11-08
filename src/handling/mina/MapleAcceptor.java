@@ -23,7 +23,9 @@ package handling.mina;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -147,6 +149,9 @@ public final class MapleAcceptor {
      */
     private static final Map<InetSocketAddress, NioSocketAcceptor> ACCEPTORS = new ConcurrentHashMap<>();
 
+    /** Acceptors moved off their port by {@link #rebind}, still carrying the sessions they had. */
+    private static final Queue<NioSocketAcceptor> RETIRED = new ConcurrentLinkedQueue<>();
+
     static {
         // Must precede the first buffer allocation, i.e. the first bind.
         IoBuffer.setUseDirectBuffer(false);
@@ -220,6 +225,57 @@ public final class MapleAcceptor {
         }
     }
 
+    /**
+     * Moves one service to another port without dropping anyone on it.
+     *
+     * <p>The new port is bound first, with the same handler, so a port that is
+     * taken fails here and leaves the old one serving. The old acceptor then
+     * stops accepting but - with close-on-deactivation turned off for it - its
+     * sessions stay up until those players leave on their own; it is kept in
+     * {@link #RETIRED} and disposed at {@link #shutdown()}. Disposing it any
+     * earlier would gain nothing: its sessions live on the shared processors,
+     * and the acceptor itself holds one idle selector.
+     *
+     * @return the new address, for {@link #unbind} and friends
+     */
+    public static InetSocketAddress rebind(final InetSocketAddress old, final int port, final IoHandler handler)
+            throws IOException {
+        final InetSocketAddress fresh = bind(port, handler);
+        if (old != null) {
+            final NioSocketAcceptor previous = ACCEPTORS.remove(old);
+            if (previous != null) {
+                previous.setCloseOnDeactivation(false);
+                previous.unbind();
+                RETIRED.add(previous);
+            }
+        }
+        return fresh;
+    }
+
+    /**
+     * Resizes the shared packet-handler pool. {@code threads <= 0} means the
+     * default. Core and maximum move together, in the order that keeps
+     * {@code core <= max} at every step, because the class javadoc's reason
+     * for keeping them equal still holds.
+     */
+    public static void setHandlerThreads(final int threads) {
+        final int n = threads <= 0 ? DEFAULT_HANDLER_THREADS : threads;
+        synchronized (HANDLER_POOL) {
+            if (n > HANDLER_POOL.getMaximumPoolSize()) {
+                HANDLER_POOL.setMaximumPoolSize(n);
+                HANDLER_POOL.setCorePoolSize(n);
+            } else {
+                HANDLER_POOL.setCorePoolSize(n);
+                HANDLER_POOL.setMaximumPoolSize(n);
+            }
+        }
+        LOG.log(System.Logger.Level.INFO, "[Network] Packet handlers: " + n + " threads.");
+    }
+
+    public static int getHandlerThreads() {
+        return HANDLER_POOL.getMaximumPoolSize();
+    }
+
     public static int getManagedSessionCount(final InetSocketAddress address) {
         if (address == null) {
             return 0;
@@ -233,6 +289,10 @@ public final class MapleAcceptor {
         for (final InetSocketAddress address : ACCEPTORS.keySet()) {
             unbind(address);
         }
+        for (final NioSocketAcceptor retired : RETIRED) {
+            retired.dispose(false);
+        }
+        RETIRED.clear();
         HANDLER_POOL.shutdown();
         try {
             if (!HANDLER_POOL.awaitTermination(5, TimeUnit.SECONDS)) {

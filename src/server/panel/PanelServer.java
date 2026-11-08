@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import server.ServerProperties;
+import server.Timer;
 
 /**
  * The embedded management panel: one {@link HttpServer} on the loopback
@@ -63,12 +64,15 @@ public final class PanelServer {
 
     private final HttpServer server;
     private final ThreadPoolExecutor pool;
-    private final String token;
+    private final Router router;
+    private volatile String token;
     private final int port;
 
-    private PanelServer(final HttpServer server, final ThreadPoolExecutor pool, final String token, final int port) {
+    private PanelServer(final HttpServer server, final ThreadPoolExecutor pool, final Router router,
+            final String token, final int port) {
         this.server = server;
         this.pool = pool;
+        this.router = router;
         this.token = token;
         this.port = port;
     }
@@ -83,9 +87,104 @@ public final class PanelServer {
             LOG.log(System.Logger.Level.INFO, "[面板] " + PORT_PROPERTY + " = 0，管理面板停用。");
             return;
         }
-        final String token = resolveToken();
-        final int threads = Math.max(1, intProperty(THREADS_PROPERTY, DEFAULT_THREADS));
+        final PanelServer p = create(port, resolveToken(), Math.max(1, intProperty(THREADS_PROPERTY, DEFAULT_THREADS)));
+        if (p == null) {
+            return;
+        }
+        instance = p;
+        // One record: the two lines are one banner, and two calls would let
+        // another thread log between the address and the token.
+        LOG.log(System.Logger.Level.INFO,
+                "[面板] 管理面板：http://127.0.0.1:" + port + "/  （" + p.pool.getMaximumPoolSize() + " 條處理執行緒）"
+                + System.lineSeparator() + "[面板] 登入 Token：" + p.token);
+    }
 
+    /**
+     * Moves the panel to {@code port}, turns it off ({@code 0}) or on - while
+     * the game keeps running.
+     *
+     * <p>This is reached from a panel request, i.e. from one of the very
+     * threads it is about to stop, and {@code HttpServer.stop} waits for the
+     * exchanges in flight to finish - including the one asking. So the move is
+     * handed to {@code Timer.ETC} and happens just after the reply has gone
+     * out. The new port is bound before the old one is let go: a port that is
+     * taken leaves the panel where it was.
+     *
+     * @return what will happen, for the reply
+     */
+    public static String scheduleMove(final int port) {
+        final PanelServer current = instance;
+        if (current != null && current.port == port) {
+            return "管理面板已在 port " + port;
+        }
+        Timer.ETC.schedule(() -> move(port), 500);
+        if (port <= 0) {
+            return "管理面板將在 0.5 秒後關閉；要再開啟，請直接編輯 Settings.ini 的 " + PORT_PROPERTY;
+        }
+        return "管理面板將在 0.5 秒後移到 http://127.0.0.1:" + port + "/ ，請改用新網址";
+    }
+
+    private static synchronized void move(final int port) {
+        final PanelServer old = instance;
+        if (port <= 0) {
+            stop();
+            return;
+        }
+        if (old == null) {
+            start();
+            return;
+        }
+        final PanelServer fresh = create(port, old.token, old.pool.getMaximumPoolSize());
+        if (fresh == null) {
+            return;
+        }
+        instance = fresh;
+        old.halt();
+        LOG.log(System.Logger.Level.INFO, "[面板] 管理面板已移到 http://127.0.0.1:" + port + "/");
+    }
+
+    /**
+     * Changes the login token. Every browser still holding the old one gets a
+     * 401 on its next request and is sent back to the login screen. A blank
+     * value means "a random token per start", and the running panel already
+     * has one, so it keeps it.
+     *
+     * @return what happened, for the reply
+     */
+    public static String setToken(final String token) {
+        final PanelServer p = instance;
+        if (p == null) {
+            return "管理面板沒有在執行";
+        }
+        if (token == null || token.isBlank()) {
+            return "留空代表每次啟動隨機產生；目前這組隨機 Token 繼續有效";
+        }
+        p.token = token.trim();
+        p.router.setToken(p.token);
+        LOG.log(System.Logger.Level.INFO, "[面板] 登入 Token 已更換，舊的 Token 立即失效。");
+        return "Token 已更換，請用新的 Token 重新登入";
+    }
+
+    /** Resizes the request pool. {@code threads <= 0} means the default. */
+    public static void setThreads(final int threads) {
+        final PanelServer p = instance;
+        if (p == null) {
+            return;
+        }
+        final int n = threads <= 0 ? DEFAULT_THREADS : threads;
+        synchronized (p.pool) {
+            if (n > p.pool.getMaximumPoolSize()) {
+                p.pool.setMaximumPoolSize(n);
+                p.pool.setCorePoolSize(n);
+            } else {
+                p.pool.setCorePoolSize(n);
+                p.pool.setMaximumPoolSize(n);
+            }
+        }
+    }
+
+    /** Builds and starts one HTTP server, or logs why it could not and returns null. */
+    private static PanelServer create(final int port, final String token, final int threads) {
         final HttpServer server;
         try {
             server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
@@ -93,14 +192,15 @@ public final class PanelServer {
             // ERROR, and terse on purpose: this one only ever reported
             // e.getMessage(). The panel is given up on; the game still starts.
             LOG.log(System.Logger.Level.ERROR, "[面板] 無法綁定 127.0.0.1:" + port + "（" + e.getMessage() + "）。"
-                    + "port 已被其他程式占用；管理面板停用，伺服器照常啟動。可在 Settings.ini 以 "
-                    + PORT_PROPERTY + " 改用別的 port。");
-            return;
+                    + "port 已被其他程式占用；"
+                    + (instance == null ? "管理面板停用，伺服器照常啟動" : "管理面板留在原本的 port")
+                    + "。可在 Settings.ini 以 " + PORT_PROPERTY + " 改用別的 port。");
+            return null;
         } catch (final IOException e) {
             // ERROR, and terse on purpose: this one only ever concatenated
             // the exception. The panel is given up on; the game still starts.
-            LOG.log(System.Logger.Level.ERROR, "[面板] 無法建立 HTTP 伺服器，管理面板停用：" + e);
-            return;
+            LOG.log(System.Logger.Level.ERROR, "[面板] 無法建立 HTTP 伺服器：" + e);
+            return null;
         }
 
         final ThreadPoolExecutor pool = new ThreadPoolExecutor(threads, threads,
@@ -118,13 +218,7 @@ public final class PanelServer {
         server.createContext("/api", router);
         server.createContext("/", new StaticHandler());
         server.start();
-
-        instance = new PanelServer(server, pool, token, port);
-        // One record: the two lines are one banner, and two calls would let
-        // another thread log between the address and the token.
-        LOG.log(System.Logger.Level.INFO,
-                "[面板] 管理面板：http://127.0.0.1:" + port + "/  （" + threads + " 條處理執行緒）"
-                + System.lineSeparator() + "[面板] 登入 Token：" + token);
+        return new PanelServer(server, pool, router, token, port);
     }
 
     /**
@@ -140,17 +234,21 @@ public final class PanelServer {
             return;
         }
         instance = null;
-        p.server.stop(1);
-        p.pool.shutdown();
+        p.halt();
+        LOG.log(System.Logger.Level.INFO, "[面板] 管理面板已關閉。");
+    }
+
+    private void halt() {
+        server.stop(1);
+        pool.shutdown();
         try {
-            if (!p.pool.awaitTermination(2, TimeUnit.SECONDS)) {
-                p.pool.shutdownNow();
+            if (!pool.awaitTermination(2, TimeUnit.SECONDS)) {
+                pool.shutdownNow();
             }
         } catch (final InterruptedException e) {
-            p.pool.shutdownNow();
+            pool.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        LOG.log(System.Logger.Level.INFO, "[面板] 管理面板已關閉。");
     }
 
     public static PanelServer getInstance() {

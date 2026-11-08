@@ -22,6 +22,8 @@ package handling.channel;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -68,16 +70,24 @@ public class ChannelServer {
 
     public static long serverStartTime;
     private int expRate, mesoRate, dropRate, cashRate;
-    private short port = 8585;
+    // volatile: everything on this line and the next two can be changed by
+    // server.LiveSettings - from a panel thread or the Settings.ini watcher -
+    // while handler threads read it.
+    private volatile short port = 8585;
     private static final short DEFAULT_PORT = 8585;
-    private int channel, running_MerchantID = 0, flags = 0;
-    private String serverMessage, ip, serverName;
-    private boolean shutdown = false, finishedShutdown = false, MegaphoneMuteState = false, adminOnly = false;
+    private int channel, running_MerchantID = 0;
+    private volatile int flags = 0;
+    private volatile String serverMessage, ip, serverName;
+    private volatile boolean shutdown = false, adminOnly = false;
+    private boolean finishedShutdown = false, MegaphoneMuteState = false;
     private PlayerStorage players;
     private MapleServerHandler serverHandler;
     private volatile InetSocketAddress boundAddress;
     private final MapleMapFactory mapFactory;
-    private EventScriptManager eventSM;
+    /** Replaced whole by {@link #applyEvents}; NPC scripts on any thread read it through {@link #getEventSM()}. */
+    private volatile EventScriptManager eventSM;
+    /** Serialises the event-list changes against each other; readers do not take it. */
+    private final Object eventLock = new Object();
     /**
      * Every channel registers itself here from its own startup, and any thread
      * on any channel looks channels up through it - so it has to be concurrent.
@@ -132,8 +142,8 @@ public class ChannelServer {
             serverName = ServerProperties.getProperty("tms.ServerName");
             flags = Integer.parseInt(ServerProperties.getProperty("tms.WFlags", "0"));
             adminOnly = Boolean.parseBoolean(ServerProperties.getProperty("tms.Admin", "false"));
-            eventSM = new EventScriptManager(this, ServerProperties.getProperty("tms.Events").split(","));
-            port = Short.parseShort(ServerProperties.getProperty("tms.Port" + channel, String.valueOf(DEFAULT_PORT + channel)));
+            eventSM = new EventScriptManager(this, eventList());
+            port = (short) configuredPort(channel);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -315,10 +325,72 @@ public class ChannelServer {
      * reason: if compiling fails, the channel keeps what it had.
      */
     public final void reloadEvents() {
-        final EventScriptManager fresh = new EventScriptManager(this, ServerProperties.getProperty("tms.Events").split(","));
-        eventSM.cancel();
-        eventSM = fresh;
-        eventSM.init();
+        final String[] names = eventList();
+        applyEvents(names, new HashSet<>(Arrays.asList(names)));
+    }
+
+    /**
+     * Brings this channel's running events in line with {@code names} without
+     * touching the ones that stay: events new to the list are compiled and
+     * started, events no longer in it - and every name in {@code recompile} -
+     * are stopped, and everything else keeps running as the same object, open
+     * instances and players included. {@link #reloadEvents()} is the special
+     * case that recompiles all of them.
+     *
+     * <p>The new manager is built before anything is stopped, so a compile
+     * failure leaves the channel with what it had. The swap happens between
+     * stopping the old entries and starting the new ones so that a recompiled
+     * event never has two copies scheduling at once.
+     *
+     * @return {@code [started, stopped]}
+     */
+    public final List<List<String>> applyEvents(final String[] names, final Set<String> recompile) {
+        synchronized (eventLock) {
+            final EventScriptManager old = eventSM;
+            final EventScriptManager next = EventScriptManager.derive(this, old, names, recompile);
+            final List<String> stopped = old.cancelDropped(next);
+            eventSM = next;
+            next.initFresh();
+            return List.of(next.getFreshNames(), stopped);
+        }
+    }
+
+    /** {@code tms.Events} as a list, blanks and stray spaces removed. */
+    public static String[] eventList() {
+        final String raw = ServerProperties.getProperty("tms.Events", "");
+        return Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toArray(String[]::new);
+    }
+
+    /** {@code tms.Port<n>}, falling back to {@code 8585 + n} when it is absent or blank. */
+    public static int configuredPort(final int channel) {
+        final String configured = ServerProperties.getProperty("tms.Port" + channel);
+        if (configured != null && !configured.isBlank()) {
+            return Integer.parseInt(configured.trim());
+        }
+        return DEFAULT_PORT + channel;
+    }
+
+    /**
+     * Moves this channel to another port. Players already on it stay
+     * connected; the next one to log in or change channel is sent the new
+     * port. A port that cannot be bound throws and leaves the old one serving.
+     */
+    public final synchronized void rebind(final int newPort) throws IOException {
+        if (newPort == port || shutdown) {
+            return;
+        }
+        boundAddress = MapleAcceptor.rebind(boundAddress, newPort, serverHandler);
+        port = (short) newPort;
+        ip = ServerProperties.getProperty("tms.IP") + ":" + newPort;
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": Listening on port " + newPort + "");
+    }
+
+    public final void setTempFlag(final int flags) {
+        this.flags = flags;
+    }
+
+    public final void setAdminOnly(final boolean adminOnly) {
+        this.adminOnly = adminOnly;
     }
 
     public final int getMesoRate() {
@@ -619,10 +691,17 @@ public class ChannelServer {
         return flags;
     }
 
+    /**
+     * What the login screen lists. A channel that is shutting down - one being
+     * retired by {@link #setChannelCount}, or every channel during a server
+     * shutdown - is left out, so nobody picks a channel that is going away.
+     */
     public static Map<Integer, Integer> getChannelLoad() {
         Map<Integer, Integer> ret = new HashMap<>();
         for (ChannelServer cs : instances.values()) {
-            ret.put(cs.getChannel(), cs.getConnectedClients());
+            if (!cs.isShutdown()) {
+                ret.put(cs.getChannel(), cs.getConnectedClients());
+            }
         }
         return ret;
     }
@@ -710,6 +789,184 @@ public class ChannelServer {
             // false：正在寫資料庫的那一輪讓它寫完，不要從中間打斷。
             task.cancel(false);
         }
+    }
+
+    /**
+     * 重新讀 {@code tms.AutoSaveMinutes} 並換上新的排程：舊排程以
+     * {@code cancel(false)} 取消（正在存的那一輪照樣存完），新的間隔從現在起算。
+     * 關閉中的頻道不再掛排程。
+     */
+    public final synchronized void restartAutoSave() {
+        stopAutoSave();
+        if (!shutdown) {
+            startAutoSave();
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* 頻道數的即時調整                                                     */
+    /* ------------------------------------------------------------------ */
+
+    /** How long {@link #retire} waits for players to leave before closing their sessions outright. */
+    private static final long RETIRE_GRACE_MILLIS = 10_000;
+    /** How long it waits in all before it stops waiting. */
+    private static final long RETIRE_GIVE_UP_MILLIS = 30_000;
+    private static final long RETIRE_POLL_MILLIS = 1_000;
+
+    /**
+     * Grows or shrinks the set of running channels to {@code target}, while
+     * the server runs.
+     *
+     * <p>Growing starts each missing channel exactly the way startup does -
+     * maps, event scripts, port, auto-save. Shrinking retires the
+     * highest-numbered channels (so the remaining ones stay 1..target, which
+     * the "next channel" logic in {@code InventoryHandler} assumes): see
+     * {@link #retire}. Retirement finishes on a timer, so this returns before
+     * the channel is fully gone; a channel that is still retiring cannot be
+     * started again until it is.
+     *
+     * @return a one-line summary for the operator
+     * @throws IllegalStateException when a channel that would have to be
+     * started is still retiring, or a new one cannot bind its port
+     */
+    public static synchronized String setChannelCount(final int target) {
+        if (target < 1) {
+            throw new IllegalArgumentException("頻道數至少要是 1");
+        }
+        int current = 0;
+        for (final ChannelServer cs : instances.values()) {
+            if (!cs.isShutdown()) {
+                current = Math.max(current, cs.getChannel());
+            }
+        }
+        if (target > current) {
+            for (int ch = current + 1; ch <= target; ch++) {
+                if (instances.containsKey(ch)) {
+                    throw new IllegalStateException("頻道 " + ch + " 還在關閉中，等它關完（最多約 "
+                            + RETIRE_GIVE_UP_MILLIS / 1000 + " 秒）再加回來");
+                }
+            }
+            final List<Integer> started = new ArrayList<>();
+            for (int ch = current + 1; ch <= target; ch++) {
+                final ChannelServer cs = newInstance(ch);
+                String failure = null;
+                try {
+                    cs.run_startup_configurations();
+                    if (cs.boundAddress == null) {
+                        // run_startup_configurations has already logged why.
+                        failure = "無法綁定 port " + cs.port;
+                    }
+                } catch (final RuntimeException e) {
+                    failure = String.valueOf(e.getCause() == null ? e : e.getCause());
+                }
+                if (failure != null) {
+                    // Undo the registration run_startup_configurations makes
+                    // first thing, so the login screen does not list it.
+                    cs.shutdown = true;
+                    cs.stopAutoSave();
+                    cs.getPlayerStorage().close();
+                    instances.remove(ch);
+                    LoginServer.removeChannel(ch);
+                    throw new IllegalStateException("頻道 " + ch + " 開啟失敗：" + failure
+                            + (started.isEmpty() ? "" : "（已開啟 " + started + "）"));
+                }
+                started.add(ch);
+            }
+            return "已開啟頻道 " + started;
+        }
+        if (target < current) {
+            final List<Integer> retiring = new ArrayList<>();
+            for (int ch = target + 1; ch <= current; ch++) {
+                final ChannelServer cs = instances.get(ch);
+                if (cs != null && !cs.isShutdown()) {
+                    cs.retire(1);
+                    retiring.add(ch);
+                }
+            }
+            return "正在關閉頻道 " + retiring + "，線上玩家會被移到頻道 1";
+        }
+        return "頻道數不變（" + current + "）";
+    }
+
+    /**
+     * The channel a client should be sent to when it asked for
+     * {@code wanted}: that one if it is serving, otherwise the lowest-numbered
+     * one that is, or null if none is.
+     *
+     * <p>A channel can now go away under a client that picked it - from the
+     * login screen a moment before, or before it walked into the cash shop -
+     * and every caller below used to dereference {@code getInstance()} blind.
+     */
+    public static ChannelServer servingOrFallback(final int wanted) {
+        final ChannelServer cs = instances.get(wanted);
+        if (cs != null && !cs.isShutdown()) {
+            return cs;
+        }
+        ChannelServer best = null;
+        for (final ChannelServer other : instances.values()) {
+            if (!other.isShutdown() && (best == null || other.getChannel() < best.getChannel())) {
+                best = other;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Takes this one channel out of service while every other part of the
+     * server keeps running.
+     *
+     * <p>Unlike {@link #shutdown(Object)}, which is the whole-server path and
+     * deliberately skips the party / guild / buddy clean-up because everything
+     * is going down anyway, the players here are handed to another channel the
+     * same way a player's own channel change does it; anyone still here after
+     * {@link #RETIRE_GRACE_MILLIS} has the session closed, which runs the full
+     * disconnect clean-up. Marking the channel shut down first is what takes
+     * it off the login screen and refuses channel changes into it.
+     */
+    private void retire(final int fallback) {
+        shutdown = true;
+        LoginServer.removeChannel(channel);
+        stopAutoSave();
+        LOG.log(System.Logger.Level.INFO, "Channel " + channel + ": 關閉中，線上玩家移往頻道 " + fallback + ".");
+        broadcastPacket(ChatPacket.serverNotice(0, "頻道 " + channel + " 即將關閉，你會被移到頻道 " + fallback + "。"));
+        closeAllMerchant();
+        for (final MapleCharacter chr : getPlayerStorage().getAllCharacters()) {
+            try {
+                chr.changeChannel(fallback);
+            } catch (final RuntimeException e) {
+                LOG.log(System.Logger.Level.WARNING, "Channel " + channel + ": 無法把 " + chr.getName()
+                        + " 移到頻道 " + fallback + "，改為中斷連線：" + e);
+                chr.getClient().getSession().close();
+            }
+        }
+        Timer.ETC.schedule(() -> finishRetire(System.currentTimeMillis()), RETIRE_POLL_MILLIS);
+    }
+
+    private void finishRetire(final long since) {
+        final long waited = System.currentTimeMillis() - since;
+        if (getPlayerStorage().getConnectedClients() > 0 && waited < RETIRE_GIVE_UP_MILLIS) {
+            if (waited >= RETIRE_GRACE_MILLIS) {
+                for (final MapleCharacter chr : getPlayerStorage().getAllCharacters()) {
+                    chr.getClient().getSession().close();
+                }
+            }
+            Timer.ETC.schedule(() -> finishRetire(since), RETIRE_POLL_MILLIS);
+            return;
+        }
+        // Closes whatever sessions are still on the port. Their disconnect
+        // clean-up runs on their own threads and looks this channel up by
+        // number, so the instance stays registered for a few more seconds.
+        MapleAcceptor.unbind(boundAddress);
+        boundAddress = null;
+        synchronized (eventLock) {
+            eventSM.cancel();
+        }
+        Timer.ETC.schedule(() -> {
+            getPlayerStorage().close();
+            instances.remove(channel);
+            LoginServer.removeChannel(channel);
+            setFinishShutdown();
+        }, 5_000);
     }
 
     private static int autoSaveMinutes() {

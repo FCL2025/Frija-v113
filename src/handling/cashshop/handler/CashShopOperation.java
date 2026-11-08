@@ -36,9 +36,17 @@ public class CashShopOperation {
         c.updateLoginState(MapleClient.LOGIN_SERVER_TRANSITION, c.getSessionIPAddress());
 
         try {
-
-            World.channelChange_Data(new CharacterTransfer(chr), chr.getId(), c.getChannel());
-            c.send(ServerPacket.getChannelChange(Integer.parseInt(ChannelServer.getInstance(c.getChannel()).getIP().split(":")[1])));
+            // The channel this player came from may have been retired while
+            // they were shopping (tms.Count can go down at runtime); send them
+            // to the lowest one still serving instead.
+            final ChannelServer back = ChannelServer.servingOrFallback(c.getChannel());
+            if (back == null) {
+                c.getSession().close();
+                return;
+            }
+            c.setChannel(back.getChannel());
+            World.channelChange_Data(new CharacterTransfer(chr), chr.getId(), back.getChannel());
+            c.send(ServerPacket.getChannelChange(Integer.parseInt(back.getIP().split(":")[1])));
         } finally {
             chr.saveToDB(false, true);
             c.setPlayer(null);

@@ -2,6 +2,7 @@ package handling.login.handler;
 
 import client.LoginCrypto;
 import database.DatabaseConnection;
+import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -34,7 +35,11 @@ public class AutoRegister {
 
     /**
      * Registers {@code login}, unless the requesting address already holds
-     * {@link #ACCOUNTS_PER_IP} accounts.
+     * {@link #ACCOUNTS_PER_IP} accounts. A client on this machine (loopback,
+     * i.e. {@code 127.0.0.0/8} or {@code ::1}) has no limit: whoever sits at
+     * the server's own keyboard is the operator testing it, and with every
+     * local client sharing 127.0.0.1 the limit meant exactly one account could
+     * ever be auto-registered from here.
      *
      * The answer is returned rather than parked in a public static field, which
      * is how this used to report itself. Two clients auto-registering at the same
@@ -45,14 +50,17 @@ public class AutoRegister {
      * @return true only when a row was actually inserted.
      */
     public static boolean createAccount(String login, String pwd, String eip) {
-        String sockAddr = eip;
+        final String ip = hostOf(eip);
 
-        try (Connection con = DatabaseConnection.getConnection();
-                PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
-            ipc.setString(1, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
-            try (ResultSet rs = ipc.executeQuery()) {
-                if (!(rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP)) {
-                    return false;
+        try (Connection con = DatabaseConnection.getConnection()) {
+            if (!isLoopback(ip)) {
+                try (PreparedStatement ipc = con.prepareStatement("SELECT SessionIP FROM accounts WHERE SessionIP = ?", ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+                    ipc.setString(1, ip);
+                    try (ResultSet rs = ipc.executeQuery()) {
+                        if (!(rs.first() == false || rs.last() == true && rs.getRow() < ACCOUNTS_PER_IP)) {
+                            return false;
+                        }
+                    }
                 }
             }
             try (PreparedStatement ps = con.prepareStatement("INSERT INTO accounts (name, password, salt, email, birthday, macs, SessionIP) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
@@ -70,13 +78,37 @@ public class AutoRegister {
                 ps.setString(4, "autoregister@mail.com");
                 ps.setString(5, "2008-04-07");
                 ps.setString(6, "00-00-00-00-00-00");
-                ps.setString(7, sockAddr.substring(1, sockAddr.lastIndexOf(':')));
+                ps.setString(7, ip);
                 ps.executeUpdate();
             }
             return true;
         } catch (SQLException ex) {
             // Terse on purpose, as above; the registration is abandoned.
             LOG.log(System.Logger.Level.ERROR, "自動註冊失敗：" + ex);
+            return false;
+        }
+    }
+
+    /**
+     * The host part of MINA's {@code SocketAddress.toString()}, which is
+     * {@code /1.2.3.4:5678} - or {@code /0:0:0:0:0:0:0:1:5678} for IPv6, hence
+     * the last colon rather than the first.
+     */
+    static String hostOf(final String remoteAddress) {
+        final int colon = remoteAddress.lastIndexOf(':');
+        final int start = remoteAddress.startsWith("/") ? 1 : 0;
+        return colon > start ? remoteAddress.substring(start, colon) : remoteAddress.substring(start);
+    }
+
+    /**
+     * Whether {@code host} - an IP literal - is this machine. {@code ofLiteral}
+     * never does a DNS lookup, so a malformed value is simply "not loopback"
+     * rather than a blocking resolve on a packet-handler thread.
+     */
+    static boolean isLoopback(final String host) {
+        try {
+            return InetAddress.ofLiteral(host).isLoopbackAddress();
+        } catch (final IllegalArgumentException e) {
             return false;
         }
     }

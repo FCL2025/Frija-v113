@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ApiError, errorMessage } from '@/lib/api'
+import { errorMessage } from '@/lib/api'
 import { formatDateTime, formatNumber } from '@/lib/format'
 import {
   useAccount,
@@ -479,8 +479,6 @@ function CharacterDialog({ id, onClose }: { id: number | null; onClose: () => vo
     update.mutate({ id: c.id, patch: patch as CharacterPatch })
   }
 
-  const conflict = update.isError && update.error instanceof ApiError && update.error.status === 409
-
   return (
     <Dialog open={id !== null} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-2xl">
@@ -491,7 +489,7 @@ function CharacterDialog({ id, onClose }: { id: number | null; onClose: () => vo
             {c?.online && <StatusBadge tone="good">線上 · 頻道 {c.onlineChannel}</StatusBadge>}
           </DialogTitle>
           <DialogDescription>
-            角色資料在線上時活在記憶體裡，資料庫只是舊複本，下一次自動存檔就會把這裡的修改蓋掉——所以線上角色會拒絕寫入，請先踢下線。
+            線上角色會直接改記憶體裡的角色並推送更新給玩家（立即看得到），同時寫入資料庫；離線角色只寫資料庫，下次登入生效。
           </DialogDescription>
         </DialogHeader>
         <QueryError error={detail.error} />
@@ -502,7 +500,7 @@ function CharacterDialog({ id, onClose }: { id: number | null; onClose: () => vo
                 <AlertTriangle />
                 <AlertTitle>角色在線上（頻道 {c.onlineChannel}，地圖 {c.onlineMap}）</AlertTitle>
                 <AlertDescription className="flex flex-wrap items-center gap-2">
-                  儲存會被拒絕。
+                  儲存會即時套用到線上角色；改地圖或出生點會把角色傳送過去，性別要重新登入才看得到。
                   <Button type="button" size="xs" variant="outline" disabled={kick.isPending} onClick={() => kick.mutate(c.id)}>
                     <UserX data-icon="inline-start" />
                     踢下線
@@ -534,20 +532,26 @@ function CharacterDialog({ id, onClose }: { id: number | null; onClose: () => vo
             </div>
             {update.isError && (
               <Alert variant="destructive">
-                <AlertTitle>{conflict ? '角色在線上，已拒絕寫入' : '寫入失敗'}</AlertTitle>
+                <AlertTitle>寫入失敗</AlertTitle>
                 <AlertDescription>{errorMessage(update.error)}</AlertDescription>
               </Alert>
             )}
             {update.data && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <StatusBadge tone="good">已寫入 {update.data.saved.columns.join(', ')}</StatusBadge>
+                {update.data.applied.live && update.data.applied.live.length > 0 && (
+                  <StatusBadge tone="good">線上已生效：{update.data.applied.live.join(', ')}</StatusBadge>
+                )}
+                {update.data.applied.nextLogin && update.data.applied.nextLogin.length > 0 && (
+                  <StatusBadge tone="warning">重新登入後可見：{update.data.applied.nextLogin.join(', ')}</StatusBadge>
+                )}
                 {!update.data.applied.ok && <StatusBadge tone="critical">{update.data.applied.error}</StatusBadge>}
               </div>
             )}
             <DialogFooter>
-              <Button type="submit" size="sm" disabled={update.isPending || c.online}>
+              <Button type="submit" size="sm" disabled={update.isPending}>
                 {update.isPending ? <LoaderCircle className="animate-spin" data-icon="inline-start" /> : <Save data-icon="inline-start" />}
-                儲存（僅離線角色）
+                {c.online ? '儲存（即時套用）' : '儲存'}
               </Button>
             </DialogFooter>
           </form>

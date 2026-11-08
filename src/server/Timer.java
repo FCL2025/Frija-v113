@@ -138,6 +138,21 @@ public enum Timer {
         }
     }
 
+    /**
+     * Resizes every pool that has started; one that has not will read
+     * {@code tms.TimerThreads} when it does. {@code threads <= 0} means the
+     * default. A scheduled pool only ever runs core threads, so the core size
+     * is the whole of it.
+     */
+    public static void setPoolSize(final int threads) {
+        final int n = threads <= 0 ? DEFAULT_THREADS : threads;
+        for (final Timer timer : values()) {
+            if (timer.ses instanceof ScheduledThreadPoolExecutor stpe && !stpe.isShutdown()) {
+                stpe.setCorePoolSize(n);
+            }
+        }
+    }
+
     public ScheduledFuture<?> register(final Runnable r, final long repeatTime, final long delay) {
         final ScheduledExecutorService current = pool();
         if (current == null) {

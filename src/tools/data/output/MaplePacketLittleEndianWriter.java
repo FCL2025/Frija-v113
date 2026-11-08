@@ -41,7 +41,12 @@ import tools.HexTool;
 public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWriter {
 
     private static final System.Logger LOG = System.getLogger(MaplePacketLittleEndianWriter.class.getName());
-    private static final boolean DEBUG_MODE = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
+    private static volatile boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
+
+    /** {@code tms.Debug} at runtime, from {@code server.LiveSettings}. */
+    public static void setDebugMode(final boolean on) {
+        debugMode = on;
+    }
 
     private final ByteArrayOutputStream baos;
 
@@ -79,7 +84,7 @@ public final class MaplePacketLittleEndianWriter extends GenericLittleEndianWrit
         // - a DEBUG record is dropped unless someone lowers
         // tools.data.output.MaplePacketLittleEndianWriter.level to FINE in
         // Libs/logging.properties. Neither one builds the string.
-        if (DEBUG_MODE && LOG.isLoggable(System.Logger.Level.DEBUG)) {
+        if (debugMode && LOG.isLoggable(System.Logger.Level.DEBUG)) {
             MaplePacket packet = new ByteArrayMaplePacket(baos.toByteArray());
             LOG.log(System.Logger.Level.DEBUG, "Packet to be sent:\n" + packet.toString());
         }

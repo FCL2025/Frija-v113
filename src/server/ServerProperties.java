@@ -5,7 +5,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.Set;
 import database.DatabaseConnection;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
@@ -68,4 +70,29 @@ public class ServerProperties {
     public static String getProperty(String s, String def) {
         return props.getProperty(s, def);
     }
+
+    /** Forgets a key, so that readers fall back to their default again. */
+    public static void removeProperty(final String s) {
+        props.remove(s);
+    }
+
+    /** Every key currently held, file and database rows alike. A copy. */
+    public static Set<String> propertyNames() {
+        return props.stringPropertyNames();
+    }
+
+    /**
+     * {@code Settings.ini} as it is on disk now, read exactly the way the
+     * static initialiser read it at startup. For {@code LiveSettings}, which
+     * compares it against what the server is running.
+     */
+    public static Properties readSettingsFile() throws IOException {
+        final Properties fresh = new Properties();
+        try (InputStreamReader fr = new InputStreamReader(new FileInputStream(SETTINGS_FILE), StandardCharsets.UTF_8)) {
+            fresh.load(fr);
+        }
+        return fresh;
+    }
+
+    public static final String SETTINGS_FILE = "Settings.ini";
 }

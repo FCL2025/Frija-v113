@@ -1,5 +1,6 @@
 package server.panel;
 
+import client.CharacterLiveEdit;
 import client.MapleCharacter;
 import client.MapleClient;
 import database.DatabaseConnection;
@@ -28,14 +29,16 @@ import server.MapleCarnivalChallenge;
  * nearly every column of {@code characters} and the four currency columns of
  * {@code accounts} ({@code ACash}, {@code mPoints}, {@code points},
  * {@code vpoints}). So every write first asks the channels whether the target
- * is online:
+ * is online, and if so changes the live object as well as the row:
  * <ul>
- * <li>{@code characters}: online → 409, with the channel, and a kick action
- * next to it. There is no field on that table worth a race with the save.</li>
- * <li>{@code accounts}: the currency columns go through the online
- * character's own setters as well as the row, so the next save writes the
- * same numbers; the rest of the row (ban state, GM flag, email) is only read
- * at login, and a ban also closes the session so that it takes effect now.</li>
+ * <li>{@code characters}: through {@link CharacterLiveEdit}, with the stat
+ * packets the game sends itself, so the player sees the change at once and
+ * the next save writes the same values. (This used to be a 409 and a kick
+ * button.)</li>
+ * <li>{@code accounts}: the currency columns and the GM flag go through the
+ * online character's and client's own setters as well as the row; a ban
+ * closes the session so that it takes effect now; the rest (ban reason,
+ * email, birthday) is only ever read at the login screen.</li>
  * </ul>
  *
  * <p>Password material - {@code password}, {@code salt}, {@code 2ndpassword},
@@ -372,6 +375,15 @@ final class AccountsApi {
                         chr.setVPoints((Integer) e.getValue());
                         applied.add("vpoints");
                     }
+                    case "gm" -> {
+                        chr.getClient().setGm((Integer) e.getValue() > 0);
+                        applied.add("gm");
+                    }
+                    // banned / tempban act below by closing the session, which
+                    // is as live as a ban gets. What is left - banreason,
+                    // greason, email, birthday, the account's gender - is only
+                    // ever consulted at the login screen, so "next login" is
+                    // simply when it is next used, not a delay.
                     default -> deferred.add(e.getKey());
                 }
             }
@@ -498,17 +510,19 @@ final class AccountsApi {
     }
 
     /**
-     * Refused outright for an online character: the in-memory object is the
-     * truth and would overwrite this write on its next save. The 409 carries
-     * the channel so the UI can offer the kick.
+     * Writes the given columns - for an online character too.
+     *
+     * <p>This used to be refused outright for an online character, because the
+     * in-memory object is the truth and its next save would have overwritten
+     * the row. Now the edit goes into that object first
+     * ({@link CharacterLiveEdit}), with the stat packets the game itself sends,
+     * so the player sees it at once and the next save writes the same values;
+     * then the row is written as well. A column the live object refused (a map
+     * that does not exist, say) is left out of the row too, so the two cannot
+     * disagree.
      */
     private static Map<String, Object> updateCharacter(final int id, final Map<String, Object> body) throws SQLException {
         final Online o = new OnlineIndex().byCharacter.get(id);
-        if (o != null) {
-            throw new Router.HttpError(409, "角色「" + o.chr().getName() + "」正在頻道 " + o.channel()
-                    + " 線上；線上角色的資料庫寫入會被下一次自動存檔蓋掉。請先踢下線再編輯。",
-                    Json.obj("online", true, "channel", o.channel()));
-        }
         final Map<String, Object> values = new LinkedHashMap<>();
         for (final Map.Entry<String, Boolean> e : CHARACTER_EDITABLE.entrySet()) {
             if (!body.containsKey(e.getKey())) {
@@ -527,6 +541,14 @@ final class AccountsApi {
         }
         if (values.isEmpty()) {
             throw new Router.HttpError(400, "沒有可寫入的欄位，可用：" + String.join(", ", CHARACTER_EDITABLE.keySet()));
+        }
+        CharacterLiveEdit.Result live = null;
+        if (o != null) {
+            live = CharacterLiveEdit.apply(o.chr(), values);
+            values.keySet().removeAll(live.failed().keySet());
+            if (values.isEmpty()) {
+                throw new Router.HttpError(400, "線上角色套用失敗：" + live.failed());
+            }
         }
         final StringBuilder sql = new StringBuilder("UPDATE characters SET ");
         boolean first = true;
@@ -548,14 +570,23 @@ final class AccountsApi {
         if (rows == 0) {
             throw new Router.HttpError(404, "找不到這個角色");
         }
-        // Raced: someone logged in between the check and the write. Say so
-        // rather than pretend the row will stick.
+        if (live != null) {
+            return Json.obj(
+                    "id", id,
+                    "saved", Json.obj("ok", true, "columns", new ArrayList<>(values.keySet())),
+                    "applied", Json.obj("ok", live.failed().isEmpty(), "online", true,
+                            "live", live.live(), "nextLogin", live.nextLogin(),
+                            "error", live.failed().isEmpty() ? null : "未套用：" + live.failed()));
+        }
+        // Raced: someone logged in between the check and the write, so the
+        // object they are playing was loaded from the old row. Say so rather
+        // than pretend the row will stick.
         final Online now = new OnlineIndex().byCharacter.get(id);
         return Json.obj(
                 "id", id,
                 "saved", Json.obj("ok", true, "columns", new ArrayList<>(values.keySet())),
                 "applied", Json.obj("ok", now == null, "online", now != null,
-                        "error", now == null ? null : "角色在寫入期間登入了，這次的變更會被自動存檔蓋掉"));
+                        "error", now == null ? null : "角色在寫入期間登入了，請再存一次讓線上角色也套用"));
     }
 
     private static Map<String, Object> kickCharacter(final int id) {

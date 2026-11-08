@@ -165,7 +165,8 @@ public final class Router implements HttpHandler {
     private record Entry(String method, String[] segments, Route route) {
     }
 
-    private final byte[] token;
+    /** Replaced whole by {@link #setToken}; read once per request. */
+    private volatile byte[] token;
     private final Set<String> allowedHosts;
     private final Set<String> allowedOrigins;
     private final List<Entry> routes = new ArrayList<>();
@@ -174,6 +175,10 @@ public final class Router implements HttpHandler {
         this.token = token.getBytes(StandardCharsets.UTF_8);
         this.allowedHosts = Set.of("127.0.0.1:" + port, "localhost:" + port, "[::1]:" + port);
         this.allowedOrigins = Set.of("http://127.0.0.1:" + port, "http://localhost:" + port, "http://[::1]:" + port);
+    }
+
+    void setToken(final String token) {
+        this.token = token.getBytes(StandardCharsets.UTF_8);
     }
 
     /** {@code pattern} is a path such as {@code /api/logs/{name}}; segments in braces bind to {@link Request#param}. */

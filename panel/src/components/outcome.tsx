@@ -19,10 +19,16 @@ export function Outcome({ saved, applied, applyWord = '套用' }: OutcomeProps) 
   let label: string
   let detail: string | undefined
 
-  if (saved.ok && applied.ok) {
+  if (saved.ok && applied.ok && applied.mode === 'none') {
+    tone = 'neutral'
+    icon = CheckCircle2
+    label = '已保存（無作用）'
+    detail = '沒有程式讀這個設定，改了不會有任何效果'
+  } else if (saved.ok && applied.ok) {
     tone = 'good'
     icon = CheckCircle2
     label = `已${applyWord}且已保存`
+    detail = applied.note ?? undefined
   } else if (!saved.ok && applied.ok) {
     tone = 'warning'
     icon = AlertTriangle

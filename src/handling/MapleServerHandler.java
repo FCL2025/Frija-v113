@@ -127,7 +127,12 @@ public class MapleServerHandler extends IoHandlerAdapter implements MapleServerH
      * field - building the hex dump is the expensive part and must not happen
      * when nothing will print it.
      */
-    private static boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
+    private static volatile boolean debugMode = Boolean.parseBoolean(ServerProperties.getProperty("tms.Debug", "false"));
+
+    /** {@code tms.Debug} at runtime, from {@code server.LiveSettings}. */
+    public static void setDebugMode(final boolean on) {
+        debugMode = on;
+    }
     //Note to Zero: Use an enumset. Don't iterate through an array.
     private static final EnumSet<RecvPacketOpcode> blocked = EnumSet.noneOf(RecvPacketOpcode.class);
     /**

@@ -43,7 +43,7 @@ public enum CheatingOffense {
     PET_ITEMVAC_CLIENT((byte) 5, 10000, 20, (byte) 3),
     PET_ITEMVAC_SERVER((byte) 3, 10000, 100, (byte) 3),
     USING_FARAWAY_PORTAL((byte) 1, 60000, 100, (byte) 0),
-    AST_TAKE_DAMAG((byte) 1, 60000, 100),
+    FAST_TAKE_DAMAGE((byte) 1, 60000, 100), // A27：以前拼成 AST_TAKE_DAMAG（頭尾各少一個字母）
     HIGH_AVOID((byte) 20, 180000, 100, (byte) 3),
     //    FAST_MOVE((byte) 1, 60000),
     HIGH_JUMP((byte) 1, 60000),

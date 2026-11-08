@@ -106,8 +106,9 @@ public class CheatTracker {
         lastDamageTakenTime = System.currentTimeMillis();
 
         // 刻意保留：這裡記錄「連續受傷過快」這個檢查存在，但被關掉了。
-        // 注意 CheatingOffense 裡沒有 FAST_TAKE_DAMAGE，只有拼錯的 AST_TAKE_DAMAG，
-        // 所以直接取消註解是編不過的。
+        // 常數名已於 A27 改正（以前是拼錯的 AST_TAKE_DAMAG，取消註解會編不過），
+        // 但不要直接打開：條件式少了括號，takingDamageSince / 500 先算，
+        // 本意應是 (lastDamageTakenTime - takingDamageSince) / 500。打開等於新增一條封鎖規則。
         if (lastDamageTakenTime - takingDamageSince / 500 < numSequentialDamage) {
 //            registerOffense(CheatingOffense.FAST_TAKE_DAMAGE);
         }

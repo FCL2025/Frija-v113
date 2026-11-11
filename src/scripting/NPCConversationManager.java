@@ -97,6 +97,8 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
     private String getText;
     private byte type; // -1 = NPC, 0 = start quest, 1 = end quest
     private byte lastMsg = -1;
+    // What the last number prompt / style picker offered; see isValidSelection.
+    private int numberMin, numberMax, styleCount;
     public boolean pendingDisposal = false;
     private Invocable iv;
 
@@ -306,6 +308,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             return;
         }
         c.send(NPCPacket.getNPCTalkStyle(npc, text, args));
+        styleCount = args.length;
         lastMsg = 7;
     }
 
@@ -338,6 +341,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             return;
         }
         c.send(NPCPacket.getNPCTalkStyle(npc, text, styles));
+        styleCount = styles.length;
         lastMsg = 7;
     }
 
@@ -350,6 +354,8 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
             return;
         }
         c.send(NPCPacket.getNPCTalkNum(npc, text, def, min, max));
+        numberMin = min;
+        numberMax = max;
         lastMsg = 3;
     }
 
@@ -1266,6 +1272,21 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
 
     public final void setLastMsg(final byte last) {
         this.lastMsg = last;
+    }
+
+    /**
+     * Whether a confirmed reply to a prompt of type {@code msgType} is one the real client could
+     * have sent. The number dialog's min/max and the style picker's list length are enforced by the
+     * client only, and scripts use the reply as a quantity ({@code qty = selection}) or an array
+     * index ({@code hairnew[selection]}): a crafted {@code -1} made every crafting NPC pay out the
+     * materials and mesos it was meant to charge. Other prompt types are not bounded here.
+     */
+    public boolean isValidSelection(byte msgType, int selection) {
+        return switch (msgType) {
+            case 3 -> selection >= numberMin && selection <= numberMax;
+            case 7 -> selection >= 0 && selection < styleCount;
+            default -> true;
+        };
     }
     
     public int getBossLog(String bossid) {

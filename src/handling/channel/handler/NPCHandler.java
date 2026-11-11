@@ -363,6 +363,14 @@ public class NPCHandler {
                 cm.dispose();
                 return;//h4x
             }
+            // Ending the chat (action 0) still reaches the script as mode 0, as it always did;
+            // a confirmed answer must lie inside what the prompt offered.
+            if (action == 1 && !cm.isValidSelection(lastMsg, selection)) {
+                LOG.log(System.Logger.Level.WARNING, c.getPlayer().getName() + " 回覆 NPC " + cm.getNpc()
+                        + " 的對話（類型 " + lastMsg + "）時送出超出範圍的選擇 " + selection + "，已結束對話");
+                cm.dispose();
+                return;
+            }
             if (selection >= -1 && action != -1) {
                 if (cm.getType() == 0) {
                     NPCScriptManager.getInstance().startQuest(c, action, lastMsg, selection);

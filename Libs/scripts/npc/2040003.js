@@ -29,7 +29,7 @@ function action(mode, type, selection) {
             } else {
                 var prop = em.getProperty("started");
 
-                if (prop.equals("0") || prop == null) {
+                if (prop == null || prop.equals("0")) {
                     em.startInstance(cm.getPlayer());
                     cm.dispose();
                     return;
@@ -45,6 +45,11 @@ function action(mode, type, selection) {
         if (cm.haveItem(4031092, 10)) {
             if (cm.getQuestStatus(3239) == 1) {
                 id = Math.floor(Math.random() * 任務道具.length);
+                if (!cm.canHold(任務道具[id])) {
+                    cm.sendOk("你的消耗欄已經滿了，請先空出一格再來找我。");
+                    cm.dispose();
+                    return;
+                }
                 cm.gainItem(任務道具 [id], 1);
                 cm.removeAll(4031092);
                 cm.gainExp(2700);

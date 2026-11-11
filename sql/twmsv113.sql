@@ -38,6 +38,9 @@
 --     最近一小時那個改成依角色加總；cheatlog 從 E17 起真的會被寫入。
 --   已經匯入過的資料庫請跑 sql/migrations/ 底下對應的檔案。
 --
+-- 2026-11 另在 drop_data_global 加了第 5 筆：楓葉（4001126）全域掉落，給併進來的
+-- 楓葉兌換 NPC 用（sql/migrations/maple-leaf-global-drop.sql）。
+--
 -- 另有 8 個名字同樣零引用，但「刻意保留」，各自的 CREATE TABLE 上方都有一行說明：
 --   * blocklogin / blockuse / loginlog / uselog / invitecodedata / ipvotelog
 --     - 外部網頁會員後台與註冊頁在用（欄位是 varchar(255)+active 那一套風格，
@@ -31306,6 +31309,11 @@ INSERT INTO `drop_data_global` VALUES (1,-1,0,2210040,1,1,0,10000,'萬聖節');
 INSERT INTO `drop_data_global` VALUES (2,-1,0,2210041,1,1,0,10000,'萬聖節');
 INSERT INTO `drop_data_global` VALUES (3,-1,0,2210042,1,1,0,10000,'萬聖節');
 INSERT INTO `drop_data_global` VALUES (4,-1,0,2210008,1,1,0,1000,'萬聖節');
+--
+-- 2026-11：楓葉（4001126）改為全域掉落，每隻怪 10%。NPC 9010000、9330012 拿它當
+-- 兌換材料，而 drop_data 裡沒有任何怪物掉它。說明見 sql/migrations/maple-leaf-global-drop.sql。
+--
+INSERT INTO `drop_data_global` VALUES (5,-1,0,4001126,1,1,0,100000,'楓葉：NPC 9010000、9330012 兌換用');
 
 
 -- ---------------------------------------------------------------------------

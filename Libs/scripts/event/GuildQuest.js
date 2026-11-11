@@ -1,7 +1,7 @@
 /*
 * Guild Quest 
 */
-
+load('nashorn:mozilla_compat.js');
 importPackage(java.lang);
 
 var mapz = Array(0, 100, 200, 300, 301, 400, 401, 410, 420, 430, 431, 440, 500, 501, 502, 600, 610, 611, 620, 630, 631, 640, 641, 700, 800, 900, 1000, 1100, 1101);
@@ -55,17 +55,17 @@ function scheduledTimeout(eim) {
     if (em.getProperty("state").equals("0")) {
 	em.setProperty("state", "1");
 
-	if (!disposePlayerBelow(eim, 5, 990001100, "You need at least 6 people to begin the Guild Quest.")) {
+	if (!disposePlayerBelow(eim, 5, 990001100, "你需要六個人以上才能開始公會任務。")) {
 	    var iter = players(eim).iterator();
 	    while (iter.hasNext()) {
-		iter.next().dropMessage(5, "The Guild Quest has begun.");
+		iter.next().dropMessage(5, "公會任務已經開始了。");
 	    }
     	em.setProperty("started", "true");
 	eim.setProperty("canEnter", "true");
 	    eim.restartEventTimer(3600000);
 	}
     } else if (em.getProperty("state").equals("1")) {
-	disposePlayerBelow(eim, 100, 990001100, "The time has run out, guild PQ will end.");
+	disposePlayerBelow(eim, 100, 990001100, "時間到了，公會任務即將結束。");
 	} else if (em.getProperty("state").equals("2")) {
 		finish(eim);
     }
@@ -126,7 +126,7 @@ function changedMap(eim, player, mapid) {
     if (mapid < 990000000 || mapid > 990002000) {
 	eim.unregisterPlayer(player);
 	if (player.getName().equals(eim.getProperty("leader"))) { //check for party leader
-		disposePlayerBelow(eim, 100, 990001100, "The leader of the Guild Quest has left, resulting in the remaining players being warped out.");
+		disposePlayerBelow(eim, 100, 990001100, "由於領導者離開，所以公會任務整個將關閉。");
 	} else {
 		if (disposePlayerBelow(eim, 0, 0, "")) {
 			em.setProperty("started", "false");
@@ -139,10 +139,10 @@ function playerDisconnected(eim, player) {
 	eim.unregisterPlayer(player);
     if (player.getName().equals(eim.getProperty("leader"))) { //check for party leader
 	//boot all players and end
-	disposePlayerBelow(eim, 100, 990001100, "The leader of the Guild Quest has disconnected, resulting in the remaining players being warped out.");
+	disposePlayerBelow(eim, 100, 990001100, "由於領導者斷線，所以公會任務整個將關閉。");
     } else {
 	if (!em.getProperty("state").equals("0")) {
-		disposePlayerBelow(eim, 5, 990001100, "There are no longer enough players to continue the Guild Quest, meaning the remaining players shall be warped out.");
+		disposePlayerBelow(eim, 5, 990001100, "由於沒有足夠的玩家，所以公會任務將整個關閉。");
     }
 	}
 }
@@ -156,7 +156,7 @@ function disbandParty(eim) { //ignore for GQ
 function playerExit(eim, player) {
 	eim.unregisterPlayer(player);
 	if (!em.getProperty("state").equals("0")) {
-	disposePlayerBelow(eim, 5, 990001100, "There are no longer enough players to continue the Guild Quest, meaning the remaining players shall be warped out.");
+	disposePlayerBelow(eim, 5, 990001100, "由於沒有足夠的玩家，所以公會任務將整個關閉。");
 	}
 }
 

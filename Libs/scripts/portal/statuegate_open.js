@@ -9,7 +9,7 @@ function enter(pi) {
         pi.warp(990000301);
         return true;
     } else {
-        pi.playerMessage("The gate is closed.");
+        pi.playerMessage("目前門是關著。");
         return false;
     }
 }

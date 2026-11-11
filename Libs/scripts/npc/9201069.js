@@ -13,7 +13,7 @@ function action(mode, type, selection) {
     }
 
     if (status == 0) {
-	cm.sendNext("Well, hello! Welcome to the New Leaf City Plastic Surgery! Would you like to transform your face into something new? With a #b#t5152034##k, you can let us take care of the rest and have the face you've always wanted~!");
+	cm.sendNext("嗨，我是#p9201069# 如果您有#r#t5152034##k 那麼我可以幫助您~");
     } else if (status == 1) {
 	var face = cm.getPlayerStat("FACE");
 
@@ -25,13 +25,13 @@ function action(mode, type, selection) {
 	for (var i = 0; i < facetype.length; i++) {
 	    facetype[i] = facetype[i] + face % 1000 - (face % 100);
 	}
-	cm.askAvatar("Let's see... I can totally transform your face into something new. Don't you want to try it? For #b#t5152034##k, you can get the face of your liking. Take your time in choosing the face of your preference.", facetype);
+	cm.askAvatar("請選擇一個你喜歡的臉型。", facetype);
 
     } else if (status == 2){
 	if (cm.setAvatar(5152034, facetype[selection]) == 1) {
-	    cm.sendOk("Enjoy your new and improved face!");
+	    cm.sendOk("好好享受你的新臉型吧！");
 	} else {
-	    cm.sendOk("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...");
+	    cm.sendOk("痾...貌似沒有#b#t5152034##k");
 	}
 	cm.safeDispose();
     }

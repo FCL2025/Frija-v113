@@ -1,4 +1,6 @@
 function enter(pi) {
-	pi.mapMessage("很抱歉，PVP暫時不開放!");
-	return false;
+    pi.saveLocation("PVP");
+    pi.playPortalSE();
+    pi.warp(701000210, "out00");
+	return true;
 }

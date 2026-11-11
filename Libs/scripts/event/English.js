@@ -2,7 +2,7 @@ var letters0 = Array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
 var answers0 = Array("APPLE", "BEAR", "CHEESE", "DOUGHNUT", "EARTH", "FLY", "GOLD", "HALLOWEEN", "ICE", "JEWELRY", "KING", "LOVE", "MOUNTAIN", "NOTE", "ORANGE", "POLICE", "QUIZ", "ROSE", "SNAKE", "TABLE", "UFO", "VIP", "WOOD", "XMAS", "YOUNG", "ZZZ");
 var letters1 = Array(2010000, 2010001, 2010002, 2010003, 2010004, 2010005, 2010009, 2020000, 2020001, 2020002, 2020003, 2020004, 2020005, 2020007, 2020008, 2020009, 2020010, 2020012, 2020013, 2020014, 2020015, 2020016);
 var answers1 = Array("APPLE", "MEAT", "EGG", "ORANGE", "LEMON", "HONEY", "GREENAPPLE", "SALAD", "FRIEDCHICKEN", "CAKE", "PIZZA", "HAMBURGER", "HOTDOG", "DRIEDSQUID", "FATSAUSAGE", "ORANGEJUICE", "GRAPEJUICE", "MELTINGCHEESE", "REINDEERMILK", "SUNRISEDEW", "SUNSETDEW", "CHEESECAKE");
-var letters2 = Array("What is Lirin's favourite animal?", "What is the main colour of the Yeti Pyramid Area?", "Please bring me the letters [REINDEER]", "Which Valentine Rose is level 48?", "How much EXP does it take for level 1-2?", "Who exchanges Vote Points in FM?", "Who is the owner of this server (HINT: A _ _ _ _ _ _) ?", "What level does a Beginner become a Magician?", "What town does an Evan start in?", "What town is the home to the Black Wings?", "What are the Wild Hunters, Battle Mages, and Mechanics?", "What type of dragon is Mir?", "Who is Mir's ancestor?", "What weapon does the Aran use?", "Who is the job instructor for Mechanic?", "What is the item needed for 3rd job advancement?", "What NPC gives you a Pokemon starter?", "What are the animals that the Wild Hunter rides?", "Complete this job class: Knights of ?", "The ranks of the potentials are: Rare, Epic, ?", "What is the name of the top statue of Pink Bean?", "What town is closest to Horntail?", "What level can you go to Zakum?");
+var letters2 = Array("Lirin最喜歡什麼動物??", "金字塔法老王是什麼顏色??", "請給我的這些字母 [REINDEER]", "Which Valentine Rose is level 48?", "How much EXP does it take for level 1-2?", "Who exchanges Vote Points in FM?", "Who is the owner of this server (HINT: A _ _ _ _ _ _) ?", "What level does a Beginner become a Magician?", "What town does an Evan start in?", "What town is the home to the Black Wings?", "What are the Wild Hunters, Battle Mages, and Mechanics?", "What type of dragon is Mir?", "Who is Mir's ancestor?", "What weapon does the Aran use?", "Who is the job instructor for Mechanic?", "冒險家三轉需要用到哪一種石頭??", "哪一個NPC可以給你第一只神奇寶貝??", "狂暴獵人的豹英文??", "皇家騎士團幾等可以四轉??", "裝備淺能何者排名最大 特殊,罕見??", "皮卡丘頭上的雕像名字是??", "暗黑龍王靠近哪個地圖??", "在楓之谷世界中殘暴炎魔幾等才能挑戰??");
 var answers2 = Array("WOLF", "YELLOW", "REINDEER", "BLUE", "FIFTEEN", "PHOENIX", "AWESOME", "EIGHT", "HENESYS", "EDELSTEIN", "RESISTANCE", "ONYX", "AFRIEN", "POLEARM", "CHECKY", "DARKCRYSTAL", "GAGA", "JAGUAR", "CYGNUS", "UNIQUE", "ARIEL", "LEAFRE", "FIFTY");
 
 function init() {
@@ -42,9 +42,9 @@ function playerEntry(eim, player) {
     var map = eim.getMapInstance(0);
     player.changeMap(map, map.getPortal(0));
 	if (eim.getProperty("mode").equals("0")) {
-		player.sendEnglishQuiz("What does Alphabet [" + eim.getProperty("question") + "] look like?");
+		player.sendEnglishQuiz("在英文村的 [" + eim.getProperty("question") + "] 怪物代表什麼??");
 	} else if (eim.getProperty("mode").equals("1")) {
-		player.sendEnglishQuiz("Please get me all the letters for #i" + parseInt(eim.getProperty("question")) + "#.");
+		player.sendEnglishQuiz("請給我這些字母 #i" + parseInt(eim.getProperty("question")) + "#.");
 	} else if (eim.getProperty("mode").equals("2")) {
 		player.sendEnglishQuiz(eim.getProperty("question"));
 	}

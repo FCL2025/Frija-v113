@@ -1,67 +1,75 @@
-var itemid = new Array(4031036,4031037,4031038,4031711);
-var mapid = new Array(103000900,103000903,103000906,600010004);
-var menu;
-var status;
-var sw;
+/*
+	This file is part of the OdinMS Maple Story Server
+    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
+		       Matthias Butz <matze@odinms.de>
+		       Jan Christian Meyer <vimes@odinms.de>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation version 3 as published by
+    the Free Software Foundation. You may not use, modify or distribute
+    this program under any other version of the GNU Affero General Public
+    License.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+status = -1;
+close = false;
+oldSelection = -1;
 
 function start() {
-    status = 0;
-    sw = cm.getEventManager("Subway");
-    action(1, 0, 0);
+    var text = "這裡是檢票口";
+    if (cm.haveItem(4031711) || cm.haveItem(4031036) || cm.haveItem(4031037) || cm.haveItem(4031038))
+        text += " 你要使用這票??#b";
+    else
+        close = true;
+    if (cm.haveItem(4031711))
+        text += "\r\n#L3##t4031711#";
+    for (var i = 0; i < 3; i++)
+        if (cm.haveItem(4031036 + i))
+            text += "\r\n#L" + i + "##t" + (4031036 + i) +"#";
+    if (close) {
+        cm.sendOk(text);
+        cm.dispose();
+    } else
+        cm.sendSimple(text);
 }
 
 function action(mode, type, selection) {
-    if (mode == 0 && status ==1) {
-	cm.dispose();
-    } else {
-	if (mode == 0) {
-	    cm.sendNext("You must have some business to take care of here, right?");
-	    cm.dispose();
-	    return;
-	}
-	if (mode == 1)
-	    status++;
-	if (status == 1) {
-	    menu = "Here's the ticket reader. You will be brought in immediately. Which ticket would like to use?\r\n";
-	    for (i=0; i < itemid.length; i++) {
-		if(cm.haveItem(itemid[i])) {
-		    menu += "#L"+i+"##b#m"+mapid[i]+"##k#l\r\n";
-		}
-	    }
-		menu += "#L" + (itemid.length) + "##b地鐵 1#k#l\r\n#L" + (itemid.length + 1) + "##b#l\r\n";
-	    cm.sendSimple(menu);
-	} if (status == 2) {
-	    section = selection;
-	    if(section < (itemid.length - 1)) {
-		cm.gainItem(itemid[selection],-1);
-		cm.warp(mapid[selection]);
-		cm.dispose();
-	    }
-	    else if (section == (itemid.length - 1)){
-		if(sw == null) {
-		    cm.sendNext("Event error, please restart your server for solution");
-		    cm.dispose();
-		} else if(sw.getProperty("entry").equals("true")) {
-		    cm.sendYesNo("It looks like there's plenty of room for this ride. Please have your ticket ready so I can let you in, The ride will be long, but you'll get to your destination just fine. What do you think? Do you want to get on this ride?");
-		} else if(sw.getProperty("entry").equals("false") && sw.getProperty("docked").equals("true")) {
-		    cm.sendNext("The subway is getting ready for takeoff. I'm sorry, but you'll have to get on the next ride. The ride schedule is available through the usher at the ticketing booth.");
-		    cm.dispose();
-		} else {
-		    cm.sendNext("We will begin boarding 1 minutes before the takeoff. Please be patient and wait for a few minutes. Be aware that the subway will take off right on time, and we stop receiving tickets 1 minute before that, so please make sure to be here on time.");
-		    cm.dispose();
-		}
-	    } else {
-		if (section == itemid.length) { //subway line 1
-			cm.warp(103000101, 0);
-		} else if (section == (itemid.length + 1)) { //kerning square
-			cm.warp(103000310, 0);
-		}
-		cm.dispose();
-	}
-	} if (status == 3) {
-	    cm.gainItem(itemid[section],-1);
-	    cm.warp(mapid[section]);
-	    cm.dispose();
-	}
+    status++;
+    if (mode != 1) {
+        if(mode == 0)
+            cm.sendNext("你必須有一些經濟負擔，對吧？");
+        cm.dispose();
+        return;
+    }
+    if (status == 0) {
+        if (selection == 3) {
+            var em = cm.getEventManager("Subway");
+            if (em.getProperty("entry") == "true")
+                cm.sendYesNo("它看起來像有足夠的空間用於這搭。請將您的車票準備好，所以我可以讓你的車程將是漫長的，但你會得到你的目的地就好了。你怎麼看？你想要得到這個拼車？");
+            else {
+                cm.sendNext("我們停止接收票前1分鐘了，所以請務必要在這裡的時間。");
+                cm.dispose();
+            }
+        }else{
+            cm.sendNext("好運~~"); //Not GMS-like
+        }
+        oldSelection = selection;
+    } else if (status == 1) {
+        if (oldSelection == 3) {
+            cm.gainItem(4031711, -1);
+            cm.warp(600010004);
+        } else {
+            cm.gainItem(4031036 + oldSelection, -1);
+            cm.warp(103000900 + (oldSelection * 3));
+        }
+        cm.dispose();
     }
 }

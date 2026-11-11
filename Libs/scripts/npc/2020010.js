@@ -19,8 +19,12 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-importPackage(Packages.client);
-importPackage(Packages.server.quest);
+//BY MOOGRA
+/* Robeira
+	Magician 3rd job advancement
+	El Nath: Chief's Residence (211000001)
+	Custom Quest 100100, 100102
+*/
 
 var status = 0;
 var job;
@@ -35,7 +39,7 @@ function action(mode, type, selection) {
         cm.dispose();
     } else {
         if (mode == 0 && status == 1) {
-            cm.sendOk("請重新對話.");
+            cm.sendOk("等您下定決心再次找我吧.");
             cm.dispose();
             return;
         }
@@ -44,61 +48,60 @@ function action(mode, type, selection) {
         else
             status--;
         if (status == 0) {
-            if (cm.getPlayer().getJob() <= 300 || cm.getPlayer().getJob() >= 400 || cm.getPlayer().getJob() % 10 != 0) {
-                cm.sendOk("#rOdin#k與你同在!");
+		if (cm.getJob() == 311 || cm.getJob() == 321 || cm.getJob() == 312 || cm.getJob() == 322) {	
+	    cm.sendOk("您屬於弓箭部,但是您已經成功三轉了,已經超越了教官的強度了!");
+	    cm.dispose();
+	    return;
+		}
+            if (!(cm.getJob()==310 ||cm.getJob()==320)) {
+				cm.sendOk("請找您的轉職教官,您不屬於弓箭部的滾吧!");
                 cm.dispose();
                 return;
-            }
-            if (cm.getQuestStatus(100102) == 2 ) { //完成
-                cm.sendNext("#rBy Odin's ring!#k 你現在可以變得更強.");
-            } else if (cm.getQuestStatus(100102) == 1 ) { //開始
-                cm.sendOk("在冰原雪域內找到#r雪原聖地#k，且發現裡面的神聖石頭");
+			} else if (cm.getPlayer().getLevel() < 70) {
+				cm.sendOk("你的等級尚未滿70等");
+				cm.dispose();
+				return;		
+            }	
+			if (cm.haveItem(4031057, 1)){
+                cm.sendNext("恭喜你到達這裡,最後我將給你一個考驗!");			
+            } else if (!(cm.haveItem(4031057,1))) {
+				cm.warp(100000201);
+                cm.sendOk("去找 #r赫麗娜#k 他會幫助你的!");
                 cm.dispose();
-            } else if (cm.getQuestStatus(100101) == 2) { //完成
-                cm.sendNext("#rBy Odin's raven!#k 你確實很優秀");
-            } else if (cm.getQuestStatus(100100) == 1 ) { // 開始
-                cm.sendOk("現在，回去找#b赫麗娜#k. 他會幫助你.");
-                cm.dispose();
-            } else if (cm.getPlayer().getJob() < 400 && cm.getPlayer().getJob() > 300 && cm.getPlayer().getJob() % 10 == 0 && cm.getPlayer().getLevel() >= 70) {
-                cm.sendNext("#rBy Odin's beard!#k你很強悍.");
-            } else {
-                cm.sendOk("還不是時候...");
+            } else if (cm.getPlayer().getRemainingSp() <= (cm.getLevel() - 70) * 3) {
+                cm.sendNext("你的技能點數還沒點完..");
+		} else {
+                cm.sendOk("你還不能轉職...");
                 cm.dispose();
             }
         } else if (status == 1) {
-			if(cm.getPlayer().getJob() % 10 != 0){
-				cm.dispose();
-			}
-            if (cm.getQuestStatus(100102) == 2) { //完成
-                cm.changeJob(cm.getPlayer().getJob() + 1);
-                cm.sendOk("你變得更加強大了!");
-                cm.dispose();
-            } else if (cm.getQuestStatus(100101) == 2) { //完成
-				if(cm.haveItem(4031057)){
-					cm.sendAcceptDecline("確定好要做最終測驗了?");
-				}else{
-					cm.sendOk("你沒有#b力量項鍊#k");
-					cm.dispose();
-				}
-            } else {
-                cm.sendAcceptDecline("但是我還可以讓你更強，你想要接受挑戰嗎?");
-            }
+            if (cm.haveItem(4031058, 1)) {
+                if (cm.getJob()==310) {
+                    cm.changeJob(311);
+                    //cm.getPlayer().gainAp(5);
+					cm.gainItem(4031057, -1);
+					cm.gainItem(4031058, -1);
+					cm.sendOk("恭喜轉職了!");
+					cm.worldMessage("『轉職快報』：恭喜玩家."+ cm.getChar().getName() +"  成功三轉-遊俠讓我們熱烈的祝福他/她吧！");
+                    cm.dispose();
+                } else if (cm.getJob()==320) {
+                    cm.changeJob(321);
+                    //cm.getPlayer().gainAp(5);
+					cm.gainItem(4031057, -1);
+					cm.gainItem(4031058, -1);
+                    cm.sendOk("恭喜轉職了!");
+					cm.worldMessage("『轉職快報』：恭喜玩家."+ cm.getChar().getName() +"  成功三轉-狙擊手讓我們熱烈的祝福他/她吧！");
+                    cm.dispose();
+                }
+            } else if (cm.haveItem(4031057, 1))
+                cm.sendAcceptDecline("你準備承擔最終測試??");
+            else
+                cm.sendAcceptDecline("但是，我可以讓你更加強大。雖然你必須證明不僅是你的實力，但你的知識。你準備好挑戰了嗎？");
         } else if (status == 2) {
-            if (cm.getQuestStatus(100101) == 2) { //完成
-				if(cm.haveItem(4031057)){
-					cm.startQuest(100102);
-					cm.gainItme(4031057,-1);
-					cm.sendOk("發現#r雪原聖地#k隱藏的的神聖石頭並且帶回#b智慧項鍊#k");
-					cm.dispose();
-				}else{
-					cm.sendOk("你沒有#b智慧項鍊#k");
-					cm.dispose();
-				}
-            } else {
-                cm.startQuest(100100);
-                cm.sendOk("回去找#b赫麗娜#k.他會幫助你.");
+            if (cm.haveItem(4031057, 1)) {
+                cm.sendOk("去找神聖的石頭測驗吧!!.");
                 cm.dispose();
             }
         }
     }
-}	
+}

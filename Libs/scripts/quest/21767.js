@@ -3,9 +3,9 @@ var status = -1;
 function start(mode, type, selection) {
 	status++;
 	if (status == 0) {
-		qm.sendNext("#bHm, there''s a medicinal substance in the box. What could this be? You better take this to John and ask him what it is.#k");
+		qm.sendNext("#b嗯，你最好藉此問一下約翰，那一個藥用的物質是什麼?#k");
 	} else {
-		qm.gainItem(4032423,1);
+		qm.gainItem(4032423, 1);
 		qm.forceCompleteQuest();
 		qm.dispose();
 	}

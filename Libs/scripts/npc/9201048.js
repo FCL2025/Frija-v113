@@ -1,52 +1,63 @@
 var status = -1;
-
+var nextt = true;
+var check = [670010200, 670010300, 670010400, 670010500, 670010600, 670010700, 670010800];
 function action(mode, type, selection) {
     if (mode == 1) {
-	status++;
+        status++;
     } else {
-	if (status == 0) {
-	    cm.dispose();
-	}
-	status--;
+        if (status == 0) {
+            cm.dispose();
+        }
+        status--;
     }
-		cm.removeAll(4031595);
-		cm.removeAll(4031594);
-		cm.removeAll(4031597);
+    cm.removeAll(4031595);
+    cm.removeAll(4031594);
+    cm.removeAll(4031597);
     if (status == 0) {
-	cm.sendSimple("#b#L0#Get out of here (no refunds)#l\r\n#L1#My party is ready and we want to go in.#l#k");
+        cm.sendSimple("#b#L0#離開這裡 (沒有退費)#l\r\n#L1#我的隊伍已經準備好，我們要挑戰了！#l#k");
     } else if (status == 1) {
-	if (selection == 0) {
-	    cm.warp(670010000, 0);
-	} else {
-	    if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
-		cm.sendOk("The leader of the party must be here.");
-	    } else {
-		var party = cm.getPlayer().getParty().getMembers();
-		var mapId = cm.getPlayer().getMapId();
-		var next = true;
-		var size = 0;
-		var it = party.iterator();
-		while (it.hasNext()) {
-			var cPlayer = it.next();
-			var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
-			if (ccPlayer == null || ccPlayer.getLevel() < 40) {
-				next = false;
-				break;
-			}
-			size += (ccPlayer.isGM() ? 6 : 1);
-		}	
-		if (next && size >= 6) {
-			var em = cm.getEventManager("Amoria");
-			if (em == null) {
-				cm.sendOk("Please try again later.");
-			} else {
-				em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap());
-			}
-		} else {
-			cm.sendOk("All 6+ members of your party must be here.");
-		}
-	    }
-	}
-	cm.dispose();
+        if (selection == 0) {
+            cm.warp(670010000, 0);
+        } else {
+            if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
+                cm.sendOk("必須要有隊長在這裡。");
+            } else {
+                for (var i = 0; i < check.length; i++) {
+                    if (cm.getPlayer().getClient().getChannelServer().getMapFactory().getMap(check[i]).getCharactersSize() > 0) {
+                        nextt = false;
+                    }
+                }
+                if (!nextt) {
+                    cm.sendNext("目前已經有其他隊伍在挑戰中，請稍後再來。");
+                    cm.dispose();
+                    return;
+                }
+                var party = cm.getPlayer().getParty().getMembers();
+                var mapId = cm.getPlayer().getMapId();
+                var next = true;
+                var size = 0;
+                var it = party.iterator();
+                while (it.hasNext()) {
+                    var cPlayer = it.next();
+                    var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
+                    if (ccPlayer == null || ccPlayer.getLevel() < 40) {
+                        next = false;
+                        break;
+                    }
+                    size += (ccPlayer.isGM() ? 6 : 1);
+                }
+                if (next && size >= 6) {
+                    var em = cm.getEventManager("Amoria");
+                    if (em == null) {
+                        cm.sendOk("請稍後再嘗試。");
+                    } else {
+                        em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap());
+                    }
+                } else {
+                    cm.sendOk("隊伍必須有 6 名以上、40 等以上的成員都在這裡。");
+                }
+            }
+        }
+        cm.dispose();
     }
 }

@@ -1,48 +1,14 @@
-/* 
-    This file is part of the OdinMS Maple Story Server 
-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>  
-                       Matthias Butz <matze@odinms.de> 
-                       Jan Christian Meyer <vimes@odinms.de> 
+/*
+    Return from
+    Ariant Coliseum : Lobby (980010000)
 
-    This program is free software: you can redistribute it and/or modify 
-    it under the terms of the GNU Affero General Public License version 3 
-    as published by the Free Software Foundation. You may not use, modify 
-    or distribute this program under any other version of the 
-    GNU Affero General Public License. 
+    The original imported org.rise.server.maps / org.rise.net.channel (packages that do not
+    exist here) and read SavedLocationType.ARIANT_PQ, which this server does not have, so the
+    portal never worked. Nothing saves a location on the way in, so send the player back to
+    Ariant (260000000).
+*/
 
-    This program is distributed in the hope that it will be useful, 
-    but WITHOUT ANY WARRANTY; without even the implied warranty of 
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
-    GNU Affero General Public License for more details. 
-
-    You should have received a copy of the GNU Affero General Public License 
-    along with this program.  If not, see <http://www.gnu.org/licenses/>. 
-*/ 
-
-importPackage(org.rise.server.maps); 
-importPackage(org.rise.net.channel); 
-
-/* 
-    Return from 
-    Ariant Coliseum : Lobby 
-*/ 
-
-function enter(pi) { 
-    var returnMap = pi.getPlayer().getSavedLocation(SavedLocationType.ARIANT_PQ); 
-    if (returnMap < 0) { 
-        returnMap = 100000000; 
-    } 
-    var target = pi.getClient().getChannelServer().getMapFactory().getMap(returnMap); 
-    var targetPortal; 
-    if (returnMap == 100000000) { 
-        targetPortal = target.getPortal(4); 
-    } else { 
-        targetPortal = target.getPortal(0); 
-    } 
-    if (targetPortal == null) { 
-        targetPortal = target.getPortal(0); 
-    } 
-    pi.getPlayer().clearSavedLocation(SavedLocationType.ARIANT_PQ); 
-    pi.getPlayer().changeMap(target, targetPortal); 
-    return true; 
-}  
+function enter(pi) {
+    pi.warp(260000000, 0);
+    return true;
+}

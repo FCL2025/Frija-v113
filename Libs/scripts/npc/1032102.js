@@ -1,16 +1,7 @@
-/*
-	Made by RMZero213 of RaGEZONE forums.
-	Just keep this header here and don't claim that you made it.
-*/
-
-/*
-	1032102.js
-	Mar the Fairy
-	Dragon Evolver
-*/
-
 var status = 0;
 var pet = null;
+var pet1 = null;
+var theitems = Array();
 
 function start() {
 	status = -1;
@@ -22,7 +13,7 @@ function action(mode, type, selection) {
 		cm.dispose();
 	} else {
 		if (mode == 0) {
-			cm.sendOk("Alright, see you next time.");
+			cm.sendOk("需要的時候再來找我。");
 			cm.dispose();
 			return;
 		}
@@ -31,7 +22,7 @@ function action(mode, type, selection) {
 		else
 			status--;
 		if (status == 0) {
-			cm.sendSimple("I am Mar the Fairy. If you have an evolving pet at level 15 or higher and a rock of evolution. I can evolve your pet. Would you like me to do so?#b\r\n#L0#Evolve my dragon.#l\r\n#L1#Evolve my robo.#l#k");
+			cm.sendSimple("您好，我是#p1032102# 有什麼我可以幫您的嗎？？ \r\n#r#L0#我要升級寶貝龍寵物#l#k\r\n#g#L1#我要升級我的機器人#l#k\r\n#b#L2#我要復活我的寵物#l#k\r\n#L3#我想要學習寵物達人技能#l#k\r\n#d#L4#我想要轉移親密度給新的寵物。#l#k");
 		} else if (status == 1) {
 			if (selection == 0) {
 				var currentpet = null;
@@ -44,8 +35,8 @@ function action(mode, type, selection) {
 						}
 					}
 				}
-				if (pet == null || !cm.haveItem(5380000,1)) {
-					cm.sendOk("You do not meet the requirements. You need #i5380000##t5380000#, as well as either one of #d#i5000029##t5000029##k, #g#i5000030##t5000030##k, #r#i5000031##t5000031##k, #b#i5000032##t5000032##k, or #e#i5000033##t5000033##n equipped at level 15 or higher. Please come back when you do.");
+				if (pet == null || !cm.haveItem(5380000, 1)) {
+					cm.sendOk("您沒有 #i5380000##t5380000#, 然後，寵物等級15級後我再告訴您怎麼做。");
 					cm.dispose();
 				} else {
 					var id = pet.getPetItemId();
@@ -53,8 +44,8 @@ function action(mode, type, selection) {
 					var level = pet.getLevel();
 					var closeness = pet.getCloseness();
 					var fullness = pet.getFullness();
-					var flag = pet.getFlags();
 					var slot = pet.getInventoryPosition();
+					var flag = pet.getFlags();
 					var rand = 0;
 					var after = id;
 					while (after == id) {
@@ -75,9 +66,9 @@ function action(mode, type, selection) {
 					cm.getPlayer().unequipPet(pet, true, false);
 					cm.gainItem(5380000, -1);
 					cm.removeSlot(5, slot, 1);
-					cm.gainPet(after, name, level, closeness, fullness, 45,flag);
+					cm.gainPet(after, name, level, closeness, fullness, 45, flag);
 					cm.getPlayer().spawnPet(slot);
-					cm.sendOk("Your dragon has now evolved!! It used to be a #i" + id + "##t" + id + "#, and now it's a #i" + after + "##t" + after + "#!");
+					cm.sendOk("您的龍已經進化了！它曾經是一隻 #i" + id + "##t" + id + "#, 而現在是一隻 #i" + after + "##t" + after + "#!");
 					cm.dispose();
 				}
 			} else if (selection == 1) {
@@ -91,8 +82,8 @@ function action(mode, type, selection) {
 						}
 					}
 				}
-				if (pet == null || !cm.haveItem(5380000,1)) {
-					cm.sendOk("You do not meet the requirements. You need #i5380000##t5380000#, as well as either one of #g#i5000048##t5000048##k, #r#i5000049##t5000049##k, #b#i5000050##t5000050##k, #d#i5000051##t5000051##k, #d#i5000052##t5000052##k, or #e#i5000053##t5000053##n equipped at level 15 or higher. Please come back when you do.");
+				if (pet == null || !cm.haveItem(5380000, 1)) {
+					cm.sendOk("您沒有 #i5380000##t5380000#, 然後，寵物等級15級後我再告訴您怎麼做。");
 					cm.dispose();
 				} else {
 					var id = pet.getPetItemId();
@@ -100,8 +91,8 @@ function action(mode, type, selection) {
 					var level = pet.getLevel();
 					var closeness = pet.getCloseness();
 					var fullness = pet.getFullness();
-					var flag = pet.getFlags();
 					var slot = pet.getInventoryPosition();
+					var flag = pet.getFlags();
 					var rand = 0;
 					var after = id;
 					while (after == id) {
@@ -124,12 +115,109 @@ function action(mode, type, selection) {
 					cm.getPlayer().unequipPet(pet, true, false);
 					cm.gainItem(5380000, -1);
 					cm.removeSlot(5, slot, 1);
-					cm.gainPet(after, name, level, closeness, fullness, 45 ,flag);
+					cm.gainPet(after, name, level, closeness, fullness, 45, flag);
 					cm.getPlayer().spawnPet(slot);
-					cm.sendOk("Your robo has now evolved!! It used to be a #i" + id + "##t" + id + "#, and now it's a #i" + after + "##t" + after + "#!");
+					cm.sendOk("您的機器人已經進化了！它曾經是一隻 #i" + id + "##t" + id + "#, 而現在是一隻 #i" + after + "##t" + after + "#!");
 					cm.dispose();
 				}
+			} else if (selection == 3) {
+				if (cm.haveItem(5380000, 15)) {
+					var job = cm.getPlayer().getJob();
+					if (job >= 1000 && job < 2000) {
+						cm.teachSkill(10000018, 1, 1);
+						cm.gainItem(5380000, -15);
+						cm.sendOk("已經學會囉！！");
+						cm.dispose();
+					} else if (job >= 2000 && job <= 2112 && job != 2001) {
+						cm.teachSkill(20000024, 1, 1);
+						cm.gainItem(5380000, -15);
+						cm.sendOk("已經學會囉！！");
+						cm.dispose();
+					} else {
+						cm.teachSkill(8, 1, 1);
+						cm.gainItem(5380000, -15);
+						cm.sendOk("已經學會囉！！");
+						cm.dispose();
+					}
+				} else {
+					cm.sendOk("很抱歉我需要#t5380000# 15個。");
+					cm.dispose();
+				}
+			} else if (selection == 4) { //寵物轉移親密度
+				if (!cm.haveItem(4160011, 1)) {
+					cm.sendNext("貌似沒有#t4160011#。");
+					cm.dispose();
+				} else {
+					cm.sendYesNo("開始魔法的咒語喔！真的要施行轉移寵物親密度的咒語嗎?\r\n#r請注意!!\r\n此寵物親密度轉移只限定於\r\n「寵物活著的時候並且使用該寵物」\r\n它能把寵物1的親密度、等級轉移到寵物2身上。");
+					status++;
+				}
+			} else if (selection == 2) { //復活
+				var inv = cm.getInventory(5);
+				var pets = cm.getPlayer().getPets(); //includes non-summon
+				for (var i = 0; i <= inv.getSlotLimit(); i++) {
+					var it = inv.getItem(i);
+					if (it != null && it.getItemId() >= 5000000 && it.getItemId() < 5010000 && it.getExpiration() > 0 && it.getExpiration() < cm.getCurrentTime()) {
+						theitems.push(it);
+
+					}
+				}
+				if (theitems.length <= 0) {
+					cm.sendOk("你沒有死掉的寵物");
+					cm.dispose();
+				} else {
+					var selStr = "請選擇一個想復活的寵物。#b\r\n";
+					for (var i = 0; i < theitems.length; i++) {
+						selStr += "\r\n#L" + i + "##v" + theitems[i].getItemId() + "##i" + theitems[i].getItemId() + "##l";
+					}
+					cm.sendSimple(selStr);
+				}
 			}
+		} else if (status == 2) {
+			if (theitems.length <= 0 || selection < 0 || selection >= theitems.length) {
+				cm.sendOk("沒有死亡的寵物。");
+			} else if (!cm.haveItem(5180000, 1)) {
+				cm.sendOk("我需要 #v5180000##i5180000#.");
+			} else {
+				theitems[selection].setExpiration(cm.getCurrentTime() + (45 * 24 * 60 * 60 * 1000));
+				cm.gainItem(5180000, -1);
+				cm.getPlayer().fakeRelog();
+				cm.sendOk("你的寵物已延長45天壽命 請好好對待他");
+			}
+			cm.dispose();
+		} else if (status == 3) {
+			var currentpet = null;
+			var currentpet1 = null;
+			currentpet = cm.getPlayer().getPet(0);
+			currentpet1 = cm.getPlayer().getPet(1);
+			if (currentpet != null && pet == null) {
+				pet = currentpet;
+			}
+			if (currentpet1 != null && pet1 == null) {
+				pet1 = currentpet1;
+			}
+			if (pet == null) {
+				cm.sendOk("您沒有裝備第一隻寵物。");
+			} else if (pet1 == null) {
+				cm.sendOk("您沒有裝備第二隻寵物。");
+			} else if (!cm.haveItem(4160011, 1)) {
+				cm.sendOk("貌似沒有#t4160011#。");
+			} else {
+				var name = pet.getName();
+				var name1 = pet1.getName();
+				var level = pet.getLevel();
+				var closeness = pet.getCloseness();
+				var level1 = pet1.getLevel();
+				var closeness1 = pet1.getCloseness();
+				// 寵物0 = 貓 寵物1 = 水晶寶寶
+				pet.setLevel(level1);
+				pet.setCloseness(closeness1);
+				pet1.setLevel(1);
+				pet1.setCloseness(0);
+				cm.gainItem(4160011, -1);
+				cm.getPlayer().fakeRelog();
+				cm.sendNext("成功將" + name1 + "親密度轉移至" + name + "！\r\n目前兩方寵物狀況:\r\n寵物:" + name + " 等級:" + level + " 親密度: " + closeness + "\r\n寵物:" + name1 + " 等級: " + level1 + " 親密度: " + closeness1);
+			}
+			cm.dispose();
 		}
 	}
 }

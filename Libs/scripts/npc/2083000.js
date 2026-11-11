@@ -4,7 +4,15 @@
 
 var status = -1;
 
+function start() {
+	action(1,0,0);
+}
+
 function action(mode, type, selection) {
-	cm.sendOk("You can't read the words on the slate. You have no idea where to use it.");
-	cm.safeDispose();
+	if (cm.haveItem(4001086)) {
+		cm.warp(240050400,0);
+	} else {
+		cm.sendOk("#b(一座石碑，上面寫著看不懂的文字……。)");
+	}
+    cm.dispose();
 }

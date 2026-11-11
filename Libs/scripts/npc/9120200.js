@@ -3,12 +3,12 @@
 */
 
 function start() {
-    cm.sendYesNo("Here you are, right in front of the hideout! What? You want to return to #m801000000#?");
+    cm.sendYesNo("你害怕了？ 想回去 #m801000000#？");
 }
 
 function action(mode, type, selection) {
     if (mode == 0) {
-	cm.sendOk("If you want to return to #m801000000#, then talk to me");
+	cm.sendOk("如果你想回去 #m801000000#, 告訴我");
     } else {
 	cm.warp(801000000,0);
     }

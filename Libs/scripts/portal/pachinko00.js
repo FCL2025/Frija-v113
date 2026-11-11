@@ -1,4 +1,4 @@
 function enter(pi) {
-    pi.playerMessage(5, "小鋼珠無法使用");
-	return false;
+    pi.playerMessage(5, "很抱歉，小鋼珠暫時不開放!");
+    return false;
 }

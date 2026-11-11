@@ -25,7 +25,7 @@ function setup() {
 function playerEntry(eim, player) {
     var map = eim.getMapFactory().getMap(912010100);
     player.changeMap(map, map.getPortal(0));
-    player.dropMessage(6, "You must endure Kyrin's attacks for more than 2 minuets!");
+    player.dropMessage(6, "你必須忍耐2分鐘！！");
 }
 
 function playerDead(eim, player) {

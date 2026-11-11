@@ -1,9 +1,4 @@
-
 function enter(pi) {
-	var map = 749050400;
-	var target = pi.getClient().getChannelServer().getMapFactory().getMap(map);
-	var targetPortal = target.getPortal(0);
-	pi.saveLocation("Gachapon");
-	pi.getPlayer().changeMap(target, targetPortal);
-	return true;
+	pi.playerMessage(5, "很抱歉，轉蛋屋暫時不開放!");
+	return false;
 }

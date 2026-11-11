@@ -1,96 +1,128 @@
-importPackage(Packages.tools);
-
-var rewards = Array(2000005, 2100001, 2100002, 2100003, 2100004, 2100005, 2100006, 2100007, 2100008,2100009);
-var expires = Array(-1, 30, 30, 30, 30, 30, 30, 60, 60);
-var quantity = Array(3, 1, 1, 1, 1, 1, 1, 1, 1,1);
-var needed = Array(10, 20, 20, 20, 20, 35, 35, 50, 50);
-var gender = Array(2, 2, 2, 2, 2, 2, 2, 0, 1);
+var rewards = Array(2000005, 1140001, 1141001, 2100005, 2100006, 2100007, 2100008, 2101000, 2101001);
+var expires = Array(-1, 10, 30, 30, 30, 30, 30, 60, 60);
+var quantity = Array(5, 1, 1, 1, 1, 1, 1, 1, 1);
+var needed = Array(30, 60, 60, 25, 30, 35, 40, 45, 50, 55);
+var gender = Array(2, 0, 1, 2, 2, 2, 2, 2, 2);
 var status = -1;
-
+var map;
 
 function action(mode, type, selection) {
-    if (mode == 1) {
-	status++;
-    } else {
+	if (mode == 1) {
+		status++;
+	} else {
+		if (status == 0) {
+			cm.dispose();
+		}
+		status--;
+	}
 	if (status == 0) {
-	    cm.dispose();
+		for (var i = 3994059; i < 3994085; i++) {
+			cm.givePartyItems(i, 0, true);
+		}
 	}
-	status--;
-    }
-    if (status == 0) {
-        for (var i = 3994059; i < 3994085; i++) {
-	    cm.givePartyItems(i, 0, true);
-	}
-    }
-    switch(cm.getPlayer().getMapId()) {
-	case 702090400:
-    	    if (status == 0) {
-	        cm.sendSimple("Hello~I am Dr.P of #bEnglish School!\r\n\r\n#L0#Go to English School - Easy#l\r\n#L1#Go to English School - Medium#l\r\n#L2#Go to English School - Hard#l\r\n#L3#兌換獎品#l\r\n#L4#Return to Event Map#l");
-    	    } else if (status == 1) {
-				if (selection == 0 || selection == 1 || selection == 2) {
-				var em = cm.getEventManager("English");
-					if (em == null) {
-				cm.sendOk("Please try again later.");
+	switch (cm.getPlayer().getMapId()) {
+	case 100000000:
+	case 101000000:
+	case 102000000:
+	case 103000000:
+	case 104000000:
+	case 120000000:
+	case 211000000:
+	case 250000000:
+	case 220000000:
+	case 200000000:
+	case 261000000:
+	case 500000000:
+	case 600000000:
+	case 680000000:
+	case 701000000:
+	case 702000000:
+	case 740000000:
+	case 741000000:
+	case 742000000:
+	case 800000000:
+		if (status == 0) {
+			map = cm.getSavedLocation("EVENT");
+			cm.sendSimple("安安 我是菇菇博士 #b英文村的菇菇博士!\r\n\r\n#L0#我要前往英文村#l\r\n#L1#我要兌換東西#l\r\n#L2#什麼是英文村?#l");
+		} else if (status == 1) {
+			if (selection == 0) {
+				cm.saveLocation("EVENT");
+				cm.warp(702090400, 0);
 				cm.dispose();
-				return;
-					}
-				if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
-				cm.sendOk("The leader of the party must be here.");
-				} else {
-				var party = cm.getPlayer().getParty().getMembers();
-				var mapId = cm.getPlayer().getMapId();
-				var next = true;
-				var size = 0;
-				var it = party.iterator();
-				while (it.hasNext()) {
-					var cPlayer = it.next();
-					var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
-					if (ccPlayer == null) {
-						next = false;
-						break;
-					}
-					size++;
-				}	
-				if (next && size >= 1) {
-						if (em.getInstance("English" + selection) == null) {
-						em.startInstance_Party("" + selection, cm.getPlayer());
-						} else {
-						cm.sendOk("Another party quest has already entered this channel.");
-						}
-				} else {
-					cm.sendOk("All members of your party must be here.");
+			} else if (selection == 1) {
+				var selStr = "第一個勳章是男的,第二個勳章是女的 \r\n\r\n#b";
+				for (var i = 0; i < rewards.length; i++) {
+					selStr += "#L" + i + "##v" + rewards[i] + "##t" + rewards[i] + "# x " + quantity[i] + " #r(" + needed[i] + " 乖寶寶印章)#b#l\r\n";
 				}
-				}
-				cm.dispose();
-			} else if (selection == 3 ){
-				if(cm.haveItem(4001137,15)){
-					cm.sendYesNo("你有乖寶寶印章15個阿!你想要交換獎品嗎？");
-				}else{
-					cm.sendOk("有乖寶寶印章15個就可以和我換獎品喔!");
-				}
-
-			} else if (selection == 4) {
-				map = cm.getSavedLocation("EVENT");
-				cm.warp(map,0);
+				cm.sendSimple(selStr);
+			} else if (selection == 2) {
+				cm.sendNext("#b[英文村]#k是我開設的英文學校。組隊進入後，依照題目收集字母拼出正確答案，答對全隊都能得到#b#t4001137##k，收集到足夠的印章就可以來找我兌換獎品喔！");
 				cm.dispose();
 			}
-		}else if(status == 2){
-			if(cm.haveItem(4001137,15)){
-				var ee = java.lang.Math.floor(java.lang.Math.random() * rewards.length);
-				cm.gainItem(4001137,-15);
-				cm.gainItem(rewards[ee],quantity[ee]);
+		} else if (status == 2) {
+			if (!cm.haveItem(4001137, needed[selection])) {
+				cm.sendNext("您沒有#b#t4001137##k");
+			} else if (!cm.canHold(rewards[selection], 1)) {
+				cm.sendNext("請空出一些空間。");
+			} else {
+				cm.gainItem(4001137, -needed[selection]);
+				if (expires[selection] > 0) {
+					cm.gainItemPeriod(rewards[selection], quantity[selection], expires[selection]);
+				} else {
+					cm.gainItem(rewards[selection], quantity[selection]);
+				}
 			}
 			cm.dispose();
 		}
-	    break;
-	default:
+		break;
+	case 702090400:
 		if (status == 0) {
-	        cm.sendYesNo("你好~我是菇菇博士!我是英文村的村長~有鑑於全球化時代,英文是一門避免不了的學問~你想要更加精進你的英文能力嗎?");
-    	    } else if (status == 1) {
-				cm.saveLocation("EVENT");
-				cm.warp(702090400,0); //exit map lobby
+			cm.sendSimple("你好~我是#b英文村#k的菇菇博士！\r\n\r\n#L0#前往英文村 - 簡單#l\r\n#L1#前往英文村 - 中級#l\r\n#L2#前往英文村 - 困難#l\r\n#L3#我要回去了。#l");
+		} else if (status == 1) {
+			if (selection == 0 || selection == 1 || selection == 2) {
+				var em = cm.getEventManager("English");
+				if (em == null) {
+					cm.sendOk("請稍後再試一次。");
+					cm.dispose();
+					return;
+				}
+				if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
+					cm.sendOk("隊長必須在這裡。");
+				} else {
+					var party = cm.getPlayer().getParty().getMembers();
+					var mapId = cm.getPlayer().getMapId();
+					var next = true;
+					var size = 0;
+					var it = party.iterator();
+					while (it.hasNext()) {
+						var cPlayer = it.next();
+						var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
+						if (ccPlayer == null) {
+							next = false;
+							break;
+						}
+						size++;
+					}
+					if (next && size >= 1) {
+						if (em.getInstance("English" + selection) == null) {
+							em.startInstance_Party("" + selection, cm.getPlayer());
+						} else {
+							cm.sendOk("已經有另外一個隊伍正在挑戰了。");
+						}
+					} else {
+						cm.sendOk("隊伍成員必須全部在這裡。");
+					}
+				}
+			} else if (selection == 3) {
+				var map = cm.getSavedLocation("EVENT");
+				if (map == undefined)
+					map = 100000000;
+				cm.warp(map, 0);
+				cm.clearSavedLocation("EVENT");
 				cm.dispose();
+			}
+			cm.dispose();
 		}
-    }
+		break;
+	}
 }
-

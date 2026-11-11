@@ -1,146 +1,88 @@
 /*
-	This file is part of the OdinMS Maple Story Server
-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc> 
-                       Matthias Butz <matze@odinms.de>
-                       Jan Christian Meyer <vimes@odinms.de>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License version 3
-    as published by the Free Software Foundation. You may not use, modify
-    or distribute this program under any other version of the
-    GNU Affero General Public License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	Encrypted Slate of the Squad - Leafre Cave of life
 */
 
-/*The encrypted slate
- *@author Jvlaple <eat268@hotmail.com>
- */
-
-var status = 0;
-var minLevel = 0;
-var maxLevel = 255;
-var minPlayers = 1;
-var maxPlayers = 6;
-
-function start() {
-    status = -1;
-    action(1, 0, 0);
-}
+var status = -1;
+var minLevel = 80; // 35
+var maxLevel = 200; // 65
+var minPartySize = 1;
+var maxPartySize = 6;
 
 function action(mode, type, selection) {
-    if (mode == -1) {
-        cm.dispose();
+    if (mode == 1) {
+        status++;
     } else {
-        if (mode == 0 && status == 0) {
+        if (status == 0) {
             cm.dispose();
             return;
         }
-        if (mode == 1)
-            status++;
-        else
-            status--;
-        if (status == 0) {
-			if(cm.getMapId() ==240050000){
-				// Slate has no preamble, directly checks if you're in a party
-				if (cm.getParty() == null) { // no party
-					cm.sendSimple("圍繞著里程碑的邪惡氣息...");
-					cm.dispose();
-					return;
-				}
-				if (!cm.isLeader()) { // not party leader
-					cm.sendSimple("你不是隊長.");
-					cm.dispose();
-				}
-				else {
-					// Check teh partyy
-					var party = cm.getParty().getMembers();
-					var mapId = cm.getPlayer().getMapId();
-					var next = true;
-					var levelValid = 0;
-					var inMap = 0;
-					// Temp removal for testing
-					if (party.size() < minPlayers || party.size() > maxPlayers)
-						next = false;
-					else {
-						for (var i = 0; i < party.size() && next; i++) {
-							if ((party.get(i).getLevel() >= minLevel) && (party.get(i).getLevel() <= maxLevel))
-								levelValid += 1;
-							if (party.get(i).getMapid() == mapId)
-								inMap += 1;
-						}
-						if (levelValid < party.size() || inMap < party.size())
-							next = false;
-					}
-					if (next) {
-						// Kick it into action.  Slate says nothing here, just warps you in.
-						var em = cm.getEventManager("HontalePQ");
-						if (em == null) {
-							cm.sendSimple("當前事件任務不可使用.");
-						}
-						else {
-							var prop = em.getProperty("state");
-							if (prop.equals("0") || prop == null) {
-								em.startInstance(cm.getParty(),cm.getPlayer().getMap());
-							}else{
-								cm.sendSimple("已經有人在挑戰任務");
-							}
-						}
-						cm.dispose();
-					}
-					else {
-						cm.sendOk("Your party is not a party of six.  Make sure all your members are present and qualified to participate in this quest.  I see #b" + levelValid.toString() + " #kmembers are in the right level range, and #b" + inMap.toString() + "#k are in my map. If this seems wrong, #blog out and log back in,#k or reform the party.");
-						cm.dispose();
-					}
-				}
-			}else if(cm.getMapId() ==240050100) {
-				var eim = cm.getPlayer().getEventInstance();
-				var party = eim.getPlayers();
-				if (eim.getProperty("theLvl") == null) {
-					eim.setProperty("theLvl", "0");
-				}
-				curStage = parseInt(eim.getProperty("theLvl"));
-				if(curStage != 4){
-					cm.sendOk("請先解決迷宮室的難題...");
-					cm.dispose();
-				}else{
-					if(cm.haveItem(4001092, 1) && cm.isLeader()){
-						var party = cm.getChar().getEventInstance().getPlayers();
-						for (var outt = 0; outt<party.size(); outt++)
-                        {
-                            var exitMapz = eim.getMapInstance(240050200);
-                            party.get(outt).changeMap(exitMapz, exitMapz.getPortal(0)); 
+        status--;
+    }
+
+    //    if (cm.getMapId() == 240050400) {
+    if (status == 0) {
+        if (cm.getParty() == null) { // No Party
+            cm.sendOk("很抱歉，你好像沒有組隊。。。");
+            cm.dispose();
+        } else if (!cm.isLeader()) { // Not Party Leader
+            cm.sendOk("如果你想嘗試任務請找你的 #b隊長#k 來和我說話。#b");
+            cm.dispose();
+        } else {
+            // Check if all party members are within PQ levels
+            var party = cm.getParty().getMembers();
+            var mapId = cm.getMapId();
+            var next = true;
+            var levelValid = 0;
+            var inMap = 0;
+            var it = party.iterator();
+
+            while (it.hasNext()) {
+                var cPlayer = it.next();
+                if ((cPlayer.getLevel() >= minLevel) && (cPlayer.getLevel() <= maxLevel)) {
+                    levelValid += 1;
+                } else {
+                    next = false;
+                }
+                if (cPlayer.getMapid() == mapId) {
+                    inMap += (cPlayer.getJobId() == 900 ? 6 : 1);
+                }
+            }
+            if (party.size() > maxPartySize || inMap < minPartySize) {
+                next = false;
+            }
+            if (next) {
+                var em = cm.getEventManager("HontalePQ");
+                if (em == null) {
+                    cm.sendSimple("找不到腳本，請聯繫GM！！#b");
+                } else {
+                    var prop = em.getProperty("state");
+                    if (prop.equals("0") || prop == null) {
+                        em.startInstance(cm.getParty(), cm.getMap());
+                        cm.removeAll(4001022);
+                        cm.removeAll(4001023);
+                        cm.dispose();
+                        return;
+                    } else if (cm.getMapId() == 240050300) {
+                        if (cm.isLeader() && cm.haveItem(4001093, 6)) {
+                            cm.showEffect(true, "quest/party/clear");
+                            cm.playSound(true, "Party1/Clear");
+                            cm.gainItem(4001093, -6);
+                            cm.warpParty(240050400);
+                            cm.dispose();
+                        } else {
+                            cm.sendOk("請叫你的隊長帶著6個藍色鑰匙來找我");
+                            cm.dispose();
                         }
-						cm.gainItem(4001092, -1);
-					}else{
-						cm.sendOk("請隊長帶著鑰匙過來");
-					}
-					cm.dispose();
-				}
-			}else if(cm.getMapId() ==240050300 || cm.getMapId() ==240050310){
-				var eim = cm.getPlayer().getEventInstance();
-				var party = eim.getPlayers();
-				if(cm.haveItem(4001093, 6) && cm.isLeader()){
-						var party = cm.getChar().getEventInstance().getPlayers();
-						for (var outt = 0; outt<party.size(); outt++)
-                        {
-                            var exitMapz = eim.getMapInstance(240050600);
-                            party.get(outt).changeMap(exitMapz, exitMapz.getPortal(0)); 
-                        }
-						cm.gainItem(4001093, -6);
-				}else{
-					cm.sendOk("請隊長帶著六把藍色鑰匙過來");
-				}
-				cm.dispose();
-			}
-		}
-	}
+
+                    } else {
+                        cm.sendSimple("#b(一座石碑，上面寫著看不懂的文字……。)#b");
+                        cm.dispose();
+                    }
+                }
+            } else {
+                cm.sendOk("很抱歉，你的組隊好像沒有符合需求:\r\n\r\n#r需求: " + minPartySize + " 需要六個人且等級都必須在 " + minLevel + " 到 " + maxLevel + ".#b");
+                cm.dispose();
+            }
+        }
+    }
 }
-					
-					

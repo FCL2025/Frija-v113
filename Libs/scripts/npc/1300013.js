@@ -1,13 +1,13 @@
 function start() {
-    cm.sendSimple("#b\r\n#L0#Yeti (Requires Party)#l\r\n#L1#Violetta#l#k");
+    cm.sendSimple("移動到#b#m106021500##k 要前往到哪裡呢？ #b\r\n#L0#打三色雪吉拉 (需要組隊)#l\r\n#L1#拯救菲歐娜#l#k");
 }
 
 function action(mode,type,selection) {
-    if (mode == 1) { //or 931000400 + selection..?
+    if (mode == 1) {
 	switch(selection) {
 	    case 0:
 	    if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
-		cm.sendOk("The leader of the party must be here.");
+		cm.sendOk("請找你的隊長來和我說話。");
 	    } else {
 		var party = cm.getPlayer().getParty().getMembers();
 		var mapId = cm.getPlayer().getMapId();
@@ -31,9 +31,9 @@ function action(mode,type,selection) {
 		    		return;
 			}
 	    	    }
-			cm.sendOk("Another party quest has already entered this channel.");
+			cm.sendOk("已經有另一個隊伍在挑戰，請稍後再嘗試。");
 		} else {
-			cm.sendOk("All 3+ members of your party must be here.");
+			cm.sendOk("隊伍裡需要三個人以上。");
 		}
 	    }
 		break;

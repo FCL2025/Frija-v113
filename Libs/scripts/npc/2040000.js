@@ -3,30 +3,30 @@
 */
 
 var cost = 6000;
+var status = 0;
 
 function start() {
-    status = -1;
-    action(1, 0, 0);
+    cm.sendYesNo("你好,我是碼頭服務員喬伊。你想離開玩具之城到天空之城嗎? 從這站到艾納斯大陸的#b天空之城#k的船隻\r需要花費#b"+cost+" 楓幣#k 購買#b#t4031045##k 才可以啟航.");
 }
 
 function action(mode, type, selection) {
-    if(mode == 1) {
-	status++;
-    }
-    if(mode == 0) {
-	cm.sendNext("You must have some business to take care of here, right?");
-	cm.dispose();
-	return;
-    }
-    if(status == 0) {
-	cm.sendYesNo("Hello, I'm in charge of selling tickets for the ship ride to Orbis Station of Ossyria. The ride to Orbis takes off every 10 minutes, beginning on the hour, and it'll cost you #b"+cost+" mesos#k. Are you sure you want to purchase #b#t4031045##k?");
-    } else if(status == 1) {
-	if(cm.getMeso() >= cost && cm.canHold(4031045)) {
-	    cm.gainItem(4031045,1);
-	    cm.gainMeso(-cost);
-	} else {
-	    cm.sendOk("Are you sure you have #b"+cost+" mesos#k? If so, then I urge you to check your etc. inventory, and see if it's full or not.");
-	}
-	cm.dispose();
+    if(mode == -1)
+        cm.dispose();
+    else {
+        if(mode == 1)
+            status++;
+        if(mode == 0) {
+            cm.sendNext("你有一些經濟的負擔而無法搭船對吧?");
+            cm.dispose();
+            return;
+        }
+        if(status == 1) {
+            if(cm.getMeso() >= cost && cm.canHold(4031045)) {
+                cm.gainItem(4031045,1);
+                cm.gainMeso(-cost);
+            } else
+                cm.sendOk("請問你有 #b"+cost+" 楓幣#k? 如果有的話,我勸您檢查下身上其他欄位看是否有沒有滿了.");
+            cm.dispose();
+        }
     }
 }

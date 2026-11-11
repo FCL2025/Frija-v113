@@ -4,14 +4,14 @@
 
 
 function start() {
-    cm.sendYesNo("Have you decorated your tree nicely? It's an interesting experience, to say the least, when decorating it with other users, you know? Oh yeah.... are you suuuuuure you want to leave this place?");
+    cm.sendYesNo("這裡的風景這麼美 你真的要回去嗎?");
 }
 
 function action(mode, type, selection) {
     if (mode == 1) {
 	cm.warp(209000000);
     } else {
-	cm.sendNext("You need more time decorating trees, huh? If you ever feel like leaving this place, feel free to come talk to me~");
+	cm.sendNext("你需要更多的時間裝飾樹, 阿? 如果你想要離開這個地方，隨時都可以來跟我說話?");
     }
     cm.dispose();
 }

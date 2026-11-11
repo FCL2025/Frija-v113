@@ -5,14 +5,14 @@ function start(mode, type, selection) {
 	status++;
     } else {
 	if (status == 0) {
-	    qm.sendNext("Are you not ready to hunt the #o0100132#s yet? Always proceed if and only if you are fully ready. There''s nothing worse than engaging in battles without sufficient preparation.");
+	    qm.sendNext("您還沒準備好獵殺 #o0100132#嗎？ 最好把該準備的都準備好再去狩獵比較好。如果不好好準備，在途中一命嗚呼了，那只會讓人遺淺罷了！");
 	    qm.dispose();
 	    return;
 	}
 	status--;
     }
     if (status == 0) {
-	qm.askAcceptDecline("Shall we continue with your Basic Training? Before accepting, please make sure you have properly equipped your sword and your skills and potions are readily accessible.");
+	qm.askAcceptDecline("那麼要繼續基礎體力鍛鍊嗎？準備好了嗎？請您在確認劍是否裝備好了，技能和藥是否已經放入快捷欄內，然後就開始吧！");
     } else if (status == 1) {
 	qm.forceStartQuest();
 	qm.aranTutInstructionalBubble("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow3");

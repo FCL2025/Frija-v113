@@ -24,7 +24,7 @@ function action(mode, type, selection) {
 		while (it.hasNext()) {
 			var cPlayer = it.next();
 			var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
-			if (ccPlayer == null || ccPlayer.getLevel() < 71 || ccPlayer.getLevel() > 200) {
+			if (ccPlayer == null || ccPlayer.getLevel() < 70 || ccPlayer.getLevel() > 120) {
 				next = false;
 				break;
 			}

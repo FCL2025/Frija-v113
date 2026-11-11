@@ -26,7 +26,7 @@ var dungeons = 10;
 
 function enter(pi) {
 	if (!pi.haveItem(4032405)) {
-		pi.playerMessage(5, "It's locked.");
+		pi.playerMessage(5, "好像已經被上鎖了...");
 		return false;
 	}
 	if (pi.getPlayer().getMapId() == baseid) {
@@ -36,7 +36,7 @@ function enter(pi) {
 		    return true;
 		}
 	    }
-	    pi.playerMessage(5, "All of the Mini-Dungeons are in use right now, please try again later.");
+	    pi.playerMessage(5, "裡面已經有人在挑戰....請稍後再嘗試！！");
 		return false;
 	} else {
 			pi.warp(baseid, "in00");

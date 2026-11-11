@@ -1,3 +1,3 @@
 function enter(pi) {
-	return false;
+    pi.openNpc(2081005);
 }

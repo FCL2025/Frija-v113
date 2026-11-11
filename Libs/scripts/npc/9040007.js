@@ -1,11 +1,4 @@
-/* @Author Lerk
- *
- * Sharen III's Will - Sharenian: Waterway (990000600)
- * 
- * Guild Quest Stage 4 Info
- */
-
 function action(mode, type, selection) {
-    cm.sendOk("I fought the Rubian and I lost, and now I am imprisoned in the very gate that blocks my path, my body desecrated. However, my old clothing has holy power within. If you can return the clothing to my body, I should be able to open the gate. Please hurry! \r\n- Sharen III \r\n\r\nP.S. I know this is rather picky of me, but can you please return the clothes to my body #bbottom to top#k? Thank you for your services.");
+    cm.sendOk("我還記得我戰俄羅斯時我輸了，現在我在這扇大門守護著，阻擋想要來破壞我遺跡的人，我的身體褻瀆監禁然而我的舊衣服還有一個神聖的力量。\r\n如果你能找到我的帽子、上衣、褲子、鞋子讓我現在的靈魂回到上面的話，我應該能打開大門，拜託了！");
     cm.safeDispose();
 }

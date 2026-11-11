@@ -1,350 +1,201 @@
-/*
-	NPC Name: 		Adobis
-	Map(s): 		El Nath : Entrance to Zakum Altar
-	Description: 		Zakum battle starter
-*/
 var status = 0;
-
-function action(mode, type, selection) {
-	if (cm.getPlayer().getMapId() == 211042200) {
-		if (selection < 100) {
-			cm.sendSimple("#r#L100#Zakum#l\r\n#L101#Chaos Zakum#l");
-		} else {
-			if (selection == 100) {
-				cm.warp(211042300,0);
-			} else if (selection == 101) {
-				cm.warp(211042301,0);
-			}
-			cm.dispose();
-		}
-		return;
-	} else if (cm.getPlayer().getMapId() == 211042401) {
-    switch (status) {
-	case 0:
-		if (cm.getPlayer().getLevel() < 100) {
-			cm.sendOk("There is a level requirement of 100 to attempt Chaos Zakum.");
-			cm.dispose();
-			return;
-		}
-		if (cm.getPlayer().getClient().getChannel() != 7) {
-			cm.sendOk("Chaos Zakum may only be attempted on channel 7.");
-			cm.dispose();
-			return;
-		}
-	    var em = cm.getEventManager("ChaosZakum");
-
-	    if (em == null) {
-		cm.sendOk("The event isn't started, please contact a GM.");
-		cm.safeDispose();
-		return;
-	    }
-	var prop = em.getProperty("state");
-	if (prop == null || prop.equals("0")) {
-
-	    var squadAvailability = cm.getSquadAvailability("ChaosZak");
-	    if (squadAvailability == -1) {
-		status = 1;
-		cm.sendYesNo("Are you interested in becoming the leader of the expedition Squad?");
-
-	    } else if (squadAvailability == 1) {
-		// -1 = Cancelled, 0 = not, 1 = true
-		var type = cm.isSquadLeader("ChaosZak");
-		if (type == -1) {
-		    cm.sendOk("The squad has ended, please re-register.");
-		    cm.safeDispose();
-		} else if (type == 0) {
-		    var memberType = cm.isSquadMember("ChaosZak");
-		    if (memberType == 2) {
-			cm.sendOk("You been banned from the squad.");
-			cm.safeDispose();
-		    } else if (memberType == 1) {
-			status = 5;
-			cm.sendSimple("What do you want to do? \r\n#b#L0#Check out members#l \r\n#b#L1#Join the squad#l \r\n#b#L2#Withdraw from squad#l");
-		    } else if (memberType == -1) {
-			cm.sendOk("The squad has ended, please re-register.");
-			cm.safeDispose();
-		    } else {
-			status = 5;
-			cm.sendSimple("What do you want to do? \r\n#b#L0#Check out members#l \r\n#b#L1#Join the squad#l \r\n#b#L2#Withdraw from squad#l");
-		    }
-		} else { // Is leader
-		    status = 10;
-		    cm.sendSimple("What do you want to do? \r\n#b#L0#Check out members#l \r\n#b#L1#Remove member#l \r\n#b#L2#Edit restricted list#l \r\n#r#L3#Enter map#l");
-		// TODO viewing!
-		}
-	    } else {
-			var eim = cm.getDisconnected("ChaosZakum");
-			if (eim == null) {
-				cm.sendOk("The squad's battle against the boss has already begun.");
-				cm.safeDispose();
-			} else {
-				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
-				status = 2;
-			}
-	    }
-	} else {
-			var eim = cm.getDisconnected("ChaosZakum");
-			if (eim == null) {
-				cm.sendOk("The battle against the boss has already begun.");
-				cm.safeDispose();
-			} else {
-				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
-				status = 2;
-			}
+function start() {
+	if (cm.getPlayer().getClient().getChannel() != 1 && cm.getPlayer().getClient().getChannel() != 5) {
+		cm.playerMessage(5, "殘暴炎魔只能在1頻或5頻挑戰");
+		cm.dispose();
+		return false;
 	}
-	    break;
-	case 1:
-	    	if (mode == 1) {
-			if (cm.registerSquad("ChaosZak", 5, " has been named the Leader of the squad (Chaos). If you would you like to join please register for the Expedition Squad within the time period.")) {
-				cm.sendOk("You have been named the Leader of the Squad. For the next 5 minutes, you can add the members of the Expedition Squad.");
+	action(1, 0, 0);
+}
+function action(mode, type, selection) {
+	switch (status) {
+	case 0:
+		if (cm.getPlayer().getLevel() < 50 || !cm.haveItem(4001017)) {
+			cm.playerMessage("請確定你的等級是否有到達50等並且確認身上是否有火焰之眼");
+			cm.dispose();
+			return;
+		}
+		var em = cm.getEventManager("ZakumBattle");
+
+		if (em == null) {
+			cm.sendOk("找不到副本請聯絡GM。");
+			cm.safeDispose();
+			return;
+		}
+		var prop = em.getProperty("state");
+		var marr = cm.getQuestRecord(160101);
+		var data = marr.getCustomData();
+		if (data == null) {
+			marr.setCustomData("0");
+			data = "0";
+		}
+		var time = parseInt(data);
+		if (prop == null || prop.equals("0")) {
+			var squadAvailability = cm.getSquadAvailability("ZAK");
+			if (squadAvailability == -1) {
+				status = 1;
+				cm.sendYesNo("你想要成為殘暴炎魔遠征隊隊長?");
+
+			} else if (squadAvailability == 1) {
+				// -1 = Cancelled, 0 = not, 1 = true
+				var type = cm.isSquadLeader("ZAK");
+				if (type == -1) {
+					cm.sendOk("已經結束了申請。");
+					cm.safeDispose();
+				} else if (type == 0) {
+					var memberType = cm.isSquadMember("ZAK");
+					if (memberType == 2) {
+						cm.sendOk("在遠征隊的制裁名單。");
+						cm.safeDispose();
+					} else if (memberType == 1) {
+						status = 5;
+						cm.sendSimple("你要做什麼? \r\n#b#L0#查看遠征隊名單#l \r\n#b#L1#加入遠征隊#l \r\n#b#L2#退出遠征隊#l");
+					} else if (memberType == -1) {
+						cm.sendOk("遠征隊員已經達到30名，請稍後再試。");
+						cm.safeDispose();
+					} else {
+						status = 5;
+						cm.sendSimple("你要做什麼? \r\n#b#L0#查看遠征隊成員。#l \r\n#b#L1#加入遠征隊#l \r\n#b#L2#退出遠征隊#l");
+					}
+				} else { // Is leader
+					status = 10;
+					cm.sendSimple("你要做什麼? \r\n#b#L0#查看遠征隊成員。#l \r\n#b#L1#管理遠征隊成員。#l \r\n#b#L2#編輯限制列表。#l \r\n#r#L3#進入地圖。#l");
+					// TODO viewing!
+				}
 			} else {
-				cm.sendOk("An error has occurred adding your squad.");
+				var eim = cm.getDisconnected("ZakumBattle");
+				if (eim == null) {
+					var squd = cm.getSquad("ZAK");
+					if (squd != null) {
+						cm.sendYesNo("已經遠征隊正在進行挑戰了.\r\n" + squd.getNextPlayer());
+						status = 3;
+					} else {
+						cm.sendOk("遠征隊的挑戰已經開始.");
+						cm.safeDispose();
+					}
+				} else {
+					cm.playerMessage("無法再次加入遠征隊。");
+					cm.dispose();
+					return;
+				}
 			}
-	    	} else {
-			cm.sendOk("Talk to me if you want to become the leader of the Expedition squad.")
-	    	}
-	    cm.safeDispose();
-	    break;
-	case 2:
-		if (!cm.reAdd("ChaosZakum", "ChaosZak")) {
-			cm.sendOk("Error... please try again.");
+		} else {
+			var eim = cm.getDisconnected("ZakumBattle");
+			if (eim == null) {
+				var squd = cm.getSquad("ZAK");
+				if (squd != null) {
+					cm.sendYesNo("已經遠征隊正在進行挑戰了.\r\n" + squd.getNextPlayer());
+					status = 3;
+				} else {
+					cm.sendOk("遠征隊的挑戰已經開始.");
+					cm.safeDispose();
+				}
+			} else {
+				cm.playerMessage("無法再次加入遠征隊。");
+				cm.dispose();
+				return;
+			}
+		}
+		break;
+	case 1:
+		if (mode == 1) {
+			if (cm.registerSquad("ZAK", 5, " 已經成為了遠征隊隊長。如果你想加入遠征隊，請重新打開對話申請加入遠征隊。")) {
+				cm.sendOk("你已經成為了遠征隊隊長。接下來的5分鐘，請等待隊員們的申請。");
+			} else {
+				cm.sendOk("未知錯誤.");
+			}
+		} else {
+			cm.sendOk("如果你想要成為遠征隊隊長請務必告訴我！");
 		}
 		cm.safeDispose();
 		break;
-	case 5:
-	    if (selection == 0) {
-		if (!cm.getSquadList("ChaosZak", 0)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		    cm.safeDispose();
-		} else {
-		    cm.dispose();
-		}
-	    } else if (selection == 1) { // join
-		var ba = cm.addMember("ChaosZak", true);
-		if (ba == 2) {
-		    cm.sendOk("The squad is currently full, please try again later.");
-		    cm.safeDispose();
-		} else if (ba == 1) {
-		    cm.sendOk("You have joined the squad successfully");
-		    cm.safeDispose();
-		} else {
-		    cm.sendOk("You are already part of the squad.");
-		    cm.safeDispose();
-		}
-	    } else {// withdraw
-		var baa = cm.addMember("ChaosZak", false);
-		if (baa == 1) {
-		    cm.sendOk("You have withdrawed from the squad successfully");
-		    cm.safeDispose();
-		} else {
-		    cm.sendOk("You are not part of the squad.");
-		    cm.safeDispose();
-		}
-	    }
-	    break;
-	case 10:
-	    if (selection == 0) {
-		if (!cm.getSquadList("ChaosZak", 0)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		}
-		cm.safeDispose();
-	    } else if (selection == 1) {
-		status = 11;
-		if (!cm.getSquadList("ChaosZak", 1)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		}
-		cm.safeDispose();
-	    } else if (selection == 2) {
-		status = 12;
-		if (!cm.getSquadList("ChaosZak", 2)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		}
-		cm.safeDispose();
-	    } else if (selection == 3) { // get insode
-		if (cm.getSquad("ChaosZak") != null) {
-		    var dd = cm.getEventManager("ChaosZakum");
-		    dd.startInstance(cm.getSquad("ChaosZak"), cm.getMap());
-		    cm.dispose();
-		} else {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		    cm.safeDispose();
-		}
-	    }
-	    break;
-	case 11:
-	    cm.banMember("ChaosZak", selection);
-	    cm.dispose();
-	    break;
-	case 12:
-	    if (selection != -1) {
-		cm.acceptMember("ChaosZak", selection);
-	    }
-	    cm.dispose();
-	    break;
-    }
-	} else {
-    switch (status) {
-	case 0:
-		if (cm.getPlayer().getLevel() < 50) {
-			cm.sendOk("There is a level requirement of 50 to attempt Zakum.");
-			cm.dispose();
-			return;
-		}
-		if (cm.getPlayer().getClient().getChannel() != 3 && cm.getPlayer().getClient().getChannel() != 2) {
-			cm.sendOk("Zakum may only be attempted on channel 2 and 3.");
-			cm.dispose();
-			return;
-		}
-	    var em = cm.getEventManager("ZakumBattle");
-
-	    if (em == null) {
-		cm.sendOk("The event isn't started, please contact a GM.");
-		cm.safeDispose();
-		return;
-	    }
-	var prop = em.getProperty("state");
-	if (prop == null || prop.equals("0")) {
-
-	    var squadAvailability = cm.getSquadAvailability("ZAK");
-	    if (squadAvailability == -1) {
-		status = 1;
-		cm.sendYesNo("Are you interested in becoming the leader of the expedition Squad?");
-
-	    } else if (squadAvailability == 1) {
-		// -1 = Cancelled, 0 = not, 1 = true
-		var type = cm.isSquadLeader("ZAK");
-		if (type == -1) {
-		    cm.sendOk("The squad has ended, please re-register.");
-		    cm.safeDispose();
-		} else if (type == 0) {
-		    var memberType = cm.isSquadMember("ZAK");
-		    if (memberType == 2) {
-			cm.sendOk("You been banned from the squad.");
-			cm.safeDispose();
-		    } else if (memberType == 1) {
-			status = 5;
-			cm.sendSimple("What do you want to do? \r\n#b#L0#Check out members#l \r\n#b#L1#Join the squad#l \r\n#b#L2#Withdraw from squad#l");
-		    } else if (memberType == -1) {
-			cm.sendOk("The squad has ended, please re-register.");
-			cm.safeDispose();
-		    } else {
-			status = 5;
-			cm.sendSimple("What do you want to do? \r\n#b#L0#Check out members#l \r\n#b#L1#Join the squad#l \r\n#b#L2#Withdraw from squad#l");
-		    }
-		} else { // Is leader
-		    status = 10;
-		    cm.sendSimple("What do you want to do? \r\n#b#L0#Check out members#l \r\n#b#L1#Remove member#l \r\n#b#L2#Edit restricted list#l \r\n#r#L3#Enter map#l");
-		// TODO viewing!
-		}
-	    } else {
-			var eim = cm.getDisconnected("ZakumBattle");
-			if (eim == null) {
-				cm.sendOk("The squad's battle against the boss has already begun.");
-				cm.safeDispose();
-			} else {
-				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
-				status = 2;
-			}
-	    }
-	} else {
-			var eim = cm.getDisconnected("ZakumBattle");
-			if (eim == null) {
-				cm.sendOk("The battle against the boss has already begun.");
-				cm.safeDispose();
-			} else {
-				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
-				status = 2;
-			}
-	}
-	    break;
-	case 1:
-	    	if (mode == 1) {
-			if (cm.registerSquad("ZAK", 5, " has been named the Leader of the squad (Regular). If you would you like to join please register for the Expedition Squad within the time period.")) {
-				cm.sendOk("You have been named the Leader of the Squad. For the next 5 minutes, you can add the members of the Expedition Squad.");
-			} else {
-				cm.sendOk("An error has occurred adding your squad.");
-			}
-	    	} else {
-			cm.sendOk("Talk to me if you want to become the leader of the Expedition squad.")
-	    	}
-	    cm.safeDispose();
-	    break;
 	case 2:
 		if (!cm.reAdd("ZakumBattle", "ZAK")) {
-			cm.sendOk("Error... please try again.");
+			cm.sendOk("錯誤請稍後在嘗試...");
 		}
 		cm.safeDispose();
 		break;
+	case 3:
+		if (mode == 1) {
+			var squd = cm.getSquad("ZAK");
+			if (squd != null && !squd.getAllNextPlayer().contains(cm.getPlayer().getName())) {
+				squd.setNextPlayer(cm.getPlayer().getName());
+				cm.sendOk("你已經成功登記為下一組..");
+			}
+		}
+		cm.dispose();
+		break;
 	case 5:
-	    if (selection == 0) {
-		if (!cm.getSquadList("ZAK", 0)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		    cm.safeDispose();
-		} else {
-		    cm.dispose();
+		if (selection == 0) {
+			if (!cm.getSquadList("ZAK", 0)) {
+				cm.sendOk("由於未知的錯誤，操作失敗。");
+				cm.safeDispose();
+			} else {
+				cm.dispose();
+			}
+		} else if (selection == 1) { // join
+			var ba = cm.addMember("ZAK", true);
+			if (ba == 2) {
+				cm.sendOk("遠征隊員已經達到30名，請稍後再試。");
+				cm.safeDispose();
+			} else if (ba == 1) {
+				cm.sendOk("你已經參加了遠征隊，請等候隊長指示。");
+				cm.safeDispose();
+			} else {
+				cm.sendOk("你已經參加了遠征隊，請等候隊長指示。");
+				cm.safeDispose();
+			}
+		} else { // withdraw
+			var baa = cm.addMember("ZAK", false);
+			if (baa == 1) {
+				cm.sendOk("成功退出遠征隊。");
+				cm.safeDispose();
+			} else {
+				cm.sendOk("你沒有參加遠征隊。");
+				cm.safeDispose();
+			}
 		}
-	    } else if (selection == 1) { // join
-		var ba = cm.addMember("ZAK", true);
-		if (ba == 2) {
-		    cm.sendOk("The squad is currently full, please try again later.");
-		    cm.safeDispose();
-		} else if (ba == 1) {
-		    cm.sendOk("You have joined the squad successfully");
-		    cm.safeDispose();
-		} else {
-		    cm.sendOk("You are already part of the squad.");
-		    cm.safeDispose();
-		}
-	    } else {// withdraw
-		var baa = cm.addMember("ZAK", false);
-		if (baa == 1) {
-		    cm.sendOk("You have withdrawed from the squad successfully");
-		    cm.safeDispose();
-		} else {
-		    cm.sendOk("You are not part of the squad.");
-		    cm.safeDispose();
-		}
-	    }
-	    break;
+		break;
 	case 10:
-	    if (selection == 0) {
-		if (!cm.getSquadList("ZAK", 0)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+		if (selection == 0) {
+			if (!cm.getSquadList("ZAK", 0)) {
+				cm.sendOk("由於未知的錯誤，操作失敗。");
+			}
+			cm.safeDispose();
+		} else if (selection == 1) {
+			status = 11;
+			if (!cm.getSquadList("ZAK", 1)) {
+				cm.sendOk("由於未知的錯誤，操作失敗。");
+				cm.safeDispose();
+			}
+
+		} else if (selection == 2) {
+			status = 12;
+			if (!cm.getSquadList("ZAK", 2)) {
+				cm.sendOk("由於未知的錯誤，操作失敗。");
+				cm.safeDispose();
+			}
+
+		} else if (selection == 3) { // get insode
+			if (cm.getSquad("ZAK") != null) {
+				var dd = cm.getEventManager("ZakumBattle");
+				dd.startInstance(cm.getSquad("ZAK"), cm.getMap(), 160101);
+				cm.dispose();
+			} else {
+				cm.sendOk("由於未知的錯誤，操作失敗。");
+				cm.safeDispose();
+			}
 		}
-		cm.safeDispose();
-	    } else if (selection == 1) {
-		status = 11;
-		if (!cm.getSquadList("ZAK", 1)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		}
-		cm.safeDispose();
-	    } else if (selection == 2) {
-		status = 12;
-		if (!cm.getSquadList("ZAK", 2)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		}
-		cm.safeDispose();
-	    } else if (selection == 3) { // get insode
-		if (cm.getSquad("ZAK") != null) {
-		    var dd = cm.getEventManager("ZakumBattle");
-		    dd.startInstance(cm.getSquad("ZAK"), cm.getMap(),160108);
-		    cm.dispose();
-		} else {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
-		    cm.safeDispose();
-		}
-	    }
-	    break;
+		break;
 	case 11:
-	    cm.banMember("ZAK", selection);
-	    cm.dispose();
-	    break;
+		cm.banMember("ZAK", selection);
+		cm.dispose();
+		break;
 	case 12:
-	    if (selection != -1) {
-		cm.acceptMember("ZAK", selection);
-	    }
-	    cm.dispose();
-	    break;
-    }
+		if (selection != -1) {
+			cm.acceptMember("ZAK", selection);
+		}
+		cm.dispose();
+		break;
 	}
 }

@@ -12,8 +12,8 @@ em.setProperty("balrogState", "0");
 	em.setProperty("leader", "true");
     // Setup the instance when invoked, EG : start PQ
     var eim = em.newInstance("BossBalrog_EASY" + leaderid);
-	eim.setInstanceMap(105100400).resetFully();
-	eim.setInstanceMap(105100401).resetFully();
+	eim.setInstanceMap(105100300).resetFully();
+	eim.setInstanceMap(105100301).resetFully();
 
 	eim.schedule("spawn", 5000);
   	eim.schedule("checkHP", 305000);
@@ -56,7 +56,7 @@ function playerEntry(eim, player) {
 }
 
 function changedMap(eim, player, mapid) {
-    if (mapid != 105100400 && mapid != 105100401) {
+    if (mapid != 105100300 && mapid != 105100301) {
 	playerExit(eim,player);
     }
 }

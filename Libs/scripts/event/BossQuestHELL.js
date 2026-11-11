@@ -1,6 +1,6 @@
 var eventmapid = 551030200;
 var returnmap = 910000000;
-var monster = Array(8800002,9400300,8820001, 1,0, 2);
+var monster = Array(8800002, 9400300, 8820001, 0); // 1 (9400589~93) and 2 (8850005~09) removed: not in v113
 
 function init() {
 // After loading, ChannelServer

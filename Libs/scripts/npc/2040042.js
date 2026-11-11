@@ -20,26 +20,26 @@ function action(mode, type, selection) {
 	    if (stage7leader == "done") {
 
 		if (cm.haveItem(4001022,3)) { // Clear stage
-		    cm.sendNext("Congratulations! You've passed the 7th stage. Hurry on now, to the 8th stage.");
+		    cm.sendNext("恭喜！你已經通過了第七階段。快點現在，到第8階段。");
 		    cm.removeAll(4001022);
 		    clear(7, eim, cm);
 		    cm.givePartyExp(exp, eim.getPlayers());
 		    cm.dispose();
 		} else { // Not done yet
-		    cm.sendNext("Are you sure you've brought me #r3 Passes of Dimension#k? Please check again.");
+		    cm.sendNext("你確定你有收集了 #r3張 #t4001022##k？？");
 		}
 		cm.dispose();
 	    } else {
-		cm.sendOk("Welcome to the 7th stage. Go around, and collect #r3 Passes of Dimension#k by summoning #bRombots#k and killing them. Once you're done, get your party members to hand all the #rPasses#k to you, then talk to me again.");
+		cm.sendOk("歡迎來到第七階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 來找我即可完成任務。");
 		eim.setProperty("stage7leader","done");
 		cm.dispose();
 	    }
 	} else { // Members
-	    cm.sendNext("Welcome to the 7th stage. Go around, and collect #rPasses of Dimension#k by summoning #bRombots#k and killing them. Once you're done, hand all the #rPasses#k to your party leader.");
+	    cm.sendNext("歡迎來到第七階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 給你的隊長，然後叫隊長來找我即可完成任務。");
 	    cm.dispose();
 	}
     } else {
-	cm.sendNext("Congratulations! You've passed the 7th stage. Hurry on now, to the 8th stage.");
+	cm.sendNext("恭喜！你已經通過了第七階段。快點現在，到第8階段。");
 	cm.dispose();
     }
 }

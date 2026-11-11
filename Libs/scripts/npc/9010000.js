@@ -9,6 +9,47 @@
 ---------------------------------------------------------------------------------------------------
 **/
 
+/*
+	楓之谷GM：選單分兩項
+	  1. 前往攝影區（scripts/ 版的功能，出口 portal/photoOut 讀回 DONGDONGCHIANG 存點）
+	  2. 用楓葉兌換楓葉武器/盾牌/楓葉頭盔/週年慶卷軸（Libs/scripts 版的功能，原樣保留於 leafAction）
+*/
+var branch = -1;
+
+function start() {
+	cm.sendSimple("嗨，我是#p9010000#，需要什麼幫忙嗎？\r\n#b#L0#我想和朋友到攝影區留下美好的照片#l\r\n#L1#我想用楓葉兌換禮物#l");
+}
+
+function action(mode, type, selection) {
+	if (branch == -1) {
+		if (mode != 1) {
+			cm.dispose();
+			return;
+		}
+		if (selection == 0) {
+			branch = 0;
+			cm.sendYesNo("想要和你的朋友在這個伺服器留下美好的照片嗎？要現在前往攝影區嗎？");
+		} else if (selection == 1) {
+			branch = 1;
+			leafAction(1, 0, 0);
+		} else {
+			cm.dispose();
+		}
+		return;
+	}
+	if (branch == 0) {
+		if (mode == 1) {
+			cm.saveLocation("DONGDONGCHIANG");
+			cm.warp(970000000, 0);
+		} else if (mode == 0) {
+			cm.sendOk("需要的時候，再來找我吧。");
+		}
+		cm.dispose();
+		return;
+	}
+	leafAction(mode, type, selection);
+}
+
 var status = -1;
 var eQuestChoices = new Array (1302064,1312032,1322054,1332055,1332056,1372034,1382039,1402039,1412027,1422029,1432040,1442051,
 								1452045,1462040,1472055,
@@ -96,7 +137,7 @@ var reward;
 var itemSet;
 
 
-function action(mode, type, selection) {
+function leafAction(mode, type, selection) {
 	if (status == 2 && mode != 1 ) {
 		cm.sendOk("好好慶祝吧!有問題歡迎隨時找我～");
 		cm.safeDispose();

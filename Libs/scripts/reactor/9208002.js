@@ -18,7 +18,7 @@ function act() {
 		eim.setProperty("stage1combo",prevCombo);
 		if (prevCombo.length == (6 * (stage + 3))) { //end of displaying
 		    eim.setProperty("stage1status","active");
-		    rm.mapMessage("The combo has been displayed; Proceed with caution.");
+		    rm.mapMessage("目前組合已經出爐，請謹慎操作！");
 		    eim.setProperty("stage1guess","");
 		}
 	    } else { //active

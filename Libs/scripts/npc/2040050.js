@@ -1,6 +1,4 @@
-/*
-	Eurek the Alchemist - Multiple Place
-**/
+/* 流浪煉金術士 */
 
 var status = 0;
 var menu = "";
@@ -10,17 +8,20 @@ var access = true;
 var reqitem = new Array();
 var cost = 4000;
 var makeditem = new Array(4006000,4006001);
-var reqset = new Array([[[4000046,20],[4000027,20],[4021001,1]],
+var reqset = new Array(
+    [[[4000046,20],[4000027,20],[4021001,1]],
     [[4000025,20],[4000049,20],[4021006,1]],
     [[4000129,15],[4000130,15],[4021002,1]],
     [[4000074,15],[4000057,15],[4021005,1]],
-    [[4000054,7],[4000053,7],[4021003,1]]],
+    [[4000054,7],[4000053,7],[4021003,1]],
+    [[4000238,15],[4000241,15],[4021000,1]]],
 						
-    [[[4000046,20],[4000027,20],[4011001,1]],
-    [[4000014,20],[4000049,20],[4011003,1]],
+    [[[4000028,20],[4000027,20],[4011001,1]],
+    [[4000014,20],[4000056,20],[4011003,1]],
     [[4000132,15],[4000128,15],[4011005,1]],
     [[4000074,15],[4000069,15],[4011002,1]],
-    [[4000080,7],[4000079,7],[4011004,1]]]);
+    [[4000080,7],[4000079,7],[4011004,1]],
+    [[4000226,15],[4000237,15],[4011001,1]]]);
 
 function start() {
     action(1, 0, 0);
@@ -32,25 +33,27 @@ function action(mode, type, selection) {
 	return;
     }
     if(mode == 0) {
-	cm.sendNext("Not enough materials, huh? No worries. Just come see me once you gather up the necessary items. There are numerous ways to obtain them, whether it be hunting or purchasing it from others, so keep going.");
+	cm.sendNext("還沒得到需要的材料吧? 但以後隨時有材料就給我吧。打獵,購買等等，得到道具的辦法有多種。");
 	cm.dispose();
     }
     if(mode == 1) {
 	status++;
     }
     if(status == 0) {
-	cm.sendNext("Alright, mix up the frog's tongue with the squirrel's tooth and ... oh yeah! Forgot to put in the sparkling white powder!! Man, that could have been really bad ... Whoa!! How long have you been standing there? I maaaay have been a little carried away with my work ... hehe.");
+	cm.sendNext("把田鼠的舌頭和雞翅混合1:1… 阿!沒有發光之粉~ 喲? 從什麼時候在哪裡了?");
     } else if(status == 1) {
-	cm.sendSimple("As you can see, I'm just a traveling alchemist. I may be in training, but I can still make a few things that you may need. Do you want to take a look?\r\n\r\n#L0##bMake Magic Rock#k#l\r\n#L1##bMake The Summoning Rock#k#l");
+	cm.sendSimple("我是流浪煉金術士. 還是練習工, 但我能做給你一些東西. 怎麼樣? 想不想跟我交易?\r\n\r\n#b#L0#做#t4006000##l\r\n#b#L1#做#t4006001##l");
     } else if(status == 2) {
 	set = selection;
 	makeitem = makeditem[set];
 	for(i=0; i < reqset[set].length; i++) {
-	    menu += "\r\n#L"+i+"##bMake it using #t"+reqset[set][i][0][0]+"# and #t"+reqset[set][i][1][0]+"##k#l";
+	    menu += "\r\n#L"+i+"##b用#t"+reqset[set][i][0][0]+"#和#t"+reqset[set][i][1][0]+"#做#l";
 	}
-	cm.sendSimple("Haha... #b#t"+makeitem+"##k is a mystical rock that only I can make. Many travelers seems to need this for most powerful skills that require more than just MP and HP. There are 5 ways to make #t"+makeitem+"#. Which way do you want to make it?"+menu);
+	cm.sendSimple("呼呼… 只有我能做#b#t"+makeitem+"##k這神秘的石頭. 最近很多冒險者說需要這個. 做#t"+makeitem+"#的辦法一共有6個. 你願意用什麼辦法做?"+menu);
     } else if(status == 3) {
-	if (selection < 0 || selection >= reqset.length) {
+        //cm.playerMessage("當前選擇 status: " + status + " selection: " + selection +"  "+reqset.length);
+	if (selection < 0 ) { // || selection >= reqset.length
+	    //cm.playerMessage("出現錯誤關閉");
 	    cm.dispose();
 	    return;
 	}
@@ -60,19 +63,19 @@ function action(mode, type, selection) {
 	reqitem[2] = new Array(set[2][0],set[2][1]);
 	menu = "";
 	for(i=0; i < reqitem.length; i++) {
-	    menu += "\r\n#v"+reqitem[i][0]+"# #b"+reqitem[i][1]+" #t"+reqitem[i][0]+"#s#k";
+	    menu += "\r\n#v"+reqitem[i][0]+"# #t"+reqitem[i][0]+"# #b"+reqitem[i][1]+"個";
 	}
-	menu += "\r\n#i4031138# #b"+cost+" mesos#k";
-	cm.sendYesNo("To make #b5 #t"+makeitem+"##k, I'll need the following items. Most of them can be obtained through hunting, so it won't be terriblt difficult for you to get them. What do you think? Do you want some?\r\n"+menu);
+	menu += "\r\n#i4031138# #b"+cost+" 金幣#k";
+	cm.sendYesNo("為做#b5個#t"+makeitem+"##k需要如下的材料，大多是打獵怪物就會得到的。所以你努力下去，不那麼難得到。怎麼樣? 你真想做嗎?\r\n"+menu);
     } else if(status == 4) {
 	for(i=0; i < reqitem.length; i++) {
 	    if(!cm.haveItem(reqitem[i][0],reqitem[i][1]))
 		access = false;
 	}
 	if(access == false || !cm.canHold(makeitem) || cm.getMeso() < cost) {
-	    cm.sendNext("Please check and see if you have all the items needed, or if your etc. inventory is full or not");
+	    cm.sendNext("請你再確認都有需要的道具或背包的其他窗有沒有空間.");
 	} else {
-	    cm.sendOk("Here, take the 5 pieces of #b#t"+makeitem+"##k. Even I have to admit, this is a masterpiece. Alright, if you need my help down the road, by all means come back and talk to me!");
+	    cm.sendOk("來，這裡是五個 #b#t"+makeitem+"##k. 我不得不說這真是完美阿，如果你下次遇到需要的時候，可以再回來找我對話！");
 	    cm.gainItem(reqitem[0][0],-reqitem[0][1]);
 	    cm.gainItem(reqitem[1][0],-reqitem[1][1]);
 	    cm.gainItem(reqitem[2][0],-reqitem[2][1]);

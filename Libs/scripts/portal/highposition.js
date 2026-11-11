@@ -29,8 +29,8 @@ function enter(pi) {
     if (changedd) {
 	pi.updateInfoQuest(27017, new_quest);
 	pi.forceStartQuest(27018, number+1, true);
-	pi.getPlayer().dropMessage(-1, (number+1) +"/5 completed");
-	pi.getPlayer().dropMessage(-1, "稱號成就 - 登峰者");
-	pi.showQuestMsg("當前稱號 - 登峰者 " + (number+1) + "/5 完成");
+	pi.getPlayer().dropMessage(-1, (number+1) +"/5 完成");
+	pi.getPlayer().dropMessage(-1, "目前正在挑戰在巔峰的人稱號");
+	pi.showQuestMsg("目前正在挑戰 - 戰在巔峰的人 " + (number+1) + "/5 完成");
     }
 }

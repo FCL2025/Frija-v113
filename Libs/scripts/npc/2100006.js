@@ -30,33 +30,30 @@ function action(mode, type, selection) {
 		else
 			status--;
 		if (status == 0) {
-			cm.sendSimple("Hahaha... it takes a lot of style and flair for someone to pay attention to his or her hairsyle in a desert. Someone like you...If you have #bAriant hair style coupon(VIP)#k or #bAriant hair color coupon(VIP)#k, I'll give your hair a fresh new look. \r\n#L0##bChange Hairstyle(VIP Coupon)#k#l \r\n#L1##bDye Hair(VIP Coupon)#k#l");
+			cm.sendSimple("嗨，我是#p2100006# 如果你有 #b#t5150027##k 或者 #b#t5151022##k, 可以找我談談。 \r\n#L0#使用:#b#t5150027##k#l \r\n#L1#使用:#b#t5151022##k#l");
 		} else if (status == 1) {
 			if (selection == 0) {
 				beauty = 1;
 				hairnew = Array();
 				if (cm.getChar().getGender() == 0) {
 					for(var i = 0; i < mhair.length; i++) {
-						hairnew.push(mhair[i] + parseInt(cm.getChar().getHair()
- % 10));
+						hairnew.push(mhair[i] + parseInt(cm.getChar().getHair() % 10));
 					}
 				} 
 				if (cm.getChar().getGender() == 1) {
 					for(var i = 0; i < fhair.length; i++) {
-						hairnew.push(fhair[i] + parseInt(cm.getChar().getHair()
- % 10));
+						hairnew.push(fhair[i] + parseInt(cm.getChar().getHair() % 10));
 					}
 				}
-				cm.sendStyle("Hahaha~all you need is #bAriant hair style coupon(VIP)#k to change up your hairstyle. Choose the new style, and let me do the rest.", hairnew);
+				cm.sendStyle("選擇一個你想要的。", hairnew);
 			} else if (selection == 1) {
 				beauty = 2;
 				haircolor = Array();
-				var current = parseInt(cm.getChar().getHair()
-/10)*10;
+				var current = parseInt(cm.getChar().getHair()/10)*10;
 				for(var i = 0; i < 8; i++) {
 					haircolor.push(current + i);
 				}
-				cm.sendStyle("Every once in a while, it doesn't hurt to change up your hair color... it's fun. Allow me, the great Mazra, to dye your hair, so you just bring me #bAriant hair color coupon(VIP)#k, and choose your new hair color.", haircolor);
+				cm.sendStyle("選擇一個你想要的。", haircolor);
 			}
 		}
 		else if (status == 2){
@@ -65,18 +62,18 @@ function action(mode, type, selection) {
 				if (cm.haveItem(5150027) == true){
 					cm.gainItem(5150027, -1);
 					cm.setHair(hairnew[selection]);
-					cm.sendOk("Enjoy your new and improved hairstyle!");
+					cm.sendOk("享受！");
 				} else {
-					cm.sendNext("I thought I told you, you need the coupon in order for me to work magic on your hair check again.");
+					cm.sendNext("痾.... 貌似沒有#t5150027#。");
 				}
 			}
 			if (beauty == 2){
 				if (cm.haveItem(5151022) == true){
 					cm.gainItem(5151022, -1);
 					cm.setHair(haircolor[selection]);
-					cm.sendOk("Enjoy your new and improved haircolor!");
+					cm.sendOk("享受！");
 				} else {
-					cm.sendNext("I thought I told you, you need the coupon in order for me to work magic on your hair check again.");
+					cm.sendNext("痾.... 貌似沒有#t5151022#。");
 				}
 			}
 		}

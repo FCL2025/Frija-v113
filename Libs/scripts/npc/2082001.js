@@ -14,26 +14,26 @@ function start() {
 function action(mode, type, selection) {
     status++;
     if(mode == 0) {
-	cm.sendNext("You must have some business to take care of here, right?");
+	cm.sendNext("你有一些經濟的負擔而無法搭船對吧?");
 	cm.dispose();
 	return;
     }
     if (status == 0) {
 	if(flight == null) {
-	    cm.sendNext("Event error, please restart your server for solution");
+	    cm.sendNext("找不到此腳本請回報GM");
 	    cm.dispose();
 	} else if(flight.getProperty("entry").equals("true")) {
-	    cm.sendYesNo("It looks like there's plenty of room for this ride. Please have your ticket ready so I can let you in, The ride will be long, but you'll get to your destination just fine. What do you think? Do you want to get on this ride?");
+        cm.sendYesNo("你要搭往神木村的船?");
 	} else if(flight.getProperty("entry").equals("false") && flight.getProperty("docked").equals("true")) {
-	    cm.sendNext("The flight is getting ready for takeoff. I'm sorry, but you'll have to get on the next ride. The ride schedule is available through the usher at the ticketing booth.");
+	    cm.sendNext("很抱歉本班船準備起飛,乘坐時間表可以通過售票展台查看.");
 	    cm.dispose();
 	} else {
-	    cm.sendNext("We will begin boarding 1 minutes before the takeoff. Please be patient and wait for a few minutes. Be aware that the subway will take off on time, and we stop receiving tickets 1 minute before that, so please make sure to be here on time.");
+	    cm.sendNext("請耐心等待幾分鐘，正在整理裡面中！");
 	    cm.dispose();
 	}
     } else if(status == 1) {
 	if(!cm.haveItem(4031045)) {
-	    cm.sendNext("Oh no ... I don't think you have the ticket with you. I can't let you in without it. Please buy the ticket at the ticketing booth.");
+	    cm.sendNext("不! 你沒有#b#t4031045##k 所以我不能放你走!.");
 	} else {
 	    cm.gainItem(4031045, -1);
 	    cm.warp(240000111, 0);

@@ -10,7 +10,15 @@ function start() {
 }
 
 function action(mode, type, selection) {
+
+	if( cm == null )
+		return;
+	
     var eim = cm.getEventInstance();
+
+    if(eim == null)
+    	return;
+
     var stage1status = eim.getProperty("stage1status");
 
     if (stage1status == null) {
@@ -19,26 +27,26 @@ function action(mode, type, selection) {
 	    if (stage1leader == "done") {
 
 		if (cm.haveItem(4001022, 25)) { // Clear stage
-		    cm.sendNext("Congratulations! You've passed the 1st stage. Hurry on now, to the 2nd stage.");
+		    cm.sendNext("恭喜！你已經通過了第一階段。快點現在，到了第二階段。");
 		    cm.removeAll(4001022);
 		    clear(1, eim, cm);
 		    cm.givePartyExp(2100, eim.getPlayers());
 		    cm.dispose();
 		} else { // Not done yet
-		    cm.sendNext("Are you sure you've brought me #r25 Passes of Dimension#k? Please check again.");
+		    cm.sendNext("你確定你有收集了 #r25張 #t4001022##k？？");
 		}
 		cm.dispose();
 	    } else {
-		cm.sendOk("Welcome to the 1st stage. Go around, and collect #rPasses of Dimension#k from the #bRatz#k and #bBlack Ratz#k in this map. Once you're done, get your party members to hand all the #rPasses#k to you, then talk to me again.");
+		cm.sendOk("歡迎來到第一階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 來找我即可完成任務。");
 		eim.setProperty("stage1leader","done");
 		cm.dispose();
 	    }
 	} else { // Members
-	    cm.sendNext("Welcome to the 1st stage. Go around, and collect #rPasses of Dimension#k from the #bRatz#k and #bBlack Ratz#k in this map. Once you're done, hand all the #rPasses#k to your party leader.");
+	    cm.sendNext("歡迎來到第一階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 給你的隊長，然後叫隊長來找我即可完成任務。");
 	    cm.dispose();
 	}
     } else {
-	cm.sendNext("Congratulations! You've passed the 1st stage. Hurry on now, to the 2nd stage.");
+	cm.sendNext("恭喜！你已經通過了第一階段。快點現在，到了第二階段。");
 	cm.dispose();
     }
 }

@@ -1,348 +1,356 @@
-/*/*
-	This file is part of the OdinMS Maple Story Server
-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
-		       Matthias Butz <matze@odinms.de>
-		       Jan Christian Meyer <vimes@odinms.de>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation version 3 as published by
-    the Free Software Foundation. You may not use, modify or distribute
-    this program under any other version of the GNU Affero General Public
-    License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-/**
--- Odin JavaScript --------------------------------------------------------------------------------
-	Cloto - Hidden Street : 1st Accompaniment
--- By ---------------------------------------------------------------------------------------------
-	Stereo
--- Version Info -----------------------------------------------------------------------------------
-        1.1 - Second Version by Moogra
-	1.0 - First Version by Stereo
----------------------------------------------------------------------------------------------------
-**/
-
-importPackage(Packages.tools);
-importPackage(Packages.tools.packet);
-importPackage(java.awt);
-
-var status = 0;
+var status;
 var curMap;
-var questions = Array("我所提出的問題是:轉職劍士時，需要多少等級?請收集相同數量的通行證給我",
-    "我所提出的問題是:轉職劍士時，需要多少力量?請收集相同數量的通行證給我",
-    "我所提出的問題是:轉職法師時，需要多少智力?請收集相同數量的通行證給我",
-    "我所提出的問題是:轉職弓箭手時，需要多少敏捷?請收集相同數量的通行證給我",
-    "我所提出的問題是:轉職盜賊時，需要多少敏捷?請收集相同數量的通行證給我",
-    "我所提出的問題是:轉職二轉時，需要多少等級?請收集相同數量的通行證給我");
-var qanswers = Array(10, 35, 25, 25, 25, 30);
+var playerStatus;
+var chatState;
+var questions = Array("請問法師一轉要幾等",
+        "請問盜賊一轉要幾等",
+        "請問法師轉職需要多少智力",
+        "請問弓箭手轉職需要多少敏捷",
+        "請問幾等才能進行二轉",
+        "請問劍士一轉要多少力量");
+var qanswers = Array(8, 10, 20, 25, 30, 35);
 var party;
-var preamble; // we dont even need this mother fucker ! --
-var stage2Rects = Array(new Rectangle(-755,-132,4,218),new Rectangle(-721,-340,4,166),new Rectangle(-586,-326,4,150),new Rectangle(-483,-181,4,222));
-var stage3Rects = Array(new Rectangle(608,-180,140,50),new Rectangle(791,-117,140,45),
-    new Rectangle(958,-180,140,50),new Rectangle(876,-238,140,45),
-    new Rectangle(702,-238,140,45));
-var stage4Rects = Array(new Rectangle(910,-236,35,5),new Rectangle(877,-184,35,5),
-    new Rectangle(946,-184,35,5),new Rectangle(845,-132,35,5),
-    new Rectangle(910,-132,35,5),new Rectangle(981,-132,35,5));
-var stage2combos = Array(Array(0,1,1,1),Array(1,0,1,1),Array(1,1,0,1),Array(1,1,1,0));
-var stage3combos = Array(Array(0,0,1,1,1),Array(0,1,0,1,1),Array(0,1,1,0,1),
-    Array(0,1,1,1,0),Array(1,0,0,1,1),Array(1,0,1,0,1),
-    Array(1,0,1,1,0),Array(1,1,0,0,1),Array(1,1,0,1,0),
-    Array(1,1,1,0,0));
-var stage4combos = Array(Array(0,0,0,1,1,1),Array(0,0,1,0,1,1),Array(0,0,1,1,0,1),
-    Array(0,0,1,1,1,0),Array(0,1,0,0,1,1),Array(0,1,0,1,0,1),
-    Array(0,1,0,1,1,0),Array(0,1,1,0,0,1),Array(0,1,1,0,1,0),
-    Array(0,1,1,1,0,0),Array(1,0,0,0,1,1),Array(1,0,0,1,0,1),
-    Array(1,0,0,1,1,0),Array(1,0,1,0,0,1),Array(1,0,1,0,1,0),
-    Array(1,0,1,1,0,0),Array(1,1,0,0,0,1),Array(1,1,0,0,1,0),
-    Array(1,1,0,1,0,0),Array(1,1,1,0,0,0));	
+var preamble;
+var stage2rects = Array(Rectangle(-770, -132, 28, 178), Rectangle(-733, -337, 26, 105), Rectangle(-601, -328, 29, 105), Rectangle(-495, -125, 24, 165));
+var stage2combos = Array(Array(0, 1, 1, 1), Array(1, 0, 1, 1), Array(1, 1, 0, 1), Array(1, 1, 1, 0));
+var stage3rects = Array(Rectangle(608, -180, 140, 50), Rectangle(791, -117, 140, 45), Rectangle(958, -180, 140, 50), Rectangle(876, -238, 140, 45), Rectangle(702, -238, 140, 45));
+var stage3combos = Array(Array(0, 0, 1, 1, 1), Array(0, 1, 0, 1, 1), Array(0, 1, 1, 0, 1), Array(0, 1, 1, 1, 0), Array(1, 0, 0, 1, 1), Array(1, 0, 1, 0, 1), Array(1, 0, 1, 1, 0), Array(1, 1, 0, 0, 1), Array(1, 1, 0, 1, 0), Array(1, 1, 1, 0, 0));
+var stage4rects = Array(Rectangle(910, -236, 35, 5), Rectangle(877, -184, 35, 5), Rectangle(946, -184, 35, 5), Rectangle(845, -132, 35, 5), Rectangle(910, -132, 35, 5), Rectangle(981, -132, 35, 5));
+var stage4combos = Array(Array(0, 0, 0, 1, 1, 1), Array(0, 0, 1, 0, 1, 1), Array(0, 0, 1, 1, 0, 1), Array(0, 0, 1, 1, 1, 0), Array(0, 1, 0, 0, 1, 1), Array(0, 1, 0, 1, 0, 1), Array(0, 1, 0, 1, 1, 0), Array(0, 1, 1, 0, 0, 1), Array(0, 1, 1, 0, 1, 0), Array(0, 1, 1, 1, 0, 0), Array(1, 0, 0, 0, 1, 1), Array(1, 0, 0, 1, 0, 1), Array(1, 0, 0, 1, 1, 0), Array(1, 0, 1, 0, 0, 1), Array(1, 0, 1, 0, 1, 0), Array(1, 0, 1, 1, 0, 0), Array(1, 1, 0, 0, 0, 1), Array(1, 1, 0, 0, 1, 0), Array(1, 1, 0, 1, 0, 0), Array(1, 1, 1, 0, 0, 0));
 var eye = 9300002;
 var necki = 9300000;
 var slime = 9300003;
 var monsterIds = Array(eye, eye, eye, necki, necki, necki, necki, necki, necki, slime);
-var prizeIdScroll = Array(2040502, 2040505,// Overall DEX and DEF
-    2040802,// Gloves for DEX
-    2040002, 2040402, 2040602);// Helmet, Topwear and Bottomwear for DEF
-var prizeIdUse = Array(2000001, 2000002, 2000003, 2000006,// Orange, White and Blue Potions and Mana Elixir
-    2000004, 2022000, 2022003);// Elixir, Pure Water and Unagi
-var prizeQtyUse = Array(80, 80, 80, 50, 5, 15, 15);
-var prizeIdEquip = Array(1032004, 1032005, 1032009,// Level 20-25 Earrings
-    1032006, 1032007, 1032010,// Level 30 Earrings
-    1032002,// Level 35 Earring
-    1002026, 1002089, 1002090);// Bamboo Hats
-var prizeIdEtc = Array(4010000, 4010001, 4010002, 4010003,// Mineral Ores
-    4010004, 4010005, 4010006,// Mineral Ores
-    4020000, 4020001, 4020002, 4020003,// Jewel Ores
-    4020004, 4020005, 4020006,// Jewel Ores
-    4020007, 4020008, 4003000);	// Diamond and Black Crystal Ores and Screws
-var prizeQtyEtc = Array(15, 15, 15, 15, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 3, 3, 30);
-			
+var prizeIdScroll = Array(2040502, 2040505, // Overall DEX and DEF
+        2040802, // Gloves for DEX
+        2040002, 2040402, 2040602);						// Helmet, Topwear and Bottomwear for DEF
+var prizeIdUse = Array(2000001, 2000002, 2000003, 2000006, // Orange, White and Blue Potions and Mana Elixir
+        2000004, 2022000, 2022003);						// Elixir, Pure Water and Unagi
+var prizeQtyUse = Array(80, 80, 80, 50,
+        5, 15, 15);
+var prizeIdEquip = Array(1032004, 1032005, 1032009, // Level 20-25 Earrings
+        1032006, 1032007, 1032010, // Level 30 Earrings
+        1032002, // Level 35 Earring
+        1002026, 1002089, 1002090);						// Bamboo Hats
+var prizeIdEtc = Array(4010000, 4010001, 4010002, 4010003, // Mineral Ores
+        4010004, 4010005, 4010006, // Mineral Ores
+        4020000, 4020001, 4020002, 4020003, // Jewel Ores
+        4020004, 4020005, 4020006, // Jewel Ores
+        4020007, 4020008, 4003000);						// Diamond and Black Crystal Ores and Screws
+var prizeQtyEtc = Array(15, 15, 15, 15,
+        8, 8, 8,
+        8, 8, 8, 8,
+        8, 8, 8,
+        3, 3, 30);
+
 function start() {
     status = -1;
-    curMap = cm.getPlayer().getMapId() - 103000799;
+    mapId = cm.getMapId();
+    if (mapId == 103000800)
+        curMap = 1;
+    else if (mapId == 103000801)
+        curMap = 2;
+    else if (mapId == 103000802)
+        curMap = 3;
+    else if (mapId == 103000803)
+        curMap = 4;
+    else if (mapId == 103000804)
+        curMap = 5;
+    playerStatus = cm.isLeader();
+    preamble = null;
     action(1, 0, 0);
 }
 
 function action(mode, type, selection) {
-    if (mode == 1) {
-        status++;
-    } else if (type == 0 && mode == 0)
-        status--;
-    else {
+    if (mode == 0 && status == 0) {
         cm.dispose();
         return;
     }
+    if (mode == 1)
+        status++;
+    else
+        status--;
+
     if (curMap == 1) { // First Stage.
-        if (cm.isLeader()) {
-            var eim = cm.getPlayer().getEventInstance();
-            party = eim.getPlayers();
-            preamble = eim.getProperty("leader1stpreamble");
-            if (preamble == null) {
-                cm.sendNext("Hello. Welcome to the first stage. Look around and you'll see Ligators wandering around. When you defeat them, they will cough up a #bcoupon#k. Every member of the party other than the leader should talk to me, geta  question, and gather up the same number of #bcoupons#k as the answer to the question I'll give to them.\r\nIf you gather up the right amount of #bcoupons#k, I'll give the #bpass#k to that player. Once all the party members other than the leader gather up the #bpasses#k and give them to the leader, the leader will hand over the #bpasses#k to me, clearing the stage in the process. The faster you take care of the stages, the more stages you'll be able to challenge. So I suggest you take care of things quickly and swiftly. Well then, best of luck to you.");
-                eim.setProperty("leader1stpreamble","done");
-                cm.dispose();
-            } else {
-                var complete = eim.getProperty(curMap + "stageclear");
-                if (complete != null) {
-                    cm.sendNext("Please hurry on to the next stage, the portal opened!");
+        if (playerStatus) { // Check if player is leader
+            if (status == 0) {
+                var eim = cm.getEventInstance();
+                party = eim.getPlayers();
+                preamble = eim.getProperty("leader1stpreamble");
+
+                if (preamble == null) {
+                    cm.sendNext("嗨，我是#p9020001# 歡迎來到墮落城市PQ 我需要隊員的通行證，請叫隊員收集完成後把卡片收集起來然後給我。");
+                    eim.setProperty("leader1stpreamble", "done");
                     cm.dispose();
-                } else {
-                    var numpasses = party.size() - 1; // All the players in the party need to get a pass besides the leader.
-                    var strpasses = "#b" + numpasses + " passes#k";
-                    if (!cm.haveItem(4001008, numpasses)) {
-                        cm.sendNext("I'm sorry, but you are short on the number of passes. You need to give me the right number of passes; it should be the number of members of your party minus the leader, " + strpasses + " to clear the stage. Tell your party members to solve the questions, gather up the passes, and give them to you.");
+                } else { // Check how many they have compared to number of party members
+                    // Check for stage completed
+                    var complete = eim.getProperty(curMap.toString() + "stageclear");
+                    if (complete != null) {
+                        cm.sendNext("恭喜您過關 通往下一階段的門已開啟!");
                         cm.dispose();
                     } else {
-                        cm.sendNext("You gathered up " + strpasses + "! Congratulations on clearing the stage! I'll make the portal that sends you to the next stage. There's a time limit on getting there, so please hurry. Best of luck to you all!");
-                        clear(1, eim, cm);
-                        cm.givePartyExp(100, party);
-                        cm.gainItem(4001008, -numpasses);
-                        cm.dispose();
-                    // TODO: Make the shiny thing flash
+                        var numpasses = party.size() - 1;
+                        var strpasses = "#b" + numpasses.toString() + " 張通行證#k";
+                        if (!cm.haveItem(4001008, numpasses)) {
+                            cm.sendNext("我很抱歉我不能讓你過關，我需要: " + strpasses + " 交給我之後我就會讓你過關。");
+                            cm.dispose();
+                        } else {
+                            cm.sendNext("你收集 " + strpasses + "! 恭喜過關。");
+                            clear(1, eim, cm);
+                            cm.givePartyExp(100, party);
+                            cm.gainItem(4001008, -numpasses);
+                            cm.dispose();
+                            // TODO: Make the shiny thing flash
+                        }
                     }
                 }
             }
-        } else { // Not leader
-            var eim = cm.getPlayer().getEventInstance();
-            pstring = "member1stpreamble" + cm.getPlayer().getId();
+        } else { // 不是隊長
+            var eim = cm.getChar().getEventInstance();
+            pstring = "member1stpreamble" + cm.getChar().getId().toString();
             preamble = eim.getProperty(pstring);
-            if (status == 0) {
-                if (preamble == null) {
-                    var qstring = "member1st" + cm.getPlayer().getId();
-					var answered = "1stComplete" + cm.getPlayer().getId();
-                    var question = eim.getProperty(qstring);
-                    if (question == null) {
-                        // Select a random question to ask the player.
-                        var questionNum = Math.floor(Math.random() * questions.length);
-                        eim.setProperty(qstring, questionNum);
-						eim.setProperty(answered, "false");
-                    }
-                    cm.sendNext("Here, you need to collect #bcoupons#k by defeating the same number of Ligators as the answer to the questions asked individually.");
-                } else { // Otherwise, check for stage completed
-                    var complete = eim.getProperty(curMap + "stageclear");
-                    if (complete != null) { // Strage completed
-                        cm.sendNext("Please hurry on to the next stage, the portal is open!");
-                        cm.dispose();
-                    } else {
-                        // Reply to player correct/incorrect response to the question they have been asked
-                        var qstring = "member1st" + cm.getPlayer().getId();
-						var answered = "1stComplete" + cm.getPlayer().getId();
-                        var numcoupons = qanswers[parseInt(eim.getProperty(qstring))];
-                        var qcorr = cm.itemQuantity(4001007);
-                        if (numcoupons == qcorr &&  eim.getProperty(answered).equals("false") ) {
-                            cm.sendNext("That's the right answer! For that you have just received a #bpass#k. Please hand it to the leader of the party.");
+            if (status == 0 && preamble == null) {
+                var qstring = "member1st" + cm.getChar().getId().toString();
+                var question = eim.getProperty(qstring);
+                if (question == null) {
+                    // Select a random question to ask the player.
+                    var questionNum = Math.floor(Math.random() * questions.length);
+                    eim.setProperty(qstring, questionNum.toString());
+                }
+                cm.sendNext("在這裡，你需要收集 #b優惠券#k 過擊敗鱷魚的數目相同的答案為單獨提出的問題。");
+            } else if (status == 0) { // Otherwise, check for stage completed
+                var complete = eim.getProperty(curMap.toString() + "stageclear");
+                if (complete != null) {
+//		    cm.sendNext("Please hurry on to the next stage, the portal opened!");
+                    cm.dispose();
+                } else {
+                    // Reply to player correct/incorrect response to the question they have been asked
+                    var qstring = "member1st" + cm.getChar().getId().toString();
+                    var numcoupons = qanswers[parseInt(eim.getProperty(qstring))];
+                    var qcorr = cm.haveItem(4001007, (numcoupons + 1));
+                    var enough = false;
+                    if (!qcorr) { // Not too many
+                        qcorr = cm.haveItem(4001007, numcoupons);
+                        if (qcorr) { // Just right
+                            cm.sendNext("來，這是我答應你的 #b#t4001008##k. 快點拿去給你的隊長吧。");
                             cm.gainItem(4001007, -numcoupons);
                             cm.gainItem(4001008, 1);
-							eim.setProperty(answered, "true");
-						} else if (eim.getProperty(answered).equals("true")){
-							cm.sendNext("你的隊友們還沒收集完成嗎?");
-                        } else
-                            cm.sendNext("I'm sorry, but that is not the right answer! Please have the correct number of coupons in your inventory.");
+                            enough = true;
+                        }
+                    }
+                    if (!enough) {
+						var question = parseInt(eim.getProperty(qstring));
+                        cm.sendNext("我很抱歉，但是這是不正確的答案！請在您的給我的正確數量。\r\n題目:"+questions[question]);
                     }
                     cm.dispose();
                 }
             } else if (status == 1) {
                 if (preamble == null) {
-                    var qstring = "member1st" + cm.getPlayer().getId();
+                    var qstring = "member1st" + cm.getChar().getId().toString();
                     var question = parseInt(eim.getProperty(qstring));
                     cm.sendNextPrev(questions[question]);
                 } else { // Shouldn't happen, if it does then just dispose
                     cm.dispose();
                 }
             } else if (status == 2) { // Preamble completed
-                eim.setProperty(pstring,"done");
+                eim.setProperty(pstring, "done");
+                cm.dispose();
+            } else { // Shouldn't happen, but still...
+                eim.setProperty(pstring, "done"); // Just to be sure
                 cm.dispose();
             }
         } // End first map scripts
     } else if (2 <= curMap && 4 >= curMap) {
         rectanglestages(cm);
     } else if (curMap == 5) { // Final stage
-        var eim = cm.getPlayer().getEventInstance();
+        var eim = cm.getChar().getEventInstance();
         var stage5done = eim.getProperty("5stageclear");
         if (stage5done == null) {
-            if (cm.isLeader()) { // Leader
-                if (cm.haveItem(4001008, 10)) {
+            if (playerStatus) { // Leader
+                var passes = cm.haveItem(4001008, 10);
+				if (cm.getMonsterCount(103000804) <= 0) {
+                if (passes) {
                     // Clear stage
-                    cm.sendNext("Here's the portal that leads you to the last, bonus stage. It's a stage that allows you to defeat regular monsters a little easier. You'll be given a set amount of time to hunt as much as possible, but you can always leave the stage in the middle of it through the NPC. Again, congratulations on clearing all the stages. Take care...");
+                    cm.sendNext("恭喜過關！");
                     party = eim.getPlayers();
                     cm.gainItem(4001008, -10);
                     clear(5, eim, cm);
                     cm.givePartyExp(1500, party);
+                    cm.dispose();
                 } else { // Not done yet
-                    cm.sendNext("Hello. Welcome to the 5th and final stage. Walk around the map and you'll be able to find some Boss monsters. Defeat all of them, gather up #bthe passes#k, and please get them to me. Once you earn your pass, the leader of your party will collect them, and then get them to me once the #bpasses#k are gathered up. The monsters may be familiar to you, but they may be much stronger than you think, so please be careful. Good luck!\r\nAs a result of complaints, it is now mandatory to kill all the Slimes! Do it!");
+                    cm.sendNext("歡迎來到最終階段你只要把通行證收集起來交給我就行了！");
                 }
+				} else { // Not Kill Map Monster
+					cm.sendOk("貌似還沒把地圖上的怪物清除乾淨");
+				}
                 cm.dispose();
             } else { // Members
-                cm.sendNext("Welcome to the 5th and final stage.  Walk around the map and you will be able to find some Boss monsters.  Defeat them all, gather up the #bpasses#k, and give them to your leader.  Once you are done, return to me to collect your reward.");
+                cm.sendNext("歡迎來到最終階段~現在你只要把所有的通行證交給隊長就行了！");
                 cm.dispose();
             }
         } else { // Give rewards and warp to bonus
             if (status == 0) {
-                cm.sendNext("Incredible! You cleared all the stages to get to this point. Here's a small prize for your job well done. Before you accept it, however, please make sure your use and etc. inventories have empty slots available.\r\n#bYou will not receive a prize if you have no free slots!#k");
-            } else if (status == 1) {
-                getPrize(eim,cm);
+                cm.sendNext("真的很不可思議！");
+            }
+            if (status == 1) {
+                getPrize(eim, cm);
                 cm.dispose();
             }
         }
     } else { // No map found
-        cm.sendNext("Invalid map, this means the stage is incomplete.");
+        cm.sendNext("無效的地圖，請聯絡GM！");
         cm.dispose();
     }
 }
 
 function clear(stage, eim, cm) {
-    eim.setProperty(stage + "stageclear", "true");
-    var map = eim.getMapInstance(cm.getPlayer().getMapId());
-    map.broadcastMessage(MapPacket.showEffect("quest/party/clear"));
-    map.broadcastMessage(MapPacket.playSound("Party1/Clear"));
-    map.broadcastMessage(MapPacket.environmentChange("gate", 2));
+    eim.setProperty(stage.toString() + "stageclear", "true");
+
+    cm.showEffect(true, "quest/party/clear");
+    cm.playSound(true, "Party1/Clear");
+    cm.environmentChange(true, "gate");
+
     var mf = eim.getMapFactory();
     map = mf.getMap(103000800 + stage);
-    var nextStage = eim.getMapInstance(103000800 + stage);
+    var nextStage = eim.getMapFactory().getMap(103000800 + stage);
     var portal = nextStage.getPortal("next00");
     if (portal != null) {
-        portal.setScriptName("kpq" + stage);
+        portal.setScriptName("kpq" + (stage + 1).toString());
     }
 }
 
 function failstage(eim, cm) {
-    var map = eim.getMapInstance(cm.getPlayer().getMapId());
-    map.broadcastMessage(MapPacket.playSound("Party1/Failed"));
-    map.broadcastMessage(MapPacket.showEffect("quest/party/wrong_kor"));
+    cm.showEffect(true, "quest/party/wrong_kor");
+    cm.playSound(true, "Party1/Failed");
 }
 
-function rectanglestages (cm) {
-    var eim = cm.getPlayer().getEventInstance();
-    var nthtext;
-    var nthobj;
-    var nthverb;
-    var nthpos;
-    var curArray;
-    var curCombo;
-    var objset;
+function rectanglestages(cm) {
+    // Debug makes these stages clear without being correct
+    var debug = false;
+    var eim = cm.getChar().getEventInstance();
     if (curMap == 2) {
-        nthtext = "2nd";
-        nthobj = "ropes";
-        nthverb = "hang";
-        nthpos = "hang on the ropes too low";
-        curArray = stage2Rects;
-        curCombo = stage2combos;
-        objset = [0,0,0,0];
+        var nthtext = "2";
+        var nthobj = "繩子";
+        var nthverb = "掛";
+        var nthpos = "掛在繩子太低";
+        var curcombo = stage2combos;
+        var currect = stage2rects;
+        var objset = [0, 0, 0, 0];
     } else if (curMap == 3) {
-        nthtext = "3rd";
-        nthobj = "platforms";
-        nthverb = "stand";
-        nthpos = "stand too close to the edges";
-        curArray = stage3Rects;
-        curCombo = stage3combos;
-        objset = [0,0,0,0,0];
+        var nthtext = "3";
+        var nthobj = "平台";
+        var nthverb = "站";
+        var nthpos = "站在太靠近邊緣";
+        var curcombo = stage3combos;
+        var currect = stage3rects;
+        var objset = [0, 0, 0, 0, 0];
     } else if (curMap == 4) {
-        nthtext = "4th";
-        nthobj = "barrels";
-        nthverb = "stand";
-        nthpos = "stand too close to the edges";
-        curArray = stage4Rects;
-        curCombo = stage4combos;
-        objset = [0,0,0,0,0,0];
+        var nthtext = "4";
+        var nthobj = "酒桶";
+        var nthverb = "站";
+        var nthpos = "站在太靠近邊緣";
+        var curcombo = stage4combos;
+        var currect = stage4rects;
+        var objset = [0, 0, 0, 0, 0, 0];
     }
-    if (cm.isLeader()) { // Check if player is leader
+    if (playerStatus) { // Check if player is leader
         if (status == 0) {
+            // Check for preamble
             party = eim.getPlayers();
             preamble = eim.getProperty("leader" + nthtext + "preamble");
-            if (preamble == null) { // first time talking.
-                cm.sendNext("Hi. Welcome to the " + nthtext + " stage. Next to me, you'll see a number of " + nthobj + ". Out of these " + nthobj + ", #b3 are connected to the portal that sends you to the next stage#k. All you need to do is have #b3 party members find the correct " + nthobj + " and " + nthverb + " on them.#k\r\nBUT, it doesn't count as an answer if you " + nthpos + "; please be near the middle of the " + nthobj + " to be counted as a correct answer. Also, only 3 members of your party are allowed on the " + nthobj + ". Once they are " + nthverb + "ing on them, the leader of the party must #bdouble-click me to check and see if the answer's correct or not#k. Now, find the right " + nthobj + " to " + nthverb + " on!");
-                eim.setProperty("leader" + nthtext + "preamble","done");
-                var sequenceNum = Math.floor(Math.random() * curCombo.length);
+            if (preamble == null) {
+                cm.sendNext("嗨，歡迎來到第 " + nthtext + " 階段. 在我旁邊，你會看到一些 " + nthobj + ", #b你需要三名隊員掛在上面猜我的答案，如果猜對就讓你過關，加油吧！ \r\n喔~對了不能#r" + nthpos + "不然會不能過關哦！");
+                eim.setProperty("leader" + nthtext + "preamble", "done");
+                var sequenceNum = Math.floor(Math.random() * curcombo.length);
                 eim.setProperty("stage" + nthtext + "combo", sequenceNum.toString());
                 cm.dispose();
             } else {
-                var complete = eim.getProperty(curMap + "stageclear");
+                // Otherwise, check for stage completed
+                var complete = eim.getProperty(curMap.toString() + "stageclear");
                 if (complete != null) {
-                    cm.sendNext("Please hurry on to the next stage, the portal opened!");
+                    var mapClear = curMap.toString() + "stageclear";
+                    eim.setProperty(mapClear, "true"); // Just to be sure
+//		    cm.sendNext("Please hurry on to the next stage, the portal opened!");
                     cm.dispose();
                 } else { // Check for people on ropes and their positions
-                    var playersOnCombo = 0;
-                    for (var i = 0; i < party.size(); i++) {
-                        for (var y = 0; y < curArray.length; y++) {
-                            if (curArray[y].contains(party.get(i).getPosition())) {
-                                playersOnCombo++;
-                                objset[y] = 1;
-                                break;
+                    var totplayers = 0;
+                    for (i = 0; i < objset.length; i++) {
+                        for (j = 0; j < party.size(); j++) {
+                            var present = currect[i].contains(party.get(j).getPosition());
+                            if (present) {
+                                objset[i] = objset[i] + 1;
+                                totplayers = totplayers + 1;
                             }
                         }
                     }
-                    if (playersOnCombo == 3 || cm.getPlayer().getGMLevel() > 0) {
-                        var combo = curCombo[parseInt(eim.getProperty("stage" + nthtext + "combo"))];
-                        var correctCombo = true;
-                        for (i = 0; i < objset.length && correctCombo; i++)
+                    // Compare to correct positions
+                    // First, are there 3 players on the correct positions?
+                    if (totplayers == 3 || debug) {
+                        var combo = curcombo[parseInt(eim.getProperty("stage" + nthtext + "combo"))];
+                        // Debug
+                        // Combo = curtestcombo;
+                        var testcombo = true;
+                        for (i = 0; i < objset.length; i++) {
                             if (combo[i] != objset[i])
-                                correctCombo = false;
-                        if (correctCombo || cm.getPlayer().getGMLevel() > 0) {
+                                testcombo = false;
+                        }
+                        if (testcombo || debug) {
+                            // Do clear
                             clear(curMap, eim, cm);
                             var exp = (Math.pow(2, curMap) * 50);
                             cm.givePartyExp(exp, party);
-							cm.givePartyNX(5);
                             cm.dispose();
                         } else { // Wrong
+                            // Do wrong
                             failstage(eim, cm);
                             cm.dispose();
                         }
                     } else {
-                        cm.sendNext("It looks like you haven't found the 3 " + nthobj + " just yet. Please think of a different combination of " + nthobj + ". Only 3 are allowed to " + nthverb + " on " + nthobj + ", and if you " + nthpos + " it may not count as an answer, so please keep that in mind. Keep going!");
+                        if (debug) {
+                            var outstring = "Objects contain:"
+                            for (i = 0; i < objset.length; i++) {
+                                outstring += "\r\n" + (i + 1).toString() + ". " + objset[i].toString();
+                            }
+                            cm.sendNext(outstring);
+                        } else {
+                            cm.sendNext("嗨，歡迎來到第 " + nthtext + " 階段. 在我旁邊，你會看到一些 " + nthobj + ", #b你需要三名隊員掛在上面猜我的答案，如果猜對就讓你過關，加油吧！ \r\n喔~對了不能#r" + nthpos + "不然會不能過關哦！");
+                        }
                         cm.dispose();
                     }
                 }
             }
         } else {
-            var complete = eim.getProperty(curMap + "stageclear");
+            var complete = eim.getProperty(curMap.toString() + "stageclear");
             if (complete != null) {
                 var target = eim.getMapInstance(103000800 + curMap);
                 var targetPortal = target.getPortal("st00");
-                cm.getPlayer().changeMap(target, targetPortal);
+                cm.getChar().changeMap(target, targetPortal);
             }
             cm.dispose();
         }
     } else { // Not leader
-        var complete = eim.getProperty(curMap.toString() + "stageclear");
-        if (complete != null) {
-            cm.sendNext("Please hurry on to the next stage, the portal opened!");
+        if (status == 0) {
+            var complete = eim.getProperty(curMap.toString() + "stageclear");
+            if (complete != null) {
+                cm.dispose();
+//		cm.sendNext("Please hurry on to the next stage, the portal opened!");
+            } else {
+//		cm.sendNext("Please have the party leader talk to me.");
+                cm.dispose();
+            }
         } else {
-            cm.sendNext("Please have the party leader talk to me.");
+            var complete = eim.getProperty(curMap.toString() + "stageclear");
+            if (complete != null) {
+                var target = eim.getMapInstance(103000800 + curMap);
+                var targetPortal = target.getPortal("st00");
+                cm.getChar().changeMap(target, targetPortal);
+            }
+            cm.dispose();
         }
-        cm.dispose();
     }
 }
 
-function getPrize(eim,cm) {
+function getPrize(eim, cm) {
     var itemSetSel = Math.random();
     var itemSet;
     var itemSetQty;
@@ -360,11 +368,17 @@ function getPrize(eim,cm) {
         itemSetQty = prizeQtyEtc;
         hasQty = true;
     }
-    var sel = Math.floor(Math.random()*itemSet.length);
+    var sel = Math.floor(Math.random() * itemSet.length);
     var qty = 1;
     if (hasQty)
         qty = itemSetQty[sel];
-		cm.gainItem(itemSet[sel], qty);
-		var map = eim.getMapInstance(103000805);
-        cm.getPlayer().changeMap(map,map.getPortal(0));
+    cm.gainItem(itemSet[sel], qty);
+    cm.removeAll(4001007);
+    cm.removeAll(4001008);
+    cm.getPlayer().endPartyQuest(1201);
+    cm.warp(103000805, "sp");
+}
+
+function Rectangle(x, y, length, width) {
+    return new java.awt.Rectangle(x, y, length, width);
 }

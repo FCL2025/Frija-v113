@@ -3,7 +3,7 @@
  */
 
 function start() {
-    cm.sendYesNo("If you leave now, you'll have to start over. Are you sure you want to leave?");
+    cm.sendYesNo("如果你現在離開，你將不得不重新開始。你確定要離開這裡到外面去嗎？");
 }
 
 function action(mode, type, selection) {

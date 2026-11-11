@@ -6,33 +6,34 @@ var exp = 3770;
 
 function action(mode, type, selection) {
     var eim = cm.getEventInstance();
-    var stage5status = eim.getProperty("stage5status");
+    
+    var stage5status = eim != null ?  eim.getProperty("stage5status") : null;
 
-    if (stage5status == null) {
+    if (stage5status == null ) {
 	if (cm.isLeader()) { // Leader
 	    var stage5leader = eim.getProperty("stage5leader");
 	    if (stage5leader == "done") {
 
 		if (cm.haveItem(4001022,24)) { // Clear stage
-		    cm.sendNext("Congratulations! You've passed the 5th stage. Hurry on now, to the 6th stage.");
+		    cm.sendNext("恭喜！你已經通過了第五階段。快點現在，到第6階段。");
 		    cm.removeAll(4001022);
 		    clear(5,eim,cm);
 		    cm.givePartyExp(exp, eim.getPlayers());
 		} else { // Not done yet
-		    cm.sendNext("Are you sure you've brought me #r24 Passes of Dimension#k? Please check again.");
+		    cm.sendNext("你確定你有收集了 #r24張 #t4001022##k？？");
 		}
 		cm.safeDispose();
 	    } else {
-		cm.sendOk("Welcome to the 5th stage. Go around, and collect #r24 Passes of Dimension#k from the boxes in the other maps. Once you're done, get your party members to hand all the #rPasses#k to you, then talk to me again.");
+		cm.sendOk("歡迎來到第五階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 來找我即可完成任務。");
 		eim.setProperty("stage5leader","done");
 		cm.safeDispose();
 	    }
 	} else { // Members
-	    cm.sendNext("Welcome to the 5th stage. Go around, and collect #rPasses of Dimension#k from the boxes in the other maps. Once you're done, hand all the #rPasses#k to your party leader.");
+	    cm.sendNext("歡迎來到第五階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 給你的隊長，然後叫隊長來找我即可完成任務。");
 	    cm.safeDispose();
 	}
     } else {
-	cm.sendNext("Congratulations! You've passed the 5th stage. Hurry on now, to the 6th stage.");
+	cm.sendNext("恭喜！你已經通過了第五階段。快點現在，到第6階段。");
 	cm.safeDispose();
     }
 }

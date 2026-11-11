@@ -1,4 +1,4 @@
 function action(mode, type, selection) {
-    cm.sendNext("Call me Dark Lord. I will give thieves a place in society... watch in a few years!");
+    cm.sendNext("叫我黑魔王。看在幾年......我會給盜賊的社會地位！");
     cm.dispose();
 }

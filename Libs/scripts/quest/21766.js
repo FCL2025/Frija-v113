@@ -3,13 +3,13 @@ var status = -1;
 function start(mode, type, selection) {
 	status++;
 	if (status == 0) {
-		qm.sendNext("Hey! Can you do me a favor? #p20000# seems a bit strange these days...");
+		qm.sendNext("嗨！您可以幫我一個忙嗎? #p20000# 這幾天以來他似乎怪怪的....");
 	} else if (status == 1) {
-		qm.sendNext("He used to scowl and whine about his arthritis until just recently, but he''s suddenly become all happy and smiley!!");
+		qm.sendNext("他經常抱怨他身體不舒服，但最近他自己覺得全身好了。");
 	} else if (status == 2) {
-		qm.sendNext("I have a feeling there is a secret behind that wooden box. Could you stealthily look into the wooden box next to #p20000#?");
+		qm.sendNext("我有一種感覺#p20000#似乎隱藏著什麼不可告人的秘密請幫我偷偷觀察他。");
 	} else {
-		qm.sendNext("You know where #p20000# is, right? He''s to the right. Just keep going until you see where Vikin is, then head down past the hanging shark and octopus, and you''ll see John. The box should be right next to him.");
+		qm.sendNext("你知道 #p20000# 在那裡是吧? 你往右邊一看就會看到一個低著頭的人 他會帶你去看看約翰。");
 		qm.forceStartQuest();
 		qm.dispose();
 	}

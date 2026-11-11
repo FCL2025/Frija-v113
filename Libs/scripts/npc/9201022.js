@@ -1,37 +1,55 @@
-/* Thomas Swift
-	Amoria warper.
+/*
+	NPC Name: 		Hera
+	Map(s): 		Towns
+	Description: 		Wedding Village Entrance
 */
 
 var status = -1;
 
+function start() {
+    cm.sendSimple("您想回去#m680000000#了嗎?? \n\r #b#L0# 我想回去結婚小鎮。#l \r\n #L1#我已經結婚了，我想要領#t3012004#~#l");
+}
+
 function action(mode, type, selection) {
     if (mode == 1) {
-	status++;
+        status++;
     } else {
-	if (status == 0) {
-	    cm.sendOk("Ok, feel free to hang around until you're ready to go!");
-	    cm.safeDispose();
-	    return;
-	}
-	status--;
+        cm.dispose();
+        return;
     }
-
     if (status == 0) {
-	if (cm.getMapId() == 100000000) {
-	    cm.sendYesNo("I can take you to the Amoria Village. Are you ready to go?");
-	} else if (cm.getMapId() == 680000500 || cm.getMapId() == 680000501 || cm.getMapId() == 680000502) {
-	    cm.setQuestRecord(cm.getPlayer(), 160002, "0");
-	    cm.warp(680000000, 0);
-	    cm.dispose();
-	} else {
-	    cm.sendYesNo("I can take you back to Henesys. Are you ready to go?");
-	}
-    } else if (status == 1) {
-	if (cm.getMapId() == 100000000) {
-	    cm.warp(680000000, 0);
-	} else {
-	    cm.warp(100000000, 5);
-	}
-	cm.safeDispose();
+        switch (selection) {
+            case 0:
+				cm.setQuestRecord(cm.getPlayer(), 160002, "0");
+				if (cm.haveItem(4213000) && cm.haveItem(4213001)) {
+					cm.gainItem(4213000,-1);
+					cm.gainItem(4213001,-1);
+					cm.warp(680000000, 0);
+					cm.dispose();
+				} else {
+					cm.warp(680000000, 0);
+					cm.dispose();
+				}
+                break;
+            case 1:
+                var marr = cm.getQuestRecord(160001);
+                var got = cm.getQuestRecord(160003);
+                var data = marr.getCustomData();
+                if (data == null) {
+                    marr.setCustomData("0");
+                    data = "0";
+                }
+                if (cm.getPlayer().getMarriageId() <= 0 || !data.equals("3")) {
+                    cm.sendOk("我很抱歉如果您想要得到這個椅子的話請先結婚~~");
+                } else if (cm.canHold(3012004, 1) && !cm.haveItem(3012004, 1) && got.getCustomData() == null) {
+                    cm.gainItem(3012004, 1);
+                    got.setCustomData("1");
+                    cm.sendOk("結婚後多一份喜悅送你吧，但機會只有一次!");
+                } else {
+                    cm.sendOk("請確定是否裝備欄滿了或者您已經有相同的椅子了... 或者你領過了....");
+                }
+                cm.dispose();
+                break;
+        }
     }
 }

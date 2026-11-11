@@ -3,8 +3,8 @@ function init() {
 }
 
 function scheduleNew() {
-    em.setProperty("isUp","false");
-    em.setProperty("isDown","false");
+    em.setProperty("isUp","true");
+    em.setProperty("isDown","true");
     onDown();
 }
 
@@ -24,7 +24,7 @@ function goingUp() {
 
 function onUp() {
     em.getChannelServer().getMapFactory().getMap(222020200).resetReactors();
-    em.warpAllPlayer(222020111, 222020100);
+    em.warpAllPlayer(222020111, 222020200);
     em.setProperty("isUp","true");
     em.schedule("goingDown", 60000);
 }

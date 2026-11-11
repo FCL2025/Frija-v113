@@ -19,11 +19,8 @@ function enter(pi) {
     }
     if (portal == null) {
 	portal = target.getPortal(0);
-	
     }
     if (pi.getMapId() != target) {
 	pi.getPlayer().changeMap(target, portal);
-	return true;
     }
-	return false;
 }

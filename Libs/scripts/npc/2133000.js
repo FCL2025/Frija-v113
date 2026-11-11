@@ -34,7 +34,7 @@ function action(mode, type, selection) {
 	    }
 	} else if (selection == 2) {
 	    if (cm.getPlayer().getParty() == null || !cm.isLeader()) {
-		cm.sendOk("The leader of the party must be here.");
+		cm.sendOk("找您的隊長來和我談話。");
 	    } else {
 		var party = cm.getPlayer().getParty().getMembers();
 		var mapId = cm.getPlayer().getMapId();
@@ -44,7 +44,7 @@ function action(mode, type, selection) {
 		while (it.hasNext()) {
 			var cPlayer = it.next();
 			var ccPlayer = cm.getPlayer().getMap().getCharacterById(cPlayer.getId());
-			if (ccPlayer == null || ccPlayer.getLevel() < 45 || ccPlayer.getJob() > 900 || ccPlayer.getLevel() > 55) {
+                    if (ccPlayer == null || ccPlayer.getLevel() < 45 || ccPlayer.getLevel() > 55) {
 				next = false;
 				break;
 			}
@@ -53,12 +53,20 @@ function action(mode, type, selection) {
 		if (next && size >= 4) {
 			var em = cm.getEventManager("Ellin");
 			if (em == null) {
-				cm.sendOk("Have some party inside.");
+				cm.sendOk("當前副本有問題，請聯絡管理員....");
 			} else {
-				em.startInstance(cm.getPlayer().getParty(), cm.getPlayer().getMap());
+				var prop = em.getProperty("state");
+                if (prop.equals("0") || prop == null) {
+					em.startInstance(cm.getParty(), cm.getMap());
+					cm.dispose();
+					return;
+				} else {
+					cm.sendOk("裡面已經有人了,請你稍後在進入看看,或者是換頻");
+				}
+
 			}
 		} else {
-			cm.sendOk("請確認隊伍狀態");
+			cm.sendOk("你的隊伍4個(含)以上45~55的隊員才能進入");
 		}
 	    }
 	}

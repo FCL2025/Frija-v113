@@ -1,4 +1,3 @@
 function enter(pi) {
-    pi.inFreeMarket();
-	return false;
+	pi.inFreeMarket();
 }

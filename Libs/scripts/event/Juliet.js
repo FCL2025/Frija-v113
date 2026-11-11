@@ -56,7 +56,9 @@ em.setProperty("state", "1");
 	}
 	em.setProperty("stage7", "0"); //whether they were killed or not.
         eim.setInstanceMap(926110000).resetFully();
-        eim.setInstanceMap(926110001).resetFully();
+        map = eim.setInstanceMap(926110001);
+        map.resetFully();
+        map.setSpawns(false);
 	eim.setInstanceMap(926110100).resetFully();
 	eim.setInstanceMap(926110200).resetFully();
         var map = eim.setInstanceMap(926110201);
@@ -65,6 +67,7 @@ em.setProperty("state", "1");
 	map.resetFully();
 	map = eim.setInstanceMap(926110203);
 	map.resetFully();
+        map.setSpawns(false);
 	map.spawnNpc(2112010, new java.awt.Point(200, 188)); //urete MADMAN
 	eim.setInstanceMap(926110300).resetFully();
 	eim.setInstanceMap(926110301).resetFully();
@@ -76,7 +79,7 @@ em.setProperty("state", "1");
 	eim.setInstanceMap(926110500).resetFully(); //spawn urete based on properties ?????
 	eim.setInstanceMap(926110600).resetFully(); //spawn romeo&juliet OR fallen romeo/juliet based on properties???
 
-    eim.startEventTimer(2700000); //45 mins
+    eim.startEventTimer(60 * 1000 * 60); //60 mins
     return eim;
 }
 

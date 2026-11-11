@@ -1,8 +1,3 @@
-/* 
- * Sharen III's Soul, Sharenian: Sharen III's Grave (990000700)
- * Guild Quest - end of stage 4
- */
-
 var status = -1;
 
 function start() {
@@ -20,22 +15,22 @@ function action(mode, type, selection) {
     if (status == 0) {
 	if (cm.getEventInstance().getProperty("leader").equals(cm.getPlayer().getName())) {
 	    if (cm.getEventInstance().getProperty("stage4clear") != null && cm.getEventInstance().getProperty("stage4clear").equals("true")) {
-		cm.sendOk("After what I thought would be an immortal sleep, I have finally found someone that will save Sharenian. I can truly rest in peace now.");
+                cm.sendOk("我以為我永遠會是永垂不朽的睡著，現在終於有人來守護這裡了我現在終於可以好好的安息了！！");
 		cm.safeDispose();
 	    } else {
 		var prev = cm.getEventInstance().setProperty("stage4clear","true",true);
 		if (prev == null) {
-		    cm.sendNext("After what I thought would be an immortal sleep, I have finally found someone that will save Sharenian. This old man will now pave the way for you to finish the quest.");
+                    cm.sendNext("我現在將為你完成這裡的任務！！");
 		} else { //if not null, was set before, and Gp already gained
-		    cm.sendOk("After what I thought would be an immortal sleep, I have finally found someone that will save Sharenian. I can truly rest in peace now.");
+                    cm.sendOk("我以為我永遠會是永垂不朽的睡著，現在終於有人來守護這裡了我現在終於可以好好的安息了！！");
 		    cm.safeDispose();
 		}
 	    }
 	} else {
 	    if (cm.getEventInstance().getProperty("stage4clear") != null && cm.getEventInstance().getProperty("stage4clear").equals("true"))
-		cm.sendOk("After what I thought would be an immortal sleep, I have finally found someone that will save Sharenian. I can truly rest in peace now.");
+                cm.sendOk("我以為我永遠會是永垂不朽的睡著，現在終於有人來守護這裡了我現在終於可以好好的安息了！！");
 	    else
-		cm.sendOk("I need the leader of your party to speak with me, nobody else.");
+                cm.sendOk("我需要你的領導者和我談話。");
 	    cm.safeDispose();
 	}
     } else if (status == 1) {

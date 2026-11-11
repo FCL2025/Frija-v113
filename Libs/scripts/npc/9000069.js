@@ -191,12 +191,19 @@ var scroll_10 = new Array(
 
 var firstSel = 0;
 
+// 這些位置的捲軸（輸入或產出）在 v113 不存在，不列出也不受理
+var invalid = [2, 4, 5, 6, 8, 9, 10, 15, 16, 17, 24, 26, 27, 28, 41, 42, 43];
+
+function usable(i) {
+    return invalid.indexOf(i) < 0;
+}
+
 function action(mode, type, selection) {
     if (mode == 1) {
 	status++;
     } else {
 	if (status == 2) {
-	    cm.sendOk("This is a serious matter! Don't bother me if you are unwilling to do it.");
+	    cm.sendOk("這可是很嚴肅的事情！不想做的話就別來煩我。");
 	    cm.safeDispose();
 	    return;
 	} else if (status == 4 || status == 0 || status == 1) {
@@ -206,23 +213,27 @@ function action(mode, type, selection) {
 	status--;
     }
     if (status == 0) {
-	cm.sendNext("Scrolls are always regarded as the important aspect of Mapler's equipment upgrade process. Are you one of those who strive for achieving perfection in the crafted material?#b\r\n#L0#Create a 65% Scroll#l\r\n#L1#Create a 15% scroll#l#k");
+	cm.sendSimple("捲軸一直是楓之谷冒險家強化裝備時最重要的東西。你也是追求完美的那種人嗎?#b\r\n#L0#製作 65% 捲軸#l\r\n#L1#製作 15% 捲軸#l#k");
     } else if (status == 1) {
 	firstSel = selection;
-	cm.sendYesNo("Oh, hey there. You seems to be more interested than I do. I can always upgrade your scrolls with a little fee and some materials. Are you sure you want to do that? #bThere is a 10% chance that the scroll might be destroyed in the process of the creation.#k")
+	if (firstSel != 0 && firstSel != 1) {
+	    cm.dispose();
+	    return;
+	}
+	cm.sendYesNo("喔，看來你比我還有興趣呢。只要一點手續費和一些材料，我就能幫你升級捲軸。確定要這麼做嗎？#b製作過程中有 10% 的機率會讓捲軸毀損。#k")
     } else if (status == 2) {
-	cm.sendNext("Now here's the ingredients for resurrection of the ancient black magic scroll. \n\r #i4011006# #t4011006# x1 \n\r #i4021007# #t4021007# x1 \n\r #i4021008# #t4021008# x1 \n\r Mesos 500,000 \n\r\n\r Lastly, it will also require the 10% scroll.");
+	cm.sendNext("復原古代黑魔法捲軸需要以下材料：\n\r #i4011006# #t4011006# x1 \n\r #i4021007# #t4021007# x1 \n\r #i4021008# #t4021008# x1 \n\r 楓幣 500,000 \n\r\n\r 最後，還需要對應的 60% 或 10% 捲軸一張。");
     } else if (status == 3) {
-	var message = "Here's the list of scrolls that are within my powers to be created : \n\r";
+	var message = "以下是我能製作的捲軸：\n\r";
 if (firstSel == 0) {
 	for (var i = 0; i < scroll_15.length; i++) {
-		if ((scroll_15[i] != 2045206 && scroll_15[i] != 2045306) || cm.isGMS()) { //TODO JUMP
+		if (usable(i)) {
 			message += " #L"+i+"##i"+(scroll_15[i]-1)+"# #t"+(scroll_15[i]-1)+"##l \n\r";
 		}
 	}
 } else if (firstSel == 1) {
 	for (var i = 0; i < scroll_15.length; i++) {
-		if ((scroll_15[i] != 2045206 && scroll_15[i] != 2045306) || cm.isGMS()) { //TODO JUMP
+		if (usable(i)) {
 			message += " #L"+i+"##i"+scroll_15[i]+"# #t"+scroll_15[i]+"##l \n\r";
 		}
 	}
@@ -231,7 +242,7 @@ if (firstSel == 0) {
     } else if (status == 4) {
 	var prompt = -1;
 
-	if (selection >= 0 && selection <= scroll_15.length) {
+	if (selection >= 0 && selection < scroll_15.length && usable(selection)) {
 	    if (!cm.haveItem(firstSel == 0 ? scroll_60[selection] : scroll_10[selection])) {
 		prompt = firstSel == 0 ? scroll_60[selection] : scroll_10[selection];
 	    } else if (cm.getMeso() < 500000) {
@@ -259,22 +270,22 @@ if (firstSel == 0) {
 	    if (Math.floor(Math.random() * 100) < 90) {
 	if (firstSel == 0) {
 		cm.gainItem(scroll_15[selection]-1, 1);
-		cm.sendOk("#i"+(scroll_15[selection]-1)+"# #t"+(scroll_15[selection]-1)+"# \n\r Handle this with care! It's an ancient scroll with mystical magic powers.");
+		cm.sendOk("#i"+(scroll_15[selection]-1)+"# #t"+(scroll_15[selection]-1)+"# \n\r 好好保管吧！這可是蘊含神秘魔力的古代捲軸。");
 	} else if (firstSel == 1) {
 		cm.gainItem(scroll_15[selection], 1);
-		cm.sendOk("#i"+scroll_15[selection]+"# #t"+scroll_15[selection]+"# \n\r Handle this with care! It's an ancient scroll with mystical magic powers.");
+		cm.sendOk("#i"+scroll_15[selection]+"# #t"+scroll_15[selection]+"# \n\r 好好保管吧！這可是蘊含神秘魔力的古代捲軸。");
 	}
 	    } else {
-		cm.sendOk("Woops! The scroll is destroyed!")
+		cm.sendOk("糟糕！捲軸毀損了！")
 	    }
 	    cm.safeDispose();
 	} else {
 	    if (prompt == -2) {
-		cm.sendOk("It appears that you are short of 500,000 mesos.");
+		cm.sendOk("你的楓幣好像不足 500,000。");
 	    } else if (prompt == -3) {
-		cm.sendOk("It seems that you do not have the appropriate USE space.");
+		cm.sendOk("你的消耗欄好像沒有足夠的空間。");
 	    } else {
-		cm.sendOk("It appears that you are short of #i"+prompt+"# #t"+prompt+"#.");
+		cm.sendOk("你好像缺少 #i"+prompt+"# #t"+prompt+"#。");
 	    }
 	    cm.safeDispose();
 	}

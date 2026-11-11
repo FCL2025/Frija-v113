@@ -12,7 +12,7 @@ function action(mode, type, selection) {
     if (status == 0) {
 	cm.sendYesNo("Would you like to get out?");
     } else if (status == 1) {
-	cm.warp(910000000,0);
+	cm.warp(980010000,0);
 	cm.dispose();
     }
 }

@@ -37,7 +37,7 @@ function action(mode, type, selection) {
 		cm.sendOk("只有公會長可以擴充人數");
 		cm.dispose();
 	    } else
-		cm.sendYesNo("擴充 #b5#k 個公會欄位，花費 #b500,000 楓幣#k, 確定嗎?");
+		cm.sendYesNo("擴充 #b5#k 個公會欄位，花費 #b250,000 楓幣#k, 確定嗎?");
 	} else if (selection == 3) {
 	    if (cm.getPlayerStat("GID") <= 0 || cm.getPlayerStat("GRANK") != 1) {
 		cm.sendOk("只有公會長可以擴充人數");

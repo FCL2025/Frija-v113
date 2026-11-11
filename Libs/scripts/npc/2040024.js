@@ -20,9 +20,9 @@ function action(mode, type, selection) {
 	status--;
     if (status == 0) {
 	if (cm.haveItem(4001020)) {
-	    cm.sendYesNo("You can use #bEos Rock Scroll#k to activate #bFirst Eos Rock#k. Will you teleport to #bSecond Eos Rock#k at the 71st floor?");
+	    cm.sendYesNo("你是否要使用#t4001020# 傳送到#m221022900# 呢？？");
 	} else {
-	    cm.sendOk("There's a rock that will enable you to teleport to #bSecond Eos Rock#k, but it cannot be activated without the scroll.");
+	    cm.sendOk("你需要有#t4001020# 才可以啟動。");
 	    cm.dispose();
 	}
     } else if (status == 1) {

@@ -7,12 +7,12 @@ function enter(pi) {
 		pi.playPortalSE();
 		pi.warp(240040611, "sp");
 	    } else {
-		pi.playerMessage(5, "Someone else is already inside in an attempt to complete the quest. Please try again later.");
+		pi.playerMessage(5, "有人已經在裡面，試圖完成任務。請稍後再試。");
 	    }
 	} else {
-	    pi.playerMessage(5, "You do not have the quest started. Please try again later.");
+	    pi.playerMessage(5, "你不必追求開始。請稍後再試。");
 	}
     } else {
-	pi.playerMessage(5, "In order to enter the premise, you'll need to have the Nine Spirit's Egg in possession.");
+	pi.playerMessage(5, "為了進入的前提下，你需要有九靈的蛋。");
     }
 }

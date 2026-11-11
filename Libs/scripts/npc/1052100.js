@@ -14,7 +14,7 @@ function action(mode, type, selection) {
     }
 
     if (status == 0) {
-	cm.sendSimple("哈囉,你想要換個髮型嗎 只要有#b#t5150003##k or #b#t5151003##k, 就可以幫你換個帥氣的髮型 \r\n#L0#美髮: #i5150003##t5150003##l\r\n#L1#染髮: #i5151003##t5151003##l");
+	cm.sendSimple("我是錢老闆. 如果你有 #b#t5150003##k \r\n或者 #b#t5151003##k 任何機會，\r\n那麼怎麼樣讓我改變你的髮型顏色?\r\n#L0#使用 #b#t5150003##k\r\n#L1#使用 #b#t5151003##k");
     } else if (status == 1) {
 	if (selection == 0) {
 	    var hair = cm.getPlayerStat("HAIR");
@@ -29,7 +29,7 @@ function action(mode, type, selection) {
 	    for (var i = 0; i < hair_Colo_new.length; i++) {
 		hair_Colo_new[i] = hair_Colo_new[i] + (hair % 10);
 	    }
-	    cm.askAvatar("想換的喜歡的頭髮?只要你有#b#t5150003##k 就可以幫你換個喜歡的頭髮", hair_Colo_new);
+	    cm.askAvatar("選擇一個喜歡的~", hair_Colo_new);
 	} else if (selection == 1) {
 	    var currenthaircolo = Math.floor((cm.getPlayerStat("HAIR") / 10)) * 10;
 	    hair_Colo_new = [];
@@ -38,20 +38,20 @@ function action(mode, type, selection) {
 	    for (var i = 0; i < 8; i++) {
 		hair_Colo_new[i] = currenthaircolo + i;
 	    }
-	    cm.askAvatar("想染個喜歡的顏色? 只要你有 #b#t5151003##k 就可以換個喜歡的顏色", hair_Colo_new);
+	    cm.askAvatar("選擇一個喜歡的~", hair_Colo_new);
 	}
     } else if (status == 2){
 	if (beauty == 1){
 	    if (cm.setAvatar(5150003, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved hairstyle!");
+		cm.sendOk("享受!");
 	    } else {
-		cm.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't give you a haircut without it. I'm sorry...");
+		cm.sendOk("您貌似沒有#b#t5150003##k..");
 	    }
 	} else {
 	    if (cm.setAvatar(5151003, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved haircolor!");
+		cm.sendOk("享受!");
 	    } else {
-		cm.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't dye your hair without it. I'm sorry...");
+		cm.sendOk("您貌似沒有#b#t5151003##k..");
 	    }
 	}
 	cm.safeDispose();

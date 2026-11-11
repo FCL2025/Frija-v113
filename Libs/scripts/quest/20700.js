@@ -7,26 +7,26 @@ var status = -1;
 
 function start(mode, type, selection) {
     if (mode == 1) {
-	status++;
+        status++;
     } else {
-	if (status == 1) {
-	    qm.sendNext("When will you realize how weak you are... When you get yourself in trouble in Victoria Island?");
-	    qm.safeDispose();
-	    return;
-	}
-	status--;
+        if (status == 1) {
+            qm.sendNext("什麼時候你意識到自己是一個弱者，是在要去維多利亞港的時候嗎??");
+            qm.safeDispose();
+            return;
+        }
+        status--;
     }
     if (status == 0) {
-	qm.sendNext("You have finally become a Knight-in-Training. I'd like to give you a mission right away, but you still look miles away from even being able to handle a task on your own. Are you sure you can even go to Victoria Island like this?");
+        qm.sendNext("您終於成為一位騎士了，您確定已經準備接受啟航到 #b維多利亞港#k 了嗎??");
     } else if (status == 1) {
-	qm.askAcceptDecline("It's up to you to head over to Victoria Island, but a Knight-in-Training that can't take care of one''s self in battles is likely to cause harm to the Empress''s impeccable reputation. As the Head Tactician of this island, I can't let that happen, period. I want you to keep training until the right time comes.");
+        qm.askAcceptDecline("雖然您已經是一位騎士了，但是您要好好的訓練下去直到變成一位騎士團成員...");
     } else if (status == 2) {
-	qm.forceCompleteQuest();
-	qm.sendNext("#p1102000#, the Training Instructor, will help you train into a serviceable knight. Once you reach Level 13, I'll assign you a mission or two. So until then, keep training.");
+        qm.forceCompleteQuest();
+        qm.sendNext("#p1102000#, 去找他將會幫助您成為一個有用的騎士，一旦您到達13等，在那時候我會給你1-2個任務，在這之前請先把自己的水平提升。");
     } else if (status == 3) {
-	qm.sendPrev("Oh, and are you aware that if you strike a conversation with #p1101001#, she'll give you a blessing? The blessing will definitely help you on your journey.");
+        qm.sendPrev("哦，您知道與 #p1101001#, 她會給你一個祝福嗎??,這個祝福肯定對您有幫助!");
     } else if (status == 4) {
-	qm.dispose();
+        qm.dispose();
     }
 }
 

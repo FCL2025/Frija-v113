@@ -1,12 +1,14 @@
-/* Dark Lord
-	Thief Job Advancement
-	Victoria Road : Thieves' Hideout (103000003)
+/* Dances with Balrog
+	Warrior Job Advancement
+	Victoria Road : Warriors' Sanctuary (102000003)
 
-	Custom Quest 100009, 100011
+	Custom Quest 100003, 100005
 */
 
 var status = 0;
-var job;
+var jobId;
+var jobName;
+
 
 function start() {
     status = -1;
@@ -15,102 +17,108 @@ function start() {
 
 function action(mode, type, selection) {
     if (mode == 0 && status == 2) {
-	cm.sendOk("You know there is no other choice...");
-	cm.dispose();
-	return;
+        cm.sendOk("請重試.");
+        cm.dispose();
+        return;
     }
     if (mode == 1)
-	status++;
+        status++;
     else
-	status--;
+        status--;
     if (status == 0) {
- 	if (cm.getJob() >= 400 && cm.getJob() <= 434 && cm.getQuestStatus(2351) == 1) {
-	    cm.forceCompleteQuest(2351);
-	    cm.gainItem(1032076,1); //owl earring
-	}
+		if (cm.getQuestStatus(6141) == 1) {
+            var dd = cm.getEventManager("DLPracticeField");
+            if (dd != null) {
+                dd.startInstance(cm.getPlayer());
+				cm.safeDispose();
+				return;
+            } else {
+                cm.sendOk("未知的錯誤。");
+				cm.dispose();
+				return;
+            }
+        }
 	if (cm.getJob() == 0) {
-	    if (cm.getPlayerStat("LVL") >= 10 && cm.getJob() == 0)
-		cm.sendNext("So you decided to become a #rThief#k?");
-	    else {
-		cm.sendOk("Train a bit more and I can show you the way of the #rThief#k.")
+		if (cm.getPlayer().getLevel() >= 10) {
+		cm.sendNext("你要轉職成為一位 #r盜賊#k ?");
+	    } else {
+		cm.sendOk("你的等級還不夠，還不能轉職成為 #r盜賊#k。");
 		cm.dispose();
 	    }
 	} else {
-	    if (cm.getPlayerStat("LVL") >= 30 && cm.getJob() == 400) {
-		if (cm.getQuestStatus(100009) >= 1) {
-		    cm.completeQuest(100011);
-		    if (cm.getQuestStatus(100011) == 2) {
+	    if (cm.getPlayer().getLevel() >= 30 && cm.getJob() == 400) { // 盜賊
+		if (cm.haveItem(4031012, 1)) {
+		    if (cm.haveItem(4031012, 1)) {
 			status = 20;
-			cm.sendNext("I see you have done well. I will allow you to take the next step on your long road.");
+			cm.sendNext("我看到你完成了測試. 想要繼續轉職請點下一頁!");
 		    } else {
 			if (!cm.haveItem(4031011)) {
 			    cm.gainItem(4031011, 1);
 			}
-			cm.sendOk("Go and see the #rJob Instructor#k.")
+			cm.sendOk("請去找 #r盜賊轉職教官#k.")
 			cm.dispose();
 		    }
 		} else {
 		    status = 10;
-		    cm.sendNext("The progress you have made is astonishing.");
+		    cm.sendNext("你已經可以轉職了,要轉職請點下一頁.");
 		}
-	    } else if (cm.getQuestStatus(100100) == 1) {
-		cm.completeQuest(100101);
-		if (cm.getQuestStatus(100101) == 2) {
-		    cm.sendOk("Alright, now take this to #bArec#k.");
+	    } else if (cm.getPlayer().getLevel() >= 70 && (cm.getJob() == 410 || cm.getJob() == 420)) {
+		if (cm.haveItem(4031059,1)) {
+			cm.gainItem(4031057,1);
+			cm.gainItem(4031059, -1);
+			cm.warp(211000001, 0);
+		    cm.sendOk("你完成了一個考驗，現在去找 #b阿里可#k.");
 		} else {
-		    cm.sendOk("Hey, #b#h0##k! I need a #bBlack Charm#k. Go and find the Door of Dimension.");
-		    cm.startQuest(100101);
+		    cm.sendOk("嗨, #b#h0##k! 我需要一個 #b黑符#k. 快去找異次元空間拿給我");
 		}
 		cm.dispose();
 	    } else {
-		cm.sendOk("You have chosen wisely.");
+		cm.sendOk("你好,我是盜賊轉職官.");
 		cm.dispose();
 	    }
 	}
     } else if (status == 1) {
-	cm.sendNextPrev("It is an important and final choice. You will not be able to turn back.");
+	cm.sendNextPrev("一旦轉職了就不能反悔,如果不想轉職請點上一頁.");
     } else if (status == 2) {
-	cm.sendYesNo("Do you want to become a #rThief#k?");
+	cm.sendYesNo("你真的要成為一位 #r盜賊#k ?");
     } else if (status == 3) {
 	if (cm.getJob() == 0) {
-	    cm.resetStats(4, 25, 4, 4);
-	    cm.expandInventory(1, 4);
-	    cm.expandInventory(4, 4);
-	    cm.changeJob(400); // THIEF
- 	    if (cm.getQuestStatus(2351) == 1) {
-		cm.forceCompleteQuest(2351);
-		cm.gainItem(1032076,1); //owl earring
-	    }
+		cm.resetStats(4, 25, 4, 4);
+		cm.expandInventory(1, 4);
+		cm.expandInventory(4, 4);
+		cm.changeJob(400); // 盜賊
 	}
 	cm.gainItem(1332063,1);
 	cm.gainItem(1472000,1);
-	cm.sendOk("So be it! Now go, and go with pride.");
+	cm.gainItem(2070000,500);
+	cm.gainItem(2070000,500);
+	cm.sendOk("轉職成功 ! 請去開創天下吧.");
 	cm.dispose();
     } else if (status == 11) {
-	cm.sendNextPrev("You may be ready to take the next step as a #r刺客#k or #r俠盜#k.");
+	cm.sendNextPrev("你可以選擇你要轉職成為一位 #r刺客#k, #r俠盜#k. ")
     } else if (status == 12) {
-	cm.askAcceptDecline("But first I must test your skills. Are you ready?");
+	cm.askAcceptDecline("但是我必須先測試你,你準備好了嗎 ?");
     } else if (status == 13) {
-	cm.startQuest(100009);
 	cm.gainItem(4031011, 1);
-	cm.sendOk("Go see the #bJob Instructor#k somewhere in the city. He will show you the way.");
+	cm.warp(102040000);
+	cm.sendOk("請去找 #b盜賊轉職教官#k . 他會幫助你的.");
 	cm.dispose();
     } else if (status == 21) {
-	cm.sendSimple("What do you want to become?#b\r\n#L0#刺客#l\r\n#L1#俠盜#l#k");
+	cm.sendSimple("你想要成為什麼 ? #b\r\n#L0#刺客#l\r\n#L1#俠盜#l#k");
     } else if (status == 22) {
 	var jobName;
 	if (selection == 0) {
-	    jobName = "Assassin";
-	    job = 410; // ASSASIN
-	} else {
-	    jobName = "Bandit";
-	    job = 420; // BANDIT
+	    jobName = "刺客";
+	    job = 410; // FIGHTER
+	} else if (selection == 1) {
+	    jobName = "俠盜";
+	    job = 420; // PAGE
 	}
-	cm.sendYesNo("Do you want to become a #r" + jobName + "#k?");
+	cm.sendYesNo("你真的要成為一位 #r" + jobName + "#k?");
     } else if (status == 23) {
 	cm.changeJob(job);
 	cm.gainItem(4031012, -1);
-	cm.sendOk("So be it! Now go, my servant.");
+	cm.sendOk("轉職成功 ! 請去開創天下吧.");
 	cm.dispose();
     }
-}	
+}

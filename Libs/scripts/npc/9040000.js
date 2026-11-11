@@ -13,81 +13,81 @@ function start() {
 
 function action(mode, type, selection) {
     if (mode == 0 && status == 0) {
-	cm.dispose();
-	return;
+        cm.dispose();
+        return;
     }
     if (mode == 1) {
-	status++;
+        status++;
     } else {
-	status--;
+        status--;
     }
 
     if (status == 0) {
-	if (cm.getPlayer().hasEquipped(1032033)) {
-		cm.sendOk("Please remove your protector's rock.");
-		cm.dispose();
-	} else {
-		cm.sendSimple("The path to Sharenian starts here. What would you like to do? #b\r\n#L0#Start a Guild Quest#l\r\n#L1#Join your guild's Guild Quest#l");
-	}
-	
+        if (cm.getPlayer().hasEquipped(1032033)) {
+            cm.sendOk("請脫下#t1032033#。");
+            cm.dispose();
+        } else {
+            cm.sendSimple("你想做什麼? #b\r\n#L0#開始一個公會守護戰#l\r\n#L1#加入公會的公會守護戰#l");
+        }
+
     } else if (status == 1) {
-	if (selection == 0) { //Start
-	    if (cm.getPlayerStat("GID") == 0 || cm.getPlayerStat("GRANK") >= 3) { //no guild or not guild master/jr. master
-		cm.sendNext("Only a Master or Jr. Master of the guild can start an instance.");
-		cm.dispose();
-	    } else {
-		var em = cm.getEventManager("GuildQuest");
-		if (em == null) {
-		    cm.sendOk("This trial is currently under construction.");
-		} else {
-		    var prop = em.getProperty("started");
+        if (selection == 0) { //Start
+            if (cm.getPlayerStat("GID") == 0 || cm.getPlayerStat("GRANK") >= 3) { //no guild or not guild master/jr. master
+                cm.sendNext("只有公會長和副會長才能啟動公會守護戰。");
+                cm.dispose();
+            } else {
+                var em = cm.getEventManager("GuildQuest");
+                if (em == null) {
+                    cm.sendOk("公會守護戰尚未實施建設。");
+                } else {
+                    var prop = em.getProperty("started");
 
-		    if ((prop.equals("false") || prop == null) && em.getInstance("GuildQuest") == null) {
-    			for (var i = 0; i < GQItems.length; i++) {
-				cm.removeAll(GQItems[i]);
-    			}
-			em.startInstance(cm.getPlayer(), cm.getPlayer().getName());
-			em.setProperty("state", "0");
-			cm.guildMessage("The guild has been entered into the Guild Quest. Please report to Shuang at the Excavation Camp on channel " + cm.getClient().getChannel() + ".");
-		    } else {
-			cm.sendOk("Someone is already attempting on the guild quest.")
-		    }
-		}
-		cm.dispose();
-	    }
-	} else if (selection == 1) { //entering existing GQ
-	    if (cm.getPlayerStat("GID") == 0) { //no guild or not guild master/jr. master
-		cm.sendNext("You must be in a guild to join.");
-		cm.dispose();
-	    } else {
-		var em = cm.getEventManager("GuildQuest");
-		if (em == null) {
-		    cm.sendOk("This trial is currently under construction.");
-		} else {
-		    var eim = em.getInstance("GuildQuest");
+                    if ((prop.equals("false") || prop == null) && em.getInstance("GuildQuest") == null) {
+                        for (var i = 0; i < GQItems.length; i++) {
+                            cm.removeAll(GQItems[i]);
+                        }
+                        em.startInstance(cm.getPlayer(), cm.getPlayer().getName());
+                        em.setProperty("state", "0");
+                        cm.guildMessage("公會已經開始公會守護戰 <頻道:" + cm.getClient().getChannel() + "> 請公會成員盡速來到遺跡發掘對營地參加公會守護戰。");
+                    } else {
+                        cm.sendOk("已經有一個公會正在實施公會守護戰。")
+                    }
+                }
+                cm.dispose();
+            }
+        } else if (selection == 1) { //entering existing GQ
+            if (cm.getPlayerStat("GID") == 0) { //no guild or not guild master/jr. master
+                cm.sendNext("你尚未沒有加入一個公會。");
+                cm.dispose();
+            } else {
+                var em = cm.getEventManager("GuildQuest");
+                if (em == null) {
+                    cm.sendOk("公會守護戰尚未實施建設。");
+                } else {
+                    var eim = em.getInstance("GuildQuest");
 
-		    if (eim == null) {
-			cm.sendOk("Your guild is currently not registered for an instance.");
-		    } else {
-//			if (em.getProperty("guildid") != null && !em.getProperty//("guildid").equalsIgnoreCase("" + cm.getPlayerStat("GID"))) {
-//			if (cm.getPlayer().isGM()) {
-//			    cm.sendOk("This instance is not your guild. Instance Guild: "  + //em.getProperty("guildid") + ", Your Guild: " + cm.getPlayerStat("GID"));
-//			} else {
-//			    cm.sendOk("This instance is not your guild.");
-//			}
-//			} else 
-if (em.getProperty("started").equals("false")) {
-    			for (var i = 0; i < GQItems.length; i++) {
-				cm.removeAll(GQItems[i]);
-    			}
-			    eim.registerPlayer(cm.getPlayer());
-			} else {
-			    cm.sendOk("I'm sorry, but the guild has gone on without you. Try again later.");
-			}
-		    }
-		}
-		cm.dispose();
-	    }
-	}
+                    if (eim == null) {
+                        cm.sendOk("你的公會尚未開啟公會守護戰。");
+                    } else {
+                        //			if (em.getProperty("guildid") != null && !em.getProperty//("guildid").equalsIgnoreCase("" + cm.getPlayerStat("GID"))) {
+                        //			if (cm.getPlayer().isGM()) {
+                        //			    cm.sendOk("This instance is not your guild. Instance Guild: "  + //em.getProperty("guildid") + ", Your Guild: " + cm.getPlayerStat("GID"));
+                        //			} else {
+                        //			    cm.sendOk("This instance is not your guild.");
+                        //			}
+                        //			} else 
+                        if (em.getProperty("started").equals("false")) {
+                            for (var i = 0; i < GQItems.length; i++) {
+                                cm.removeAll(GQItems[i]);
+                            }
+                            eim.registerPlayer(cm.getPlayer());
+                        } else {
+                            cm.sendOk("我很抱歉，但公會已經沒有你，請稍後再嘗試！");
+                        }
+                    }
+                }
+                cm.dispose();
+            }
+        }
     }
 }

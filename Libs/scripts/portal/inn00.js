@@ -1,4 +1,15 @@
 function enter(pi) {
-	pi.getPlayer().message("很抱歉，暫時不開放!");
-	return false;
+	var returnMap = pi.getSavedLocation("HOTEL");
+	pi.clearSavedLocation("HOTEL");
+	if (returnMap < 0) {
+		returnMap = 102000000;
+	}
+	var target = pi.getMap(returnMap);
+	var portal = target.getPortal("inn00");
+	if (portal == null) {
+		portal = target.getPortal(0);
+	}
+	pi.playPortalSE();
+	pi.getPlayer().changeMap(target, portal);
+	return true;
 }

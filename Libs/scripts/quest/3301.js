@@ -11,7 +11,7 @@ function start(mode, type, selection) {
 }
 
 function end(mode, type, selection) {
-	    	qm.sendNext("Then wait for awhile. I'll go and get the stuff to help you pass the test of Chief Zenumist.");
-	    	qm.forceCompleteQuest();
-	    qm.dispose();
+    qm.sendNext("請等一下我去拿個東西，以幫助您更容易通過蒙特鳩協會長的考驗。");
+    qm.forceCompleteQuest();
+    qm.dispose();
 }

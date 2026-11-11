@@ -18,14 +18,14 @@ function action(mode, type, selection) {
 	status--;
 
     if (status == 0)
-	cm.sendSimple("你找本宮有什麼事情\r\n#b#L0#創建/更改公會徽章#l#k");
+	cm.sendSimple("你想要做什麼？\r\n#b#L0#創建/更改公會徽章#l#k");
     else if (status == 1) {
 	sel = selection;
 	if (selection == 0) {
 	    if (cm.getPlayerStat("GRANK") == 1)
-		cm.sendYesNo("Creating or changing Guild Emblem costs #b1,000,000楓幣#k, are you sure you want to continue?");
+		cm.sendYesNo("重新打造一個徽章需要 #b1,000,000楓幣#k，你確定要繼續嗎？");
 	    else
-		cm.sendOk("You must be the Guild Leader to change the Emblem.  Please tell your leader to speak with me.");
+		cm.sendOk("打造公會徽章需要公會長來找我才行喔，請你們的公會長來找我吧~");
 	}
 				
     } else if (status == 2) {

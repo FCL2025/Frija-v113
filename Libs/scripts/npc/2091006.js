@@ -8,23 +8,23 @@ function action(mode, type, selection) {
     if (mode == 1) {
 	status++;
     } else {
-	cm.sendNext("#b(Once I hurried took my hand off the notice, the mystifying ayra disappeared as well.)");
-	cm.safeDispose();
+	cm.sendNext("#b(懦夫!不敢來跟我PK....)");
+	cm.dispose();
 	return;
     }
 
     if (status == 0) {
-	cm.sendSimple("#e<Notice>#n \r\nAnyone with the temerity to challange the Mu Lung Training Tower shall visit the Tower immediately. - 武公 - \r\n#b#L0#Challange the Mu Lung Training Tower#l\r\n#b#L1#Read the notice in detail.#l")
+	cm.sendSimple("#e< 公告 >#n \r\n凡是有勇氣挑戰武陵道場者，歡迎你前來武陵道場！. \r\n - 武公 - \r\n#b#L0#我要挑戰武陵道場50樓!!#l\r\n#b#L1#仔細閱讀規則...#l")
     } else if (status == 1) {
 	sel = selection;
 	if (sel == 1) {
-	    cm.sendNext("#e< Notice : Challange issued! >#n\r\nThis is Mu Gong, the rightful owner of Mu Lung Training Tower. A long time ago, I came to Mu Lung hoping to become a master, and now I have reached the point where I know I have reached the point where I know all Martial Arts. The owner of Mu Lung Training Tower was a weak individual who detested combat. That is why from here onwards, I'll be taking over the Mu Lung Training Tower.\r\nMu Lung Training Tower should be rightfully owned by the strongest individual in Mu Lung.\r\nIf you wish to learn from the very best, then take on the challange! I do not care if you wish to directly face me as well. I'll make sure to imprint greatness in every part of your body.");
+	    cm.sendNext("#e<公告: 發行挑戰! >#n\r\n我是武陵道場的主人名叫武公。很久以前我是在武陵山開始修練仙術，現在我的內功已達到快超越極限的階段。以前武陵道場的主人懦弱到不像樣的程度。所以今天開始以我接管武陵道場。只有強者可以擁有武陵道場的資格。想要得到武術指點的人儘管來挑戰！或著想要挑戰我的人也無妨。我會讓你知道你的無知！！");
 	} else {
-	    cm.sendYesNo("#b(摸在布告欄上，感受到一股神祕的氣息圍繞在身旁。)#k\r\n\r\nWould you like to be transfered to Mulung Training Tower?");
+	    cm.sendYesNo("#b(你真的想要參加武公挑戰塔嗎？？)");
 	}
     } else if (status == 2) {
 	if (sel == 1) {
-	    cm.sendNextPrev("PS : It doesn't matter if you come by yourself, but if you're indeed the coward that I think you are, then you may also come in with your friends.");
+	    cm.sendNextPrev("歡迎你來挑戰。如果沒有勇氣的話，找其他夥伴一起也無妨。");
 	} else {
 	    cm.saveLocation("MULUNG_TC");
 	    cm.warp(925020000, 0);

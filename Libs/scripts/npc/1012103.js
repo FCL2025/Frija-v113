@@ -48,13 +48,13 @@ function action(mode, type, selection) {
     } else if (status == 2){
 	if (beauty == 1){
 	    if (cm.setAvatar(5150001, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved hairstyle!");
+		cm.sendOk("好了，好好享受你的新髮型吧！");
 	    } else {
 		cm.sendOk("看來我沒辦法幫你剪頭髮喔");
 	    }
 	} else {
 	    if (cm.setAvatar(5151001, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved haircolor!");
+		cm.sendOk("好了，好好享受你的新髮色吧！");
 	    } else {
 		cm.sendOk("看來我沒辦法幫你染頭髮喔");
 	    }

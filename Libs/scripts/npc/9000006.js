@@ -5,6 +5,6 @@
 */
 
 function start(){
-	cm.sendOk("Hey hey!!! Find the Treasure Scroll! I lost the map somewhere and I can't leave without it.");
+	cm.sendOk("喂...喂..快把 藏寶圖給我找出來...因為把地圖給丟了，害現在都沒辦法航海。");
 	cm.dispose();
 }

@@ -31,13 +31,13 @@ function action(mode, type, selection) {
 	    }
 	}
 	if(counter == 0) {
-	    cm.sendOk("#b#h ##k has not returned a single storybook yet.");
+	    cm.sendOk("#b#h ##k 還沒有還一本故事書.");
 	    cm.safeDispose();
 	} else {
-	    cm.sendNext("Let's see.. #b#h ##k have returned a total of #b"+counter+"#k books. The list of returned books is as follows:"+books);
+	    cm.sendNext("我看看 #b#h ##k 總共還了 of #b"+counter+"#k 書 下列是還得書本列表:"+books);
 	}
     } else if (status == 1) {
-	cm.sendNextPrev("The library is settling down now thanks chiefly to you, #b#h ##k's immense help. If the story gets mixed up once again, then I'll be counting on you to fix it once more.");
+	cm.sendNextPrev("該書庫沉澱下來，現在歸功於你 #b#h ##k 鉅大的幫助，如果故事書被混合再一次被混和起來的話，我會希望你在幫忙一次。");
     } else if (status == 2) {
 	cm.dispose();
     }

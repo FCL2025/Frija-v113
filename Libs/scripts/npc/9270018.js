@@ -9,9 +9,13 @@ function action(mode, type, selection) {
     }
     if (status == 0) {
 	if (cm.getMapId() == 540010002) {
+		cm.sendOk("風景很美對吧?");
 	    cm.dispose();
+	} else if (cm.getMapId() == 540010101){
+	cm.sendOk("風景很美對吧?");
+	cm.dispose();
 	} else {
-	    cm.sendYesNo("The plane will be taking off soon, Will you leave now? You will have buy the plane ticket again to come in here.");
+	    cm.sendYesNo("這架飛機將在起飛不久，請問你現在離開？您將有再次購買飛機票到這裡來.");
 	}
     } else {
 	cm.warp(540010000, 0);

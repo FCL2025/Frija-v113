@@ -2,24 +2,24 @@ var status = -1;
 
 function start() {
 	if (cm.getPlayer().getMapId() == 551030200) {
-		cm.sendYesNo("Would you like to get out?");
+		cm.sendYesNo("你要離開了嗎?");
 		status = 1;
 		return;
 	}
 		if (cm.getPlayer().getLevel() < 90) {
-			cm.sendOk("There is a level requirement of 90 to attempt Scarlion/Targa.");
+			cm.sendOk("你的等級尚未達到90，無法挑戰熊獅王。");
 			cm.dispose();
 			return;
 		}
 		if (cm.getPlayer().getClient().getChannel() != 1 && cm.getPlayer().getClient().getChannel() != 2) {
-			cm.sendOk("Scarlion/Targa may only be attempted on channel 1,2");
+			cm.sendOk("熊獅王只能在頻道 1、2 挑戰。");
 			cm.dispose();
 			return;
 		}
     var em = cm.getEventManager("ScarTarBattle");
 
     if (em == null) {
-	cm.sendOk("The event isn't started, please contact a GM.");
+	cm.sendOk("本活動尚未開放，請聯絡管理員。");
 	cm.dispose();
 	return;
     }
@@ -36,41 +36,41 @@ function start() {
     if (squadAvailability == -1) {
 	status = 0;
 	    if (time + (3 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
-		cm.sendOk("You have already went to Scarlion/Targa in the past 3 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 360000)));
+		cm.sendOk("你在 3 小時內已經挑戰過熊獅王了。剩餘時間：" + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 3600000)));
 		cm.dispose();
 		return;
 	    }
-	cm.sendYesNo("Are you interested in becoming the leader of the expedition Squad?");
+	cm.sendYesNo("你想成為遠征隊隊長嗎？");
 
     } else if (squadAvailability == 1) {
 	    if (time + (3 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
-		cm.sendOk("You have already went to Scarlion/Targa in the past 3 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 360000)));
+		cm.sendOk("你在 3 小時內已經挑戰過熊獅王了。剩餘時間：" + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 3600000)));
 		cm.dispose();
 		return;
 	    }
 	// -1 = Cancelled, 0 = not, 1 = true
 	var type = cm.isSquadLeader("ScarTar");
 	if (type == -1) {
-	    cm.sendOk("The squad has ended, please re-register.");
+	    cm.sendOk("已經結束了申請，請重新申請。");
 	    cm.dispose();
 	} else if (type == 0) {
 	    var memberType = cm.isSquadMember("ScarTar");
 	    if (memberType == 2) {
-		cm.sendOk("You been banned from the squad.");
+		cm.sendOk("你在遠征隊的制裁名單中。");
 		cm.dispose();
 	    } else if (memberType == 1) {
 		status = 5;
-		cm.sendSimple("What would you like to do? \r\n#b#L0#Join the squad#l \r\n#b#L1#Leave the squad#l \r\n#b#L2#See the list of members on the squad#l");
+		cm.sendSimple("你要做什麼? \r\n#b#L0#加入遠征隊#l \r\n#b#L1#退出遠征隊#l \r\n#b#L2#查看遠征隊名單#l");
 	    } else if (memberType == -1) {
-		cm.sendOk("The squad has ended, please re-register.");
+		cm.sendOk("已經結束了申請，請重新申請。");
 		cm.dispose();
 	    } else {
 		status = 5;
-		cm.sendSimple("What would you like to do? \r\n#b#L0#Join the squad#l \r\n#b#L1#Leave the squad#l \r\n#b#L2#See the list of members on the squad#l");
+		cm.sendSimple("你要做什麼? \r\n#b#L0#加入遠征隊#l \r\n#b#L1#退出遠征隊#l \r\n#b#L2#查看遠征隊名單#l");
 	    }
 	} else { // Is leader
 	    status = 10;
-	    cm.sendSimple("What do you want to do, expedition leader? \r\n#b#L0#View expedition list#l \r\n#b#L1#Kick from expedition#l \r\n#b#L2#Remove user from ban list#l \r\n#r#L3#Select expedition team and enter#l");
+	    cm.sendSimple("你現在想做什麼？\r\n#b#L0#查看遠征隊成員。#l \r\n#b#L1#管理遠征隊成員。#l \r\n#b#L2#編輯限制列表。#l \r\n#r#L3#進入地圖。#l");
 	// TODO viewing!
 	}
 	    } else {
@@ -79,18 +79,18 @@ function start() {
 				var squd = cm.getSquad("ScarTar");
 				if (squd != null) {
 	    if (time + (3 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
-		cm.sendOk("You have already went to Scarlion/Targa in the past 3 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 360000)));
+		cm.sendOk("你在 3 小時內已經挑戰過熊獅王了。剩餘時間：" + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 3600000)));
 		cm.dispose();
 		return;
 	    }
-					cm.sendYesNo("The squad's battle against the boss has already begun.\r\n" + squd.getNextPlayer());
+					cm.sendYesNo("已經遠征隊正在進行挑戰了.\r\n" + squd.getNextPlayer());
 					status = 3;
 				} else {
-					cm.sendOk("The squad's battle against the boss has already begun.");
+					cm.sendOk("遠征隊的挑戰已經開始.");
 					cm.safeDispose();
 				}
 			} else {
-				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
+				cm.sendYesNo("你要繼續進行遠征任務嗎？");
 				status = 2;
 			}
 	    }
@@ -100,18 +100,18 @@ function start() {
 				var squd = cm.getSquad("ScarTar");
 				if (squd != null) {
 	    if (time + (3 * 3600000) >= cm.getCurrentTime() && !cm.getPlayer().isGM()) {
-		cm.sendOk("You have already went to Scarlion/Targa in the past 3 hours. Time left: " + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 360000)));
+		cm.sendOk("你在 3 小時內已經挑戰過熊獅王了。剩餘時間：" + cm.getReadableMillis(cm.getCurrentTime(), time + (3 * 3600000)));
 		cm.dispose();
 		return;
 	    }
-					cm.sendYesNo("The squad's battle against the boss has already begun.\r\n" + squd.getNextPlayer());
+					cm.sendYesNo("已經遠征隊正在進行挑戰了.\r\n" + squd.getNextPlayer());
 					status = 3;
 				} else {
-					cm.sendOk("The squad's battle against the boss has already begun.");
+					cm.sendOk("遠征隊的挑戰已經開始.");
 					cm.safeDispose();
 				}
 			} else {
-				cm.sendYesNo("Ah, you have returned. Would you like to join your squad in the fight again?");
+				cm.sendYesNo("你要繼續進行遠征任務嗎？");
 				status = 2;
 			}
 	}
@@ -121,10 +121,10 @@ function action(mode, type, selection) {
     switch (status) {
 	case 0:
 	    if (mode == 1) {
-			if (cm.registerSquad("ScarTar", 5, " has been named the Leader of the squad. If you would you like to join please register for the Expedition Squad within the time period.")) {
-				cm.sendOk("You have been named the Leader of the Squad. For the next 5 minutes, you can add the members of the Expedition Squad.");
+			if (cm.registerSquad("ScarTar", 5, " 已經成為了遠征隊隊長。如果你想加入遠征隊，請重新打開對話申請加入遠征隊。")) {
+				cm.sendOk("你已經成為了遠征隊隊長。接下來的5分鐘，請等待隊員們的申請。");
 			} else {
-				cm.sendOk("An error has occurred adding your squad.");
+				cm.sendOk("未知錯誤.");
 			}
 	    }
 	    cm.dispose();
@@ -137,7 +137,7 @@ function action(mode, type, selection) {
 	    break;
 	case 2:
 		if (!cm.reAdd("ScarTarBattle", "ScarTar")) {
-			cm.sendOk("Error... please try again.");
+			cm.sendOk("由於未知的錯誤，操作失敗。");
 		}
 		cm.safeDispose();
 		break;
@@ -152,7 +152,7 @@ function action(mode, type, selection) {
 				var pName = cm.getPlayer().getName();
 				var wasQueued = squd.isQueuedNextPlayer(pName);
 				squd.setNextPlayer(pName);
-				cm.sendOk(wasQueued ? "You have been removed from the reservation queue." : "You have reserved the spot.");
+				cm.sendOk(wasQueued ? "你已經取消下一組的登記。" : "你已經成功登記為下一組..");
 			}
 		}
 		cm.dispose();
@@ -161,22 +161,22 @@ function action(mode, type, selection) {
 	    if (selection == 0) { // join
 		var ba = cm.addMember("ScarTar", true);
 		if (ba == 2) {
-		    cm.sendOk("The squad is currently full, please try again later.");
+		    cm.sendOk("遠征隊員已經達到30名，請稍後再試。");
 		} else if (ba == 1) {
-		    cm.sendOk("You have joined the squad successfully");
+		    cm.sendOk("申請加入遠征隊成功，請等候隊長指示。");
 		} else {
-		    cm.sendOk("You are already part of the squad.");
+		    cm.sendOk("你已經參加了遠征隊，請等候隊長指示。");
 		}
 	    } else if (selection == 1) {// withdraw
 		var baa = cm.addMember("ScarTar", false);
 		if (baa == 1) {
-		    cm.sendOk("You have withdrawed from the squad successfully");
+		    cm.sendOk("成功退出遠征隊。");
 		} else {
-		    cm.sendOk("You are not part of the squad.");
+		    cm.sendOk("你沒有參加遠征隊。");
 		}
 	    } else if (selection == 2) {
 		if (!cm.getSquadList("ScarTar", 0)) {
-		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+		    cm.sendOk("由於未知的錯誤，操作失敗。");
 		}
 	    }
 	    cm.dispose();
@@ -185,19 +185,19 @@ function action(mode, type, selection) {
 	    if (mode == 1) {
 		if (selection == 0) {
 		    if (!cm.getSquadList("ScarTar", 0)) {
-			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+			cm.sendOk("由於未知的錯誤，操作失敗。");
 		    }
 		    cm.dispose();
 		} else if (selection == 1) {
 		    status = 11;
 		    if (!cm.getSquadList("ScarTar", 1)) {
-			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+			cm.sendOk("由於未知的錯誤，操作失敗。");
 			cm.dispose();
 		    }
 		} else if (selection == 2) {
 		    status = 12;
 		    if (!cm.getSquadList("ScarTar", 2)) {
-			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+			cm.sendOk("由於未知的錯誤，操作失敗。");
 			cm.dispose();
 		    }
 		} else if (selection == 3) { // get insode
@@ -205,7 +205,7 @@ function action(mode, type, selection) {
 			var dd = cm.getEventManager("ScarTarBattle");
 			dd.startInstance(cm.getSquad("ScarTar"), cm.getMap(), 160108);
 		    } else {
-			cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+			cm.sendOk("由於未知的錯誤，操作失敗。");
 		    }
 		    cm.dispose();
 		}

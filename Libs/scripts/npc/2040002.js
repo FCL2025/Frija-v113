@@ -8,48 +8,53 @@ function start() {
 }
 
 function action(mode, type, selection) {
-    if(mode == 0 && status == 0) {
-	cm.sendNext("I see. It's very understandable, considering the fact that you'll be facing a very dangerous monster inside. If you ever feel a change of heart, then please come talk to me. I sure can use help from someone like you.");
-	cm.dispose();
-	return;
-    } else if(mode == 0 && status == 2) {
-	cm.sendNext("I see. Please talk to me when you're ready to take on this task. I advise you not to take too much time, through, for the monster may turn into something totally different. We have to act like we don't know anything.");
-	cm.dispose();
-	return;
-    }
-    if (mode == 1) {
-	status++;
+
+    if (mode == -1) {
+        cm.dispose();
     } else {
-	status--;
-    }
-    if(cm.getQuestStatus(3230) == 1) {
-	if(status == 0) {
-	    cm.sendYesNo("Hmmm...I've heard a lot about you through #b#p2040001##k. You got him a bunch of #b#t4031093##k so he can fight off boredom at work. Well ... alright, then. There's a dangerous, dangerous monster inside. I want to ask you for help in regards to locating it. Would you like to help me out?");
-	} else if(status == 1) {
-	    cm.sendNext("Thank you so much. Actually, #b#t4031093##k asked you to get #b#p2040001##k as a way of testing your abilities to see if you can handle this, so don't think of it as a random request. I think someone like you can handle adversity well.");
-	} else if(status == 2) {
-	    cm.sendYesNo("A while ago, a monster came here from another dimension thanks to a crack in dimensions, and it stole the pendulum of the clock. It hid itself inside the room over there camouflaged as a dollhouse. It all looks the same to me, so there's no way to find it. Would you help us locate it?");
-	    if (dh != null && dh.getProperty("noEntry").equals("true")) {
-		entry = false;
-	    }
-	} else if(status == 3) {
-	    cm.sendNext("Alright! I'll take you to a room, where you'll find a number of dollhouses all over the place. One of them will look slightly different from the others. Your job is to locate it and break its door. If you break a wrong dollhouse, however, you'll be sent out here without warning, so please be careful on that.");
-	} else if(status == 4) {
-	    cm.sendNextPrev("You'll also find monsters in there, and they have gotten so powerful thanks to the monster from the other dimension that you won't able to take them down. Please find #b#t4031094##k within the time limit and then notify #b#p2040028##k, who should be inside. Let's get this started!");
-	} else if(status == 5) {
-	    if(dh == null || entry == false) {
-		cm.sendPrev("Someone else must be inside looking for the dollhouse. Unfortunately I can only let in one person at a time, so please wait for your turn.");
-	    } else {
-		cm.removeAll(4031093);
-		dh.startInstance(cm.getChar());
-	    }
-	    cm.dispose();
-	}
-    } else if(cm.getQuestStatus(3230) == 2) {
-	cm.sendNext("Thanks to #h #, we got the #b#t4031094##k back and destroyed the monster from the other dimension. Thankfully we haven't found one like that since. I can't thank you enough for helping us out. Hope you enjoy your stay here at #m220000000#!");
-	cm.dispose();
-    } else {
-	cm.sendOk("We are the toy soldiers here guarding this room, preventing anyone else from entering. I cannot inform you of the reasoning behind this policy. Now, if you'll excuse me, I am working here.");
-	cm.dispose();
+        if (mode == 0 && status == 0) {
+            cm.sendNext("我明白。這是非常可以理解的，考慮到你將面臨內部一個非常危險的怪物的事實。如果你覺得心臟的改變，那麼請你跟我說話。我確信可以從別人像你使用的幫助。");
+            cm.dispose();
+            return;
+        } else if (mode == 0 && status == 2) {
+            cm.sendNext("我明白。這是非常可以理解的，考慮到你將面臨內部一個非常危險的怪物的事實。如果你覺得心臟的改變，那麼請你跟我說話。我確信可以從別人像你使用的幫助。");
+            cm.dispose();
+            return;
+        }
+        if (mode == 1) {
+            status++;
+        } else {
+            status--;
+        }
+        if (cm.getQuestStatus(3230) == 1) {
+            if (status == 0) {
+                cm.sendYesNo("嗯...我是 #b#p2040001##k. 我聽說過很多關於你的事情... 你能幫我找回 #b#t4031093##k 嗎拜託了!");
+            } else if (status == 1) {
+                cm.sendNext("非常感謝。其實, #b#p2040001##k 問你拿  #b#t4031093##k 為測試自己的能力，看看你是否能處理這個問題，所以不要把它當做一個隨機請求的方式。我覺得你這樣的人能處理好逆境.");
+            } else if (status == 2) {
+                cm.sendYesNo("前段時間，一個怪物來到這裡從另一個層面得益於尺寸的裂縫，並偷走了鐘擺。它躲在自己的房間裡那邊偽裝成一個玩具屋。這一切看起來是一樣的我，所以沒有辦法找到它。你會幫助我們找到它？");
+                if (dh != null && dh.getProperty("noEntry") != null && dh.getProperty("noEntry").equals("true")) {
+                    entry = false;
+                }
+            } else if (status == 3) {
+                cm.sendNext("好的，我會帶你到另一個房間，那邊有許多相同的玩具屋，不過你仔細看會發現有所不同，你的任務是打破真正的玩具屋然後把#t4031094#帶回來給我。.");
+            } else if (status == 4) {
+                cm.sendNextPrev("你需要在時間內找到#t4031094# 然後像我回報。");
+            } else if (status == 5) {
+                if (dh == null || entry == false) {
+                    cm.sendPrev("玩具屋內好像有人了。我只能讓一個人在裡面，所以請你等待吧。");
+                } else {
+                    cm.removeAll(4031093);
+                    dh.startInstance(cm.getChar());
+                }
+                cm.dispose();
+            }
+        } else if (cm.getQuestStatus(3230) == 2) {
+            cm.sendNext("謝謝你 #h #, 我們得到了 #b#t4031094##k 回並銷毀從另一個邪惡的怪物。值得慶幸的是，我們還沒有找到一個這樣的，因為。我不知道怎麼感謝你幫助我們這麼多。希望你在#m220000000#過得愉快!");
+            cm.dispose();
+        } else {
+            cm.sendOk("我們在這裡守衛這個房間的玩具士兵，防止任何人進入這個地方。");
+            cm.dispose();
+        }
     }
 }

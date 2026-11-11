@@ -15,10 +15,10 @@ function action(mode, type, selection) {
 	}
 	cm.gainItem(itemid, 1);
 	if (em.getProperty("stage").equals("2")) {
-    		cm.gainNX(5);
+    		//cm.gainNX(5000);
     		cm.gainExpR(140000);
 	} else {
-		cm.gainNX(35);
+		//cm.gainNX(3500);
 		cm.gainExpR(105000);
 	}
     }

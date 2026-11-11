@@ -2,8 +2,6 @@
 	Fishking King NPC
 */
 
-/* global cm */
-
 var status = -1;
 var sel;
 

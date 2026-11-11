@@ -14,7 +14,7 @@ function action(mode, type, selection) {
 	cm.dispose();
 	return;
     } else if (status >= 1 && mode == 0) {
-	cm.sendNext("Hmmm ... too busy to do it right now? If you feel like doing it, though, come back and find me.");
+	cm.sendNext("需要的時候可以來找我。");
 	cm.dispose();
 	return;
     }
@@ -23,14 +23,14 @@ function action(mode, type, selection) {
     else
 	status--;
     if (status == 0) {
-	cm.sendYesNo("This is the road where you can go take a walk with your pet. You can walk around with it, or you can train your pet to go through obstacles here. If you aren't too close with your pet yet, that may present a problem and he will not follow your command as much... So, what do you think? Wanna train your pet?");
+	cm.sendYesNo("這是在路上，你可以去與你的寵物散步。你可以走動的，或者你可以訓練你的寵物要經過這裡的障礙。如果你不是太密切的與您的寵物然而，這可能會出現問題，他不會聽從你的命令一樣多......那麼，你有什麼感想？想培養你的寵物？");
     } else if (status == 1) {
 	if (cm.haveItem(4031128)) {
-	    cm.sendNext("Get that letter, jump over obstacles with your pet, and take that letter to my brother Trainer Frod. Give him the letter and something good is going to happen to your pet.");
+	    cm.sendNext("拿到這一封信，跳躍過那些障礙把這封信給我弟弟他會給你獎勵...");
 	    cm.dispose();
 	} else {
 	    cm.gainItem(4031128, 1);
-	    cm.sendOk("Ok, here's the letter. He wouldn't know I sent you if you just went there straight, so go through the obstacles with your pet, go to the very top, and then talk to Trainer Frod to give him the letter. It won't be hard if you pay attention to your pet while going through obstacles. Good luck!");
+	    cm.sendOk("好運!");
 	    cm.dispose();
 	}
     }

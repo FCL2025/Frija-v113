@@ -1,33 +1,12 @@
-/*
-	This file is part of the OdinMS Maple Story Server
-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
-		       Matthias Butz <matze@odinms.de>
-		       Jan Christian Meyer <vimes@odinms.de>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License as
-    published by the Free Software Foundation version 3 as published by
-    the Free Software Foundation. You may not use, modify or distribute
-    this program under any other version of the GNU Affero General Public
-    License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 /* Tara
-	Ludibrium : Tara and Sarah's House (220000303)
-	
-	Refining NPC: 
-	* Shoes - All classes, 30-50, stimulator (4130001) available on upgrades
-	* Price is 90% of locations on same items
-*/
+ Ludibrium : Tara and Sarah's House (220000303)
+ 
+ Refining NPC: 
+ * Shoes - All classes, 30-50, stimulator (4130001) available on upgrades
+ * Price is 90% of locations on same items
+ */
 
-var status = 0;
+        var status = -1;
 var selectedType = -1;
 var selectedItem = -1;
 var item;
@@ -37,175 +16,209 @@ var cost;
 var stimulator = false;
 var stimID = 4130001;
 
-function start() {
-    var selStr = "Hello, and welcome to the Ludibrium Shoe Store. How can I help you today??#b"
-    var options = new Array("What's a stimulator?","Create Warrior shoes","Create Bowman shoes","Create Magician shoes","Create Thief shoes", "Create Warrior shoes with a Stimulator","Create Bowman shoes with a Stimulator","Create Magician shoes with a Stimulator","Create Thief shoes with a Stimulator");
-    for (var i = 0; i < options.length; i++){
-        selStr += "\r\n#L" + i + "# " + options[i] + "#l";
-    }
-    cm.sendSimple(selStr);
-}
-
 function action(mode, type, selection) {
-    if (mode < 1) {
+    if (status == 0 && mode == 0) {
+        cm.dispose();
+        return;
+    } else if (status >= 1 && mode == 0) {
+        cm.sendNext("需要的時候可以來找我。");
         cm.dispose();
         return;
     }
-    status++;
-    if (status == 1) {
+    if (mode == 1) {
+        status++;
+    } else {
+        status--;
+    }
+    if (status == 0) {
+        var selStr = "嗨，我是#p2040021# 今天可以為你做點什麼？？#b"
+        var options = new Array("什麼是催化劑?", "做一雙劍士鞋子", "做一雙弓箭手鞋子", "做一雙法師鞋子", "做一雙盜賊鞋子",
+                "做一雙劍士鞋子使用催化劑", "做一雙弓箭手鞋子使用催化劑", "做一雙法師鞋子使用催化劑", "做一雙盜賊鞋子使用催化劑");
+        for (var i = 0; i < options.length; i++) {
+            selStr += "\r\n#L" + i + "# " + options[i] + "#l";
+        }
+
+        cm.sendSimple(selStr);
+    } else if (status == 1) {
         selectedType = selection;
         var selStr;
-        var shoes;
-        if (selectedType > 4) {
+        var shoes = Array();
+        if (selectedType > 4)
+        {
             stimulator = true;
             selectedType -= 4;
-        }
-        else
+        } else
             stimulator = false;
-        if (selectedType == 0){ // what is stim
-            cm.sendNext("A stimulator is a special potion that I can add into the process of creating certain items. It gives it stats as though it had dropped from a monster. However, it is possible to have no change, and it is also possible for the item to be below average. There's also a 10% chance of not getting any item when using a stimulator, so please choose wisely.")
+        if (selectedType == 0) { // what is stim
+            cm.sendNext("催化劑是一種特殊的藥水，我可以加入到創建某些項目的進程。它給它統計中，就好像從一個怪物下降。然而，它可能有沒有變化，而且也有可能為項低於平均水平。還有沒有得到任何項目使用刺激的時候，所以請明智的選擇有10％的機會。");
             cm.dispose();
-        } else if (selectedType == 1){ //warrior shoe
-            selStr = "Warrior shoes? Sure thing, which kind?#b";
-            shoes = new Array ("Emerald Battle Grieve#k - Warrior Lv. 30#b","Mithril Battle Grieve#k - Warrior Lv. 30#b","Silver Battle Grieve#k - Warrior Lv. 30#b","Blood Battle Grieve#k - Warrior Lv. 30#b", "Steel Trigger#k - Warrior Lv. 35#b","Mithril Trigger#k - Warrior Lv. 35#b","Dark Trigger#k - Warrior Lv. 35#b", "Brown Jangoon Boots#k - Warrior Lv. 40#b","Maroon Jangoon Boots#k - Warrior Lv. 40#b","Blue Jangoon Boots#k - Warrior Lv. 40#b", "Emerald Hildon Boots#k - Warrior Lv. 50#b","Mithril Hildon Boots#k - Warrior Lv. 50#b","Orihalcon Hildon Boots#k - Warrior Lv. 50#b","Gold Hildon Boots#k - Warrior Lv. 50#b");;
-        } else if (selectedType == 2){ //bowman shoe
-            selStr = "Bowman shoes? Sure thing, which kind?#b";
-            shoes = new Array ("Red Hunter Boots#k - Bowman Lv. 30#b","Blue Hunter Boots#k - Bowman Lv. 30#b","Green Hunter Boots#k - Bowman Lv. 30#b","Black Hunter Boots#k - Bowman Lv. 30#b", "Brown Hunter Boots#k - Bowman Lv. 30#b","Blue Silky Boots#k - Bowman Lv. 35#b","Green Silky Boots#k - Bowman Lv. 35#b","Red Silky Boots#k - Bowman Lv. 35#b", "Red Pierre Shoes#k - Bowman Lv. 40#b","Yellow Pierre Shoes#k - Bowman Lv. 40#b","Brown Pierre Shoes#k - Bowman Lv. 40#b","Blue Pierre Shoes#k - Bowman Lv. 40#b", "Brown Steel-Tipped Boots#k - Bowman Lv. 50#b","Green Steel-Tipped Boots#k - Bowman Lv. 50#b","Blue Steel-Tipped Boots#k - Bowman Lv. 50#b","Purple Steel-Tipped Boots#k - Bowman Lv. 50#b");
-        } else if (selectedType == 3){ //magician shoe
-            selStr = "Magician shoes? Sure thing, which kind?#b";
-            shoes = new Array ("Red Magicshoes#k - Magician Lv. 30#b","Blue Magicshoes#k - Magician Lv. 30#b","White Magicshoes#k - Magician Lv. 30#b","Black Magicshoes#k - Magician Lv. 30#b","Purple Salt Shoes#k - Magician Lv. 35#b","Red Salt Shoes#k - Magician Lv. 35#b","Black Salt Shoes#k - Magician Lv. 35#b","Red Moon Shoes#k - Magician Lv. 40#b","Blue Moon Shoes#k - Magician Lv. 40#b","Gold Moon Shoes#k - Magician Lv. 40#b","Dark Moon Shoes#k - Magician Lv. 40#b", "Pink Goldwind Shoes#k - Magician Lv. 50#b","Blue Goldwind Shoes#k - Magician Lv. 50#b","Purple Goldwind Shoes#k - Magician Lv. 50#b","Green Goldwind Shoes#k - Magician Lv. 50#b");
-        } else if (selectedType == 4){ //thief shoe
-            selStr = "Thief shoes? Sure thing, which kind?#b";
-            shoes = new Array ("Bronze Chain Boots#k - Thief Lv. 30#b","Iron Chain Boots#k - Thief Lv. 30#b","Silver Chain Boots#k - Thief Lv. 30#b","Gold Chain Boots#k - Thief Lv. 30#b", "Red White-Line Boots#k - Thief Lv. 35#b","Green White-Line Boots#k - Thief Lv. 35#b","Blue White-Line Boots#k - Thief Lv. 35#b", "Black Red-Lined Shoes#k - Thief Lv. 40#b","Black Green-Lined Shoes#k - Thief Lv. 40#b","Black Yellow-Lined Shoes#k - Thief Lv. 40#b","Black Blue-Lined Shoes#k - Thief Lv. 40#b","Blue Goni Shoes#k - Thief Lv. 50#b","Red Goni Shoes#k - Thief Lv. 50#b","Green Goni Shoes#k - Thief Lv. 50#b","Purple Goni Shoes#k - Thief Lv. 50#b");
-        }	
-        if (selectedType != 0) {
-            for (var i = 0; i < shoes.length; i++)
+            return;
+        }
+        if (selectedType == 1) { //warrior shoe
+            selStr = "很好，那麼你想做哪一個？？#b";
+            shoes = new Array("#t1072003##k - 劍士 等級. 30#b", "#t1072039##k - 劍士 等級. 30#b", "#t1072040##k - 劍士 等級. 30#b", "#t1072041##k - 劍士 等級. 30#b",
+                    "#t1072002##k - 劍士 等級. 35#b", "#t1072112##k - 劍士 等級. 35#b", "#t1072113##k - 劍士 等級. 35#b",
+                    "#t1072000##k - 劍士 等級. 40#b", "#t1072126##k - 劍士 等級. 40#b", "#t1072127##k - 劍士 等級. 40#b",
+                    "#t1072132##k - 劍士 等級. 50#b", "#t1072133##k - 劍士 等級. 50#b", "#t1072134##k - 劍士 等級. 50#b", "#t1072135##k - 劍士 等級. 50#b");
+            ;
+        } else if (selectedType == 2) { //bowman shoe
+            selStr = "很好，那麼你想做哪一個？？#b";
+            shoes = new Array("#t1072079##k - 弓箭手 等級. 30#b", "#t1072080##k - 弓箭手 等級. 30#b", "#t1072081##k - 弓箭手 等級. 30#b", "#t1072082##k - 弓箭手 等級. 30#b", "#t1072083##k - 弓箭手 等級. 30#b",
+                    "#t1072101##k - 弓箭手 等級. 35#b", "#t1072102##k - 弓箭手 等級. 35#b", "#t1072103##k - 弓箭手 等級. 35#b",
+                    "#t1072118##k - 弓箭手 等級. 40#b", "#t1072119##k - 弓箭手 等級. 40#b", "#t1072120##k - 弓箭手 等級. 40#b", "#t1072121##k - 弓箭手 等級. 40#b",
+                    "#t1072122##k - 弓箭手 等級. 50#b", "#t1072123##k - 弓箭手 等級. 50#b", "#t1072124##k - 弓箭手 等級. 50#b", "#t1072125##k - 弓箭手 等級. 50#b");
+        } else if (selectedType == 3) { //magician shoe
+            selStr = "很好，那麼你想做哪一個？？#b";
+            shoes = new Array("#t1072075##k - 法師 等級. 30#b", "#t1072076##k - 法師 等級. 30#b", "#t1072077##k - 法師 等級. 30#b", "#t1072078##k - 法師 等級. 30#b",
+                    "#t1072089##k - 法師 等級. 35#b", "#t1072090##k - 法師 等級. 35#b", "#t1072091##k - 法師 等級. 35#b",
+                    "#t1072114##k - 法師 等級. 40#b", "#t1072115##k - 法師 等級. 40#b", "#t1072116##k - 法師 等級. 40#b", "#t1072117##k - 法師 等級. 40#b",
+                    "#t1072140##k - 法師 等級. 50#b", "#t1072141##k - 法師 等級. 50#b", "#t1072142##k - 法師 等級. 50#b", "#t1072143##k - 法師 等級. 50#b");
+        } else if (selectedType == 4) { //thief shoe
+            selStr = "很好，那麼你想做哪一個？？#b";
+            shoes = new Array("#t1072032##k - 盜賊 等級. 30#b", "#t1072033##k - 盜賊 等級. 30#b", "#t1072035##k - 盜賊 等級. 30#b", "#t1072036##k - 盜賊 等級. 30#b",
+                    "#t1072104##k - 盜賊 等級. 35#b", "#t1072105##k - 盜賊 等級. 35#b", "#t1072106##k - 盜賊 等級. 35#b",
+                    "#t1072107##k - 盜賊 等級. 40#b", "#t1072108##k - 盜賊 等級. 40#b", "#t1072109##k - 盜賊 等級. 40#b", "#t1072110##k - 盜賊 等級. 40#b",
+                    "#t1072128##k - 盜賊 等級. 50#b", "#t1072130##k - 盜賊 等級. 50#b", "#t1072129##k - 盜賊 等級. 50#b", "#t1072131##k - 盜賊 等級. 50#b");
+        }
+
+        if (selectedType != 0)
+        {
+            for (var i = 0; i < shoes.length; i++) {
                 selStr += "\r\n#L" + i + "# " + shoes[i] + "#l";
+            }
             cm.sendSimple(selStr);
         }
-    }
-    else if (status == 2) {
+    } else if (status == 2) {
         selectedItem = selection;
-        if (selectedType == 1){ //warrior shoe
-            var itemSet = new Array(1072003,1072039,1072040,1072041,1072002,1072112,1072113,1072000,1072126,1072127,1072132,1072133,1072134,1072135);
-            var matSet = new Array(new Array(4021003,4011001,4000021,4003000),new Array(4011002,4011001,4000021,4003000),
-                new Array(4011004,4011001,4000021,4003000),new Array(4021000,4011001,4000021,4003000),new Array(4011001,4021004,4000021,4000030,4003000),new Array(4011002,4021004,4000021,4000030,4003000),new Array(4021008,4021004,4000021,4000030,4003000),
-                new Array(4011003,4000021,4000030,4003000,4000103),new Array(4011005,4021007,4000030,4003000,4000104),new Array(4011002,4021007,4000030,4003000,4000105),new Array(4021008,4011001,4021003,4000030,4003000),
-                new Array(4021008,4011001,4011002,4000030,4003000),new Array(4021008,4011001,4011005,4000030,4003000),new Array(4021008,4011001,4011006,4000030,4003000));
-            var matQtySet = new Array(new Array(4,2,45,15),new Array(4,2,45,15),new Array(4,2,45,15),new Array(4,2,45,15),new Array(3,1,30,20,25),new Array(3,1,30,20,25),new Array(2,1,30,20,25),
-                new Array(4,100,40,30,100),new Array(4,1,40,30,100),new Array(4,1,40,30,100),new Array(1,3,6,65,45),new Array(1,3,6,65,45),new Array(1,3,6,65,45),new Array(1,3,6,65,45));
-            var costSet = new Array(20000,20000,20000,20000,22000,22000,25000,38000,38000,38000,50000,50000,50000,50000);
+        if (selectedType == 1) { //warrior shoe
+            var itemSet = new Array(1072003, 1072039, 1072040, 1072041, 1072002, 1072112, 1072113, 1072000, 1072126, 1072127, 1072132, 1072133, 1072134, 1072135);
+            var matSet = new Array(new Array(4021003, 4011001, 4000021, 4003000), new Array(4011002, 4011001, 4000021, 4003000),
+                    new Array(4011004, 4011001, 4000021, 4003000), new Array(4021000, 4011001, 4000021, 4003000), new Array(4011001, 4021004, 4000021, 4000030, 4003000), new Array(4011002, 4021004, 4000021, 4000030, 4003000), new Array(4021008, 4021004, 4000021, 4000030, 4003000),
+                    new Array(4011003, 4000021, 4000030, 4003000, 4000103), new Array(4011005, 4021007, 4000030, 4003000, 4000104), new Array(4011002, 4021007, 4000030, 4003000, 4000105), new Array(4021008, 4011001, 4021003, 4000030, 4003000),
+                    new Array(4021008, 4011001, 4011002, 4000030, 4003000), new Array(4021008, 4011001, 4011005, 4000030, 4003000), new Array(4021008, 4011001, 4011006, 4000030, 4003000));
+            var matQtySet = new Array(new Array(4, 2, 45, 15), new Array(4, 2, 45, 15), new Array(4, 2, 45, 15), new Array(4, 2, 45, 15), new Array(3, 1, 30, 20, 25), new Array(3, 1, 30, 20, 25), new Array(2, 1, 30, 20, 25),
+                    new Array(4, 100, 40, 30, 100), new Array(4, 1, 40, 30, 100), new Array(4, 1, 40, 30, 100), new Array(1, 3, 6, 65, 45), new Array(1, 3, 6, 65, 45), new Array(1, 3, 6, 65, 45), new Array(1, 3, 6, 65, 45));
+            var costSet = new Array(20000, 20000, 20000, 20000, 22000, 22000, 25000, 38000, 38000, 38000, 50000, 50000, 50000, 50000);
+            item = itemSet[selectedItem];
+            mats = matSet[selectedItem];
+            matQty = matQtySet[selectedItem];
+            cost = costSet[selectedItem];
+        } else if (selectedType == 2) { //bowman shoe
+            var itemSet = new Array(1072079, 1072080, 1072081, 1072082, 1072083, 1072101, 1072102, 1072103, 1072118, 1072119, 1072120, 1072121, 1072122, 1072123, 1072124, 1072125);
+            var matSet = new Array(new Array(4000021, 4021000, 4003000), new Array(4000021, 4021005, 4003000), new Array(4000021, 4021003, 4003000),
+                    new Array(4000021, 4021004, 4003000), new Array(4000021, 4021006, 4003000), new Array(4021002, 4021006, 4000030, 4000021, 4003000), new Array(4021003, 4021006, 4000030, 4000021, 4003000), new Array(4021000, 4021006, 4000030, 4000021, 4003000),
+                    new Array(4021000, 4003000, 4000030, 4000106), new Array(4021006, 4003000, 4000030, 4000107), new Array(4011003, 4003000, 4000030, 4000108), new Array(4021002, 4003000, 4000030, 4000099), new Array(4011001, 4021006, 4021008, 4000030, 4003000, 4000033),
+                    new Array(4011001, 4021006, 4021008, 4000030, 4003000, 4000032), new Array(4011001, 4021006, 4021008, 4000030, 4003000, 4000041), new Array(4011001, 4021006, 4021008, 4000030, 4003000, 4000042));
+            var matQtySet = new Array(new Array(50, 2, 15), new Array(50, 2, 15), new Array(50, 2, 15), new Array(50, 2, 15), new Array(50, 2, 15),
+                    new Array(3, 1, 15, 30, 20), new Array(3, 1, 15, 30, 20), new Array(3, 1, 15, 30, 20), new Array(4, 30, 45, 100), new Array(4, 30, 45, 100), new Array(5, 30, 45, 100), new Array(5, 30, 45, 100),
+                    new Array(3, 3, 1, 60, 35, 80), new Array(3, 3, 1, 60, 35, 150), new Array(3, 3, 1, 60, 35, 100), new Array(3, 3, 1, 60, 35, 250));
+            var costSet = new Array(19000, 19000, 19000, 19000, 19000, 19000, 20000, 20000, 20000, 32000, 32000, 40000, 40000, 50000, 50000, 50000, 50000);
+            item = itemSet[selectedItem];
+            mats = matSet[selectedItem];
+            matQty = matQtySet[selectedItem];
+            cost = costSet[selectedItem];
+        } else if (selectedType == 3) { //magician shoe
+            var itemSet = new Array(1072075, 1072076, 1072077, 1072078, 1072089, 1072090, 1072091, 1072114, 1072115, 1072116, 1072117, 1072140, 1072141, 1072142, 1072143, 1072136, 1072137, 1072138, 1072139);
+            var matSet = new Array(new Array(4021000, 4000021, 4003000), new Array(4021002, 4000021, 4003000), new Array(4011004, 4000021, 4003000), new Array(4021008, 4000021, 4003000), new Array(4021001, 4021006, 4000021, 4000030, 4003000), new Array(4021000, 4021006, 4000021, 4000030, 4003000),
+                    new Array(4021008, 4021006, 4000021, 4000030, 4003000), new Array(4021000, 4000030, 4000110, 4003000), new Array(4021005, 4000030, 4000111, 4003000), new Array(4011006, 4021007, 4000030, 4000100, 4003000), new Array(4021008, 4021007, 4000030, 4000112, 4003000),
+                    new Array(4021009, 4011006, 4021000, 4000030, 4003000), new Array(4021009, 4011006, 4021005, 4000030, 4003000), new Array(4021009, 4011006, 4021001, 4000030, 4003000), new Array(4021009, 4011006, 4021003, 4000030, 4003000));
+            var matQtySet = new Array(new Array(2, 50, 15), new Array(2, 50, 15), new Array(2, 50, 15), new Array(1, 50, 15), new Array(3, 1, 30, 15, 20), new Array(3, 1, 30, 15, 20), new Array(2, 1, 40, 25, 20), new Array(4, 40, 100, 25), new Array(4, 40, 100, 25), new Array(2, 1, 40, 100, 25), new Array(2, 1, 40, 100, 30),
+                    new Array(1, 3, 3, 60, 40), new Array(1, 3, 3, 60, 40), new Array(1, 3, 3, 60, 40), new Array(1, 3, 3, 60, 40));
+            var costSet = new Array(18000, 18000, 18000, 18000, 20000, 20000, 22000, 30000, 30000, 35000, 40000, 50000, 50000, 50000, 50000);
+            item = itemSet[selectedItem];
+            mats = matSet[selectedItem];
+            matQty = matQtySet[selectedItem];
+            cost = costSet[selectedItem];
+        } else if (selectedType == 4) { //thief shoe
+            var itemSet = new Array(1072032, 1072033, 1072035, 1072036, 1072104, 1072105, 1072106, 1072107, 1072108, 1072109, 1072110, 1072128, 1072130, 1072129, 1072131);
+            var matSet = new Array(new Array(4011000, 4000021, 4003000), new Array(4011001, 4000021, 4003000), new Array(4011004, 4000021, 4003000), new Array(4011006, 4000021, 4003000), new Array(4021000, 4021004, 4000021, 4000030, 4003000), new Array(4021003, 4021004, 4000021, 4000030, 4003000),
+                    new Array(4021002, 4021004, 4000021, 4000030, 4003000), new Array(4021000, 4000030, 4000113, 4003000), new Array(4021003, 4000030, 4000095, 4003000), new Array(4021006, 4000030, 4000096, 4003000), new Array(4021005, 4000030, 4000097, 4003000), new Array(4011007, 4021005, 4000030, 4000114, 4003000),
+                    new Array(4011007, 4021000, 4000030, 4000115, 4003000), new Array(4011007, 4021003, 4000030, 4000109, 4003000), new Array(4011007, 4021001, 4000030, 4000036, 4003000));
+            var matQtySet = new Array(new Array(3, 50, 15), new Array(3, 50, 15), new Array(2, 50, 15), new Array(2, 50, 15), new Array(3, 1, 30, 15, 20), new Array(3, 1, 30, 15, 20), new Array(3, 1, 30, 15, 20),
+                    new Array(5, 45, 100, 30), new Array(4, 45, 100, 30), new Array(4, 45, 100, 30), new Array(4, 45, 100, 30), new Array(2, 3, 50, 100, 35), new Array(2, 3, 50, 100, 35), new Array(2, 3, 50, 100, 35), new Array(2, 3, 50, 80, 35));
+            var costSet = new Array(19000, 19000, 19000, 21000, 20000, 20000, 20000, 40000, 32000, 35000, 35000, 50000, 50000, 50000, 50000);
             item = itemSet[selectedItem];
             mats = matSet[selectedItem];
             matQty = matQtySet[selectedItem];
             cost = costSet[selectedItem];
         }
-        else if (selectedType == 2){ //bowman shoe
-            var itemSet = new Array(1072079,1072080,1072081,1072082,1072083,1072101,1072102,1072103,1072118,1072119,1072120,1072121,1072122,1072123,1072124,1072125);
-            var matSet = new Array(new Array(4000021,4021000,4003000),new Array(4000021,4021005,4003000),new Array(4000021,4021003,4003000),
-                new Array(4000021,4021004,4003000),new Array(4000021,4021006,4003000),new Array(4021002,4021006,4000030,4000021,4003000),new Array(4021003,4021006,4000030,4000021,4003000),new Array(4021000,4021006,4000030,4000021,4003000),
-                new Array(4021000,4003000,4000030,4000106),new Array(4021006,4003000,4000030,4000107),new Array(4011003,4003000,4000030,4000108),new Array(4021002,4003000,4000030,4000099),new Array(4011001,4021006,4021008,4000030,4003000,4000033),
-                new Array(4011001,4021006,4021008,4000030,4003000,4000032),new Array(4011001,4021006,4021008,4000030,4003000,4000041),new Array(4011001,4021006,4021008,4000030,4003000,4000042));
-            var matQtySet = new Array(new Array(50,2,15),new Array(50,2,15),new Array(50,2,15),new Array(50,2,15),new Array(50,2,15),
-                new Array(3,1,15,30,20),new Array(3,1,15,30,20),new Array(3,1,15,30,20),new Array(4,30,45,100),new Array(4,30,45,100),new Array(5,30,45,100),new Array(5,30,45,100),
-                new Array(3,3,1,60,35,80),new Array(3,3,1,60,35,150),new Array(3,3,1,60,35,100),new Array(3,3,1,60,35,250));
-            var costSet = new Array(19000,19000,19000,19000,19000,19000,20000,20000,20000,32000,32000,40000,40000,50000,50000,50000,50000);
-            item = itemSet[selectedItem];
-            mats = matSet[selectedItem];
-            matQty = matQtySet[selectedItem];
-            cost = costSet[selectedItem];
-        }
-        else if (selectedType == 3){ //magician shoe
-            var itemSet = new Array(1072075,1072076,1072077,1072078,1072089,1072090,1072091,1072114,1072115,1072116,1072117,1072140,1072141,1072142,1072143,1072136,1072137,1072138,1072139);
-            var matSet = new Array(new Array(4021000,4000021,4003000),new Array(4021002,4000021,4003000),new Array(4011004,4000021,4003000),new Array(4021008,4000021,4003000),new Array(4021001,4021006,4000021,4000030,4003000),new Array(4021000,4021006,4000021,4000030,4003000),
-                new Array(4021008,4021006,4000021,4000030,4003000),new Array(4021000,4000030,4000110,4003000),new Array(4021005,4000030,4000111,4003000),new Array(4011006,4021007,4000030,4000100,4003000),new Array(4021008,4021007,4000030,4000112,4003000),
-                new Array(4021009,4011006,4021000,4000030,4003000),new Array(4021009,4011006,4021005,4000030,4003000),new Array(4021009,4011006,4021001,4000030,4003000),new Array(4021009,4011006,4021003,4000030,4003000));
-            var matQtySet = new Array(new Array(2,50,15),new Array(2,50,15),new Array(2,50,15),new Array(1,50,15),new Array(3,1,30,15,20),new Array(3,1,30,15,20),new Array(2,1,40,25,20),new Array(4,40,100,25),new Array(4,40,100,25),new Array(2,1,40,100,25),new Array(2,1,40,100,30),
-                new Array(1,3,3,60,40),new Array(1,3,3,60,40),new Array(1,3,3,60,40),new Array(1,3,3,60,40));
-            var costSet = new Array(18000,18000,18000,18000,20000,20000,22000,30000,30000,35000,40000,50000,50000,50000,50000);
-            item = itemSet[selectedItem];
-            mats = matSet[selectedItem];
-            matQty = matQtySet[selectedItem];
-            cost = costSet[selectedItem];
-        }
-        else if (selectedType == 4){ //thief shoe
-            var itemSet = new Array(1072032,1072033,1072035,1072036,1072104,1072105,1072106,1072107,1072108,1072109,1072110,1072128,1072130,1072129,1072131);
-            var matSet = new Array(new Array(4011000,4000021,4003000),new Array(4011001,4000021,4003000),new Array(4011004,4000021,4003000),new Array(4011006,4000021,4003000),new Array(4021000,4021004,4000021,4000030,4003000),new Array(4021003,4021004,4000021,4000030,4003000),
-                new Array(4021002,4021004,4000021,4000030,4003000),new Array(4021000,4000030,4000113,4003000),new Array(4021003,4000030,4000095,4003000),new Array(4021006,4000030,4000096,4003000),new Array(4021005,4000030,4000097,4003000),new Array(4011007,4021005,4000030,4000114,4003000),
-                new Array(4011007,4021000,4000030,4000115,4003000),new Array(4011007,4021003,4000030,4000109,4003000),new Array(4011007,4021001,4000030,4000036,4003000));
-            var matQtySet = new Array(new Array(3,50,15),new Array(3,50,15),new Array(2,50,15),new Array(2,50,15),new Array(3,1,30,15,20),new Array(3,1,30,15,20),new Array(3,1,30,15,20),
-                new Array(5,45,100,30),new Array(4,45,100,30),new Array(4,45,100,30),new Array(4,45,100,30),new Array(2,3,50,100,35),new Array(2,3,50,100,35),new Array(2,3,50,100,35),new Array(2,3,50,80,35));
-            var costSet = new Array(19000,19000,19000,21000,20000,20000,20000,40000,32000,35000,35000,50000,50000,50000,50000);
-            item = itemSet[selectedItem];
-            mats = matSet[selectedItem];
-            matQty = matQtySet[selectedItem];
-            cost = costSet[selectedItem];
-        }
+
         //Ludi fee is -10%, array not changed unlike 2040016 and 2040020
-        cost *= .9;
-        var prompt = "You want me to make a #t" + item + "#? In that case, I'm going to need specific items from you in order to make it. Make sure you have room in your inventory, though!#b";
-        if(stimulator)
-            prompt += "\r\n#i"+stimID+"# 1 #t" + stimID + "#";
+        cost = cost * .9;
+
+        var prompt = "你想要做一雙 #t" + item + "#? 在這種情況下，為了要做出好品質的裝備。請確保您有空間在您的裝備欄！#b";
+
+        if (stimulator)
+            prompt += "\r\n#i" + stimID + "# 1 #t" + stimID + "#";
+
         if (mats instanceof Array) {
-            for (var i = 0; i < mats.length; i++)
-                prompt += "\r\n#i"+mats[i]+"# " + matQty[i] + " #t" + mats[i] + "#";
+            for (var i = 0; i < mats.length; i++) {
+                prompt += "\r\n#i" + mats[i] + "# " + matQty[i] + " #t" + mats[i] + "#";
+            }
         } else {
-            prompt += "\r\n#i"+mats+"# " + matQty + " #t" + mats + "#";
+            prompt += "\r\n#i" + mats + "# " + matQty + " #t" + mats + "#";
         }
+
         if (cost > 0)
-            prompt += "\r\n#i4031138# " + cost + " meso";
+            prompt += "\r\n#i4031138# " + cost + " 楓幣";
+
         cm.sendYesNo(prompt);
     } else if (status == 3) {
-        var complete = true;			
-        if (cm.getMeso() < (cost)){
-            cm.sendOk("Sorry, we only accept meso.");
-			complete = false;
-        }
-        else {
+        var complete = true;
+
+        if (cm.getMeso() < (cost)) {
+            cm.sendOk("我只接受楓幣。");
+            cm.dispose();
+            return;
+        } else {
             if (mats instanceof Array) {
-                for (var i = 0; complete && i < mats.length; i++) {
-                    if (matQty[i] == 1){
-                        if (!cm.haveItem(mats[i]))
-                            complete = false;
-                    } else {
-                        if (!cm.haveItem(mats[i],matQty[i]))
-                            complete=false;
+
+                for (var i = 0; complete && i < mats.length; i++)
+                {
+                    if (!cm.haveItem(mats[i], matQty[i]))
+                    {
+                        complete = false;
                     }
                 }
             } else {
-                if (!cm.haveItem(mats,matQty))
-                    complete=false;
+                if (!cm.haveItem(mats, matQty))
+                {
+                    complete = false;
+                }
             }
-        }		
-        if (stimulator){ //check for stimulator
+        }
+
+        if (stimulator) { //check for stimulator
             if (!cm.haveItem(stimID)) {
                 complete = false;
             }
-        }		
+        }
+
         if (!complete)
-            cm.sendOk("Sorry, but I have to have those items to get this exactly right. Perhaps next time.");
+            cm.sendOk("由於你沒有足夠的材料，所以我不幫忙做了。");
         else {
             if (mats instanceof Array) {
-                for (var i = 0; i < mats.length; i++){
+                for (var i = 0; i < mats.length; i++) {
                     cm.gainItem(mats[i], -matQty[i]);
                 }
-            } else
-                cm.gainItem(mats, -matQty);		
+            } else {
+                cm.gainItem(mats, -matQty);
+            }
             cm.gainMeso(-cost);
-            if (stimulator){ //check for stimulator
+            if (stimulator) { //check for stimulator
                 cm.gainItem(stimID, -1);
                 var deleted = Math.floor(Math.random() * 10);
                 if (deleted != 0) {
-                    addRandomItem(item);
-                    cm.sendOk("There, the shoes are ready. Be careful, they're still hot.");
+                    cm.gainItem(item, 1, true);
+                    cm.sendOk("完成。善待你的鞋子，免得你使鞋子壞掉.");
                 } else {
-                    cm.sendOk("Eek! I think I accidently added too much stimulator and, well, the whole thing is unusable now... Sorry, but I can't offer a refund.");
+                    cm.sendOk("不幸的是，催化劑...抵觸你的鞋子。我很抱歉是我的疏失.....");
                 }
-            } else  {
+            } else { //just give basic item
                 cm.gainItem(item, 1);
-                cm.sendOk("There, the shoes are ready. Be careful, they're still hot.");
+                cm.sendOk("完成。善待你的鞋子，免得你使鞋子壞掉.");
             }
         }
-        cm.dispose();
+        cm.safeDispose();
     }
 }

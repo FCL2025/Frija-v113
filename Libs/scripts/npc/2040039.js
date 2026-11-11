@@ -14,25 +14,25 @@ function action(mode, type, selection) {
 	    if (stage4leader == "done") {
 
 		if (cm.haveItem(4001022,6)) { // Clear stage
-		    cm.sendNext("Congratulations! You've passed the 4th stage. Hurry on now, to the 5th stage.");
+		    cm.sendNext("恭喜！你已經通過了第四階段。快點現在，到第5階段。");
 		    cm.removeAll(4001022);
 		    clear(4,eim,cm);
 		    cm.givePartyExp(exp);
 		} else { // Not done yet
-		    cm.sendNext("Are you sure you've brought me #r6 Passes of Dimension#k? Please check again.");
+		    cm.sendNext("你確定你有收集了 #r6張 #t4001022##k？？");
 		}
 		cm.safeDispose();
 	    } else {
-		cm.sendOk("Welcome to the 4th stage. Go around, and collect #r6 Passes of Dimension#k from the monsters in the dark maps. Once you're done, get your party members to hand all the #rPasses#k to you, then talk to me again.");
+		cm.sendOk("歡迎來到第四階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 來找我即可完成任務。");
 		eim.setProperty("stage4leader","done");
 		cm.safeDispose();
 	    }
 	} else { // Members
-	    cm.sendNext("Welcome to the 4th stage. Go around, and collect #rPasses of Dimension#k from the monsters in the dark maps. Once you're done, hand all the #rPasses#k to your party leader.");
+	    cm.sendNext("歡迎來到第四階段。#b遺棄之塔PQ#k 請收集#r#t4001022##k 給你的隊長，然後叫隊長來找我即可完成任務。");
 	    cm.safeDispose();
 	}
     } else {
-	cm.sendNext("Congratulations! You've passed the 4th stage. Hurry on now, to the 5th stage.");
+	cm.sendNext("恭喜！你已經通過了第四階段。快點現在，到第5階段。");
 	cm.safeDispose();
     }
 }

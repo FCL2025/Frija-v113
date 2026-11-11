@@ -4,7 +4,7 @@ Bart - Nautilus' Port
 
 
 function start() {
-    cm.sendOk("I need to keep my eyes wide open to look for the enemy although my sea gull friends help me out so it's not all that bad.");
+    cm.sendOk("我得睜大眼睛隨時注意有沒有敵人靠近，還好有海鷗朋友們幫忙，所以也不算太辛苦。");
 }
 
 function action(mode, type, selection) {

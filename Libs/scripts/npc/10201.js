@@ -15,16 +15,16 @@ function action(mode, type, selection) {
 	status++;
     } else {
 	if (status == 1) {
-	    cm.sendNext("If you wish to experience what it's like to be a Magician, come see me again.");
+	    cm.sendNext("如果你想體驗成為法師的感覺，隨時再來找我吧。");
 	    cm.dispose();
 	    return;
 	}
 	status--;
     }
     if (status == 0) {
-	cm.sendNext("Magicians are armed with flashy element-based spells and secondary magic that aids party as a whole. After the 2nd job adv., the elemental-based magic will provide ample amount of damage to enemies of opposite element.");
+	cm.sendNext("法師擁有華麗的屬性魔法，以及能輔助整個隊伍的魔法。二轉之後，屬性魔法對相剋屬性的敵人能造成大量傷害。");
     } else if (status == 1) {
-	cm.sendYesNo("Would you like to experience what it's like to be a Magician?");
+	cm.sendYesNo("你想體驗看看成為法師的感覺嗎？");
     } else if (status == 2) {
 	cm.movieClipIntroUI(true);
 	cm.warp(1020200, 0); // Effect/Direction3.img/magician/Scene00

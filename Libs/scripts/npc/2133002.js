@@ -10,7 +10,7 @@ function action(mode, type, selection) {
 	status--;
     }
     if (status == 0) {
-	cm.sendYesNo("Would you like to get out?");
+	cm.sendYesNo("請問您想離開#r迷霧森林PQ#k？？");
     } else if (status == 1) {
 	    cm.removeAll(4001163);
 	    cm.removeAll(4001169);

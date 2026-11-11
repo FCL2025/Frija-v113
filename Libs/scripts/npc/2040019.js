@@ -20,9 +20,9 @@ function action(mode, type, selection) {
     }
 
     if (status == 0) {
-	cm.sendNext("Well, I'm bored, so I'll help out the doctor. For a #b#t5152006##k, I will change the way you look. But don't forget, it will be random!");
+	cm.sendNext("嗨，我好無聊喔 如果你有一張 #b#t5152006##k, 我可以隨機幫你搞定一張臉");
     } else if (status == 1) {
-	cm.sendYesNo("If you use the regular coupon, your face may transform into a random new look...do you still want to do it using #b#t5152006##k?");
+	cm.sendYesNo("是否想用 #b#t5152006##k?");
     } else if (status == 2){
 	var face = cm.getPlayerStat("FACE");
 	var facetype;
@@ -37,9 +37,9 @@ function action(mode, type, selection) {
 	}
 	
 	if (cm.setRandomAvatar(5152006, facetype) == 1) {
-	    cm.sendOk("Enjoy your new and improved face!");
+	    cm.sendOk("享受!");
 	} else {
-	    cm.sendOk("Hmm ... it looks like you don't have the coupon specifically for this place. Sorry to say this, but without the coupon, there's no plastic surgery for you...");
+	    cm.sendOk("痾..貌似沒有#t5152006#");
 	}
 	cm.dispose();
     }

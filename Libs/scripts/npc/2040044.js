@@ -16,19 +16,19 @@ function action(mode, type, selection) {
 
 	if (eim.getProperty("crackLeaderPreamble") == null) {
 	    eim.setProperty("crackLeaderPreamble", "done");
-	    cm.sendNext("This is the final stage; it'll be a final test of your strength. Kill the #bBlack Ratz#k on the ledge, and #bAlishar#k will spawn. Give the #rKey of Dimension#k that he drops to me, and you will have succeeded. Good luck!");
+	    cm.sendNext("請幹掉 窗台上的 #b黑色老鼠#k 然後就會召喚 #b劇情戰鬥機#k 幹掉之後撿到鑰匙再來找我。");
 	    cm.dispose();
 	} else {
 	    if (cm.haveItem(4001023)) {
 		status = 0;
-		cm.sendNext("Congratulations! You have defeated the boss, #bAlishar#k. Would you like to go to the bonus stage now?");
+		cm.sendNext("恭喜完成，想要前往頒獎之地？");
 	    } else {
-		cm.sendNext("Please bring me the #bKeys of Dimension#k by defeating #bAlishar#k.");
+		cm.sendNext("請打敗#r巨型戰鬥機#k 給我#t4001023#。");
 		cm.dispose();
 	    }
 	}
     } else if (status == -1 && !cm.isLeader()) {
-	cm.sendNext("Kill the #bBlack Ratz#k on the ledge, and #bAlishar#k will spawn. Get the leader of your party to hand the #rKey of Dimension#k that #bAlishar#k drops to me, and you will have succeeded. Good luck!");
+	cm.sendNext("請幹掉 窗台上的 #b黑色老鼠#k 然後就會召喚 #b劇情戰鬥機#k 幹掉之後撿到鑰匙再來來請隊長找我。");
 	cm.dispose();
     } else if (status == 0 && cm.isLeader()) {
 	var eim = cm.getEventInstance();

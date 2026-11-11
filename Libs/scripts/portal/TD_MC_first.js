@@ -4,6 +4,6 @@ function enter(pi) {
 	pi.playPortalSE();
 	pi.warp(106020000, 1);
     } else {
-	pi.playerMessage(5, "Unable to approach due to force off the ground.");
+	pi.playerMessage(5, "未知的力量無法進入....");
     }
 }

@@ -1,3 +1,4 @@
+
 /*
  * Cygnus Skill -
  */
@@ -8,14 +9,14 @@ function start(mode, type, selection) {
     status++;
 
     if (status == 0) {
-	qm.askAcceptDecline("Have you been mastering your skills? I am sure you've mastered all your skills, which means... it's time for you to learn a #bnew skill#k, right?");
+        qm.askAcceptDecline("你有沒有熟練你的技能了呢？我相信你已經掌握了所有技能使用的方法，接下來我將再傳授一招#b最終技能#k給你。");
     } else if (status == 1) {
-	if (mode == 0) {
-	    qm.sendOk("Well, what you're doing right now doesn't make you look like someone that's humble. You just look complacent by doing that, and that's never a good thing.");
-	} else {
-	    qm.forceStartQuest();
-	}
-	qm.dispose();
+        if (mode == 0) {
+            qm.sendOk("好吧，你在做什麼，現在不會使你看起來像有人說的謙虛。你只要看看由自滿這樣做，這是從來沒有一個好東西。");
+        } else {
+            qm.forceStartQuest();
+        }
+        qm.dispose();
     }
 }
 

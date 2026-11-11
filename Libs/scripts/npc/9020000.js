@@ -35,19 +35,25 @@ function start() {
 	if (next) {
 	    var em = cm.getEventManager("KerningPQ");
 	    if (em == null) {
-		cm.sendOk("This PQ is not currently available.");
+			cm.sendOk("找不到腳本，請聯繫GM！");
+			cm.dispose();
+			return;		
 	    } else {
 		var prop = em.getProperty("state");
 		if (prop == null || prop.equals("0")) {
 		    em.startInstance(cm.getParty(),cm.getMap());
 		} else {
-		    cm.sendOk("Someone is already attempting on the quest.");
+		    cm.sendOk("已經有隊伍在裡面挑戰了。");
+			cm.dispose();
+			return;
 		}
 		cm.removeAll(4001008);
 		cm.removeAll(4001007);
 	    }
 	} else {
 	    cm.sendOk("你的隊伍需要四個人,等級必須在21-30之間,請確認你的隊友有沒有都在這裡,或是裡面已經有人了!");
+		cm.dispose();
+		return;
 	}
     }
     cm.dispose();

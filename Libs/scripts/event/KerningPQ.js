@@ -1,180 +1,101 @@
-/*
- * This file is part of the OdinMS Maple Story Server
-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc>
-                       Matthias Butz <matze@odinms.de>
-                       Jan Christian Meyer <vimes@odinms.de>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License version 3
-    as published by the Free Software Foundation. You may not use, modify
-    or distribute this program under any other version of the
-    GNU Affero General Public License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-/**
--- Odin JavaScript --------------------------------------------------------------------------------
-	Ludibirum Maze PQ
--- By ---------------------------------------------------------------------------------------------
-	Stereo
--- Version Info -----------------------------------------------------------------------------------
-	1.1 - fixed minor problems
-	1.0 - First Version by Stereo
----------------------------------------------------------------------------------------------------
-**/
-
-/*
-INSERT monsterdrops (monsterid,itemid,chance) VALUES (9300001,4001007,5);
-INSERT monsterdrops (monsterid,itemid,chance) VALUES (9300000,4001008,1);
-INSERT monsterdrops (monsterid,itemid,chance) VALUES (9300002,4001008,1);
-INSERT monsterdrops (monsterid,itemid,chance) VALUES (9300003,4001008,1);
-*/
-
-importPackage(Packages.world);
-var exitMap;
-var minPlayers = 1;
-
-function init() { // Initial loading.
-    exitMap = em.getChannelServer().getMapFactory().getMap(103000890);
-    em.setProperty("KPQOpen", "true"); // allows entrance.
-    em.setProperty("shuffleReactors", "true");
-	em.setProperty("state", "0");
-    instanceId = 1;
+function init() {
+    em.setProperty("state", "0");
 }
 
-function monsterValue(eim, mobId) { // Killed monster.
-    return 1; // returns an amount to add onto kill count.
+function monsterValue(eim, mobId) {
+    return 1;
 }
 
-function setup() { // Invoked from "EventManager.startInstance()"
-    var eim = em.newInstance("KerningPQ"); // adds a new instance and returns EventInstanceManager.
-	em.setProperty("state", "1");
-    var eventTime = 30 * (1000 * 60); // 30 mins.
-    var firstPortal = eim.getMapInstance(103000800).getPortal("next00");
-	var firstmap = eim.getMapInstance(103000800);
-    firstmap.resetFully();
-    firstPortal.setScriptName("kpq0");
-	var map = eim.getMapInstance(103000804);
-	map.resetFully();
-    eim.startEventTimer(eventTime); // Sends a clock packet and tags a timer to the players.
-    return eim; // returns the new instance.
+function setup() {
+    em.setProperty("state", "1");
+
+    var eim = em.newInstance("KerningPQ");
+    var map = eim.setInstanceMap(103000800);
+    map.resetFully();
+    map.getPortal("next00").setScriptName("kpq1");
+    map = eim.setInstanceMap(103000801);
+    map.resetFully();
+    map = eim.setInstanceMap(103000802);
+    map.resetFully();
+    map = eim.setInstanceMap(103000803);
+    map.resetFully();
+    map = eim.setInstanceMap(103000804);
+    map.resetFully();
+    map = eim.setInstanceMap(103000805);
+
+    eim.startEventTimer(1800000);
+
+    return eim;
 }
 
-function playerEntry(eim, player) { // this gets looped for every player in the party.
-    var map = eim.getMapInstance(103000800);
-    player.changeMap(map, map.getPortal(0)); // We're now in KPQ :D
+function playerEntry(eim, player) {
+    var map = eim.getMapFactory().getMap(103000800);
+    player.changeMap(map, map.getPortal(0));
+    player.tryPartyQuest(1201);
 }
 
-function playerDead(eim, player) {
+function playerDead(eim, player) {}
+
+function changedMap(eim, player, mapid) {
+    switch (mapid) {
+        case 103000800: // 1st Stage
+        case 103000801: // 2nd Stage
+        case 103000802: // 3rd Stage
+        case 103000803: // 4th Stage
+        case 103000804: // 5th Stage
+        case 103000805: // Bonus stage
+            return;
+    }
+    eim.unregisterPlayer(player);
+
+    if (eim.disposeIfPlayerBelow(0, 0)) {
+        em.setProperty("state", "0");
+    }
 }
 
-function playerRevive(eim, player) { // player presses ok on the death pop up.
-    if (eim.isLeader(player) || party.size() <= minPlayers) { // Check for party leader
-        var party = eim.getPlayers();
-        for (var i = 0; i < party.size(); i++)
-            playerExit(eim, party.get(i));
-        eim.dispose();
-    } else
-        playerExit(eim, player);
-}
+function playerRevive(eim, player) {}
 
 function playerDisconnected(eim, player) {
-    var party = eim.getPlayers();
-    if (eim.isLeader(player) || party.size() < minPlayers) {
-        var party = eim.getPlayers();
-        for (var i = 0; i < party.size(); i++)
-            if (party.get(i).equals(player))
-                removePlayer(eim, player);
-            else
-                playerExit(eim, party.get(i));
-		em.setProperty("state", "0");
-        eim.dispose();
-    } else
-        removePlayer(eim, player);
+    return -2;
 }
 
 function leftParty(eim, player) {
-    var party = eim.getPlayers();
-    if (party.size() < minPlayers) {
-        for (var i = 0; i < party.size(); i++)
-            playerExit(eim,party.get(i));
-		em.setProperty("state", "0");
-        eim.dispose();
-    } else
+    // If only 2 players are left, uncompletable
+    if (eim.disposeIfPlayerBelow(3, 103000890)) {
+        em.setProperty("state", "0");
+    } else {
         playerExit(eim, player);
+    }
 }
 
 function disbandParty(eim) {
-    var party = eim.getPlayers();
-    for (var i = 0; i < party.size(); i++) {
-        playerExit(eim, party.get(i));
-    }
-	em.setProperty("state", "0");
-    eim.dispose();
+    // Boot whole party and end
+    eim.disposeIfPlayerBelow(100, 103000890);
+
+    em.setProperty("state", "0");
 }
 
 function playerExit(eim, player) {
     eim.unregisterPlayer(player);
-    player.changeMap(exitMap, exitMap.getPortal(0));
-}
 
-function removePlayer(eim, player) {
-    eim.unregisterPlayer(player);
-    player.getMap().removePlayer(player);
-    player.setMap(exitMap);
+    var exit = eim.getMapFactory().getMap(103000890);
+    player.changeMap(exit, exit.getPortal(0));
 }
 
 function clearPQ(eim) {
-    var party = eim.getPlayers();
-    for (var i = 0; i < party.size(); i++)
-        playerExit(eim, party.get(i));
-	em.setProperty("state", "0");
-    eim.dispose();
-}
+    // KPQ does nothing special with winners
+    eim.disposeIfPlayerBelow(100, 103000890);
 
-function allMonstersDead(eim) {
-}
-
-function cancelSchedule() {
-}
-
-function dispose() {
-	em.setProperty("state", "0");
-    em.schedule("OpenKPQ", 5000); // 5 seconds ?
-}
-
-function OpenKPQ() {
-    em.setProperty("KPQOpen", "true");
+    em.setProperty("state", "0");
 }
 
 function scheduledTimeout(eim) {
-    if (eim != null) {
-        if (eim.getPlayerCount() > 0) {
-            var pIter = eim.getPlayers().iterator();
-            while (pIter.hasNext())
-                playerExit(eim, pIter.next());
-        }
-		em.setProperty("state", "0");
-        eim.dispose();
-    }
+    eim.disposeIfPlayerBelow(100, 103000890);
+
+	em.setProperty("state", "0");
 }
 
-function respawn(eim) {	
-    var map = eim.getMapInstance(103000800);
-	map.respawn(true);
-	
-	map = eim.getMapInstance(103000805);
-	map.respawn(true);
-	eim.schedule("respawn", 10000);
-}
 
-function changedMap(eim, player, mapid) {
+function allMonstersDead(eim) {}
 
-}
+function cancelSchedule() {}

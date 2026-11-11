@@ -45,93 +45,93 @@ function action(mode, type, selection) {
 		return;
 	}
 	if (status == 0) {
-		cm.sendSimple("Hello there! I'm #bLenario#k\r\n#b#L0#Can you please tell me what Guild Union is all about?#l\r\n#L1#How do I make a Guild Union?#l\r\n#L2#I want to make a Guild Union.#l\r\n#L3#I want to increase the Guild Union's capacity.#l\r\n#L4#I want to break up the Guild Union.#l");
+		cm.sendSimple("哈囉 我是雷娜里歐！ 很高興為您服務~#k\r\n#b#L0#我想要知道公會聯盟是什麼？#l\r\n#L1#我要怎麼建立公會聯盟呢？#l\r\n#L2#我想要建立公會聯盟#l\r\n#L3#我想要新增更多的公會到聯盟#l\r\n#L4#我想要解散公會聯盟#l");
 	} else if (status == 1) {
 		choice = selection;
 	    if (selection == 0) {
-		    cm.sendOk("Guild Union is just as it says, a union of a number of guilds to form a super group. I am in charge of managing these Guild Unions.");
+		    cm.sendOk("公會聯盟就是讓兩方的公會成員可以聊天做一些有趣的事情。");
 			cm.dispose();
 		} else if (selection == 1) {
-			cm.sendOk("To make a Guild Union, 2 Guild Masters need to be in a party. The leader of this party will be assigned as the Guild Union Master.");
+			cm.sendOk("為了成立公會聯盟，兩個公會的會長需要組隊，然後這個組隊裡的隊長就會選為公會聯盟的會長。");
 			cm.dispose();
 		} else if(selection == 2) {
 			if (cm.getPlayer().getParty() == null || partymembers == null || partymembers.size() != 2 || !cm.isLeader()) {
-				cm.sendOk("You may not create an alliance until you get into a party of 2 people"); //Not real text
+				cm.sendOk("你不能創建一個公會聯盟，直到你找到另一個公會。"); //Not real text
 				cm.dispose();
 			} else if (partymembers.get(0).getGuildId() <= 0 || partymembers.get(0).getGuildRank() > 1) {
-				cm.sendOk("You cannot form a Guild Union until you own a guild");
+				cm.sendOk("你不能創建一個公會聯盟，直到你有自己的公會。");
 				cm.dispose();
 			} else if (partymembers.get(1).getGuildId() <= 0 || partymembers.get(1).getGuildRank() > 1) {
-				cm.sendOk("Your party member does not seem to own a guild.");
+				cm.sendOk("你的成員似乎沒有自己的工會。");
 				cm.dispose();
 			} else {
 				var gs = cm.getGuild(cm.getPlayer().getGuildId());
 				var gs2 = cm.getGuild(partymembers.get(1).getGuildId());
 				if (gs.getAllianceId() > 0) {
-					cm.sendOk("You cannot form a Guild Union if you are already affiliated with a different Union.");
+					cm.sendOk("你不能再創建因為你已經和其他結為同盟了。");
 					cm.dispose();
 				} else if (gs2.getAllianceId() > 0) {
-					cm.sendOk("Your party member is already affiliated with a guild union.");
+					cm.sendOk("你的成員已經和其他公會結為同盟了。");
 					cm.dispose();
 				} else if (cm.partyMembersInMap() < 2) {
-					cm.sendOk("Get your other party member on the same map please.");
+					cm.sendOk("請確保其他成員在同張地圖上。");
 					cm.dispose();
 				} else
-                			cm.sendYesNo("Oh, are you interested in forming a Guild Union?");
+                cm.sendYesNo("哦，你有興趣創建一個公會聯盟？");
 			}
 		} else if (selection == 3) {
 			if (cm.getPlayer().getGuildRank() == 1 && cm.getPlayer().getAllianceRank() == 1) {
-				cm.sendYesNo("To increase the capacity, you will need to pay 10,000,000 mesos. Are you sure you wish to proceed?"); //ExpandGuild Text
+				cm.sendYesNo("為了增加礦大 需要支付 10,000,000 楓幣. 你確定要繼續嗎？"); //ExpandGuild Text
 			} else {
-			    cm.sendOk("Only the Guild Union Master can expand the capacity of the Union.");
+			    cm.sendOk("只有公會聯盟長可以擴大聯盟。");
 				cm.dispose();
 			}
 		} else if(selection == 4) {
 			if (cm.getPlayer().getGuildRank() == 1 && cm.getPlayer().getAllianceRank() == 1) {
-				cm.sendYesNo("Are you sure you want to disband your Guild Union?");
+				cm.sendYesNo("你真的想要解散公會聯盟？？");
 			} else {
-				cm.sendOk("Only the Guild Union Master may disband the Guild Union.");
+				cm.sendOk("只有公會聯盟長才可以解散。");
 				cm.dispose();
 			}
 		}
 	} else if(status == 2) {
 	    if (choice == 2) {
-		    cm.sendGetText("Now please enter the name of your new Guild Union. (max. 12 letters)");
+		    cm.sendGetText("現在請輸入你想要的公會聯盟名稱 (最大字元限制. 12 個字)");
 		} else if (choice == 3) {
 			if (cm.getPlayer().getGuildId() <= 0) {
-				cm.sendOk("You cannot increase a non-existant Guild Union.");
+				cm.sendOk("你不能增加不存公會聯盟。");
 				cm.dispose();
 			} else {
 				if (cm.addCapacityToAlliance()) {
-					cm.sendOk("You have added capacity to your alliance.");
+					cm.sendOk("你成功增加了公會聯盟容量。");
 				} else {
-					cm.sendOk("Your guild union has too much capacity already. 5 is the maximum.");
+					cm.sendOk("很抱歉，由於你的公會聯盟容量已經滿了，所以不能再擴充。");
 				}
 				cm.dispose();
 			}
 		} else if (choice == 4) {
 			if (cm.getPlayer().getGuildId() <= 0) {
-				cm.sendOk("You cannot disband a non-existant Guild Union.");
+				cm.sendOk("你不能解散不存在的公會聯盟。");
 				cm.dispose();
 			} else {
 				if (cm.disbandAlliance()) {
-					cm.sendOk("Your Guild Union has been disbanded");
+					cm.sendOk("成功解散公會聯盟。");
 				} else {
-					cm.sendOk("An error occured when disbanding the Guild Union");
+					cm.sendOk("解散公會聯盟時候發生錯誤。");
 				}
 				cm.dispose();
 			}
 		}
 	} else if (status == 3) {
 		guildName = cm.getText();
-	    cm.sendYesNo("Will #b"+ guildName + "#k be the name of your Guild Union?");
+	    cm.sendYesNo("這個 #b"+ guildName + "#k 是你想要的公會聯盟名字嗎？？");
 	} else if (status == 4) {
 			if (!cm.createAlliance(guildName)) {
-				cm.sendNext("This name is unavailable, please choose another one"); //Not real text
+				cm.sendNext("這個名字不能使用，請嘗試其他的。"); //Not real text
 				status = 1;
 				choice = 2;
 			} else
-				cm.sendOk("You have successfully formed a Guild Union.");
-			cm.dispose();
+				cm.sendOk("成功的創建了公會聯盟！！");
+				cm.dispose();
 	}
 }

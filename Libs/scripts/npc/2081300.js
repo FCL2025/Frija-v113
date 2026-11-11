@@ -1,9 +1,10 @@
-/*  NPC : Legor
-    Bowman 4th job advancement
-	Forest of the priest (240010501)
-*/
+/*  NPC : 瑞吉爾
+ 弓箭手 4轉 任務腳本
+ 地圖代碼 (240010501)
+ */
 
 var status = -1;
+var pass = false;
 
 function start() {
     action(1, 0, 0);
@@ -11,77 +12,90 @@ function start() {
 
 function action(mode, type, selection) {
     if (mode == 0 && status == 0) {
-	cm.dispose();
-	return;
+        cm.dispose();
+        return;
     }
     if (mode == 1)
-	status++;
+        status++;
     else
-	status--;
+        status--;
 
     if (status == 0) {
-	if (!(cm.getJob() == 311 || cm.getJob() == 321)) {
-	    cm.sendOk("Why do you want to see me? There is nothing you want to ask me.");
-	    cm.dispose();
-	    return;
-	} else if (cm.getPlayerStat("LVL") < 120) {
-	    cm.sendOk("You're still weak to go to bowman extreme road. If you get stronger, come back to me.");
-	    cm.dispose();
-	    return;
-	} else {
-	    if (cm.getQuestStatus(6924) == 2) {
-		if (cm.getJob() == 311)
-		    cm.sendSimple("You're qualified to be a true bowman. \r\nDo you want job advancement?\r\n#b#L0# I want to advance to Bow Master.#l\r\n#b#L1#  Let me think for a while.#l");
-		else
-		    cm.sendSimple("You're qualified to be a true bowman. \r\nDo you want job advancement?\r\n#b#L0# I want to advance to Cross Bowmaster.#l\r\n#b#L1#  Let me think for a while.#l");
-	    } else {
-		cm.sendOk("You're not ready to make 4th job advancement. When you're ready, talk to me.");
-		cm.dispose();
-		return;
-	    }
-	}
+        if (!(cm.getJob() == 311 || cm.getJob() == 321)) {
+            cm.sendOk("為什麼你要見我??還有你想要問我關於什麼事情??");
+            cm.dispose();
+            return;
+        } else if (cm.getPlayer().getLevel() < 120) {
+            cm.sendOk("你等級尚未到達120級.");
+            cm.dispose();
+            return;
+        } else {
+            if (cm.getQuestStatus(6924) == 2) {
+                pass = true;
+            }
+            if (cm.getJob() == 311) {
+                cm.sendSimple("恭喜你有資格4轉. \r\n請問你想4轉嗎??\r\n#b#L0#我想成為箭神.#l\r\n#b#L1#像我想一下...#l");
+            } else if (cm.getJob() == 321) {
+                cm.sendSimple("恭喜你有資格4轉. \r\n請問你想4轉嗎??\r\n#b#L0#我想成為神射手.#l\r\n#b#L1#像我想一下...#l");
+            } else {
+                cm.sendOk("好吧假如你想要4轉麻煩再來找我");
+                cm.dispose();
+                return;
+            }
+        }
     } else if (status == 1) {
-	if (selection == 1) {
-	    cm.sendOk("You don't have to hesitate....You passed all tests. Whenever you decide, talk to me. If you're ready, I'll let you make the 4th job advancement.");
-	    cm.dispose();
-	    return;
-	}
-	if (cm.getPlayerStat("RSP") > (cm.getPlayerStat("LVL") - 120) * 3) {
-	    cm.sendOk("Hmm...You have too many #bSP#k. You can't make the 4th job advancement with too many SP left.");
-	    cm.dispose();
-	    return;
-	} else {
-	    if (cm.canHold(2280003)) {
-		cm.gainAp(5);
-		cm.gainItem(2280003, 1);
-
-		if (cm.getJob() == 311) {
-		    cm.changeJob(312);
-		    cm.teachSkill(3120005,0,10);
-		    cm.teachSkill(3121007,0,10);
-		    cm.teachSkill(3121002,0,10);
-		    cm.sendNext("You became the best bowman, #bBowmaster#k. Bow Master can use  #bSharp Eyes#k which can increase the fighting power of colleagues so that it became such an important job.");
-		} else {
-		    cm.changeJob(322);
-		    cm.teachSkill(3221006,0,10);
-		    cm.teachSkill(3220004,0,10);
-		    cm.teachSkill(3221002,0,10);
-		    cm.sendNext("You became the best bowman #bCross Bowmaster#k. Marksman can use  #bSharp Eyes#k which can increase the fighting power of colleagues so that it became such an important job.");
-		}
-	    } else {
-		cm.sendOk("You can't proceed as you don't have an empty slot in your inventory. Please clear your inventory and try again.");
-		cm.dispose();
-		return;
-	    }
-	}
+        if (selection == 1) {
+            cm.sendOk("好吧假如你想要4轉麻煩再來找我");
+            cm.dispose();
+            return;
+        }
+        if (cm.getPlayerStat("RSP") > (cm.getPlayerStat("LVL") - 120) * 3) {
+            cm.sendOk("你的技能點數還沒點完..");
+            cm.dispose();
+            return;
+        }
+        if (pass) {
+            cm.sendNext("即將四轉。");
+        } else {
+            if (!cm.haveItem(4031860) || !cm.haveItem(4031861)) {
+                cm.sendOk("我需要#t4031860# x1 #t4031861# x1。");
+                cm.dispose();
+                return;
+            } else {
+                cm.sendNext("即將四轉。");
+            }
+        }
     } else if (status == 2) {
-	if (cm.getJob() == 312) {
-	    cm.sendNext("This is not all about Bow Master. Bow Master is good at a fast battle. It can attack enemies with enormously fast speed and even have great attack power.");
-	} else {
-	    cm.sendNextPrev("This is not all about Cross Bowmaster. Each shot of Marksman is very strong. It can attack many enemies  with strong power and may beat off them at once.");
-	}
+        if (cm.canHold(2280003)) {
+            cm.gainItem(2280003, 1);
+            cm.gainAp(5);
+            if (cm.getJob() == 311) {
+                cm.changeJob(312);
+                cm.teachSkill(3120005, 0, 10);
+                cm.teachSkill(3121007, 0, 10);
+                cm.teachSkill(3121002, 0, 10);
+                cm.gainItem(4031860, -1);
+                cm.gainItem(4031861, -1);
+                cm.sendNext("恭喜你轉職為 #b箭神#k.我送你一些神秘小禮物^^");
+            } else {
+                cm.changeJob(322);
+                cm.teachSkill(3221006, 0, 10);
+                cm.teachSkill(3220004, 0, 10);
+                cm.teachSkill(3221002, 0, 10);
+                cm.gainItem(4031860, -1);
+                cm.gainItem(4031861, -1);
+                cm.sendNext("恭喜你轉職為 #b神射手#k.我送你一些神秘小禮物^^");
+            }
+        } else {
+            cm.sendOk("你沒有多的欄位請清空再來嘗試一次!");
+            cm.dispose();
+            return;
+        }
+
     } else if (status == 3) {
-	cm.sendNextPrev("Don't forget that it all depends on how much you train.");
-	cm.dispose();
+        cm.sendNext("不要忘記了這一切都取決於你練了多少.");
+    } else if (status == 4) {
+        cm.sendNextPrev("我已你為榮.");
+        cm.dispose();
     }
 }

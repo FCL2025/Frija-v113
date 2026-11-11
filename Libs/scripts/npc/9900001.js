@@ -7,7 +7,7 @@ importPackage(java.lang);
 
 var status = 0;
 var slot = Array();
-var stats = Array("Strength", "Dexterity", "Intellect", "Luck", "HP", "MP", "Weapon Attack", "Magic Attack", "Weapon Defense", "Magic Defense", "Accuracy", "Avoidability", "Hands", "Speed", "Jump", "Slots", "Vicious Hammer", "Used slot", "Enhancements", "Potential stat 1", "Potential stat 2", "Potential stat 3", "Owner");
+var stats = Array("力量", "敏捷", "智力", "幸運", "HP", "MP", "物理攻擊", "魔法攻擊", "物理防禦", "魔法防禦", "命中率", "迴避率", "靈敏度", "移動速度", "跳躍力", "卷軸數", "黃金鐵鎚使用數", "使用卷軸數", "星星數", "潛能 1", "潛能 2", "潛能 3", "裝備名字");
 var selected;
 var statsSel;
 
@@ -28,9 +28,9 @@ function action(mode, type, selection) {
 
     if (status == 0) {
 	if (cm.getPlayerStat("ADMIN") == 1) {
-		cm.sendSimple("What do you want from me?#b\r\n#L0#Max my stats!#l\r\n#L1#Max my skills!#l\r\n#L2#Modify my equip's stats!#l\r\n#L3#Look at potential values#l\r\n#L4#Set AP/SP to 0#l#k");
+		cm.sendSimple("親愛的#h #\r\n管理員我能為您做什麼呢？？#b\r\n#L0#幫我能力值加到全滿！！#l\r\n#L1#幫我技能加到全滿！！#l\r\n#L2#幫我修改裝備數值！！#l\r\n#L3#查看潛能數值#l\r\n#L4#幫我初始化AP/SP！#l#k");
 	} else if (cm.getPlayerStat("GM") == 1) {
-		cm.sendSimple("What do you want from me?#b\r\n#L0#Max my stats!#l\r\n#L1#Max my skills!#l\r\n#L4#Set AP/SP to 0#l#k");
+		cm.sendSimple("親愛的#h #\r\n管理員我能為您做什麼呢？？#b\r\n#L0#幫我能力值加到全滿！！#l\r\n#L1#幫我技能加到全滿！！#l\r\n#L4#幫我初始化AP/SP！#l#k");
 	} else {
 	    cm.dispose();
 	}
@@ -38,7 +38,7 @@ function action(mode, type, selection) {
 	if (selection == 0) {
 	    if (cm.getPlayerStat("GM") == 1) {
 		cm.maxStats();
-		cm.sendOk("I have maxed your stats. Happy Mapling!");
+		cm.sendOk("已經幫您加滿了！！");
 	    }
 	    cm.dispose();
 	} else if (selection == 1) {
@@ -55,18 +55,18 @@ function action(mode, type, selection) {
 		}
 		slot.push(i);
 	    }
-	    cm.sendSimple("Which one of your equips would you like to modify?\r\n#b" + avail);
+	    cm.sendSimple("想要修改哪一件裝備能力值呢？？\r\n#b" + avail);
 	} else if (selection == 3 && cm.getPlayerStat("ADMIN") == 1) {
 		var eek = cm.getAllPotentialInfo();
 		var avail = "";
 		for (var ii = 0; ii < eek.size(); ii++) {
-			avail += "#L" + eek.get(ii) + "#Potential ID " + eek.get(ii) + "#l\r\n";
+			avail += "#L" + eek.get(ii) + "#潛能 ID " + eek.get(ii) + "#l\r\n";
 		}
-		cm.sendSimple("What would you like to learn about?\r\n#b"+ avail);
+		cm.sendSimple("請問想了解哪一個？？\r\n#b"+ avail);
 		status = 9;
-	} else if (selection == 4) {
+	} else if (selection == 4 && cm.getPlayerStat("GM") == 1) {
 		cm.getPlayer().resetAPSP();
-		cm.sendNext("Done.");
+		cm.sendNext("完成，請換頻道或重新登入。");
 		cm.dispose();
 	} else {
 		cm.dispose();
@@ -77,17 +77,17 @@ function action(mode, type, selection) {
 	for (var i = 0; i < stats.length; i++) {
 	    text += "#L" + i + "#" + stats[i] + "#l\r\n";
 	}
-	cm.sendSimple("You have decided to modify your #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k.\r\nWhich stat would you like to modify?\r\n#b" + text);
+	cm.sendSimple("你想要修改你的 #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k.\r\n想修改哪個能力值？？\r\n#b" + text);
 	} else if (status == 3 && cm.getPlayerStat("ADMIN") == 1) {
 	statsSel = selection;
 	if (selection == 22) {
-		cm.sendGetText("What would you like to set your #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k's " + stats[statsSel] + " to?");
+		cm.sendGetText("請問你想把 #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k 的" + stats[statsSel] + "設成什麼？");
 	} else {
-		cm.sendGetNumber("What would you like to set your #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k's " + stats[statsSel] + " to?", 0, 0, 32767);
+		cm.sendGetNumber("請問你想把 #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k 的" + stats[statsSel] + "設成多少？", 0, 0, 32767);
 	}
     } else if (status == 4 && cm.getPlayerStat("ADMIN") == 1) {
 	cm.changeStat(slot[selected], statsSel, selection);
-	cm.sendOk("Your #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k's " + stats[statsSel] + " has been set to " + selection + ".");
+	cm.sendOk("你的 #b#t" + cm.getInventory(-1).getItem(slot[selected]).getItemId() + "##k 的" + stats[statsSel] + "已被設置為 " + selection + "。");
 	cm.dispose();
 	} else if (status == 10 && cm.getPlayerStat("ADMIN") == 1) {
 		cm.sendSimple("#L3#" + cm.getPotentialInfo(selection) + "#l");

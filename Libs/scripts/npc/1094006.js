@@ -28,11 +28,14 @@ function action(mode, type, selection) {
 	    }
 	    cm.gainItem(item, 1);
 	    if (item == 4031853) {
-		cm.sendNext("I found Abel's glasses.");
+		cm.sendNext("我發現了眼鏡！！");
 	    } else {
-		cm.sendOk("I found a pair of glasses, but it doesn't seem to be Abel's. Abel's pair is horn-rimmed...");
+		cm.sendOk("我發現了一副眼鏡但它似乎不是真正的眼鏡...");
 	    }
+	} else {
+		cm.sendOk("這草叢看起來很礙眼...");
+		cm.dispose();
 	}
 	cm.dispose();
-    }
+}
 }

@@ -4,7 +4,7 @@
  */
 
 function start() {
-    cm.sendNext("Oh... Did I just found something? Then there's only one way out! Let's fight like a #rBlack Wing#k should!");
+    cm.sendNext("呵呵...難道我發現了什麼東西嗎？那麼只有一個辦法了！出來吧！!");
 }
 
 function action(mode, type, selection) {

@@ -20,7 +20,7 @@ function action(mode, type, selection) {
 		cm.dispose();
 	} else {
 		if (mode == 0 && status >= 0) {
-			cm.sendNext("I guess you aren't ready to make the change yet. Let me know when you are!");
+			cm.sendNext("如果有需要再來找我唷。");
 			cm.dispose();
 			return;
 		}
@@ -29,33 +29,30 @@ function action(mode, type, selection) {
 		else
 			status--;
 		if (status == 0) {
-			cm.sendSimple("Hey there! I'm Shatti, and I'm Mazra's apprentice. If you have #bAriant hair style coupon(REG)#k or #bAriant hair color coupon(REG)#k with you, how about allowing me to work on your hair? \r\n#L0##bChange Hairstyle (Reg Coupon) \r\n#L1##bDye Hair(Reg. coupon)");
+			cm.sendSimple("嗨，我是#p2100005# 如果你有 #b#t5150026##k 或者 #b#t5151021##k 就可以來找我唷！ 選擇一個服務: \r\n#L0#使用:#b#t5150026##k \r\n#L1#使用:#b#t5151021##k");
 		} else if (status == 1) {
 			if (selection == 0) {
 				beauty = 1;
 				hairnew = Array();
 				if (cm.getChar().getGender() == 0) {
 					for(var i = 0; i < mhair.length; i++) {
-						hairnew.push(mhair[i] + parseInt(cm.getChar().getHair()
- % 10));
+						hairnew.push(mhair[i] + parseInt(cm.getChar().getHair() % 10));
 					}
 				} 
 				if (cm.getChar().getGender() == 1) {
 					for(var i = 0; i < fhair.length; i++) {
-						hairnew.push(fhair[i] + parseInt(cm.getChar().getHair()
- % 10));
+						hairnew.push(fhair[i] + parseInt(cm.getChar().getHair() % 10));
 					}
 				}
-				cm.sendYesNo("If you use the Reg. coupon, your hairstyle will be changed to a random new look. You'll also have access to new hairstyles I worked on that's not available for VIP coupons. Would you like to use #bAriant hair style coupon(REG)#k for a fabulous new look?");
+				cm.sendYesNo("你確定要使用 #b#t5150026##k #r注意:這是隨機#k");
 			} else if (selection == 1) {
 				beauty = 2;
 				haircolor = Array();
-				var current = parseInt(cm.getChar().getHair()
-/10)*10;
+				var current = parseInt(cm.getChar().getHair()/10)*10;
 				for(var i = 0; i < 8; i++) {
 					haircolor.push(current + i);
 				}
-				cm.sendYesNo("If you use the regular coupon, your hair color will change to a random new color. Are you sure you want to use #b#t5151021##k and randomly change your hair color?");
+				cm.sendYesNo("你確定要使用 #b#t5151021##k #r注意:這是隨機#k ？");
 			}
 		}
 		else if (status == 2){
@@ -64,18 +61,18 @@ function action(mode, type, selection) {
 				if (cm.haveItem(5150026) == true){
 					cm.gainItem(5150026, -1);
 					cm.setHair(hairnew[Math.floor(Math.random() * hairnew.length)]);
-					cm.sendOk("Enjoy your new and improved hairstyle!");
+					cm.sendOk("享受！");
 				} else {
-					cm.sendNext("I can only change your hairstyle if you bring me the coupon. You didn't forget that, did you?");
+					cm.sendNext("痾.... 貌似沒有#t5150026#。");
 				}
 			}
 			if (beauty == 2){
 				if (cm.haveItem(5151021) == true){
 					cm.gainItem(5151021, -1);
 					cm.setHair(haircolor[Math.floor(Math.random() * haircolor.length)]);
-					cm.sendOk("Enjoy your new and improved haircolor!");
+					cm.sendOk("享受！");
 				} else {
-					cm.sendNext("I can only change your hairstyle if you bring me the coupon. You didn't forget that, did you?");
+					cm.sendNext("痾.... 貌似沒有#t5151021#。");
 				}
 			}
 		}

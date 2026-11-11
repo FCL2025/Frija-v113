@@ -1,16 +1,5 @@
-/**
--- Odin JavaScript --------------------------------------------------------------------------------
-	Faito(Showa Exchange Quest) - Showa Town(801000300)
--- By ---------------------------------------------------------------------------------------------
-	Information
--- Version Info -----------------------------------------------------------------------------------
-	1.0 - First Version by Information
-	    - Base from Sean360 script, thanks
----------------------------------------------------------------------------------------------------
-**/
-
 var status = -1;
-var eQuestChoices = new Array (4000064,4000065,4000066,4000075,4000077,4000089,4000090,4000091,4000092,4000093,4000094); 
+var eQuestChoices = new Array(4000064, 4000065, 4000066, 4000075, 4000077, 4000089, 4000090, 4000091, 4000092, 4000093, 4000094);
 
 var eQuestPrizes = new Array();
 
@@ -130,9 +119,9 @@ eQuestPrizes[10] = new Array   ([2000006,1],	// Mana Elixir
     [2022000,10],	// Pure Water
     [2022000,20],	// Pure Water
     [2022025,15]);	// Takoyaki (Jumbo)
-var requiredItem  = 0;
+var requiredItem = 0;
 var lastSelection = 0;
-var prizeItem     = 0;
+var prizeItem = 0;
 var prizeQuantity = 0;
 var info;
 var itemSet;
@@ -140,44 +129,48 @@ var reward;
 
 function action(mode, type, selection) {
     if (mode == 1) {
-	status++;
+        status++;
     } else {
-	if (status == 0) {
-	    cm.sendOk("Really? Let me know if you ever change your mind.");
-	    cm.safeDispose();
-	    return;
-	}
-	status--;
+        if (status == 0) {
+            cm.sendOk("真的嗎？如果你改變主意了再來告訴我。");
+            cm.safeDispose();
+            return;
+        }
+        status--;
     }
 
     if (status == 0) {
-	cm.sendYesNo("If you're looking for someone that can pinpoint the characteristics of various items, you're looking at one right now. I'm currently looking for something. Would you like to hear my story?");
+        cm.sendYesNo("如果你在找能看出各種物品特徵的人，那就是我了。我現在正在找一些東西，你想聽聽我的故事嗎？");
     } else if (status == 1) {
-	var eQuestChoice = makeChoices(eQuestChoices);
-	cm.sendSimple(eQuestChoice);
-    } else if (status == 2){
-	requiredItem = eQuestChoices[selection];
-	reward = eQuestPrizes[selection];
-	itemSet = (Math.floor(Math.random() * reward.length));
-	prizeItem = reward[itemSet][0];
-	prizeQuantity = reward[itemSet][1];
-	if ( !cm.canHold(4010003) || !cm.canHold(2000006) || !cm.canHold(prizeItem)){
-	    cm.sendNext("What? I can't give you the reward if your equip., use, or etc. inventory is full. Please go take a look right now.");
-	} else if (cm.haveItem(requiredItem,100)){   // check they have >= 100 in Inventory
-	    cm.gainItem(requiredItem,-100);
-	    cm.gainItem(prizeItem,prizeQuantity);
-	    cm.sendOk("Hmmm ... if not for this minor scratch ... sigh. I'm afaird I can only deem this a standard-quality item. Well, here's \r\n#t"+ prizeItem +"# for you.");
-	} else{
-	    cm.sendOk("Hey, what do you think you're doing? Go lie someone that DOESN'T know what he's talking about. Not me!");
-	}
-	cm.safeDispose();
+        var eQuestChoice = makeChoices(eQuestChoices);
+        cm.sendSimple(eQuestChoice);
+    } else if (status == 2) {
+        requiredItem = eQuestChoices[selection];
+        reward = eQuestPrizes[selection];
+        itemSet = (Math.floor(Math.random() * reward.length));
+        prizeItem = reward[itemSet][0];
+        prizeQuantity = reward[itemSet][1];
+		
+        if(!cm.canHold(prizeItem) || !cm.canHold(1302000) || !cm.canHold(2000006) || !cm.canHold(4000000)){
+            cm.sendNext("什麼？你的裝備、消耗或其他欄位滿了，我沒辦法給你獎勵。先去整理一下吧。");
+			cm.dispose();
+			return;
+        }
+		if (cm.getPlayer().itemQuantity(requiredItem) >= 100) { // check they have >= 100 in Inventory
+            cm.gainItem(requiredItem, -100);
+            cm.gainItem(prizeItem, prizeQuantity);
+            cm.sendOk("嗯......要不是有這道小刮痕......唉，恐怕只能算是普通品質了。好吧，這個 \r\n#t" + prizeItem + "# 給你。");
+        } else {
+            cm.sendOk("喂，你想騙誰啊？去騙那些不識貨的人吧，別想騙我！");
+        }
+        cm.safeDispose();
     }
 }
 
-function makeChoices(a){
-    var result  = "The items I'm looking for are 1,2,3 ... phew, too many to\r\nmention. Anyhow, if you gather up 100 of the same items,\r\nthen i may trade it with something similiar. What? You may\r\nnot know this, but i keep my end of the promise, so you\r\nneed not worry. Now, shall we trade?\r\n";
-    for (var x = 0; x< a.length; x++){
-	result += " #L" + x + "##v" + a[x] + "##t" + a[x] + "##l\r\n";
+function makeChoices(a) {
+    var result = "我在找的東西有一、二、三……呼，多到說不完。\r\n總之，只要你收集到同一種物品 100 個，\r\n我就可以拿類似價值的東西跟你交換。\r\n放心，我一向說話算話。那麼，要交換嗎？\r\n";
+    for (var x = 0; x < a.length; x++) {
+        result += " #L" + x + "##v" + a[x] + "##t" + a[x] + "##l\r\n";
     }
     return result;
 }

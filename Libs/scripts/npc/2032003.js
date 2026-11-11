@@ -22,10 +22,10 @@ function action(mode, type, selection) {
     else
 	status--;
     if (status == 0) {
-	cm.sendNext("Congratulations on getting this far!  Well, I suppose I'd better give you your #bBreath of Fire#k.  You've certainly earned it!");
+	cm.sendNext("恭喜來到這裡，好吧我想我必須給您一點獎勵來作為代價。");
     }
     else if (status == 1) {
-	cm.sendNextPrev("Well, time for you to head off.");
+	cm.sendNextPrev("來，這是我給你的獎勵#b#t4031062##k。");
     }
     else if (status == 2) {
 	cm.gainItem(4031062,1);

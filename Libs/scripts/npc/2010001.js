@@ -1,20 +1,20 @@
-/* Mino the Owner
-	Orbis VIP Hair/Hair Color Change.
+/* Don Giovanni
+	Kerning VIP Hair/Hair Color Change.
 */
-var status = 0;
+var status = -1;
 var beauty = 0;
 var hair_Colo_new;
 
-
 function action(mode, type, selection) {
     if (mode == 0) {
-	status--;
+	cm.dispose();
+	return;
     } else {
 	status++;
     }
 
     if (status == 0) {
-	cm.sendSimple("Hello I'm Mino. If you have either a #b#t5150005##k or a #b#t5151005##k, then please let me take care of your hair. Choose what you want to do with it. \r\n#L0#Haircut: #i5150005##t5150005##l\r\n#L1#Dye your hair: #i5151005##t5151005##l");
+	cm.sendSimple("我是米努. 如果你有 #b#t5150005##k \r\n或者 #b#t5151005##k 任何機會，\r\n那麼怎麼樣讓我改變你的髮型顏色?\r\n#L0#使用 #b#t5150005##k\r\n#L1#使用 #b#t5151005##k");
     } else if (status == 1) {
 	if (selection == 0) {
 	    var hair = cm.getPlayerStat("HAIR");
@@ -29,29 +29,29 @@ function action(mode, type, selection) {
 	    for (var i = 0; i < hair_Colo_new.length; i++) {
 		hair_Colo_new[i] = hair_Colo_new[i] + (hair % 10);
 	    }
-	    cm.askAvatar("I can totally change up your hairstyle and make it look so good. Why don't you change it up a bit? With #b#t5150005##k, I'll take care of the rest for you. Choose the style of your liking!", hair_Colo_new);
+	    cm.askAvatar("選擇一個喜歡的~", hair_Colo_new);
 	} else if (selection == 1) {
-	    var currenthaircolo  = Math.floor((cm.getPlayerStat("HAIR") / 10)) * 10;
+	    var currenthaircolo = Math.floor((cm.getPlayerStat("HAIR") / 10)) * 10;
 	    hair_Colo_new = [];
 	    beauty = 2;
 
 	    for (var i = 0; i < 8; i++) {
 		hair_Colo_new[i] = currenthaircolo + i;
 	    }
-	    cm.askAvatar("I can totally change your haircolor and make it look so good. Why don't you change it up a bit? With #b#t5151005##k, I'll take care of the rest. Choose the color of your liking!", hair_Colo_new);
+	    cm.askAvatar("選擇一個喜歡的~", hair_Colo_new);
 	}
-    } else if (status == 2) {
-	if (beauty == 1) {
+    } else if (status == 2){
+	if (beauty == 1){
 	    if (cm.setAvatar(5150005, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved hairstyle!");
+		cm.sendOk("享受!");
 	    } else {
-		cm.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't give you a haircut without it. I'm sorry...");
+		cm.sendOk("您貌似沒有#b#t5150005##k..");
 	    }
 	} else {
 	    if (cm.setAvatar(5151005, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved hair colour!");
+		cm.sendOk("享受!");
 	    } else {
-		cm.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't dyle your hair without it. I'm sorry...");
+		cm.sendOk("您貌似沒有#b#t5151005##k..");
 	    }
 	}
 	cm.safeDispose();

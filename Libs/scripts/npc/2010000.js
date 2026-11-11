@@ -38,7 +38,7 @@ eQuestPrizes[3] = new Array ([2000002,30],	// White Potions
     [2000006,15],	// Mana Elixir
     [2020000,20],	// Salad
     [4003000,5],	// Screws
-    [2041016,1]);	// 10% Cape Int
+    [2041016,1]);	// 60% Cape Int
 eQuestPrizes[4] = new Array ([2000002,15],	// White Potions
     [2010004,15],	// Lemons
     [2000003,25],	// Blue Potions
@@ -175,13 +175,13 @@ function start() {
 function action(mode, type, selection) {
 
     if (mode == 0 && (status == 1 || status == 3)) {
-	cm.sendNext("Hmmm...it shouldn't be a bad deal for you. Come see me at the right time and you may get a much better item to be offered. Anyway, let me know when you have a change of heart.");
+	cm.sendNext("需要的時候再來找我吧。");
 	cm.dispose();
 	return;
     } else if (mode == 0 && status == 3) {
 	cm.dispose();
     } else if (mode == 0 && status == 4) {
-	cm.sendNext("Hmmm...it shouldn't be a bad deal for you. If you come at the right time I can hook you up with good items. Anyway if you feel like trading, feel free to come.");
+	cm.sendNext("需要的時候再來找我吧。");
 	cm.dispose();
 	return;
     }
@@ -190,37 +190,41 @@ function action(mode, type, selection) {
     else
 	status--;
     if (status == 0) { // first interaction with NPC
-	cm.sendNext("Hey, got a little bit of time? Well, my job is to collect items here and sell them elsewhere, but these days the monsters have become much more hostile so it's been difficult to getting good items ... What do you think? Do you want to do some business with me?");
+	cm.sendNext("嘿，得到了一點點時間？好了，我的工作就是在這裡收集物品和其他地方出售，但這些天怪物變得更加敵對的，所以它很難獲得良好的道具...你怎麼看？你想要做的一些業務和我在一起？");
     } else if (status == 1) {
-	cm.sendYesNo("The deal is simple. You get me something I need, I get you something you need. The problem is, I deal with a whole bunch of people, so the items I have to offer may change every time you see me. What do you think? Still want to do it?");
+	cm.sendYesNo("這筆交易很簡單，首先你得得到我需要的東西，當然我會給你不錯的酬勞。");
     } else if (status == 2) {
 	var eQuestChoice = makeChoices(eQuestChoices);
 	cm.sendSimple(eQuestChoice);
     } else if (status == 3){
 	lastSelection = selection;
 	requiredItem = eQuestChoices[selection];
-	cm.sendYesNo("Let's see, you want to trade your #b100 #t" + requiredItem + "##k with my stuff right? Before trading make sure you have an empty slot available on your use or etc. inventory. Now, do you want to trade with me?");
+	cm.sendYesNo("讓我看看，你想要交換你的 #b100個 #t" + requiredItem + "##k 來換取一些酬勞是吧？ 交易前確保你的道具欄位是否足夠吧！！");
     }else if (status == 4){
 	itemSet = (Math.floor(Math.random() * eQuestPrizes[lastSelection].length));
 	reward = eQuestPrizes[lastSelection];
 	prizeItem = reward[itemSet][0];
 	prizeQuantity = reward[itemSet][1];
+	
 	if(!cm.haveItem(requiredItem,100)){
-	    cm.sendOk("Hmmm... are you sure you have #b100 #t" + requiredItem + "##k? If so, then please check and see if your item inventory is full or not.");
-	} else if(!cm.canHold(prizeItem)){
-	    cm.sendNext("Your use and etc. inventory seems to be full. You need the free spaces to trade with me! Make room, and then find me.");
-	} else {
-	    cm.gainItem(requiredItem,-100);
-	    cm.gainExp(500);
-	    cm.gainItem(prizeItem, prizeQuantity);
-	    cm.sendOk("For you #b100 #t"+requiredItem+"##k, here's my #b"+prizeQuantity+" #t"+prizeItem+"##k. What do you think? Do you like the items I gave you in return? I plan on being here for a while, so if you gather up more items, I'm always open for a trade ...");
+	    cm.sendOk("嗯... 你確定你有 #b100個 #t" + requiredItem + "##k? 如果有請定你道具攔是不是滿了....");
+		cm.dispose();
+		return;
+	} else if(!cm.canHold(prizeItem) || !cm.canHold(1302000) || !cm.canHold(2000006) || !cm.canHold(4000000)){
+	    cm.sendNext("你的道具攔似乎滿了，請清空一些不要的東西再來找我交易一次謝謝。");
+		cm.dispose();
+		return;
 	}
+	cm.gainItem(requiredItem,-100);
+	cm.gainExp(500);
+	cm.gainItem(prizeItem, prizeQuantity);
+	cm.sendOk("為你的 #b100個 #t"+requiredItem+"##k, 這裡是我的獎勵 #b"+prizeQuantity+" #t"+prizeItem+"##k. 你怎麼看？？ 你是否喜歡我的獎勵呢？？ \r\n如果喜歡歡迎下次再來找我交易，我會在這裡等著你的！！");
 	cm.dispose();
     }
 }
 
 function makeChoices(a){
-    var result  = "Ok! First you need to choose the item that you'll trade with. The better the item, the more likely the chance that I'll give you something much nicer in return.\r\n";
+    var result  = "好，首先你需要選擇，你手上有的道具，當然更多道具收穫更多。\r\n";
     for (var x = 0; x< a.length; x++){
 	result += " #L" + x + "##v" + a[x] + "#  #t" + a[x] + "##l\r\n";
     }

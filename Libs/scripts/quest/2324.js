@@ -1,3 +1,4 @@
+load('nashorn:mozilla_compat.js');
 /* ===========================================================
 			Resonance
 	NPC Name: 		Minister of Home Affairs

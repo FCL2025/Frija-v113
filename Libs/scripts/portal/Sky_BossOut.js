@@ -8,7 +8,7 @@ function enter(pi) {
 			}
 			pi.gainItem(item, 1, false, 0, 0, "", chars.get(i).getClient());
 		}
-		pi.gainNX(3000);
+		//pi.gainNX(3000);
 		pi.warpParty(240080050);
 		pi.playPortalSE();
 	} else {

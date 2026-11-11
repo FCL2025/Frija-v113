@@ -12,7 +12,7 @@ function start() {
 
 function action(mode, type, selection) {
     if (status >= 0 && mode == 0) {
-	cm.sendOk("Hmm... I guess you still have things to do here?");
+    cm.sendOk("恩... 我猜你還有想在這做的事？");
 	cm.dispose();
 	return;
     }
@@ -22,26 +22,26 @@ function action(mode, type, selection) {
 	status--;
 
     if (status == 0) {
-	cm.sendYesNo("Take this ship and you'll head off to a bigger continent. For #e150 mesos#n, I'll take you to #bVictoria Island#k. The thing is, once you leave this place, you can't ever come back. What do you think? Do you want to go to Victoria Island?");
+    cm.sendYesNo("搭上了這艘船，你可以前往更大的大陸冒險。 只要給我 #e150 楓幣#n，我會帶你去 #b維多利亞島#k。 不過，一旦離開了這裡，就不能再回來囉。 你想要去維多利亞島嗎？");
     } else if (status == 1) {
 	if (cm.haveItem(4031801)) {
-	    cm.sendNext("Okay, now give me 150 mesos... Hey, what's that? Is that the recommendation letter from Lucas, the chief of Amherst? Hey, you should have told me you had this. I, Shanks, recognize greatness when I see one, and since you have been recommended by Lucas, I see that you have a great, great potential as an adventurer. No way would I charge you for this trip!");
+    cm.sendNextPrev("既然你有推薦信，我不會收你任何的費用。收起來，我們將前往維多利亞島，坐好，旅途中可能會有點動盪！");
 	} else {
-	    cm.sendNext("Bored of this place? Here... Give me #e150 mesos#n first...");
+	    cm.sendNext("真的只要 #e150 楓幣#n 就能搭船!!");
 	}
     } else if (status == 2) {
 	if (cm.haveItem(4031801)) {
-	    cm.sendNextPrev("Since you have the recommendation letter, I won't charge you for this. Alright, buckle up, because we're going to head to Victoria Island right now, and it might get a bit turbulent!!");
+	    cm.sendNextPrev("既然你有推薦信，我不會收你任何的費用。收起來，我們將前往維多利亞島，坐好，旅途中可能會有點動盪！");
 	} else {
 	    if (cm.getPlayerStat("LVL") >= 7) {
 		if (cm.getMeso() < 150) {
-		    cm.sendOk("What? You're telling me you wanted to go without any money? You're one weirdo...");
+		    cm.sendOk("什麼？你說你想搭免費的船？ 你真是個怪人！");
 		    cm.dispose();
 		} else {
-		    cm.sendNext("Awesome! #e150#n mesos accepted! Alright, off to Victoria Island!");
+		    cm.sendNext("哇! #e150#n 楓幣我收到了！ 好，準備出發去維多利亞港囉！");
 		}
 	    } else {
-		cm.sendOk("Let's see... I don't think you are strong enough. You'll have to be at least Level 7 to go to Victoria Island.");
+		cm.sendOk("讓我看看... 我覺得你還不夠強壯。 你至少要達到7等我才能讓你到維多利亞港囉。");
 		cm.dispose();
 	    }
 	}

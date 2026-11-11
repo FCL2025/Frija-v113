@@ -1,7 +1,7 @@
 var status = -1;
 
 function start(mode, type, selection) {
-	qm.sendNext("I will NEVER give up!");
+	qm.sendNext("我不會放棄的！");
 	qm.gainExp(2000);
 	qm.forceCompleteQuest();
 	qm.dispose();

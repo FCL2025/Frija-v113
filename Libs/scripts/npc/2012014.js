@@ -15,9 +15,9 @@ function action(mode, type, selection) {
     status++;
     if (status == 0) {
 	if(cm.haveItem(4001019)) {
-	    cm.sendYesNo("你確定要使用 #b#i4001019##t4001019 #?");
+	    cm.sendYesNo("你可以使用 #b#t4001019#k 激活 #b#p2012014##k. 是否想傳送到 #b#p2012015##k ？？");
 	} else {
-	    cm.sendOk("請確認你的背包中擁有 #b#t4001019#");
+	    cm.sendOk("這個魔法石可以幫你快速到冰原雪域。");
 	    cm.dispose();
 	}
     }

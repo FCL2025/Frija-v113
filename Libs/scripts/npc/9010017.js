@@ -2,7 +2,12 @@
  * NPC   : Dev Doll
  * Map   : GMMAP
  */
-
+ 
+ function start() {
+	cm.sendNext("此功能已關閉。");
+	cm.dispose();
+}
+/*
 var status = 0;
 var invs = Array(1, 5);
 var invv;
@@ -23,7 +28,7 @@ function action(mode, type, selection) {
 	status++;
 	if (status == 1) {
 		var bbb = false;
-		var selStr = "I can help you drop a cash item where you stand:\r\n\r\n#b";
+		var selStr = "請不要拿來交換楓幣之類的 避免發生爭執\r\n你要丟哪個點裝 丟出來會丟在地上 丟寵物的話會直接消失\r\n請不要拿來交換楓幣之類的 避免發生爭執\r\n\r\n#b";
 		for (var x = 0; x < invs.length; x++) {
 			var inv = cm.getInventory(invs[x]);
 			for (var i = 0; i <= inv.getSlotLimit(); i++) {
@@ -45,7 +50,7 @@ function action(mode, type, selection) {
 			}
 		}
 		if (!bbb) {
-			cm.sendOk("You don't have any cash items.");
+			cm.sendOk("你沒有任何的點裝.");
 			cm.dispose();
 			return;
 		}
@@ -60,21 +65,21 @@ function action(mode, type, selection) {
 			statsSel = inzz.getItem(slot_2[selected]);
 		}
 		if (statsSel == null) {
-			cm.sendOk("Error, please try again.");
+			cm.sendOk("錯誤, 請再嘗試一次.");
 			cm.dispose();
 			return;
 		}
-		cm.sendGetNumber("You want to drop #v" + statsSel.getItemId() + "##t" + statsSel.getItemId() + "#.\r\nHow many?", 1, 1, statsSel.getQuantity());
+		cm.sendGetNumber("你想要丟掉 #v" + statsSel.getItemId() + "##t" + statsSel.getItemId() + "#嗎?\r\n請輸入數量", 1, 1, statsSel.getQuantity());
 	} else if (status == 3) {
 		if (!cm.dropItem(selected, invv, selection)) {
-			cm.sendOk("Error, please try again!");
+			cm.sendOk("錯誤, 請再嘗試一次.");
 			cm.dispose();
 		} else {
 			status = 0;
 			action(1, 0, 0);
 		}
 	}
-}
+}*/
 /*
 var status = 6;
 

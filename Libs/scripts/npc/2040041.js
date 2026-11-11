@@ -3,7 +3,7 @@
 */
 
 function start() {
-    cm.sendNext("Hello, and welcome to the 6th stage of the Ludibrium Party Quest. Look here, and you'll see a number of boxes. All you have to do, is find the right combination, and press up on it to teleport up. But, if you get it wrong, you will be teleported back down to the bottom. Good luck!");
+    cm.sendNext("嗨，我是#p2040041# 第六階段非常簡單，只要順著口號都能過關的，那麼剩下時間交給你囉~");
 }
 
 function action(mode, type, selection) {

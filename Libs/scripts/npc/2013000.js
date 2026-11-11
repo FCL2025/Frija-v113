@@ -16,7 +16,7 @@ function action(mode, type, selection) {
 	status--;
     }
 	if (cm.getMapId() == 920010000) { //inside orbis pq
-		cm.sendOk("We have to save Chamberlain Eak! Restore the 20 Cloud Pieces!");
+		cm.sendOk("我們必須拯救他 需要20個雲的碎片");
 		cm.dispose();
 		return;
 	}
@@ -25,9 +25,9 @@ function action(mode, type, selection) {
 		cm.removeAll(i); //holy
 	}
 	if (cm.getParty() == null) { // No Party
-	    cm.sendSimple("How about you and your party members collectively beating a quest? Here you'll find obstacles and problems where you won't be able to beat it unless with great teamwork. If you want to try it, please tell the #bleader of your party#k to talk to me.\r\n\r\n#rRequirements: " + minPartySize + " Party Members, all between level " + minLevel + " and level " + maxLevel + ".#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
+	    cm.sendSimple("你貌似沒有達到要求...:\r\n\r\n#r要求: " + minPartySize + " 玩家成員, 每個人的等級必須在 " + minLevel + " 到 等級 " + maxLevel + ".#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
 	} else if (!cm.isLeader()) { // Not Party Leader
-	    cm.sendSimple("If you want to try the quest, please tell the #bleader of your party#k to talk to me.#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
+	    cm.sendSimple("如果你想做任務，請 #b隊長#k 跟我談.#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
 	} else {
 	    // Check if all party members are within PQ levels
 	    var party = cm.getParty().getMembers();
@@ -54,7 +54,7 @@ function action(mode, type, selection) {
 	    if (next) {
 		var em = cm.getEventManager("OrbisPQ");
 		if (em == null) {
-		    cm.sendSimple("The PQ has encountered an error. Please report this on the forums, with a screenshot.#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
+		    cm.sendSimple("找不到腳本請聯絡GM#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
 		} else {
 		    var prop = em.getProperty("state");
 		    if (prop.equals("0") || prop == null) {
@@ -62,21 +62,21 @@ function action(mode, type, selection) {
 			cm.dispose();
 			return;
 		    } else {
-			cm.sendSimple("Another party has already entered the #rParty Quest#k in this channel. Please try another channel, or wait for the current party to finish.#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
+			cm.sendSimple("其他隊伍已經在裡面做 #r組隊任務了#k 請嘗試換頻道或者等其他隊伍完成。#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
 		    }
 		}
 	    } else {
-		cm.sendSimple("Your party is invalid. Please adhere to the following requirements:\r\n\r\n#rRequirements: " + minPartySize + " Party Members, all between level " + minLevel + " and level " + maxLevel + ".#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
+		cm.sendSimple("你的隊伍貌似沒有達到要求...:\r\n\r\n#r要求: " + minPartySize + " 玩家成員, 每個人的等級必須在 " + minLevel + " 到 等級 " + maxLevel + ".#b\r\n#L0#我要用40個女神的羽翼兌換女神手鐲#l");
 	    }
 	}
     } else { //broken glass
 	if (!cm.canHold(1082232,1)) {
-	    cm.sendOk("Make room for this Wristband.");
+	    cm.sendOk("做好了。");
 	} else if (cm.haveItem(4001158,40)) {
 	    cm.gainItem(1082232, 1, true);
 	    cm.gainItem(4001158, -40, true); 
 	} else {
-	    cm.sendOk("Come back when you have done 40 #t4001158#.");
+	    cm.sendOk("你沒有40個 #t4001158#.");
 	}
 	cm.dispose();
 

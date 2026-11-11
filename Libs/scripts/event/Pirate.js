@@ -1,4 +1,4 @@
-var minPlayers = 2;
+var minPlayers = 3;
 
 function init() {
 em.setProperty("state", "0");
@@ -14,7 +14,7 @@ em.setProperty("state", "1");
 	em.setProperty("stage3a", "0");
 	em.setProperty("stage4", "0");
 	em.setProperty("stage5", "0");
-    eim.setInstanceMap(925100000).resetFully();
+        eim.setInstanceMap(925100000).resetFully();
 	eim.setInstanceMap(925100100).resetFully();
 	var map = eim.setInstanceMap(925100200);
 	map.resetFully();
@@ -27,6 +27,10 @@ em.setProperty("state", "1");
 		eim.registerMonster(mob2);
 		eim.registerMonster(mob3);
 		eim.registerMonster(mob4);
+//		mob.changeLevel(level);
+//		mob2.changeLevel(level);
+//		mob3.changeLevel(level);
+//		mob4.changeLevel(level);
 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(430, 75));
 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1600, 75));
 		map.spawnMonsterOnGroundBelow(mob3, new java.awt.Point(430, 238));
@@ -39,6 +43,8 @@ em.setProperty("state", "1");
 		var mob2 = em.getMonster(9300113);
 		eim.registerMonster(mob);
 		eim.registerMonster(mob2);
+//		mob.changeLevel(level);
+//		mob2.changeLevel(level);
 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(0, 238));
 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1700, 238));
 	}
@@ -54,6 +60,10 @@ em.setProperty("state", "1");
 		eim.registerMonster(mob2);
 		eim.registerMonster(mob3);
 		eim.registerMonster(mob4);
+//		mob.changeLevel(level);
+//		mob2.changeLevel(level);
+//		mob3.changeLevel(level);
+//		mob4.changeLevel(level);
 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(430, 75));
 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1600, 75));
 		map.spawnMonsterOnGroundBelow(mob3, new java.awt.Point(430, 238));
@@ -66,6 +76,8 @@ em.setProperty("state", "1");
 		var mob2 = em.getMonster(9300113);
 		eim.registerMonster(mob);
 		eim.registerMonster(mob2);
+//		mob.changeLevel(level);
+//		mob2.changeLevel(level);
 		map.spawnMonsterOnGroundBelow(mob, new java.awt.Point(0, 238));
 		map.spawnMonsterOnGroundBelow(mob2, new java.awt.Point(1700, 238));
 	}

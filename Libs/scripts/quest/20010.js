@@ -38,7 +38,7 @@ function end(mode, type, selection) {
 	status--;
     }
     if (status == 0) {
-	qm.sendNext("Are you the Noblesse my brother #p1102004# sent? Nice to meet you! I''m #p1102005#. I'll give you the reward #p1102004# asked me to give you. Remember, you can check your Inventory by pressing the #bI key#k. Red potions help you recover HP, and blue ones help recover MP. It's a good idea to learn how to use them beforehand so you''ll be ready with them when you're in danger. \r\n\r\n#fUI/UIWindow.img/QuestIcon/4/0# \r\n#i2000020# 5 #t2000020# \r\n#i2000021# 5 #t2000021# 5 \r\n\r\n#fUI/UIWindow.img/QuestIcon/8/0# 15 exp");
+	qm.sendNext("你是貴族?? 我哥哥 #p1102004# 派來的? 很高興認識你! 我是 #p1102005#. 我將送你 #p1102004# . 請記得，你可以按你的道具欄 #bI 鍵#k. 紅藥水能幫助你恢復HP藍色藥水能幫助你恢復MP，這是一個好主意學習如何使用它們能讓你事先充分了解當你處於危險之中使用。. \r\n\r\n#fUI/UIWindow.img/QuestIcon/4/0# \r\n#i2000020# 5 #t2000020# \r\n#i2000021# 5 #t2000021# 5 \r\n\r\n#fUI/UIWindow.img/QuestIcon/8/0# 15 經驗值");
     } else if (status == 1) {
 	qm.gainItem(2000020, 5);
 	qm.gainItem(2000021, 5);

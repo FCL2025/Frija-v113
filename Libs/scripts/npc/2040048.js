@@ -1,41 +1,34 @@
-var status = 0;
-
-function start() {
-    status = -1;
-    action(1, 0, 0);
-}
+var status = -1;
 
 function action(mode, type, selection) {
-    if ((status == 0 && mode == 0) || (status == 5 && mode == 1)) {
-	cm.dispose();
-	return;
-    } else if (status <= 2 && mode == 0) {
-	cm.sendNext("You must have some business to take care of here. You must be tired from all that traveling and hunting. Go take\r\nsome rest, and if you feel like changing your mind, then\r\ncome talk to me.");
-	cm.dispose();
-	return;
-    }
-    if (mode == 1)
+    if (mode == 1) {
 	status++;
-    else
+    } else {
+	if (status <= 2) {
+	    cm.sendNext("你在這裡應該還有事情要辦吧。旅行和狩獵一定很累了，先好好休息，改變主意的話再來找我吧！");
+	    cm.dispose();
+	    return;
+	}
 	status--;
+    }
     if (status == 0) {
-	cm.sendSimple("Have you heard of the beach with a spectacular view of the ocean called #bFlorina Beach#k, located a little far from Ludibrium? I can take you there right now for either #b1200 mesos#k, or if you have a #bVIP Ticket to Florina Beach#k with you, in which case you'll be there for free.\r\n\r\n#L0##b I'll pay 1200 mesos.#l\r\n#L1# I have a VIP Ticket to Florina Beach.#l\r\n#L2# What is a VIP Ticket to Florina Beach#k?#l");
+	cm.sendSimple("你有沒有聽過離玩具城有點遠、能看到壯觀海景的 #b黃金海灘#k 呢？我現在就可以帶你過去，只需要 #b1500 楓幣#k，或者如果你有一張 #b#t4031134##k 的話，就可以免費前往。\r\n\r\n#L0##b 我願意付 1500 楓幣。#l\r\n#L1# 我有一張#t4031134#。#l\r\n#L2# 什麼是#t4031134#？#k#l");
     } else if (status == 1) {
 	if (selection == 0) {
-	    cm.sendYesNo("You want to pay #b1200 mesos#k and leave for Florina Beach? Okay!! Please be aware that you may be running into some monsters around there, though, so make sure not to get caught off-guard. Okay, would you like to head over to Florina Beach right now?");
+	    cm.sendYesNo("你想付 #b1500 楓幣#k 前往黃金海灘嗎？那邊也會有怪物出沒，可別掉以輕心喔。現在就要出發嗎？");
 	} else if (selection == 1) {
 	    status = 2;
-	    cm.sendYesNo("So you have a #bVIP Ticket to Florina Beach#k? You can always head over to Florina Beach with that. Okay!! Please beware that you may be running into some monsters around there, though, so make sure not to get caught off-guard. Okay, would you like to head over to Florina Beach right now?");
+	    cm.sendYesNo("你有 #b#t4031134##k 嗎？有那張票隨時都可以前往黃金海灘。那邊也會有怪物出沒，可別掉以輕心喔。現在就要出發嗎？");
 	} else if (selection == 2) {
 	    status = 4;
-	    cm.sendNext("You must be curious about a #bVIP Ticket to Florina Beach#k. Yeah, I can see that. A VIP Ticket to Florina Beach is an item where as long as you have in possession, you may make your way to Florina Beach for free. It's such a rare item that even we had to buy those, but unfortunately I lost mine a few weeks ago during a long weekend.");
+	    cm.sendNext("你一定很好奇什麼是 #b#t4031134##k 吧。只要身上帶著這張票，就可以免費前往黃金海灘。這是連我們都得花錢買的稀有道具，可惜我在幾週前的長假裡把我的那張弄丟了。");
 	}
     } else if (status == 2) {
-	if (cm.getMeso() < 1200) {
-	    cm.sendNext("I think you're lacking mesos. There are many ways to gather up some money, you know, like... selling your armor... defeating monsters... doing quests... you know what I'm talking about.");
+	if (cm.getMeso() < 1500) {
+	    cm.sendNext("你的楓幣好像不夠喔。賺錢的方法很多，像是賣掉裝備、打倒怪物、完成任務……你懂我的意思吧。");
 	    cm.dispose();
 	} else {
-	    cm.gainMeso(-1200);
+	    cm.gainMeso(-1500);
 	    cm.saveLocation("FLORINA");
 	    cm.warp(110000000, 0);
 	    cm.dispose();
@@ -46,12 +39,14 @@ function action(mode, type, selection) {
 	    cm.warp(110000000, 0);
 	    cm.dispose();
 	} else {
-	    cm.sendNext("Hmmm..., are you sure you have a #bVIP Ticket to Florina Beach#k with you? Please double-check because I can't find it from you.");
+	    cm.sendNext("嗯……你確定身上有 #b#t4031134##k 嗎？我找不到耶，請再確認一下。");
 	    cm.dispose();
 	}
     } else if (status == 4) {
-	cm.sendNext("You must be curious about a #bVIP Ticket to Florina Beach#k. Yeah, I can see that. A VIP Ticket to Florina Beach is an item where as long as you have in possession, you may make your way to Florina Beach for free. It's such a rare item that even we had to buy those, but unfortunately I lost mine a few weeks ago during a long weekend.");
+	cm.sendNext("你一定很好奇什麼是 #b#t4031134##k 吧。只要身上帶著這張票，就可以免費前往黃金海灘。這是連我們都得花錢買的稀有道具，可惜我在幾週前的長假裡把我的那張弄丟了。");
     } else if (status == 5) {
-	cm.sendPrev("I came back without it, and it just feels awful not having it. Hopefully someone picked it up and put it somewhere safe. Anyway, this is my story and who knows, you may be able to pick it up and put it to good use. If you have any questions, feel free to ask.");
+	cm.sendNextPrev("沒有它回來之後，總覺得很不是滋味。希望有人把它撿起來好好收著。總之這就是我的故事，說不定你能撿到它，好好利用呢。還有什麼問題的話，隨時來問我吧。");
+    } else if (status == 6) {
+	cm.dispose();
     }
 }

@@ -3,7 +3,7 @@
 */
 
 function start() {
-    cm.sendNext("This is the #rBonus Stage#k. Breaking the boxes will give you some rare equips and use items - you only have a minute, so what're you waiting for? Go break the boxes!");
+    cm.sendNext("恭喜完成，#r遺棄之塔PQ#k 這一階段就是慶祝，打破箱子可以拿到驚喜。");
 }
 
 function action(mode, type, selection) {

@@ -1,198 +1,220 @@
-/*
-	This file is part of the OdinMS Maple Story Server
-    Copyright (C) 2008 Patrick Huy <patrick.huy@frz.cc> 
-                       Matthias Butz <matze@odinms.de>
-                       Jan Christian Meyer <vimes@odinms.de>
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU Affero General Public License version 3
-    as published by the Free Software Foundation. You may not use, modify
-    or distribute this program under any other version of the
-    GNU Affero General Public License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU Affero General Public License for more details.
-
-    You should have received a copy of the GNU Affero General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-/* Adobis
+/* 阿杜比斯
  * 
- * El Nath: The Door to Zakum (211042300)
+ * 地點: 殘暴炎魔門口 (211042300)
  * 
- * Zakum Quest NPC 
- 
- * Custom Quest 100200 = whether you can do Zakum
- * Custom Quest 100201 = Collecting Gold Teeth <- indicates it's been started
- * Custom Quest 100203 = Collecting Gold Teeth <- indicates it's finished
+ * 殘暴炎魔 任務 NPC
+ * 
+ * 任務 100200 = 是否能挑戰殘暴炎魔
+ * 任務 100201 = Collecting Gold Teeth <- indicates it's been started
+ * 任務 100203 = Collecting Gold Teeth <- indicates it's finished
+ * Quest 7000 - Indicates if you've cleared first stage / fail
  * 4031061 = Piece of Fire Ore - stage 1 reward
  * 4031062 = Breath of Fire    - stage 2 reward
  * 4001017 = Eye of Fire       - stage 3 reward
  * 4000082 = Zombie's Gold Tooth (stage 3 req)
-*/
+ */
 
-var status = 0;
+var status;
 var mapId = 211042300;
 var stage;
 var teethmode;
-var minLevel = 50;
 
 function start() {
-	if(cm.haveItem(4001109)){
-		cm.sendNext("有強化的玻璃瓶嗎...那麼你能夠進去");
-		teethmode = 3;
-	}else if (cm.getPlayer().getLevel() >= minLevel) {
-        if (cm.isQuestFinished(100200) && !cm.isQuestActive(100200)) {
-            cm.startQuest(100200);
-            cm.sendOk("You want to be permitted to do the Zakum Dungeon Quest?  Well, I, #bAdobis#k... judge you to be suitable.  You should be safe roaming around the dungeon.  Just be careful...");
-            cm.dispose();
-            return;
-        }else if (cm.isQuestActive(100201)) {
-            teethmode = 1;
-            cm.sendNext("Have you got the items I asked for?  This ain't no charity.");
-        }else{
-            cm.sendSimple("Beware, for the power of olde has not been forgotten... #b\r\n#L0#Enter the Unknown Dead Mine (Stage 1)#l\r\n#L1#Face the Breath of Lava (Stage 2)#l\r\n#L2#Forging the Eyes of Fire (Stage 3)#l\r\n");
-        }
-		if (cm.isQuestFinished(100201))
-            teethmode = 2;
-    }
-    else {
-        cm.sendOk("Please come back to me when you've become stronger.  I've seen a few adventurers in my day, and you're far too weak to complete my tasks.");
-        cm.dispose();
-    }
+    status = -1;
+    action(1, 0, 0);
 }
 
 function action(mode, type, selection) {
-    if (mode == -1)
+    if (mode == 0 && status == 0) {
         cm.dispose();
-    else {
-        if (mode == 0 && status == 0) {
+        return;
+    }
+    if (mode == 1) {
+        status++;
+    } else {
+        if (status == 3) {
+            cm.sendNext("看來不想這樣啊？如果想明白了可以來找我！");
             cm.dispose();
-            return;
         }
-        if (mode == 1)
-            status++;
-        else
-            status--;
-        if (status == 1) {
-			if(teethmode == 3){
-				var dd = cm.getEventManager("FireDemon");
-				if (dd != null && cm.haveItem(4001109)) {
-					dd.startInstance(cm.getPlayer());
-				} else {
-					cm.sendOk("An unknown error occured.");
-				}
-				cm.dispose();
-			}
-            if (teethmode == 1) {
-                if (cm.haveItem(4031061,1) && cm.haveItem(4031062,1) && cm.haveItem(4000082,30)) {
-                    cm.gainItem(4031061,-1);
-                    cm.gainItem(4031062,-1);
-                    cm.gainItem(4000082,-30);
-                    cm.gainItem(4001017,5);
-                    cm.sendNext("Thank you for the teeth!  Next time you see me, I'll be blinging harder than #rJaws#k! Goodbye and good luck!");
+
+        status--;
+        cm.removeAll(4001015);
+        cm.removeAll(4001016);
+        cm.removeAll(4001018);
+    }
+    if (status == 0) {
+        if (cm.getPlayerStat("LVL") >= 50) {
+            if (cm.getQuestStatus(100200) != 2 && cm.getQuestStatus(100200) != 1) {
+                cm.startQuest(100200);
+                cm.sendOk("你想被允許挑戰殘暴炎魔大怪物的任務嗎？  嗯……。我#b阿杜比斯#k覺得你有能力承擔這項任務。但是再這之前，你必須完成我交給你的任務。  但是你要小心點。");
+                cm.dispose();
+                return;
+            } else if (cm.getQuestStatus(100201) == 1) {
+                // if they have gold teeth and the other items, they are good to go
+                teethmode = 1;
+                cm.sendNext("你們沒有我需要的物品嗎？這可不是慈善事業！");
+            } else {
+                if (cm.haveItem(4001109)) {
+                    cm.sendSimple("好。。。我看你們有充分的資格，你想挑戰那一階段？ #b\r\n#L0#廢礦調查 (第一階段)#l\r\n#L1#殘暴炎魔迷宮調查 (第二階段)#l\r\n#L2#治煉邀請 (第三階段)#l\r\n#L3#進去打殘暴炎魔#l\r\n#L4#跳過任務 (需要花錢)#l");
+					} else {
+                    cm.sendSimple("好。。。我看你們有充分的資格，你想挑戰那一階段？ #b\r\n#L0#廢礦調查 (第一階段)#l\r\n#L1#殘暴炎魔迷宮調查 (第二階段)#l\r\n#L2#治煉邀請 (第三階段)#l\r\n#L4#跳過任務 (需要花錢)#l");					}
+            }
+            if (cm.getQuestStatus(100201) == 2) { // They're done the quests
+                teethmode = 2;
+            }
+        } else {
+            cm.sendOk("按照你目前的情況，你還不能滿足進行這項任務的能力，當你變的強大的時候，再來找我吧！");
+            cm.dispose();
+        }
+    } else if (status == 1) {
+        //quest is good to go.
+        // if they're working on this quest, he checks for items.
+        if (teethmode == 1) {
+            // check for items
+            if (cm.haveItem(4000082, 30)) { // take away items, give eyes of fire, complete quest
+                if (cm.canHold(4001017)) {
+                    cm.removeAll(4031061);
+                    cm.removeAll(4031062);
+                    cm.gainItem(4000082, -30);
+                    cm.gainItem(4001017, 5);
+                    cm.sendNext("冶煉好了。 看到左邊的門了嗎？它就是通往殘暴炎魔祭台的門。 不過你需要 #b#t4001017##k 才能進入裡面。讓我看看有多少人能進入到那個恐怖的地方？");
                     cm.completeQuest(100201);
                     cm.completeQuest(100200);
-                    cm.dispose();
+                } else {
+                    cm.sendNext("嗯？你確定你有足夠的背包空間嗎？請再檢查一下。");
                 }
-                else {
-                    cm.sendNext("You shtill didn't get me my teef! Howsh a man shupposhed to conshentrate wifout teef?");
-                    cm.dispose();
-                }
-                return;
-            }
-            if (selection == 0) { //ZPQ
-                if (cm.getParty() == null) { //no party
-                    cm.sendNext("Please talk to me again when you have formed a party.");
-                    cm.dispose();
-                }
-                else if (!cm.isLeader()) { //not party leader
-                    cm.sendNext("Please have the leader of your party speak with me.");
-                    cm.dispose();
-                }
-                else {
-                    //TODO: add zakum variable to characters, check that instead; less hassle
-                    var party = cm.getParty().getMembers();
-                    mapId = cm.getPlayer().getMapId();
-                    var next = true;
-                    for (var i = 0; i < party.size(); i++)
-                        if ((party.get(i).getLevel() < 50) || (party.get(i).getMapid() != mapId))
-                            next = false;
-                    if (next) {
-                        //all requirements met, make an instance and start it up
-                        //cm.startPQ("ZakumPQ");
-                        var em = cm.getEventManager("ZakumPQ");
-                        if (em == null) {
-                            cm.sendOk("This trial is currently under construction.");
-                        } else {
-                            em.startInstance(cm.getParty(), cm.getPlayer().getMap());
-                            party = cm.getPlayer().getEventInstance().getPlayers();
-                            cm.removeFromParty(4001015, party);
-                            cm.removeFromParty(4001018, party);
-                            cm.removeFromParty(4001016, party);
-                        }
-                        cm.dispose();
-                    }
-                    else {
-                        cm.sendNext("Please make sure all of your members are qualified to begin my trials...");
-                        cm.dispose();
-                    }
-                }
-            }
-            else if (selection == 1) { //Zakum Jump Quest
-                stage = 1;
-                if (cm.haveItem(4031061) && !cm.haveItem(4031062))
-                    cm.sendYesNo("Would you like to attempt the #bBreath of Lava#k?  If you fail, there is a very real chance you will die.");
-                else {
-                    if (cm.haveItem(4031062))
-                        cm.sendNext("You've already got the #bBreath of Lava#k, you don't need to do this stage.");
-                    else
-                        cm.sendNext("Please complete the earlier trials first.");
-                    cm.dispose();
-                }
-            }
-            else if (selection == 2) { //Golden Tooth Collection
-                stage = 2;
-                if (teethmode == 2 && cm.haveItem(4031061) && cm.haveItem(4031062))
-                    cm.sendYesNo("If you want more #bEyes of Fire#k, you need to bring me the same #b30 Zombie's Lost Gold Tooth#k.  Turns out gold dentures don't last long, and I need a new one.\r\nDo you have those teeth for me?");
-                else if (cm.haveItem(4031061) && cm.haveItem(4031062))
-                    cm.sendYesNo("Okay, you've completed the earlier trials.  Now, with a little hard work I can get you the #bseeds of Zakum#k necessary to enter combat.  But first, my teeths are not as good as they used to be.  You ever seen a dentist in Maple Story?  Well, I heard the Miner Zombies have gold teeth.  I'd like you to collect #b30 Zombie's Lost Gold Tooth#k so I can build myself some dentures.  Then I'll be able to get you the items you desire.\r\nRequired:\r\n#i4000082##b x 30");
-                else {
-                    cm.sendNext("Please complete the earlier trials before attempting this one.");
-                    cm.dispose();
-                }
-            }
-        }
-        else if (status == 2) {
-            if (stage == 1) {
-                cm.warp(280020000); // Breath of Lava I
+                cm.dispose();
+            } else { // go get more
+                cm.sendNext("你還沒有帶來我需要的東西嗎？");
                 cm.dispose();
             }
-            if (stage == 2) {
-                if (teethmode == 2) {
-                    if (cm.haveItem(4031061,1) && cm.haveItem(4031062,1) && cm.haveItem(4000082,30)) { // take away items, give eyes of fire, complete quest
-                        cm.gainItem(4031061,-1);
-                        cm.gainItem(4031062,-1);
-                        cm.gainItem(4000082,-30);
-                        cm.gainItem(4001017,5);
-                        cm.sendNext("Thank you for the teeth!  Next time you see me, I'll be blinging harder than #rJaws#k!  Goodbye and good luck!");
-                        cm.completeQuest(100201);
-                        cm.completeQuest(100200);
-                        cm.dispose();
-                    }
-                    else {
-                        cm.sendNext("You don't have any teeth yet!  Don't try to pull a fast one on me.");
-                        cm.dispose();
+            return;
+        }
+        if (selection == 0) { //ZPQ
+            if (cm.getParty() == null) { //no party
+                cm.sendNext("你現在還沒有一個組隊，請組隊後再和我談話。");
+                cm.safeDispose();
+                return;
+            } else if (!cm.isLeader()) { //not party leader
+                cm.sendNext("你不是組隊長，請讓你的組隊長和我談話。");
+                cm.safeDispose();
+                return;
+            } else {
+                //check each party member, make sure they're above 50 and still in the door map
+                //TODO: add zakum variable to characters, check that instead; less hassle
+                var party = cm.getParty().getMembers();
+                mapId = cm.getMapId();
+                var next = true;
+                for (var i = 0; i < party.size(); i++) {
+                    if ((party.get(i).getLevel() < 50) || (party.get(i).getMapid() != mapId)) {
+                        next = false;
                     }
                 }
-                else {
-                    cm.startQuest(100201);
+                if (next) {
+                    //all requirements met, make an instance and start it up
+                    var em = cm.getEventManager("ZakumPQ");
+                    if (em == null) {
+                        cm.sendOk("我不能讓你進入這個未知的世界，因為管理員還沒有準備好開放。");
+                    } else {
+			var prop = em.getProperty("started");
+			if (prop.equals("false") || prop == null) {
+			    em.startInstance(cm.getParty(), cm.getMap());
+                        } else {
+                            cm.sendOk("另一個組隊已經開始了調查任務，請稍後再來。");
+                        }
+                    }
+                    cm.dispose();
+                } else {
+                    cm.sendNext("請確保你所有組隊員都達到50級以上。");
                     cm.dispose();
                 }
             }
+        } else if (selection == 1) { //Zakum Jump Quest
+            stage = 1;
+            if (cm.haveItem(4031061) && !cm.haveItem(4031062)) {
+                // good to go
+                cm.sendYesNo("你已經成功通過了第一階段。你還有很長的路才能到達殘暴炎魔的祭台。所以，你想好挑戰下一個階段了嗎？");
+            } else {
+                if (cm.haveItem(4031062)) {
+                    cm.sendNext("你已經得到了#t4031062#，所以你不用再挑戰此階段了。");
+                } else {
+                    cm.sendNext("請完成上一階段的任務再來挑戰此階段。");
+                }
+                cm.dispose();
+            }
+        } else if (selection == 2) { //Golden Tooth Collection
+            stage = 2;
+            if (teethmode == 2 && cm.haveItem(4031061) && cm.haveItem(4031062)) {
+                // Already done it once, they want more
+                cm.sendYesNo("如果你想得到更多的#b火焰的眼#k， 你需要給我 #b30 個殭屍丟失的金齒#k。 你有更多的金牙要給我嗎？");
+            } else if (cm.haveItem(4031061) && cm.haveItem(4031062)) {
+                // check if quest is complete, if so reset it (NOT COMPLETE)
+                cm.sendYesNo("好吧， 你已經完成了早期的階段。  現在， 努力一點我可以幫你得到進入殘暴炎魔祭台所需要的 火焰的眼。 但是， 我的牙齒最近有點疼。  你見過一個牙醫在冒險島世界的故事嗎？  哦，我聽說殭屍們有幾顆金牙。我需要你找到 #b30 個殭屍丟失的金齒#k 。這樣我就可以自己製造一些假牙。然後我可以幫你拿到你想要的物品\r\n任務要求：\r\n#i4000082##b x 30 個");
+            } else {
+                cm.sendNext("請完成上一階段的任務再來挑戰此階段。");
+                cm.dispose();
+            }
+        } else if (selection == 3) { // Enter the center of Lava, quest
+            var dd = cm.getEventManager("FireDemon");
+            if (dd != null && cm.haveItem(4001109)) {
+                dd.startInstance(cm.getPlayer());
+            } else {
+                cm.sendOk("暫時不能進入。");
+            }
+            cm.dispose();
+        } else if (selection == 4) {
+            if (cm.getQuestStatus(100200) == 2) {
+                cm.sendOk("你已經完成了這個任務，進行此操作。");
+                cm.dispose();
+            } else {
+                cm.sendYesNo("你想收買我？哈哈，可以啊！但你必須給我 #e300,000,000#n 楓幣，我就可以讓你直接跳過任務。");
+                status = 3;
+            }
         }
+    } else if (status == 2) {
+        if (stage == 1) {
+            cm.warp(280020000, 0); // Breath of Lava I
+            cm.dispose();
+        } else if (stage == 2) {
+            if (teethmode == 2) {
+                if (cm.haveItem(4031061, 1) && cm.haveItem(4031062, 1) && cm.haveItem(4000082, 30)) { // take away items, give eyes of fire, complete quest
+                    if (cm.canHold(4001017)) {
+                        cm.gainItem(4031061, -1);
+                        cm.gainItem(4031062, -1);
+                        cm.gainItem(4000082, -30);
+                        cm.gainItem(4001017, 5);
+                        cm.sendNext("冶煉好了。 看到左邊的門了嗎？它就是通往殘暴炎魔祭台的門。 不過你需要 #b#t4001017##k 才能進入裡面。讓我看看有多少人能進入到那個恐怖的地方？");
+                        cm.completeQuest(100201);
+                        cm.completeQuest(100200);
+                    } else {
+                        cm.sendNext("你好像沒有足夠的背包空間，請檢查一下再來。");
+                    }
+                    cm.dispose();
+                } else {
+                    cm.sendNext("我不認為你帶來了30個 殭屍丟失的金牙呢……。請快點找來，我就會給你需要的東西。");
+                    cm.dispose();
+                }
+            } else {
+                cm.startQuest(100201);
+                cm.dispose();
+            }
+        }
+    } else if (status == 4) { //bribe
+        if (cm.getPlayer().getMeso() < 300000000) {
+            cm.sendNext("你好像沒有足夠的楓幣來支付，請檢查一下再來。");
+        } else if (!cm.canHold(4001017, 5)) {
+            cm.sendNext("你好像沒有足夠的背包空間，請檢查一下再來。");
+        } else {
+            cm.gainItem(4001017, 5);
+            cm.completeQuest(100201);
+            cm.completeQuest(100200);
+            cm.forceCompleteQuest(7000);
+            cm.completeQuest(100203);
+            cm.sendOk("好了，祝你玩的愉快！");
+            cm.gainMeso(-300000000);
+        }
+        cm.dispose();
+    } else {
+        cm.dispose();
     }
 }

@@ -18,7 +18,7 @@ function action(mode, type, selection) {
     }
 
     if (status == 0) {
-	cm.sendSimple("Hi, I'm the assistant here. Dont worry, I'm plenty good enough for this. If you have #b#t5150032##k or #b#t5151027##k by any chance, then allow me to take care of the rest?\r\n#L0#Haircut: #i5150032##t5150032##l\r\n#L1#Dye your hair: #i5151027##t5151027##l");
+	cm.sendSimple("嗨，我是#p9270037# 如果您有 #b#t5150032##k 或者 #b#t5151027##k 我可以隨機變一個好看的~~\r\n#L0#使用:#i5150032##t5150032##l\r\n#L1#使用:#i5151027##t5151027##l");
     } else if (status == 1) {
 	if (selection == 0) {
 	    var hair = cm.getPlayerStat("HAIR");
@@ -33,7 +33,7 @@ function action(mode, type, selection) {
 	    for (var i = 0; i < hair_Colo_new.length; i++) {
 		hair_Colo_new[i] = hair_Colo_new[i] + (hair % 10);
 	    }
-	    cm.sendYesNo("If you use the REG coupon your hair will change RANDOMLY with a chance to obtain a new experimental style that I came up with. Are you going to use #b#t5150032##k and really change your hairstyle?");
+	    cm.sendYesNo("確定是否要使用了??");
 	} else if (selection == 1) {
 	    var currenthaircolo = Math.floor((cm.getPlayerStat("HAIR") / 10)) * 10;
 	    hair_Colo_new = [];
@@ -42,20 +42,20 @@ function action(mode, type, selection) {
 	    for (var i = 0; i < 8; i++) {
 		hair_Colo_new[i] = currenthaircolo + i;
 	    }
-	    cm.sendYesNo("If you use the REG coupon your hair will change RANDOMLY. Do you still want to use #b#t5151027##k and change it up?");
+	    cm.sendYesNo("確定是否要使用了??");
 	}
     } else if (status == 2){
 	if (beauty == 1){
 	    if (cm.setRandomAvatar(5150032, hair_Colo_new) == 1) {
-		cm.sendOk("Enjoy your new and improved hairstyle!");
+		cm.sendOk("享受你新的造型吧！");
 	    } else {
-		cm.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't give you a haircut without it. I'm sorry...");
+		cm.sendOk("由於沒有#b#t5150032##k 所以我不能幫忙。");
 	    }
 	} else {
 	    if (cm.setRandomAvatar(5151027, hair_Colo_new) == 1) {
-		cm.sendOk("Enjoy your new and improved haircolor!");
+		cm.sendOk("享受你新的造型吧！");
 	    } else {
-		cm.sendOk("Hmmm...it looks like you don't have our designated coupon...I'm afraid I can't dye your hair without it. I'm sorry...");
+		cm.sendOk("由於沒有#b#t5151027##k 所以我不能幫忙。");
 	    }
 	}
 	cm.dispose();

@@ -15,16 +15,16 @@ function action(mode, type, selection) {
 	status++;
     } else {
 	if (status == 1) {
-	    cm.sendNext("If you wish to experience what it's like to be a Pirate, come see me again.");
+	    cm.sendNext("如果你想體驗成為海盜的感覺，隨時再來找我吧。");
 	    cm.dispose();
 	    return;
 	}
 	status--;
     }
     if (status == 0) {
-	cm.sendNext("Pirates are blessed with outstanding dexterity and power, utilizing their guns for long-range attacks while using their power on melee combat situations. Gunslingers use elemental-based bullets for added damage, while Infighters transform to a different being for maximum effect.");
+	cm.sendNext("海盜擁有出色的敏捷與力量，用槍進行遠距離攻擊，也能以力量進行近身戰鬥。槍手使用屬性子彈增加傷害，打手則能變身發揮最大威力。");
     } else if (status == 1) {
-	cm.sendYesNo("Would you like to experience what it's like to be a Pirate?");
+	cm.sendYesNo("你想體驗看看成為海盜的感覺嗎？");
     } else if (status == 2) {
 	cm.movieClipIntroUI(true);
 	cm.warp(1020500, 0); // Effect/Direction3.img/pirate/Scene00

@@ -5,7 +5,7 @@
  * 
  * Guild Quest - end of boss
  */
-
+load('nashorn:mozilla_compat.js');
 importPackage(java.lang);
 
 function start() {
@@ -27,7 +27,7 @@ function action(mode, type, selection) {
 		}
 		eim.finishPQ();
 	    } else {
-		cm.sendOk("This is your final challenge. Defeat the evil lurking within the Rubian and return it to me. That is all.");
+                cm.sendOk("這是你最後的挑戰。請打帶惡靈13後並帶著他的遺物來找我。");
 	    }
 	}
     } else {

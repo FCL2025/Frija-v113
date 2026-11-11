@@ -8,7 +8,7 @@ function start() {
 	    cm.teachSkill(5221003, 0, 10);
 	}
     }
-    cm.sendOk("Who are you talking to me? If you're just bored, go bother somebody else.");
+    cm.sendOk("你是誰你在跟我說話？如果你只是無聊，去找別人！！");
 }
 
 function action(mode, type, selection) {

@@ -9,12 +9,11 @@ var itemList = new Array(1012056,1012098,1012101,1012102,1012103,1032055,1032056
                          2000002,2000003,2000004,2000005,2000006,2000006,2000006,2000006,2000006,2000005,2000005,
                          2000005,2000005,2000002,2000002,2000002,2000002,2000003,2000003,2000003,2000004,2000004,
                          2000004,2000004,2022003,2070004,2070005,2070006,//multiuse items
-                         
 4020000,4020000,4020001,4020001,4020002,4020002,4020003,4020003,4020004,4020004,4020005,
                          4020005,4020006,4020006,4010000,4010000,4010001,4010001,4010002,4010002,4010003,4010003,
                          4010004,4010004,4010005,4010005,4010006,4020007,4020008,4003000); //etc items
 
-var randNum = Math.floor(Math.random()*(itemList.length + 1));
+var randNum = Math.floor(Math.random() * (itemList.length));
 var randItem = itemList[randNum];
 var qty;
 
@@ -77,10 +76,11 @@ function action(mode, type, selection) {
 	switch(cm.getMapId()) {
 		case 920010100: //center stage, minerva warps to bonus
 			//em.setProperty("done", "1");
-                        cm.showEffect(true, "quest/party/clear");
-                        cm.playSound(true, "Party1/Clear");
-			cm.givePartyExp(33000);
-			cm.warpParty(920011100);
+                        cm.showEffect(false, "quest/party/clear");
+                        cm.playSound(false, "Party1/Clear");
+			cm.gainExp(33000);
+			cm.getPlayer().endPartyQuest(1203);
+			cm.warp(920011100);
 	                cm.dispose();
 			break;
 		default:
@@ -101,7 +101,6 @@ function action(mode, type, selection) {
 			}
 			cm.gainItem(4001158,1);
                         cm.gainItem(randItem, qty);
-			cm.getPlayer().endPartyQuest(1203);
 			cm.warp(200080101);
                         cm.dispose();
 			break;

@@ -3,6 +3,6 @@ function enter(pi) {
 	pi.playPortalSE();
 	pi.warp(140090400, 1);
     } else {
-	pi.playerMessage(5, "You must complete the quest before proceeding to the next map.");
+	pi.playerMessage(5, "再進入下一張地圖之前，請先完成任務。");
     }
 }

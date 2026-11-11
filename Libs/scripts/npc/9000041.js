@@ -4,6 +4,6 @@
  */
 
 function action(mode, type, selection) {
-    cm.sendOk("A tiny writing on the wall states the following: Please make donations for the betterment of this town! May the spirits watch your every step for those that made the donations.");
-    cm.safeDispose();
+    cm.sendOk("上面用很小的字寫著，請支付用於村莊建設的捐獻金！ 行善的您會獲得好報的。");
+    cm.dispose();
 }

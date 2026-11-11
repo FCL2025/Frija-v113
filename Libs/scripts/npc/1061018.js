@@ -1,6 +1,5 @@
-
 function start() {
-    cm.sendYesNo("If you leave now, you'll have to start over. Are you sure you want to leave?");
+	cm.sendYesNo("你確定要離開這個地圖嘛？？");
 }
 
 function action(mode, type, selection) {

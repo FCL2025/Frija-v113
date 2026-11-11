@@ -12,7 +12,7 @@ function start() {
 
 function action(mode, type, selection) {
     if (status >= 0 && mode == 0) {
-	cm.sendOk("Haven't you finish the training program yet? If you want to leave this place, please do not hesitate to tell me.");
+	cm.sendOk("沒完成新手訓驗嘛? 如果想要離開這裡, 請不要吝嗇的告訴我。.");
 	cm.dispose();
 	return;
     }
@@ -21,9 +21,9 @@ function action(mode, type, selection) {
     else
 	status--;
     if (status == 0) {
-	cm.sendYesNo("Are you done with your training? If you wish, I will send you out from this training camp.");
+	cm.sendYesNo("你完成你的訓練了嘛? 如果你想要離開的話，我可以帶你離開。");
     } else if (status == 1) {
-	cm.sendNext("Then, I will send you out from here. Good job.");
+	cm.sendNext("那我要帶你離開這裡， 加油！");
     } else if (status == 2) {
 	cm.warp(3, 0);
 	cm.dispose();

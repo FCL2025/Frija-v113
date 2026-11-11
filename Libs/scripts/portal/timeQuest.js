@@ -95,10 +95,10 @@ function enter(pi) {
 		pi.playPortalSE();
                 pi.warp(270040100, "out00");
                 pi.gainItem(4032002, -1);
-                pi.playerMessage("Now moving to a deep part of the temple.");
+                pi.playerMessage("現在移動至神殿內部..");
                 return true;
             } else {
-                pi.playerMessage("Unable to proceed further, it's as if a force is preventing anyone from entering.");
+                pi.playerMessage("有一股很強的力量阻擋著...");
                 return false;
             }
             break;
@@ -111,7 +111,7 @@ function enter(pi) {
     } else {
 	pi.playPortalSE();
         pi.warp(uncompletedmap, 0);
-        pi.playerMessage("Instruders are unable to reverse the current that originates from the temple, and are sent back to their previous spots.");
+        pi.playerMessage("有一股很強的力量阻擋著...");
     }
     return true;
 }

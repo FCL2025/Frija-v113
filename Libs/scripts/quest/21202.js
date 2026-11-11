@@ -1,38 +1,32 @@
 var status = -1;
-var skills = Array(21001003, 21000000, 21100000, 21100002, 21100004, 21100005, 21110002);
-//polearm booster, combo ability, polearm mastery, final charge, combo smash, combo drain, full swing
 
 function start(mode, type, selection) {
-	qm.sendNext("You want a pole arm? Hah! You don't look strong at all. Way outta your league. If you want a pole arm, prove me wrong by hunting #r#o9001012#s#k to the west of here, and find 30 #b#t4032311##k!");
-	qm.forceStartQuest();
+    qm.sendNext("想要長矛？哈！你看起來一點都不強壯，那可不是你拿得動的東西。想要長矛的話，就去西邊獵捕#r#o9001012##k，帶 30 個#b#t4032311##k回來證明你的實力吧！");
+    qm.forceStartQuest();
     qm.dispose();
 }
 
 function end(mode, type, selection) {
-	if (mode == 1) {
-		status++;
-	} else {
-		status--;
-	}
-	if (status == 0) {
-		qm.sendNext("Hah! You have proven your worth.. and you shall get what you want; the best pole arm possible!");
+    if (mode == 1) {
+        status++;
+    } else {
+		if (status == 2) {
+            qm.sendNext("#b等你考慮好在來找我談談吧！");
+            qm.dispose();
+            return;
+        }
+        status--;
+    }
+    if (status == 0) {
+		qm.sendNext("喔~資格的象徵全部都拿來了嗎？你...比我想像中的還要強。可是我最欣賞的事你毫不畏懼可能會刺傷你的危險武器，爽快的說要帶走的態度...很好。#b巨大的斧#k送給你吧！");
 	} else if (status == 1) {
-	if (qm.getPlayerStat("RSP") > (qm.getPlayerStat("LVL") - 30) * 3) {
-	    qm.sendNext("You still have way too much #bSP#k with you. You can't earn a new title like that. I strongly urge you to use more SP on your 1st and second level skills.");
-	    qm.dispose();
-	    return;
-	}
-		qm.sendNextS("My memories are returning...", 2);
-		qm.changeJob(2110);
-		qm.gainItem(1142130, 1);
-		qm.gainItem(4032311, -30);
-		qm.forceCompleteQuest(21201);
-	for (var i = 0; i < skills.length; i++) {
-		qm.teachSkill(skills[i], qm.getPlayer().getSkillLevel(skills[i]));
-	}
-		qm.forceCompleteQuest();
+        qm.sendNextPrev("#b(不久後 大長翁拿出來用布包裡的 巨大的矛。)");
 	} else if (status == 2) {
-		qm.sendOk("Haha! You've got what you want, now leave!");
+		qm.askAcceptDecline("這就是為你製作的矛， 叫做 瑪哈...以後就請多關照。");
+    } else if (status == 3) {
+        qm.gainItem(4032311, -30);
+		qm.warp(140030000,0);
+        qm.forceCompleteQuest();
 		qm.dispose();
-	}
+    }
 }

@@ -15,16 +15,16 @@ function action(mode, type, selection) {
 	status++;
     } else {
 	if (status == 1) {
-	    cm.sendNext("If you wish to experience what it's like to be a Thief, come see me again.");
+	    cm.sendNext("如果你想體驗成為盜賊的感覺，隨時再來找我吧。");
 	    cm.dispose();
 	    return;
 	}
 	status--;
     }
     if (status == 0) {
-	cm.sendNext("Thieves are a perfect blend of luck, dexterity, and power that are adept at surprise attacks against helpless enemies. A high level of avoidability and speed allows the thieves to attack enemies with various angles.");
+	cm.sendNext("盜賊完美結合了幸運、敏捷與力量，擅長對毫無防備的敵人發動奇襲。高迴避率與速度讓盜賊能從各種角度攻擊敵人。");
     } else if (status == 1) {
-	cm.sendYesNo("Would you like to experience what it's like to be a Thief?");
+	cm.sendYesNo("你想體驗看看成為盜賊的感覺嗎？");
     } else if (status == 2) {
 	cm.movieClipIntroUI(true);
 	cm.warp(1020400, 0); // Effect/Direction3.img/rouge/Scene00

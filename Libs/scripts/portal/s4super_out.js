@@ -8,7 +8,7 @@ function enter(pi) {
 	if (pt.getInstance("KyrinTrainingGroundV").getTimeLeft() < 120000) { // 2 minutes left
 	    pi.warp(912010200, 0);
 	} else {
-	    pi.playerMessage("Please endure Kyrin's attack for a little while more!");
+	    pi.playerMessage("必須再忍耐一下子!");
 	    return false;
 	}
     }

@@ -5,18 +5,18 @@ function start(mode, type, selection) {
 	status++;
     } else {
 	if (status == 2) {
-	    qm.sendNext("What are you so hesitant about? You're a hero! You gotta strike while the iron is hot! Come on, let''s do this!");
+	    qm.sendNext("還說您是英雄，怎麼會這麼猶豫不決？您沒聽過打鐵要趁熱嗎？想變強的話，那就快點開始吧！");
 	    qm.dispose();
 	    return;
 	}
 	status--;
     }
     if (status == 0) {
-	qm.sendNext("Alright, I've done enough explaining for now. Let''s move on to the next stage. What's the next stage, you ask? I just told you. Train as hard as you can until you become strong enough to defeat the Black Mage with a single blow.");
+	qm.sendNext("那麼，說明就到此結束，現在進入下一階段。下一個階段是什麼呢？剛剛才跟您說過不是嗎？要修煉變強盜你可以除掉黑魔法師的程度。");
     } else if (status == 1) {
-	qm.sendNextPrev("You may have been a hero in the past, but that was hundreds of years ago. Even if it weren''t for the curse of the Black Mage, all those years you spent frozen in time have stiffened your body. You must loosen up a bit and slowly regain your agility. How do you do that, you ask?");
+	qm.sendNextPrev("您雖然過去是英雄，可是那已經是幾百年前的事了。就算不是黑魔法師的詛咒，待在冰雪當中這麼長的時間，身體一定會變得很僵硬吧！首先先鬆開僵硬的身體。您覺得如何？");
     } else if (status == 2) {
-	qm.askAcceptDecline("Don''t you know that you must first master the fundamentals? So the wise thing to do is to begin with #bBasic Training#k. Oh, of course, I forgot that you lost your memory. Well, that''s why I''m here. You''ll just have to experience it yourself. Shall we begin?");
+	qm.askAcceptDecline("體力就是戰力！英雄的基礎就是體力！ ... 您沒聽過這些話嗎？當然要先做#b基礎體力鍛鍊#k ... 啊！ 您喪失記憶所以什麼都忘了。不知道也沒關係。那麼現在就進入基礎體力鍛鍊吧！");
     } else if (status == 3) {
 	qm.forceStartQuest();
 	qm.aranTutInstructionalBubble("Effect/OnUserEff.img/guideEffect/aranTutorial/tutorialArrow3");

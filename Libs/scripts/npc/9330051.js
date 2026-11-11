@@ -1,64 +1,64 @@
-/* Natalie
-	Henesys VIP Hair/Hair Color Change.
+/* 鄭源暢 ID:9330051
+	101大道NPC 剪髮+染髮
 */
-var status = -1;
+var status = 0;
 var beauty = 0;
-var hair_Colo_new;
+var mhair = Array(30000,30030,30310,30420,30560,30270,30680,30240,30200,30230,30150,30920,30530);
+var fhair = Array(31220,31780,31860,31770,31890,31620,31000,31010,31030,31040,31100,31110,31140,31740,31680,31720,31240,31320,31560,31700,31710,31880,34000,31540);
+var hairnew = Array();
 
 function start() {
+    status = -1;
     action(1, 0, 0);
 }
 
 function action(mode, type, selection) {
-    if (mode == 0) {
-	cm.dispose();
-	return;
+    if (mode < 1) {
+        cm.dispose();
     } else {
-	status++;
-    }
-
-    if (status == 0) {
-	cm.sendSimple("你想換髮型的話要有#b#t5150029##k 或者  #b#t5151024##k 的話就可以囉\r\n#L0#剪髮: #i5150029##t5150029##l\r\n#L1#染髮: #i5151024##t5151024##l");
-    } else if (status == 1) {
-	if (selection == 0) {
-	    var hair = cm.getPlayerStat("HAIR");
-	    hair_Colo_new = [];
-	    beauty = 1;
-
-	    if (cm.getPlayerStat("GENDER") == 0) {
-		hair_Colo_new = [33430, 33400, 33250, 33120, 33090, 33340, 33160, 32640, 30920, 30820, 33100, 33000, 39110];
-	    } else {
-		hair_Colo_new = [34450, 34160, 34090, 31990, 37000, 38110, 37800, 35300, 31830, 38580, 34890, 34240, 39100];
-	    }
-	    for (var i = 0; i < hair_Colo_new.length; i++) {
-		hair_Colo_new[i] = hair_Colo_new[i] + (hair % 10);
-	    }
-	    cm.askAvatar("想換成哪種很棒的髮型呢 只要有 #b#t5150029##k 我就可以幫你換一個很棒的髮型喔", hair_Colo_new);
-	} else if (selection == 1) {
-	    var currenthaircolo = Math.floor((cm.getPlayerStat("HAIR") / 10)) * 10;
-	    hair_Colo_new = [];
-	    beauty = 2;
-
-
-	    for (var i = 0; i < 8; i++) {
-		hair_Colo_new[i] = currenthaircolo + i;
-	    }
-	    cm.askAvatar("你想染成什麼顏色?", hair_Colo_new);
-	}
-    } else if (status == 2){
-	if (beauty == 1){
-	    if (cm.setAvatar(5150029, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved hairstyle!");
-	    } else {
-		cm.sendOk("看來我沒辦法幫你剪頭髮喔");
-	    }
-	} else {
-	    if (cm.setAvatar(5151024, hair_Colo_new[selection]) == 1) {
-		cm.sendOk("Enjoy your new and improved haircolor!");
-	    } else {
-		cm.sendOk("看來我沒辦法幫你染頭髮喔");
-	    }
-	}
-	cm.dispose();
+        status++;
+        if (status == 0) 
+            cm.sendSimple("您好，我是#p9330051#. 如果你有 #b#t5150029##k 或者有 #b#t5151024##k 請允許我把你的頭髮護理。請選擇一個你想要的.\r\n#L1#使用 #i5150029##t5150029##l\r\n#L2#使用 #i5151024##t5151024##l");
+        else if (status == 1) {
+            if (selection == 0) {
+                beauty = 0;
+                cm.sendSimple("");
+            } else if (selection == 1) {
+                beauty = 1;
+                hairnew = Array();
+                if (cm.getPlayer().getGender() == 0)
+                    for(var i = 0; i < mhair.length; i++)
+                        hairnew.push(mhair[i] + parseInt(cm.getPlayer().getHair()% 10));
+                if (cm.getPlayer().getGender() == 1)
+                    for(var i = 0; i < fhair.length; i++)
+                        hairnew.push(fhair[i] + parseInt(cm.getPlayer().getHair() % 10));
+                cm.sendStyle("選擇一個想要的.", hairnew);
+            } else if (selection == 2) {
+                beauty = 2;
+                haircolor = Array();
+                var current = parseInt(cm.getPlayer().getHair()/10)*10;
+                for(var i = 0; i < 8; i++)
+                    haircolor.push(current + i);
+                cm.sendStyle("選擇一個想要的", haircolor);
+            }
+        } else if (status == 2){
+            cm.dispose();
+            if (beauty == 1){
+                if (cm.haveItem(5150029)){
+                    cm.gainItem(5150029, -1);
+                    cm.setHair(hairnew[selection]);
+                    cm.sendOk("享受!");
+                } else
+                    cm.sendOk("您貌似沒有#b#t5150029##k..");
+            }
+            if (beauty == 2){
+                if (cm.haveItem(5151024)){
+                    cm.gainItem(5151024, -1);
+                    cm.setHair(haircolor[selection]);
+                    cm.sendOk("享受!");
+                } else
+                    cm.sendOk("您貌似沒有#b#t5151024##k..");
+            }
+        }
     }
 }

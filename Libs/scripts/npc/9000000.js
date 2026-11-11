@@ -41,9 +41,10 @@ function action(mode, type, selection) {
 			} else if (selection == 2) {
 				if (!cm.canHold()) {
 					cm.sendNext("Save up some space in your inventory.");
-				} else if (cm.getChannelServer().getEvent() > -1 && !cm.haveItem(4031019)) {
+				} else if (cm.getChannelServer().getEvent() > -1) {
 					cm.saveReturnLocation("EVENT");
-					cm.warp(cm.getChannelServer().getEvent(), cm.getChannelServer().getEvent() == 109080000 ? 0 : "join00");
+					cm.getPlayer().setChalkboard(null);
+					cm.warp(cm.getChannelServer().getEvent(), cm.getChannelServer().getEvent() == 109080000 || cm.getChannelServer().getEvent() == 109080010 ? 0 : "join00");
 				} else {
 					cm.sendNext("Either the event has not been started, you already have the #bScroll of Secrets#k, or you have already participated in this event within the last 24 hours. Please try again later!");
 				}

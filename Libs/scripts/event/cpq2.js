@@ -34,6 +34,7 @@ function setup(mapid) {
 }
 
 function playerEntry(eim, player) {
+    player.disposeClones();
     player.changeMap(eim.getMapInstance(waitingMap), eim.getMapInstance(waitingMap).getPortal(0));
     player.tryPartyQuest(1302);
 }
@@ -44,10 +45,12 @@ function registerCarnivalParty(eim, carnivalParty) {
         // display message about recieving invites for next 3 minutes;
 	//eim.restartEventTimer(180000);
         eim.schedule("end", 3 * 60 * 1000); // 3 minutes
+	eim.broadcastPlayerMsg(5, "接下來的三分鐘您的隊伍可以找尋其他人挑戰。");
     } else {
         eim.setProperty("blue", carnivalParty.getLeader().getId() + "");
 	//eim.restartEventTimer(10000);
         eim.schedule("start", 10000);
+	eim.broadcastPlayerMsg(5, "10秒後將開戰！！");
     }
 }
 
@@ -98,7 +101,7 @@ function removePlayer(eim, player) {
 function getParty(eim, property) {
     var chr = em.getChannelServer().getPlayerStorage().getCharacterById(parseInt(eim.getProperty(property)));
     if (chr == null) {
-	eim.broadcastPlayerMsg(5, "The leader of the party " + property + " was not found.");
+	eim.broadcastPlayerMsg(5, "隊伍的隊長 " + property + " 找不到。");
 	disposeAll(eim);
 	return null;
     } else {
@@ -116,7 +119,10 @@ function start(eim) {
 function monsterKilled(eim, chr, cp) {
 	chr.getCarnivalParty().addCP(chr, cp); // this is for the specific party (red/blue)
     chr.cpUpdate(false, chr.getAvailableCP(), chr.getTotalCP(), 0); // this will update for the player who killed the mob
-	chr.cpUpdate(true, chr.getAvailableCP(), chr.getTotalCP(), 0); // this will update for the player's carnival team (their party)
+    var iter = eim.getPlayers().iterator();
+    while (iter.hasNext()) {
+        iter.next().cpUpdate(true, chr.getCarnivalParty().getAvailableCP(), chr.getCarnivalParty().getTotalCP(), chr.getCarnivalParty().getTeam());
+    }
 } 
 
 function monsterValue(eim, mobId) {
@@ -189,7 +195,7 @@ function playerDisconnected(eim, player) {
 	player.setMap(eim.getMapInstance(exitMap));
     eim.unregisterPlayer(player);
     player.getCarnivalParty().removeMember(player);
-    eim.broadcastPlayerMsg(5, player.getName() + " has quit the Monster Carnival.");
+    eim.broadcastPlayerMsg(5, player.getName() + " 離開了怪物擂台2");
     disposeAll(eim);
 }
 

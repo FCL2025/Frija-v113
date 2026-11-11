@@ -45,10 +45,12 @@ function registerCarnivalParty(eim, carnivalParty) {
         // display message about recieving invites for next 3 minutes;
 	//eim.restartEventTimer(180000);
         eim.schedule("end", 3 * 60 * 1000); // 3 minutes
+	eim.broadcastPlayerMsg(5, "接下來的三分鐘您的隊伍可以找尋其他人挑戰。");
     } else {
         eim.setProperty("blue", carnivalParty.getLeader().getId() + "");
 	//eim.restartEventTimer(10000);
         eim.schedule("start", 10000);
+	eim.broadcastPlayerMsg(5, "10秒後將開戰！！");
     }
 }
 function playerDead(eim, player) {
@@ -72,7 +74,9 @@ function disposeAll(eim) {
 	    var player = iter.next();
             eim.unregisterPlayer(player);
             player.changeMap(eim.getMapInstance(exitMap), eim.getMapInstance(exitMap).getPortal(0));
-            player.getCarnivalParty().removeMember(player);
+            if (player.getCarnivalParty() != null) {
+                player.getCarnivalParty().removeMember(player);
+            }
         }
         eim.dispose();
 }
@@ -97,7 +101,7 @@ function removePlayer(eim, player) {
 function getParty(eim, property) {
     var chr = em.getChannelServer().getPlayerStorage().getCharacterById(parseInt(eim.getProperty(property)));
     if (chr == null) {
-	eim.broadcastPlayerMsg(5, "The leader of the party " + property + " was not found.");
+	eim.broadcastPlayerMsg(5, "隊伍的隊長 " + property + " 找不到。");
 	disposeAll(eim);
 	return null;
     } else {
@@ -190,7 +194,7 @@ function playerDisconnected(eim, player) {
     player.setMap(eim.getMapInstance(exitMap));
     eim.unregisterPlayer(player);
     player.getCarnivalParty().removeMember(player);
-    eim.broadcastPlayerMsg(5, player.getName() + " has quit the Monster Carnival.");
+    eim.broadcastPlayerMsg(5, player.getName() + " 離開了怪物擂台1");
     disposeAll(eim);
 }
 

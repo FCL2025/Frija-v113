@@ -8,15 +8,15 @@ Frija 是台服（TWMS）v113 私服的伺服器端，免費、開源。
 
 ## 事前準備
 
-| 項目 | 版本 | 說明 |
-|---|---|---|
-| Windows | 10 / 11 | 啟動腳本 `Launcher.bat` 是批次檔 |
-| JDK | **26** | 必須是 **JDK**，不是 JRE（啟動前會自動編譯）。Oracle JDK 或任一 OpenJDK 26 發行版皆可 |
-| MySQL | 8.0 以上 | |
-| WZ 資料 | v113 台服 | 匯出成 XML 格式，**不包含在專案裡**，需自行準備 |
-| 遊戲客戶端 | v113 台服 | 需能連到你的伺服器 IP，**不包含在專案裡** |
-| 登入器 | [TMSLauncher](https://github.com/zhyonc/TMSLauncher) | 讓客戶端連到你的伺服器，見[第 6 步](#6-連線進遊戲) |
-| Node.js | 20 以上（選用） | 只有網頁管理面板需要，不裝也能正常開服 |
+| 項目 | 版本 | 下載 | 說明 |
+|---|---|---|---|
+| Windows | 10 / 11 | | 啟動腳本 `Launcher.bat` 是批次檔 |
+| JDK | **26** | [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)／[Eclipse Temurin](https://adoptium.net/temurin/releases/?version=26) | 必須是 **JDK**，不是 JRE（啟動前會自動編譯）。Oracle JDK 或任一 OpenJDK 26 發行版皆可 |
+| MySQL | 8.0 以上 | [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) | |
+| 遊戲客戶端 | v113 台服 | [v113.7z](https://archive.org/download/twms-maplestory/v113.7z) | 用 [7-Zip](https://www.7-zip.org/) 解壓縮。需能連到你的伺服器 IP，**不包含在專案裡** |
+| WZ 資料 | v113 台服 | 從上面的客戶端匯出 | 匯出成 XML 格式，**不包含在專案裡**，需自行準備，見[第 3 步](#3-放入-wz-資料) |
+| 登入器 | 最新版 | [TMSLauncher](https://github.com/zhyonc/TMSLauncher) | 讓客戶端連到你的伺服器，見[第 6 步](#6-連線進遊戲) |
+| Node.js | 20 以上（選用） | [Node.js](https://nodejs.org/) | 只有網頁管理面板需要，不裝也能正常開服 |
 
 伺服器以 4 GB 記憶體啟動，建議機器至少有 8 GB。
 

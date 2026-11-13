@@ -260,6 +260,17 @@ public final class DatabaseConnection {
      * all on a request thread of the running server.
      */
     static String probeUrl(final String url) {
+        return withoutRetries(url, "connectTimeout=5000&socketTimeout=10000");
+    }
+
+    /**
+     * {@code url} with the retry and timeout options taken out and
+     * {@code timeouts} appended in their place. {@link #probeUrl} and
+     * {@link #openUnpooled} differ only in which timeouts they want: a login
+     * probe can give up on a slow socket after ten seconds, a statement that
+     * creates and fills {@code drop_data} cannot.
+     */
+    static String withoutRetries(final String url, final String timeouts) {
         final int q = url.indexOf('?');
         final StringBuilder sb = new StringBuilder(q < 0 ? url : url.substring(0, q));
         char sep = '?';
@@ -277,7 +288,69 @@ public final class DatabaseConnection {
                 sep = '&';
             }
         }
-        return sb.append(sep).append("connectTimeout=5000&socketTimeout=10000").toString();
+        return sb.append(sep).append(timeouts).toString();
+    }
+
+    /**
+     * The database name in a {@code jdbc:mysql://host:port/name?…} URL, or
+     * {@code null} when the URL names none. This is the only place the
+     * database name is configured - there is no {@code tms.Db}.
+     */
+    static String databaseName(final String url) {
+        final int start = databaseStart(url);
+        if (start < 0) {
+            return null;
+        }
+        final int q = url.indexOf('?', start);
+        final String name = q < 0 ? url.substring(start) : url.substring(start, q);
+        return name.isEmpty() ? null : name;
+    }
+
+    /** {@code url} with the database name taken out, so that it connects to the server alone. */
+    static String withoutDatabase(final String url) {
+        final int start = databaseStart(url);
+        if (start < 0) {
+            return url;
+        }
+        final int q = url.indexOf('?', start);
+        return url.substring(0, start) + (q < 0 ? "" : url.substring(q));
+    }
+
+    /** Index just past the {@code /} that ends {@code host:port}, or -1. */
+    private static int databaseStart(final String url) {
+        final int scheme = url.indexOf("//");
+        if (scheme < 0) {
+            return -1;
+        }
+        final int q = url.indexOf('?', scheme + 2);
+        final int slash = url.indexOf('/', scheme + 2);
+        if (slash < 0 || (q >= 0 && slash > q)) {
+            return -1;
+        }
+        return slash + 1;
+    }
+
+    /**
+     * A connection that is not part of the pool, for {@link SchemaCheck}: it
+     * changes session variables ({@code sql_mode}, {@code FOREIGN_KEY_CHECKS})
+     * that must not leak into a pooled connection, and it runs before the pool
+     * is any use - possibly before the database it would connect to exists.
+     *
+     * <p>The retry options are stripped for the same reason as in
+     * {@link #probeUrl}: with the shipped {@code maxReconnects=999} a database
+     * that does not exist yet would not fail, it would hang. There is no socket
+     * timeout, because creating {@code drop_data} is one long statement.
+     *
+     * @param withDatabase {@code false} to connect to the server without
+     * selecting a database, which is how the database itself gets created.
+     */
+    static Connection openUnpooled(final boolean withDatabase) throws SQLException {
+        String url = withoutRetries(ServerProperties.getProperty("tms.Url"), "connectTimeout=5000");
+        if (!withDatabase) {
+            url = withoutDatabase(url);
+        }
+        return DriverManager.getConnection(url,
+                credentials(ServerProperties.getProperty("tms.User"), ServerProperties.getProperty("tms.Pass")));
     }
 
     /** Lower-cased: Connector/J matches option names case-insensitively. */

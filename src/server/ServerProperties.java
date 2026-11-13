@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.Set;
 import database.DatabaseConnection;
+import database.SchemaCheck;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 
@@ -44,6 +45,10 @@ public class ServerProperties {
                 LOG.log(System.Logger.Level.ERROR, "Error reading " + s, ex);
             }
         }
+        // Before the query below, which exits when the table is missing - and
+        // auth_server_channel_ip is one of the tables this can create. Needs
+        // tms.Url / tms.User / tms.Pass, hence after the file is read.
+        SchemaCheck.ensure();
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("SELECT * FROM auth_server_channel_ip");
              ResultSet rs = ps.executeQuery()) {

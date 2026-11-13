@@ -78,7 +78,11 @@ public class RankingWorker {
 
         try (PreparedStatement charSelect = con.prepareStatement(sb.toString());
              ResultSet rs = charSelect.executeQuery();
-             PreparedStatement ps = con.prepareStatement("UPDATE characters SET jobRank = ?, jobRankMove = ?, rank = ?, rankMove = ? WHERE id = ?")) {
+             // `rank` is backticked because it has been a reserved word since
+             // MySQL 8.0.2: unquoted, this UPDATE is a syntax error, the first
+             // row throws, and the ranking lists stop after one character.
+             // (c.rank above is fine - a qualified name may be a keyword.)
+             PreparedStatement ps = con.prepareStatement("UPDATE characters SET jobRank = ?, jobRankMove = ?, `rank` = ?, rankMove = ? WHERE id = ?")) {
             int rank = 0; //for "all"
             final Map<Integer, Integer> rankMap = new LinkedHashMap<>();
             for (int i : jobCommands.values()) {

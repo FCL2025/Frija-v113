@@ -917,47 +917,11 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
          map.killAllMonsters(true); // No drop. */
     }
 
-    public void giveMerchantMesos() {
-        long mesos = 0;
-        try (Connection con = DatabaseConnection.getConnection()) {
-            try (PreparedStatement ps = con.prepareStatement("SELECT * FROM hiredmerchants WHERE merchantid = ?")) {
-                ps.setInt(1, getPlayer().getId());
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        mesos = rs.getLong("mesos");
-                    }
-                }
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("UPDATE hiredmerchants SET mesos = 0 WHERE merchantid = ?")) {
-                ps.setInt(1, getPlayer().getId());
-                ps.executeUpdate();
-            }
-        } catch (SQLException ex) {
-            LOG.log(System.Logger.Level.ERROR, "Error gaining mesos in hired merchant" + ex);
-        }
-        c.getPlayer().gainMeso((int) mesos, true);
-    }
     public void dc () {
         MapleCharacter victim = c.getChannelServer().getPlayerStorage().getCharacterByName(c.getPlayer().getName().toString());
         victim.getClient().getSession().close();
         victim.getClient().disconnect(true, false);
 
-    }
-    public long getMerchantMesos() {
-        long mesos = 0;
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT * FROM hiredmerchants WHERE merchantid = ?")) {
-            ps.setInt(1, getPlayer().getId());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    mesos = rs.getLong("mesos");
-                }
-            }
-        } catch (SQLException ex) {
-            LOG.log(System.Logger.Level.ERROR, "Error gaining mesos in hired merchant" + ex);
-        }
-        return mesos;
     }
 
     public void openDuey() {

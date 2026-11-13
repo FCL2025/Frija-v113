@@ -1,7 +1,27 @@
 -- ---------------------------------------------------------------------------
--- TWMS v113 - 完整資料庫，單一檔案
+-- Frija v113 - 完整資料庫，單一檔案
 --
--- 這個檔案取代了先前的 sql/maplestory.sql 與 sql/tms.sql。
+-- **這是整個專案唯一的 SQL 檔，也是資料庫結構唯一的依據。** 沒有 migrations 目錄：
+-- 之後要加資料表、檢視表或欄位，就直接改這個檔案。伺服器每次開機都會拿資料庫和這個
+-- 檔案比對（database.SchemaCheck），缺什麼就補什麼：
+--
+--   * 資料庫本身不存在 → 以 big5 建立
+--   * 缺資料表 → 執行本檔裡這張表的 CREATE TABLE、ALTER TABLE（索引、AUTO_INCREMENT、
+--     外鍵）與 INSERT，照檔案裡的順序
+--   * 缺檢視表 → 執行它的 CREATE VIEW（拿掉 DEFINER，歸伺服器登入的帳號所有）
+--   * 既有資料表缺欄位 → ALTER TABLE ... ADD COLUMN，位置照本檔（欄位上的索引不會補；
+--     AUTO_INCREMENT 欄位只提示、不補）
+--
+-- 它**只會新增，永遠不會刪除、改名、改型別或改資料**：資料庫裡已經有的東西一律不動，
+-- 所以本檔對既有資料表的 INSERT 不會再跑一次。要移除資料表、修改欄位定義、或在既有
+-- 資料表加資料，仍然要自己下 SQL。
+--
+-- 新增資料表的寫法：在檔案任何位置寫一段完整的 CREATE TABLE（索引直接寫在裡面最省事），
+-- 需要預設資料就在後面接 INSERT INTO。檢查器認得的只有 CREATE TABLE、ALTER TABLE、
+-- INSERT INTO、CREATE VIEW 四種語句，其餘（SET、USE、DROP、註解）都略過。
+--
+-- 這個檔案取代了先前的 sql/maplestory.sql 與 sql/tms.sql，2026-11-13 起也取代了
+-- sql/migrations/ 底下的所有遷移腳本（已刪除，內容都已經在本檔裡）。
 --
 -- 基底是 2016-11-03 的 phpMyAdmin dump（兩份之中較新的一份，資料也較完整：
 -- cashshop_modified_items 有 2813 筆而舊的那份是空的，drop_data 有 20998 筆
@@ -36,10 +56,9 @@
 --   * achievements（E18）- 成就系統整套移除（遊戲端早就整段被註解掉，只剩載入／存檔空轉）。
 --   * readable_cheatlog / readable_last_hour_cheatlog（E17）- join 改用 cl.characterid，
 --     最近一小時那個改成依角色加總；cheatlog 從 E17 起真的會被寫入。
---   已經匯入過的資料庫請跑 sql/migrations/ 底下對應的檔案。
 --
 -- 2026-11 另在 drop_data_global 加了第 5 筆：楓葉（4001126）全域掉落，給併進來的
--- 楓葉兌換 NPC 用（sql/migrations/maple-leaf-global-drop.sql）。
+-- 楓葉兌換 NPC 用（說明在檔尾那一筆上方）。
 --
 -- 另有 8 個名字同樣零引用，但「刻意保留」，各自的 CREATE TABLE 上方都有一行說明：
 --   * blocklogin / blockuse / loginlog / uselog / invitecodedata / ipvotelog
@@ -63,22 +82,32 @@
 -- 預設 sql_mode 下連 ALTER TABLE 都下不動（Invalid default value for 'birthday'，
 -- 連加一個無關的欄位都會被擋）。
 --
--- **改這個檔案不會動到已經在跑的資料庫。** 這份 dump 只 CREATE TABLE、不 DROP
--- TABLE，重新匯入到已存在的資料庫只會在 accounts 那一行報 "table already exists"
--- 然後跳過。既有資料庫請執行：
+-- 這屬於「修改既有欄位定義」，開機檢查不會替 2026-09 以前建立的資料庫改它。
+-- 那種資料庫照樣能用：程式碼側（MapleClient.getTempBanTime、server/panel/AccountsApi）
+-- 刻意同時認得零日期與 NULL，而且寫入端仍然避開 SQL NULL，所以新舊兩種資料庫跑
+-- 同一份 jar 的行為完全一致。真的要改，在舊資料庫上執行：
 --
---     mysql -u root -p twmsv113 < sql/migrations/i3-zero-dates.sql
+--     SET SESSION sql_mode = 'NO_AUTO_VALUE_ON_ZERO';
+--     ALTER TABLE accounts MODIFY `birthday` date NULL DEFAULT NULL,
+--                          MODIFY `tempban` timestamp NULL DEFAULT NULL;
+--     UPDATE accounts SET birthday = NULL WHERE birthday = '0000-00-00';
+--     UPDATE accounts SET tempban = NULL WHERE tempban = '0000-00-00 00:00:00';
+--     UPDATE accounts SET tempban = NULL WHERE tempban < '1970-01-03 00:00:00';
 --
--- 沒跑也還是能用：程式碼側（MapleClient.getTempBanTime、server/panel/AccountsApi）
--- 刻意同時認得零日期與 NULL，而且寫入端仍然避開 SQL NULL，所以「新匯入的資料庫」
--- 與「還沒遷移的舊資料庫」跑同一份 jar 的行為完全一致。
+-- 最後一行收掉管理面板寫進去的「沒有暫時封鎖」標記 1970-01-02（給還是 NOT NULL 的
+-- 舊欄位用的替代值）。
 --
 -- 下面那行 SET SQL_MODE 保留不動：它同時管 AUTO_INCREMENT 欄位寫 0 的行為，
 -- 也讓這份檔案在任何 sql_mode 設定下都匯得進去。
+--
+-- 每張表的 CREATE TABLE 都是完整的（主鍵、索引、AUTO_INCREMENT、外鍵都寫在裡面，
+-- 格式就是 SHOW CREATE TABLE 印出來的樣子），所以 FOREIGN_KEY_CHECKS 要先關掉：
+-- 表是照字母順序排的，buddies 的外鍵指向後面才建立的 characters。檔尾會再打開。
 -- ---------------------------------------------------------------------------
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET time_zone = "+00:00";
+SET FOREIGN_KEY_CHECKS = 0;
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -97,42 +126,44 @@ USE `twmsv113`;
 -- 資料表結構 `accounts`
 --
 
+-- I3：birthday 本來是 NOT NULL DEFAULT '0000-00-00'，見檔頭的說明。
+-- I3：tempban 本來是 NOT NULL DEFAULT '0000-00-00 00:00:00'。`NULL DEFAULT NULL` 這兩個
+-- 字都要寫出來：在 explicit_defaults_for_timestamp 關閉的舊設定下，一個沒寫 NULL
+-- 屬性的 TIMESTAMP 欄位會被自動補上 DEFAULT CURRENT_TIMESTAMP ON UPDATE
+-- CURRENT_TIMESTAMP，那會讓 tempban 在每次 UPDATE accounts 時跳成現在時間 ——
+-- 等於全服被暫時封鎖。
 CREATE TABLE `accounts` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL DEFAULT '',
   `password` varchar(128) NOT NULL DEFAULT '',
   `salt` varchar(32) DEFAULT NULL,
   `2ndpassword` varchar(134) DEFAULT NULL,
   `salt2` varchar(32) DEFAULT NULL,
-  `loggedin` tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
+  `loggedin` tinyint unsigned NOT NULL DEFAULT '0',
   `lastlogin` timestamp NULL DEFAULT NULL,
   `createdat` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  -- I3：本來是 NOT NULL DEFAULT '0000-00-00'。見檔頭的說明與
-  -- sql/migrations/i3-zero-dates.sql。
-  `birthday` date NULL DEFAULT NULL,
+  `birthday` date DEFAULT NULL,
   `banned` tinyint(1) NOT NULL DEFAULT '0',
   `banreason` text,
   `gm` tinyint(1) NOT NULL DEFAULT '0',
   `email` tinytext,
   `macs` tinytext,
-  -- I3：本來是 NOT NULL DEFAULT '0000-00-00 00:00:00'。`NULL DEFAULT NULL` 這兩個
-  -- 字都要寫出來：在 explicit_defaults_for_timestamp 關閉的舊設定下，一個沒寫 NULL
-  -- 屬性的 TIMESTAMP 欄位會被自動補上 DEFAULT CURRENT_TIMESTAMP ON UPDATE
-  -- CURRENT_TIMESTAMP，那會讓 tempban 在每次 UPDATE accounts 時跳成現在時間 ——
-  -- 等於全服被暫時封鎖。
   `tempban` timestamp NULL DEFAULT NULL,
-  `greason` tinyint(4) UNSIGNED DEFAULT NULL,
-  `ACash` int(11) DEFAULT NULL,
-  `mPoints` int(11) DEFAULT NULL,
-  `gender` tinyint(1) UNSIGNED NOT NULL DEFAULT '0',
+  `greason` tinyint unsigned DEFAULT NULL,
+  `ACash` int DEFAULT NULL,
+  `mPoints` int DEFAULT NULL,
+  `gender` tinyint unsigned NOT NULL DEFAULT '0',
   `SessionIP` varchar(64) DEFAULT NULL,
-  `points` int(11) NOT NULL DEFAULT '0',
-  `vpoints` int(11) NOT NULL DEFAULT '0',
+  `points` int NOT NULL DEFAULT '0',
+  `vpoints` int NOT NULL DEFAULT '0',
   `lastlogon` timestamp NULL DEFAULT NULL,
   `facebook_id` varchar(255) DEFAULT NULL,
   `access_token` varchar(255) DEFAULT '',
   `password_otp` varchar(255) DEFAULT '',
-  `expiration` timestamp NULL DEFAULT NULL
+  `expiration` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`),
+  KEY `ranking1` (`id`,`banned`,`gm`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -142,21 +173,22 @@ CREATE TABLE `accounts` (
 --
 
 CREATE TABLE `alliances` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(13) NOT NULL,
-  `leaderid` int(11) NOT NULL,
-  `guild1` int(11) NOT NULL,
-  `guild2` int(11) NOT NULL,
-  `guild3` int(11) NOT NULL DEFAULT '0',
-  `guild4` int(11) NOT NULL DEFAULT '0',
-  `guild5` int(11) NOT NULL DEFAULT '0',
+  `leaderid` int NOT NULL,
+  `guild1` int NOT NULL,
+  `guild2` int NOT NULL,
+  `guild3` int NOT NULL DEFAULT '0',
+  `guild4` int NOT NULL DEFAULT '0',
+  `guild5` int NOT NULL DEFAULT '0',
   `rank1` varchar(13) NOT NULL DEFAULT '公會長',
   `rank2` varchar(13) NOT NULL DEFAULT '公會副會長',
   `rank3` varchar(13) NOT NULL DEFAULT '公會成員',
   `rank4` varchar(13) NOT NULL DEFAULT '公會成員',
   `rank5` varchar(13) NOT NULL DEFAULT '公會成員',
-  `capacity` int(11) NOT NULL DEFAULT '2',
-  `notice` varchar(100) NOT NULL DEFAULT ''
+  `capacity` int NOT NULL DEFAULT '2',
+  `notice` varchar(100) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -166,11 +198,13 @@ CREATE TABLE `alliances` (
 --
 
 CREATE TABLE `auth_server_channel_ip` (
-  `channelconfigid` int(10) UNSIGNED NOT NULL,
-  `channelid` int(10) UNSIGNED NOT NULL DEFAULT '0',
+  `channelconfigid` int unsigned NOT NULL AUTO_INCREMENT,
+  `channelid` int unsigned NOT NULL DEFAULT '0',
   `name` tinytext NOT NULL,
-  `value` tinytext NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `value` tinytext NOT NULL,
+  PRIMARY KEY (`channelconfigid`),
+  KEY `channelid` (`channelid`)
+) ENGINE=MyISAM AUTO_INCREMENT=20 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `auth_server_channel_ip`
@@ -204,12 +238,13 @@ INSERT INTO `auth_server_channel_ip` (`channelconfigid`, `channelid`, `name`, `v
 --
 
 CREATE TABLE `bbs_replies` (
-  `replyid` int(10) UNSIGNED NOT NULL,
-  `threadid` int(10) UNSIGNED NOT NULL,
-  `postercid` int(10) UNSIGNED NOT NULL,
-  `timestamp` bigint(20) UNSIGNED NOT NULL,
+  `replyid` int unsigned NOT NULL AUTO_INCREMENT,
+  `threadid` int unsigned NOT NULL,
+  `postercid` int unsigned NOT NULL,
+  `timestamp` bigint unsigned NOT NULL,
   `content` varchar(26) NOT NULL DEFAULT '',
-  `guildid` int(11) NOT NULL DEFAULT '0'
+  `guildid` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`replyid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -219,14 +254,15 @@ CREATE TABLE `bbs_replies` (
 --
 
 CREATE TABLE `bbs_threads` (
-  `threadid` int(10) UNSIGNED NOT NULL,
-  `postercid` int(10) UNSIGNED NOT NULL,
+  `threadid` int unsigned NOT NULL AUTO_INCREMENT,
+  `postercid` int unsigned NOT NULL,
   `name` varchar(26) NOT NULL DEFAULT '',
-  `timestamp` bigint(20) UNSIGNED NOT NULL,
-  `icon` smallint(5) UNSIGNED NOT NULL,
+  `timestamp` bigint unsigned NOT NULL,
+  `icon` smallint unsigned NOT NULL,
   `startpost` text NOT NULL,
-  `guildid` int(10) UNSIGNED NOT NULL,
-  `localthreadid` int(10) UNSIGNED NOT NULL
+  `guildid` int unsigned NOT NULL,
+  `localthreadid` int unsigned NOT NULL,
+  PRIMARY KEY (`threadid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -267,10 +303,11 @@ CREATE TABLE `blockuse` (
 --
 
 CREATE TABLE `bosslog` (
-  `bosslogid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(10) UNSIGNED NOT NULL,
+  `bosslogid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int unsigned NOT NULL,
   `bossid` varchar(20) NOT NULL,
-  `lastattempt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `lastattempt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`bosslogid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -280,12 +317,15 @@ CREATE TABLE `bosslog` (
 --
 
 CREATE TABLE `buddies` (
-  `id` int(11) NOT NULL,
-  `characterid` int(11) NOT NULL,
-  `buddyid` int(11) NOT NULL,
-  `pending` tinyint(4) NOT NULL DEFAULT '0',
-  `groupname` varchar(16) NOT NULL DEFAULT '其他'
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL,
+  `buddyid` int NOT NULL,
+  `pending` tinyint NOT NULL DEFAULT '0',
+  `groupname` varchar(16) NOT NULL DEFAULT '其他',
+  PRIMARY KEY (`id`),
+  KEY `buddies_ibfk_1` (`characterid`),
+  CONSTRAINT `buddies_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=187 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 --
 -- 資料表的匯出資料 `buddies`
@@ -300,21 +340,22 @@ CREATE TABLE `buddies` (
 
 CREATE TABLE `cashshop_modified_items` (
   `name` varchar(70) NOT NULL,
-  `serial` int(11) NOT NULL,
-  `discount_price` int(11) NOT NULL DEFAULT '-1',
+  `serial` int NOT NULL,
+  `discount_price` int NOT NULL DEFAULT '-1',
   `mark` tinyint(1) NOT NULL DEFAULT '-1',
   `showup` tinyint(1) NOT NULL DEFAULT '0',
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `priority` tinyint(3) NOT NULL DEFAULT '0',
+  `itemid` int NOT NULL DEFAULT '0',
+  `priority` tinyint NOT NULL DEFAULT '0',
   `package` tinyint(1) NOT NULL DEFAULT '0',
-  `period` tinyint(3) NOT NULL DEFAULT '0',
+  `period` tinyint NOT NULL DEFAULT '0',
   `gender` tinyint(1) NOT NULL DEFAULT '0',
-  `count` tinyint(3) NOT NULL DEFAULT '0',
-  `meso` int(11) NOT NULL DEFAULT '0',
+  `count` tinyint NOT NULL DEFAULT '0',
+  `meso` int NOT NULL DEFAULT '0',
   `unk_1` tinyint(1) NOT NULL DEFAULT '0',
   `unk_2` tinyint(1) NOT NULL DEFAULT '0',
   `unk_3` tinyint(1) NOT NULL DEFAULT '0',
-  `extra_flags` int(11) NOT NULL DEFAULT '0'
+  `extra_flags` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`serial`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 --
@@ -3146,65 +3187,70 @@ INSERT INTO `cashshop_modified_items` (`name`, `serial`, `discount_price`, `mark
 --
 
 CREATE TABLE `characters` (
-  `id` int(11) NOT NULL,
-  `accountid` int(11) NOT NULL DEFAULT '0',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `accountid` int NOT NULL DEFAULT '0',
   `world` tinyint(1) NOT NULL DEFAULT '0',
   `name` varchar(20) NOT NULL DEFAULT '',
-  `level` int(3) UNSIGNED NOT NULL DEFAULT '0',
-  `exp` int(11) NOT NULL DEFAULT '0',
-  `str` int(5) NOT NULL DEFAULT '0',
-  `dex` int(5) NOT NULL DEFAULT '0',
-  `luk` int(5) NOT NULL DEFAULT '0',
-  `int` int(5) NOT NULL DEFAULT '0',
-  `hp` int(5) NOT NULL DEFAULT '0',
-  `mp` int(5) NOT NULL DEFAULT '0',
-  `maxhp` int(5) NOT NULL DEFAULT '0',
-  `maxmp` int(5) NOT NULL DEFAULT '0',
-  `meso` int(11) NOT NULL DEFAULT '0',
-  `hpApUsed` int(5) NOT NULL DEFAULT '0',
-  `job` int(5) NOT NULL DEFAULT '0',
+  `level` int unsigned NOT NULL DEFAULT '0',
+  `exp` int NOT NULL DEFAULT '0',
+  `str` int NOT NULL DEFAULT '0',
+  `dex` int NOT NULL DEFAULT '0',
+  `luk` int NOT NULL DEFAULT '0',
+  `int` int NOT NULL DEFAULT '0',
+  `hp` int NOT NULL DEFAULT '0',
+  `mp` int NOT NULL DEFAULT '0',
+  `maxhp` int NOT NULL DEFAULT '0',
+  `maxmp` int NOT NULL DEFAULT '0',
+  `meso` int NOT NULL DEFAULT '0',
+  `hpApUsed` int NOT NULL DEFAULT '0',
+  `job` int NOT NULL DEFAULT '0',
   `skincolor` tinyint(1) NOT NULL DEFAULT '0',
   `gender` tinyint(1) NOT NULL DEFAULT '0',
-  `fame` int(5) NOT NULL DEFAULT '0',
-  `hair` int(11) NOT NULL DEFAULT '0',
-  `face` int(11) NOT NULL DEFAULT '0',
-  `ap` int(5) NOT NULL DEFAULT '0',
-  `map` int(11) NOT NULL DEFAULT '0',
-  `spawnpoint` int(3) NOT NULL DEFAULT '0',
-  `gm` int(3) NOT NULL DEFAULT '0',
-  `party` int(11) NOT NULL DEFAULT '0',
-  `buddyCapacity` int(3) NOT NULL DEFAULT '25',
+  `fame` int NOT NULL DEFAULT '0',
+  `hair` int NOT NULL DEFAULT '0',
+  `face` int NOT NULL DEFAULT '0',
+  `ap` int NOT NULL DEFAULT '0',
+  `map` int NOT NULL DEFAULT '0',
+  `spawnpoint` int NOT NULL DEFAULT '0',
+  `gm` int NOT NULL DEFAULT '0',
+  `party` int NOT NULL DEFAULT '0',
+  `buddyCapacity` int NOT NULL DEFAULT '25',
   `createdate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `guildid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `guildrank` tinyint(1) UNSIGNED NOT NULL DEFAULT '5',
-  `allianceRank` tinyint(1) UNSIGNED NOT NULL DEFAULT '5',
-  `monsterbookcover` int(11) UNSIGNED NOT NULL DEFAULT '0',
-  `dojo_pts` int(11) UNSIGNED NOT NULL DEFAULT '0',
-  `dojoRecord` tinyint(2) UNSIGNED NOT NULL DEFAULT '0',
+  `guildid` int unsigned NOT NULL DEFAULT '0',
+  `guildrank` tinyint unsigned NOT NULL DEFAULT '5',
+  `allianceRank` tinyint unsigned NOT NULL DEFAULT '5',
+  `monsterbookcover` int unsigned NOT NULL DEFAULT '0',
+  `dojo_pts` int unsigned NOT NULL DEFAULT '0',
+  `dojoRecord` tinyint unsigned NOT NULL DEFAULT '0',
   `pets` varchar(13) NOT NULL DEFAULT '-1,-1,-1',
   `sp` varchar(255) NOT NULL DEFAULT '0,0,0,0,0,0,0,0,0,0',
-  `subcategory` int(11) NOT NULL DEFAULT '0',
-  `Jaguar` int(3) NOT NULL DEFAULT '0',
-  `rank` int(11) NOT NULL DEFAULT '1',
-  `rankMove` int(11) NOT NULL DEFAULT '0',
-  `jobRank` int(11) NOT NULL DEFAULT '1',
-  `jobRankMove` int(11) NOT NULL DEFAULT '0',
-  `marriageId` int(11) NOT NULL DEFAULT '0',
-  `familyid` int(11) NOT NULL DEFAULT '0',
-  `seniorid` int(11) NOT NULL DEFAULT '0',
-  `junior1` int(11) NOT NULL DEFAULT '0',
-  `junior2` int(11) NOT NULL DEFAULT '0',
-  `currentrep` int(11) NOT NULL DEFAULT '0',
-  `totalrep` int(11) NOT NULL DEFAULT '0',
+  `subcategory` int NOT NULL DEFAULT '0',
+  `Jaguar` int NOT NULL DEFAULT '0',
+  `rank` int NOT NULL DEFAULT '1',
+  `rankMove` int NOT NULL DEFAULT '0',
+  `jobRank` int NOT NULL DEFAULT '1',
+  `jobRankMove` int NOT NULL DEFAULT '0',
+  `marriageId` int NOT NULL DEFAULT '0',
+  `familyid` int NOT NULL DEFAULT '0',
+  `seniorid` int NOT NULL DEFAULT '0',
+  `junior1` int NOT NULL DEFAULT '0',
+  `junior2` int NOT NULL DEFAULT '0',
+  `currentrep` int NOT NULL DEFAULT '0',
+  `totalrep` int NOT NULL DEFAULT '0',
   `charmessage` varchar(128) NOT NULL DEFAULT '安安',
-  `expression` int(11) NOT NULL DEFAULT '0',
-  `constellation` int(11) NOT NULL DEFAULT '0',
-  `blood` int(11) NOT NULL DEFAULT '0',
-  `month` int(11) NOT NULL DEFAULT '0',
-  `day` int(11) NOT NULL DEFAULT '0',
-  `beans` int(11) NOT NULL DEFAULT '0',
-  `prefix` int(255) DEFAULT '0',
-  `gachexp` int(11) NOT NULL DEFAULT '0'
+  `expression` int NOT NULL DEFAULT '0',
+  `constellation` int NOT NULL DEFAULT '0',
+  `blood` int NOT NULL DEFAULT '0',
+  `month` int NOT NULL DEFAULT '0',
+  `day` int NOT NULL DEFAULT '0',
+  `beans` int NOT NULL DEFAULT '0',
+  `prefix` int DEFAULT '0',
+  `gachexp` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `accountid` (`accountid`),
+  KEY `party` (`party`),
+  KEY `ranking1` (`level`,`exp`),
+  KEY `ranking2` (`gm`,`job`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -3214,11 +3260,12 @@ CREATE TABLE `characters` (
 --
 
 CREATE TABLE `character_slots` (
-  `id` int(11) NOT NULL,
-  `accid` int(11) NOT NULL DEFAULT '0',
-  `worldid` int(11) NOT NULL DEFAULT '0',
-  `charslots` int(11) NOT NULL DEFAULT '6'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `accid` int NOT NULL DEFAULT '0',
+  `worldid` int NOT NULL DEFAULT '0',
+  `charslots` int NOT NULL DEFAULT '6',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -3227,13 +3274,15 @@ CREATE TABLE `character_slots` (
 --
 
 CREATE TABLE `cheatlog` (
-  `id` int(11) NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
   `offense` tinytext NOT NULL,
-  `count` int(11) NOT NULL DEFAULT '0',
+  `count` int NOT NULL DEFAULT '0',
   `lastoffensetime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `param` tinytext NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `param` tinytext NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `cid` (`characterid`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=829883 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -3242,35 +3291,38 @@ CREATE TABLE `cheatlog` (
 --
 
 CREATE TABLE `csequipment` (
-  `inventoryequipmentid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `upgradeslots` int(11) NOT NULL DEFAULT '0',
-  `level` int(11) NOT NULL DEFAULT '0',
-  `str` int(11) NOT NULL DEFAULT '0',
-  `dex` int(11) NOT NULL DEFAULT '0',
-  `int` int(11) NOT NULL DEFAULT '0',
-  `luk` int(11) NOT NULL DEFAULT '0',
-  `hp` int(11) NOT NULL DEFAULT '0',
-  `mp` int(11) NOT NULL DEFAULT '0',
-  `watk` int(11) NOT NULL DEFAULT '0',
-  `matk` int(11) NOT NULL DEFAULT '0',
-  `wdef` int(11) NOT NULL DEFAULT '0',
-  `mdef` int(11) NOT NULL DEFAULT '0',
-  `acc` int(11) NOT NULL DEFAULT '0',
-  `avoid` int(11) NOT NULL DEFAULT '0',
-  `hands` int(11) NOT NULL DEFAULT '0',
-  `speed` int(11) NOT NULL DEFAULT '0',
-  `jump` int(11) NOT NULL DEFAULT '0',
-  `ViciousHammer` tinyint(2) NOT NULL DEFAULT '0',
-  `itemEXP` int(11) NOT NULL DEFAULT '0',
-  `durability` int(11) NOT NULL DEFAULT '-1',
-  `enhance` tinyint(3) NOT NULL DEFAULT '0',
-  `potential1` smallint(5) NOT NULL DEFAULT '0',
-  `potential2` smallint(5) NOT NULL DEFAULT '0',
-  `potential3` smallint(5) NOT NULL DEFAULT '0',
-  `hpR` smallint(5) NOT NULL DEFAULT '0',
-  `mpR` smallint(5) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `inventoryequipmentid` int unsigned NOT NULL AUTO_INCREMENT,
+  `inventoryitemid` int unsigned NOT NULL DEFAULT '0',
+  `upgradeslots` int NOT NULL DEFAULT '0',
+  `level` int NOT NULL DEFAULT '0',
+  `str` int NOT NULL DEFAULT '0',
+  `dex` int NOT NULL DEFAULT '0',
+  `int` int NOT NULL DEFAULT '0',
+  `luk` int NOT NULL DEFAULT '0',
+  `hp` int NOT NULL DEFAULT '0',
+  `mp` int NOT NULL DEFAULT '0',
+  `watk` int NOT NULL DEFAULT '0',
+  `matk` int NOT NULL DEFAULT '0',
+  `wdef` int NOT NULL DEFAULT '0',
+  `mdef` int NOT NULL DEFAULT '0',
+  `acc` int NOT NULL DEFAULT '0',
+  `avoid` int NOT NULL DEFAULT '0',
+  `hands` int NOT NULL DEFAULT '0',
+  `speed` int NOT NULL DEFAULT '0',
+  `jump` int NOT NULL DEFAULT '0',
+  `ViciousHammer` tinyint NOT NULL DEFAULT '0',
+  `itemEXP` int NOT NULL DEFAULT '0',
+  `durability` int NOT NULL DEFAULT '-1',
+  `enhance` tinyint NOT NULL DEFAULT '0',
+  `potential1` smallint NOT NULL DEFAULT '0',
+  `potential2` smallint NOT NULL DEFAULT '0',
+  `potential3` smallint NOT NULL DEFAULT '0',
+  `hpR` smallint NOT NULL DEFAULT '0',
+  `mpR` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`inventoryequipmentid`),
+  KEY `inventoryitemid` (`inventoryitemid`),
+  CONSTRAINT `csequiptment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `csitems` (`inventoryitemid`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=219 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -3279,22 +3331,29 @@ CREATE TABLE `csequipment` (
 --
 
 CREATE TABLE `csitems` (
-  `inventoryitemid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `accountid` int(10) DEFAULT NULL,
-  `packageid` int(11) DEFAULT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `inventorytype` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL DEFAULT '0',
-  `quantity` int(11) NOT NULL DEFAULT '0',
+  `inventoryitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `accountid` int DEFAULT NULL,
+  `packageid` int DEFAULT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `inventorytype` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL DEFAULT '0',
+  `quantity` int NOT NULL DEFAULT '0',
   `owner` tinytext,
   `GM_Log` tinytext,
-  `uniqueid` int(11) NOT NULL DEFAULT '-1',
-  `flag` int(2) NOT NULL DEFAULT '0',
-  `expiredate` bigint(20) NOT NULL DEFAULT '-1',
+  `uniqueid` int NOT NULL DEFAULT '-1',
+  `flag` int NOT NULL DEFAULT '0',
+  `expiredate` bigint NOT NULL DEFAULT '-1',
   `type` tinyint(1) NOT NULL DEFAULT '0',
-  `sender` varchar(13) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `sender` varchar(13) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inventoryitemid`),
+  KEY `inventoryitems_ibfk_1` (`characterid`),
+  KEY `characterid` (`characterid`),
+  KEY `inventorytype` (`inventorytype`),
+  KEY `accountid` (`accountid`),
+  KEY `packageid` (`packageid`),
+  KEY `characterid_2` (`characterid`,`inventorytype`)
+) ENGINE=InnoDB AUTO_INCREMENT=743 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -3303,14 +3362,16 @@ CREATE TABLE `csitems` (
 --
 
 CREATE TABLE `drop_data` (
-  `id` bigint(20) NOT NULL,
-  `dropperid` int(11) NOT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `minimum_quantity` int(11) NOT NULL DEFAULT '1',
-  `maximum_quantity` int(11) NOT NULL DEFAULT '1',
-  `questid` int(11) NOT NULL DEFAULT '0',
-  `chance` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `dropperid` int NOT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `minimum_quantity` int NOT NULL DEFAULT '1',
+  `maximum_quantity` int NOT NULL DEFAULT '1',
+  `questid` int NOT NULL DEFAULT '0',
+  `chance` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `mobid` (`dropperid`)
+) ENGINE=MyISAM AUTO_INCREMENT=39281 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `drop_data`
@@ -24339,16 +24400,18 @@ INSERT INTO `drop_data` (`id`, `dropperid`, `itemid`, `minimum_quantity`, `maxim
 --
 
 CREATE TABLE `drop_data_global` (
-  `id` bigint(20) NOT NULL,
-  `continent` int(11) NOT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `continent` int NOT NULL,
   `dropType` tinyint(1) NOT NULL DEFAULT '0',
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `minimum_quantity` int(11) NOT NULL DEFAULT '1',
-  `maximum_quantity` int(11) NOT NULL DEFAULT '1',
-  `questid` int(11) NOT NULL DEFAULT '0',
-  `chance` int(11) NOT NULL DEFAULT '0',
-  `comments` varchar(45) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `itemid` int NOT NULL DEFAULT '0',
+  `minimum_quantity` int NOT NULL DEFAULT '1',
+  `maximum_quantity` int NOT NULL DEFAULT '1',
+  `questid` int NOT NULL DEFAULT '0',
+  `chance` int NOT NULL DEFAULT '0',
+  `comments` varchar(45) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `mobid` (`continent`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
 
@@ -24357,35 +24420,38 @@ CREATE TABLE `drop_data_global` (
 --
 
 CREATE TABLE `dueyequipment` (
-  `inventoryequipmentid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `upgradeslots` int(11) NOT NULL DEFAULT '0',
-  `level` int(11) NOT NULL DEFAULT '0',
-  `str` int(11) NOT NULL DEFAULT '0',
-  `dex` int(11) NOT NULL DEFAULT '0',
-  `int` int(11) NOT NULL DEFAULT '0',
-  `luk` int(11) NOT NULL DEFAULT '0',
-  `hp` int(11) NOT NULL DEFAULT '0',
-  `mp` int(11) NOT NULL DEFAULT '0',
-  `watk` int(11) NOT NULL DEFAULT '0',
-  `matk` int(11) NOT NULL DEFAULT '0',
-  `wdef` int(11) NOT NULL DEFAULT '0',
-  `mdef` int(11) NOT NULL DEFAULT '0',
-  `acc` int(11) NOT NULL DEFAULT '0',
-  `avoid` int(11) NOT NULL DEFAULT '0',
-  `hands` int(11) NOT NULL DEFAULT '0',
-  `speed` int(11) NOT NULL DEFAULT '0',
-  `jump` int(11) NOT NULL DEFAULT '0',
-  `ViciousHammer` tinyint(2) NOT NULL DEFAULT '0',
-  `itemEXP` int(11) NOT NULL DEFAULT '0',
-  `durability` int(11) NOT NULL DEFAULT '-1',
-  `enhance` tinyint(3) NOT NULL DEFAULT '0',
-  `potential1` smallint(5) NOT NULL DEFAULT '0',
-  `potential2` smallint(5) NOT NULL DEFAULT '0',
-  `potential3` smallint(5) NOT NULL DEFAULT '0',
-  `hpR` smallint(5) NOT NULL DEFAULT '0',
-  `mpR` smallint(5) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `inventoryequipmentid` int unsigned NOT NULL AUTO_INCREMENT,
+  `inventoryitemid` int unsigned NOT NULL DEFAULT '0',
+  `upgradeslots` int NOT NULL DEFAULT '0',
+  `level` int NOT NULL DEFAULT '0',
+  `str` int NOT NULL DEFAULT '0',
+  `dex` int NOT NULL DEFAULT '0',
+  `int` int NOT NULL DEFAULT '0',
+  `luk` int NOT NULL DEFAULT '0',
+  `hp` int NOT NULL DEFAULT '0',
+  `mp` int NOT NULL DEFAULT '0',
+  `watk` int NOT NULL DEFAULT '0',
+  `matk` int NOT NULL DEFAULT '0',
+  `wdef` int NOT NULL DEFAULT '0',
+  `mdef` int NOT NULL DEFAULT '0',
+  `acc` int NOT NULL DEFAULT '0',
+  `avoid` int NOT NULL DEFAULT '0',
+  `hands` int NOT NULL DEFAULT '0',
+  `speed` int NOT NULL DEFAULT '0',
+  `jump` int NOT NULL DEFAULT '0',
+  `ViciousHammer` tinyint NOT NULL DEFAULT '0',
+  `itemEXP` int NOT NULL DEFAULT '0',
+  `durability` int NOT NULL DEFAULT '-1',
+  `enhance` tinyint NOT NULL DEFAULT '0',
+  `potential1` smallint NOT NULL DEFAULT '0',
+  `potential2` smallint NOT NULL DEFAULT '0',
+  `potential3` smallint NOT NULL DEFAULT '0',
+  `hpR` smallint NOT NULL DEFAULT '0',
+  `mpR` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`inventoryequipmentid`),
+  KEY `inventoryitemid` (`inventoryitemid`),
+  CONSTRAINT `dueyequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `dueyitems` (`inventoryitemid`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24394,22 +24460,29 @@ CREATE TABLE `dueyequipment` (
 --
 
 CREATE TABLE `dueyitems` (
-  `inventoryitemid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `accountid` int(10) DEFAULT NULL,
-  `packageid` int(11) DEFAULT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `inventorytype` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL DEFAULT '0',
-  `quantity` int(11) NOT NULL DEFAULT '0',
+  `inventoryitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `accountid` int DEFAULT NULL,
+  `packageid` int DEFAULT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `inventorytype` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL DEFAULT '0',
+  `quantity` int NOT NULL DEFAULT '0',
   `owner` tinytext,
   `GM_Log` tinytext,
-  `uniqueid` int(11) NOT NULL DEFAULT '-1',
-  `flag` int(2) NOT NULL DEFAULT '0',
-  `expiredate` bigint(20) NOT NULL DEFAULT '-1',
+  `uniqueid` int NOT NULL DEFAULT '-1',
+  `flag` int NOT NULL DEFAULT '0',
+  `expiredate` bigint NOT NULL DEFAULT '-1',
   `type` tinyint(1) NOT NULL DEFAULT '0',
-  `sender` varchar(15) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `sender` varchar(15) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inventoryitemid`),
+  KEY `inventoryitems_ibfk_1` (`characterid`),
+  KEY `characterid` (`characterid`),
+  KEY `inventorytype` (`inventorytype`),
+  KEY `accountid` (`accountid`),
+  KEY `packageid` (`packageid`),
+  KEY `characterid_2` (`characterid`,`inventorytype`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24418,14 +24491,15 @@ CREATE TABLE `dueyitems` (
 --
 
 CREATE TABLE `dueypackages` (
-  `PackageId` int(10) UNSIGNED NOT NULL,
-  `RecieverId` int(10) NOT NULL,
+  `PackageId` int unsigned NOT NULL AUTO_INCREMENT,
+  `RecieverId` int NOT NULL,
   `SenderName` varchar(15) NOT NULL,
-  `Mesos` int(10) UNSIGNED DEFAULT '0',
-  `TimeStamp` bigint(20) UNSIGNED DEFAULT NULL,
-  `Checked` tinyint(1) UNSIGNED DEFAULT '1',
-  `Type` tinyint(1) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `Mesos` int unsigned DEFAULT '0',
+  `TimeStamp` bigint unsigned DEFAULT NULL,
+  `Checked` tinyint unsigned DEFAULT '1',
+  `Type` tinyint unsigned NOT NULL,
+  PRIMARY KEY (`PackageId`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24434,10 +24508,13 @@ CREATE TABLE `dueypackages` (
 --
 
 CREATE TABLE `famelog` (
-  `famelogid` int(11) NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `characterid_to` int(11) NOT NULL DEFAULT '0',
-  `when` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `famelogid` int NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
+  `characterid_to` int NOT NULL DEFAULT '0',
+  `when` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`famelogid`),
+  KEY `characterid` (`characterid`),
+  CONSTRAINT `famelog_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -24447,9 +24524,10 @@ CREATE TABLE `famelog` (
 --
 
 CREATE TABLE `families` (
-  `familyid` int(11) NOT NULL,
-  `leaderid` int(11) NOT NULL DEFAULT '0',
-  `notice` varchar(255) NOT NULL DEFAULT ''
+  `familyid` int NOT NULL AUTO_INCREMENT,
+  `leaderid` int NOT NULL DEFAULT '0',
+  `notice` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`familyid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -24459,13 +24537,14 @@ CREATE TABLE `families` (
 --
 
 CREATE TABLE `gifts` (
-  `giftid` int(10) UNSIGNED NOT NULL,
-  `recipient` int(11) NOT NULL DEFAULT '0',
+  `giftid` int unsigned NOT NULL AUTO_INCREMENT,
+  `recipient` int NOT NULL DEFAULT '0',
   `from` varchar(13) NOT NULL DEFAULT '',
   `message` varchar(255) NOT NULL DEFAULT '',
-  `sn` int(11) NOT NULL DEFAULT '0',
-  `uniqueid` int(11) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `sn` int NOT NULL DEFAULT '0',
+  `uniqueid` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`giftid`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24474,10 +24553,11 @@ CREATE TABLE `gifts` (
 --
 
 CREATE TABLE `gmlog` (
-  `gmlogid` int(11) NOT NULL,
-  `cid` int(11) NOT NULL DEFAULT '0',
+  `gmlogid` int NOT NULL AUTO_INCREMENT,
+  `cid` int NOT NULL DEFAULT '0',
   `command` tinytext NOT NULL,
-  `mapid` int(11) NOT NULL DEFAULT '0'
+  `mapid` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`gmlogid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24487,23 +24567,24 @@ CREATE TABLE `gmlog` (
 --
 
 CREATE TABLE `guilds` (
-  `guildid` int(10) UNSIGNED NOT NULL,
-  `leader` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `GP` int(11) NOT NULL DEFAULT '0',
-  `logo` int(10) UNSIGNED DEFAULT NULL,
-  `logoColor` smallint(5) UNSIGNED NOT NULL DEFAULT '0',
+  `guildid` int unsigned NOT NULL AUTO_INCREMENT,
+  `leader` int unsigned NOT NULL DEFAULT '0',
+  `GP` int NOT NULL DEFAULT '0',
+  `logo` int unsigned DEFAULT NULL,
+  `logoColor` smallint unsigned NOT NULL DEFAULT '0',
   `name` varchar(45) NOT NULL,
   `rank1title` varchar(45) NOT NULL DEFAULT '公會長',
   `rank2title` varchar(45) NOT NULL DEFAULT '公會副會長',
   `rank3title` varchar(45) NOT NULL DEFAULT '公會成員',
   `rank4title` varchar(45) NOT NULL DEFAULT '公會成員',
   `rank5title` varchar(45) NOT NULL DEFAULT '公會成員',
-  `capacity` int(10) UNSIGNED NOT NULL DEFAULT '10',
-  `logoBG` int(10) UNSIGNED DEFAULT NULL,
-  `logoBGColor` smallint(5) UNSIGNED NOT NULL DEFAULT '0',
+  `capacity` int unsigned NOT NULL DEFAULT '10',
+  `logoBG` int unsigned DEFAULT NULL,
+  `logoBGColor` smallint unsigned NOT NULL DEFAULT '0',
   `notice` varchar(101) DEFAULT NULL,
-  `signature` int(11) NOT NULL DEFAULT '0',
-  `alliance` int(10) UNSIGNED NOT NULL DEFAULT '0'
+  `signature` int NOT NULL DEFAULT '0',
+  `alliance` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`guildid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24513,12 +24594,13 @@ CREATE TABLE `guilds` (
 --
 
 CREATE TABLE `hiredmerch` (
-  `PackageId` int(10) UNSIGNED NOT NULL,
-  `characterid` int(10) UNSIGNED DEFAULT '0',
-  `accountid` int(10) UNSIGNED DEFAULT NULL,
-  `Mesos` int(10) UNSIGNED DEFAULT '0',
-  `time` bigint(20) UNSIGNED DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `PackageId` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int unsigned DEFAULT '0',
+  `accountid` int unsigned DEFAULT NULL,
+  `Mesos` int unsigned DEFAULT '0',
+  `time` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`PackageId`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24527,34 +24609,37 @@ CREATE TABLE `hiredmerch` (
 --
 
 CREATE TABLE `hiredmerchequipment` (
-  `inventoryequipmentid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `upgradeslots` int(11) NOT NULL DEFAULT '0',
-  `level` int(11) NOT NULL DEFAULT '0',
-  `str` int(11) NOT NULL DEFAULT '0',
-  `dex` int(11) NOT NULL DEFAULT '0',
-  `int` int(11) NOT NULL DEFAULT '0',
-  `luk` int(11) NOT NULL DEFAULT '0',
-  `hp` int(11) NOT NULL DEFAULT '0',
-  `mp` int(11) NOT NULL DEFAULT '0',
-  `watk` int(11) NOT NULL DEFAULT '0',
-  `matk` int(11) NOT NULL DEFAULT '0',
-  `wdef` int(11) NOT NULL DEFAULT '0',
-  `mdef` int(11) NOT NULL DEFAULT '0',
-  `acc` int(11) NOT NULL DEFAULT '0',
-  `avoid` int(11) NOT NULL DEFAULT '0',
-  `hands` int(11) NOT NULL DEFAULT '0',
-  `speed` int(11) NOT NULL DEFAULT '0',
-  `jump` int(11) NOT NULL DEFAULT '0',
-  `ViciousHammer` tinyint(2) NOT NULL DEFAULT '0',
-  `itemEXP` int(11) NOT NULL DEFAULT '0',
-  `durability` int(11) NOT NULL DEFAULT '-1',
-  `enhance` tinyint(3) NOT NULL DEFAULT '0',
-  `potential1` smallint(5) NOT NULL DEFAULT '0',
-  `potential2` smallint(5) NOT NULL DEFAULT '0',
-  `potential3` smallint(5) NOT NULL DEFAULT '0',
-  `hpR` smallint(5) NOT NULL DEFAULT '0',
-  `mpR` smallint(5) NOT NULL DEFAULT '0'
+  `inventoryequipmentid` int unsigned NOT NULL AUTO_INCREMENT,
+  `inventoryitemid` int unsigned NOT NULL DEFAULT '0',
+  `upgradeslots` int NOT NULL DEFAULT '0',
+  `level` int NOT NULL DEFAULT '0',
+  `str` int NOT NULL DEFAULT '0',
+  `dex` int NOT NULL DEFAULT '0',
+  `int` int NOT NULL DEFAULT '0',
+  `luk` int NOT NULL DEFAULT '0',
+  `hp` int NOT NULL DEFAULT '0',
+  `mp` int NOT NULL DEFAULT '0',
+  `watk` int NOT NULL DEFAULT '0',
+  `matk` int NOT NULL DEFAULT '0',
+  `wdef` int NOT NULL DEFAULT '0',
+  `mdef` int NOT NULL DEFAULT '0',
+  `acc` int NOT NULL DEFAULT '0',
+  `avoid` int NOT NULL DEFAULT '0',
+  `hands` int NOT NULL DEFAULT '0',
+  `speed` int NOT NULL DEFAULT '0',
+  `jump` int NOT NULL DEFAULT '0',
+  `ViciousHammer` tinyint NOT NULL DEFAULT '0',
+  `itemEXP` int NOT NULL DEFAULT '0',
+  `durability` int NOT NULL DEFAULT '-1',
+  `enhance` tinyint NOT NULL DEFAULT '0',
+  `potential1` smallint NOT NULL DEFAULT '0',
+  `potential2` smallint NOT NULL DEFAULT '0',
+  `potential3` smallint NOT NULL DEFAULT '0',
+  `hpR` smallint NOT NULL DEFAULT '0',
+  `mpR` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`inventoryequipmentid`),
+  KEY `inventoryitemid` (`inventoryitemid`),
+  CONSTRAINT `hiredmerchantequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `hiredmerchitems` (`inventoryitemid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24564,22 +24649,29 @@ CREATE TABLE `hiredmerchequipment` (
 --
 
 CREATE TABLE `hiredmerchitems` (
-  `inventoryitemid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `accountid` int(10) DEFAULT NULL,
-  `packageid` int(11) DEFAULT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `inventorytype` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL DEFAULT '0',
-  `quantity` int(11) NOT NULL DEFAULT '0',
+  `inventoryitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `accountid` int DEFAULT NULL,
+  `packageid` int DEFAULT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `inventorytype` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL DEFAULT '0',
+  `quantity` int NOT NULL DEFAULT '0',
   `owner` tinytext,
   `GM_Log` tinytext,
-  `uniqueid` int(11) NOT NULL DEFAULT '-1',
-  `flag` int(2) NOT NULL DEFAULT '0',
-  `expiredate` bigint(20) NOT NULL DEFAULT '-1',
+  `uniqueid` int NOT NULL DEFAULT '-1',
+  `flag` int NOT NULL DEFAULT '0',
+  `expiredate` bigint NOT NULL DEFAULT '-1',
   `type` tinyint(1) NOT NULL DEFAULT '0',
-  `sender` varchar(15) NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `sender` varchar(15) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inventoryitemid`),
+  KEY `inventoryitems_ibfk_1` (`characterid`),
+  KEY `characterid` (`characterid`),
+  KEY `inventorytype` (`inventorytype`),
+  KEY `accountid` (`accountid`),
+  KEY `packageid` (`packageid`),
+  KEY `characterid_2` (`characterid`,`inventorytype`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24588,34 +24680,37 @@ CREATE TABLE `hiredmerchitems` (
 --
 
 CREATE TABLE `inventoryequipment` (
-  `inventoryequipmentid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `upgradeslots` tinyint(3) UNSIGNED NOT NULL DEFAULT '0',
-  `level` tinyint(3) UNSIGNED NOT NULL DEFAULT '0',
-  `str` smallint(6) NOT NULL DEFAULT '0',
-  `dex` smallint(6) NOT NULL DEFAULT '0',
-  `int` smallint(6) NOT NULL DEFAULT '0',
-  `luk` smallint(6) NOT NULL DEFAULT '0',
-  `hp` smallint(6) NOT NULL DEFAULT '0',
-  `mp` smallint(6) NOT NULL DEFAULT '0',
-  `watk` smallint(6) NOT NULL DEFAULT '0',
-  `matk` smallint(6) NOT NULL DEFAULT '0',
-  `wdef` smallint(6) NOT NULL DEFAULT '0',
-  `mdef` smallint(6) NOT NULL DEFAULT '0',
-  `acc` smallint(6) NOT NULL DEFAULT '0',
-  `avoid` smallint(6) NOT NULL DEFAULT '0',
-  `hands` smallint(6) NOT NULL DEFAULT '0',
-  `speed` smallint(6) NOT NULL DEFAULT '0',
-  `jump` smallint(6) NOT NULL DEFAULT '0',
-  `ViciousHammer` tinyint(2) NOT NULL DEFAULT '0',
-  `itemEXP` int(11) NOT NULL DEFAULT '0',
-  `durability` mediumint(9) NOT NULL DEFAULT '-1',
-  `enhance` tinyint(3) NOT NULL DEFAULT '0',
-  `potential1` smallint(5) NOT NULL DEFAULT '0',
-  `potential2` smallint(5) NOT NULL DEFAULT '0',
-  `potential3` smallint(5) NOT NULL DEFAULT '0',
-  `hpR` smallint(5) NOT NULL DEFAULT '0',
-  `mpR` smallint(5) NOT NULL DEFAULT '0'
+  `inventoryequipmentid` int unsigned NOT NULL AUTO_INCREMENT,
+  `inventoryitemid` int unsigned NOT NULL DEFAULT '0',
+  `upgradeslots` tinyint unsigned NOT NULL DEFAULT '0',
+  `level` tinyint unsigned NOT NULL DEFAULT '0',
+  `str` smallint NOT NULL DEFAULT '0',
+  `dex` smallint NOT NULL DEFAULT '0',
+  `int` smallint NOT NULL DEFAULT '0',
+  `luk` smallint NOT NULL DEFAULT '0',
+  `hp` smallint NOT NULL DEFAULT '0',
+  `mp` smallint NOT NULL DEFAULT '0',
+  `watk` smallint NOT NULL DEFAULT '0',
+  `matk` smallint NOT NULL DEFAULT '0',
+  `wdef` smallint NOT NULL DEFAULT '0',
+  `mdef` smallint NOT NULL DEFAULT '0',
+  `acc` smallint NOT NULL DEFAULT '0',
+  `avoid` smallint NOT NULL DEFAULT '0',
+  `hands` smallint NOT NULL DEFAULT '0',
+  `speed` smallint NOT NULL DEFAULT '0',
+  `jump` smallint NOT NULL DEFAULT '0',
+  `ViciousHammer` tinyint NOT NULL DEFAULT '0',
+  `itemEXP` int NOT NULL DEFAULT '0',
+  `durability` mediumint NOT NULL DEFAULT '-1',
+  `enhance` tinyint NOT NULL DEFAULT '0',
+  `potential1` smallint NOT NULL DEFAULT '0',
+  `potential2` smallint NOT NULL DEFAULT '0',
+  `potential3` smallint NOT NULL DEFAULT '0',
+  `hpR` smallint NOT NULL DEFAULT '0',
+  `mpR` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`inventoryequipmentid`),
+  KEY `inventoryitemid` (`inventoryitemid`),
+  CONSTRAINT `inventoryequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `inventoryitems` (`inventoryitemid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24625,21 +24720,26 @@ CREATE TABLE `inventoryequipment` (
 --
 
 CREATE TABLE `inventoryitems` (
-  `inventoryitemid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `accountid` int(10) DEFAULT NULL,
-  `packageid` int(11) DEFAULT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `inventorytype` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL DEFAULT '0',
-  `quantity` int(11) NOT NULL DEFAULT '0',
+  `inventoryitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `accountid` int DEFAULT NULL,
+  `packageid` int DEFAULT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `inventorytype` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL DEFAULT '0',
+  `quantity` int NOT NULL DEFAULT '0',
   `owner` tinytext,
   `GM_Log` tinytext,
-  `uniqueid` int(11) NOT NULL DEFAULT '-1',
-  `flag` int(2) NOT NULL DEFAULT '0',
-  `expiredate` bigint(20) NOT NULL DEFAULT '-1',
+  `uniqueid` int NOT NULL DEFAULT '-1',
+  `flag` int NOT NULL DEFAULT '0',
+  `expiredate` bigint NOT NULL DEFAULT '-1',
   `type` tinyint(1) NOT NULL DEFAULT '0',
-  `sender` varchar(15) NOT NULL DEFAULT ''
+  `sender` varchar(15) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inventoryitemid`),
+  KEY `inventorytype` (`inventorytype`),
+  KEY `accountid` (`accountid`),
+  KEY `packageid` (`packageid`),
+  KEY `characterid_2` (`characterid`,`inventorytype`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24649,13 +24749,14 @@ CREATE TABLE `inventoryitems` (
 --
 
 CREATE TABLE `inventoryslot` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `characterid` int(10) UNSIGNED DEFAULT NULL,
-  `equip` tinyint(3) UNSIGNED DEFAULT NULL,
-  `use` tinyint(3) UNSIGNED DEFAULT NULL,
-  `setup` tinyint(3) UNSIGNED DEFAULT NULL,
-  `etc` tinyint(3) UNSIGNED DEFAULT NULL,
-  `cash` tinyint(3) UNSIGNED DEFAULT NULL
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int unsigned DEFAULT NULL,
+  `equip` tinyint unsigned DEFAULT NULL,
+  `use` tinyint unsigned DEFAULT NULL,
+  `setup` tinyint unsigned DEFAULT NULL,
+  `etc` tinyint unsigned DEFAULT NULL,
+  `cash` tinyint unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -24666,12 +24767,13 @@ CREATE TABLE `inventoryslot` (
 
 -- 程式碼零引用；保留原因：外部網頁註冊頁使用（邀請碼），遊戲端從不讀寫。
 CREATE TABLE `invitecodedata` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `code` varchar(255) NOT NULL,
   `user` varchar(255) DEFAULT NULL,
   `time` varchar(255) DEFAULT NULL,
   `ip` varchar(255) DEFAULT NULL,
-  `active` int(255) NOT NULL DEFAULT '0'
+  `active` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24681,8 +24783,9 @@ CREATE TABLE `invitecodedata` (
 --
 
 CREATE TABLE `ipbans` (
-  `ipbanid` int(10) UNSIGNED NOT NULL,
-  `ip` varchar(40) NOT NULL DEFAULT ''
+  `ipbanid` int unsigned NOT NULL AUTO_INCREMENT,
+  `ip` varchar(40) NOT NULL DEFAULT '',
+  PRIMARY KEY (`ipbanid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24693,11 +24796,12 @@ CREATE TABLE `ipbans` (
 
 -- 程式碼零引用；保留原因：外部投票獎勵網頁使用（投票紀錄），遊戲端從不讀寫。
 CREATE TABLE `ipvotelog` (
-  `vid` int(10) UNSIGNED NOT NULL,
+  `vid` int unsigned NOT NULL AUTO_INCREMENT,
   `accid` varchar(45) NOT NULL DEFAULT '0',
   `ipaddress` varchar(30) NOT NULL DEFAULT '127.0.0.1',
   `votetime` varchar(100) NOT NULL DEFAULT '0',
-  `votetype` tinyint(1) UNSIGNED NOT NULL DEFAULT '0'
+  `votetype` tinyint unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`vid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24707,11 +24811,14 @@ CREATE TABLE `ipvotelog` (
 --
 
 CREATE TABLE `keymap` (
-  `id` int(11) NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `key` tinyint(3) UNSIGNED NOT NULL DEFAULT '0',
-  `type` tinyint(3) UNSIGNED NOT NULL DEFAULT '0',
-  `action` int(11) NOT NULL DEFAULT '0'
+  `id` int NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
+  `key` tinyint unsigned NOT NULL DEFAULT '0',
+  `type` tinyint unsigned NOT NULL DEFAULT '0',
+  `action` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `keymap_ibfk_1` (`characterid`),
+  CONSTRAINT `keymap_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24737,8 +24844,10 @@ CREATE TABLE `loginlog` (
 --
 
 CREATE TABLE `macbans` (
-  `macbanid` int(10) UNSIGNED NOT NULL,
-  `mac` varchar(30) NOT NULL
+  `macbanid` int unsigned NOT NULL AUTO_INCREMENT,
+  `mac` varchar(30) NOT NULL,
+  PRIMARY KEY (`macbanid`),
+  UNIQUE KEY `mac_2` (`mac`)
 ) ENGINE=MEMORY DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
@@ -24748,8 +24857,9 @@ CREATE TABLE `macbans` (
 --
 
 CREATE TABLE `macfilters` (
-  `macfilterid` int(10) UNSIGNED NOT NULL,
-  `filter` varchar(30) NOT NULL
+  `macfilterid` int unsigned NOT NULL AUTO_INCREMENT,
+  `filter` varchar(30) NOT NULL,
+  PRIMARY KEY (`macfilterid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24759,11 +24869,12 @@ CREATE TABLE `macfilters` (
 --
 
 CREATE TABLE `monsterbook` (
-  `id` int(10) NOT NULL,
-  `charid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `cardid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `level` tinyint(2) UNSIGNED DEFAULT '1'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `charid` int unsigned NOT NULL DEFAULT '0',
+  `cardid` int unsigned NOT NULL DEFAULT '0',
+  `level` tinyint unsigned DEFAULT '1',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24772,12 +24883,13 @@ CREATE TABLE `monsterbook` (
 --
 
 CREATE TABLE `mountdata` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `characterid` int(10) UNSIGNED DEFAULT NULL,
-  `Level` int(3) UNSIGNED NOT NULL DEFAULT '0',
-  `Exp` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `Fatigue` int(3) UNSIGNED NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int unsigned DEFAULT NULL,
+  `Level` int unsigned NOT NULL DEFAULT '0',
+  `Exp` int unsigned NOT NULL DEFAULT '0',
+  `Fatigue` int unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -24786,34 +24898,37 @@ CREATE TABLE `mountdata` (
 --
 
 CREATE TABLE `mtsequipment` (
-  `inventoryequipmentid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `upgradeslots` int(11) NOT NULL DEFAULT '0',
-  `level` int(11) NOT NULL DEFAULT '0',
-  `str` int(11) NOT NULL DEFAULT '0',
-  `dex` int(11) NOT NULL DEFAULT '0',
-  `int` int(11) NOT NULL DEFAULT '0',
-  `luk` int(11) NOT NULL DEFAULT '0',
-  `hp` int(11) NOT NULL DEFAULT '0',
-  `mp` int(11) NOT NULL DEFAULT '0',
-  `watk` int(11) NOT NULL DEFAULT '0',
-  `matk` int(11) NOT NULL DEFAULT '0',
-  `wdef` int(11) NOT NULL DEFAULT '0',
-  `mdef` int(11) NOT NULL DEFAULT '0',
-  `acc` int(11) NOT NULL DEFAULT '0',
-  `avoid` int(11) NOT NULL DEFAULT '0',
-  `hands` int(11) NOT NULL DEFAULT '0',
-  `speed` int(11) NOT NULL DEFAULT '0',
-  `jump` int(11) NOT NULL DEFAULT '0',
-  `ViciousHammer` tinyint(2) NOT NULL DEFAULT '0',
-  `itemEXP` int(11) NOT NULL DEFAULT '0',
-  `durability` int(11) NOT NULL DEFAULT '-1',
-  `enhance` tinyint(3) NOT NULL DEFAULT '0',
-  `potential1` smallint(5) NOT NULL DEFAULT '0',
-  `potential2` smallint(5) NOT NULL DEFAULT '0',
-  `potential3` smallint(5) NOT NULL DEFAULT '0',
-  `hpR` smallint(5) NOT NULL DEFAULT '0',
-  `mpR` smallint(5) NOT NULL DEFAULT '0'
+  `inventoryequipmentid` int unsigned NOT NULL AUTO_INCREMENT,
+  `inventoryitemid` int unsigned NOT NULL DEFAULT '0',
+  `upgradeslots` int NOT NULL DEFAULT '0',
+  `level` int NOT NULL DEFAULT '0',
+  `str` int NOT NULL DEFAULT '0',
+  `dex` int NOT NULL DEFAULT '0',
+  `int` int NOT NULL DEFAULT '0',
+  `luk` int NOT NULL DEFAULT '0',
+  `hp` int NOT NULL DEFAULT '0',
+  `mp` int NOT NULL DEFAULT '0',
+  `watk` int NOT NULL DEFAULT '0',
+  `matk` int NOT NULL DEFAULT '0',
+  `wdef` int NOT NULL DEFAULT '0',
+  `mdef` int NOT NULL DEFAULT '0',
+  `acc` int NOT NULL DEFAULT '0',
+  `avoid` int NOT NULL DEFAULT '0',
+  `hands` int NOT NULL DEFAULT '0',
+  `speed` int NOT NULL DEFAULT '0',
+  `jump` int NOT NULL DEFAULT '0',
+  `ViciousHammer` tinyint NOT NULL DEFAULT '0',
+  `itemEXP` int NOT NULL DEFAULT '0',
+  `durability` int NOT NULL DEFAULT '-1',
+  `enhance` tinyint NOT NULL DEFAULT '0',
+  `potential1` smallint NOT NULL DEFAULT '0',
+  `potential2` smallint NOT NULL DEFAULT '0',
+  `potential3` smallint NOT NULL DEFAULT '0',
+  `hpR` smallint NOT NULL DEFAULT '0',
+  `mpR` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`inventoryequipmentid`),
+  KEY `inventoryitemid` (`inventoryitemid`),
+  CONSTRAINT `mtsequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `mtsitems` (`inventoryitemid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24823,21 +24938,28 @@ CREATE TABLE `mtsequipment` (
 --
 
 CREATE TABLE `mtsitems` (
-  `inventoryitemid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `accountid` int(10) DEFAULT NULL,
-  `packageId` int(11) DEFAULT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `inventorytype` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL DEFAULT '0',
-  `quantity` int(11) NOT NULL DEFAULT '0',
+  `inventoryitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `accountid` int DEFAULT NULL,
+  `packageId` int DEFAULT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `inventorytype` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL DEFAULT '0',
+  `quantity` int NOT NULL DEFAULT '0',
   `owner` tinytext,
   `GM_Log` tinytext,
-  `uniqueid` int(11) NOT NULL DEFAULT '-1',
-  `flag` int(2) NOT NULL DEFAULT '0',
-  `expiredate` bigint(20) NOT NULL DEFAULT '-1',
+  `uniqueid` int NOT NULL DEFAULT '-1',
+  `flag` int NOT NULL DEFAULT '0',
+  `expiredate` bigint NOT NULL DEFAULT '-1',
   `type` tinyint(1) NOT NULL DEFAULT '0',
-  `sender` varchar(15) NOT NULL DEFAULT ''
+  `sender` varchar(15) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inventoryitemid`),
+  KEY `inventoryitems_ibfk_1` (`characterid`),
+  KEY `characterid` (`characterid`),
+  KEY `inventorytype` (`inventorytype`),
+  KEY `accountid` (`accountid`),
+  KEY `characterid_2` (`characterid`,`inventorytype`),
+  KEY `packageid` (`packageId`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24847,21 +24969,28 @@ CREATE TABLE `mtsitems` (
 --
 
 CREATE TABLE `mtstransfer` (
-  `inventoryitemid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `accountid` int(10) DEFAULT NULL,
-  `packageid` int(11) DEFAULT NULL,
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `inventorytype` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL DEFAULT '0',
-  `quantity` int(11) NOT NULL DEFAULT '0',
+  `inventoryitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `accountid` int DEFAULT NULL,
+  `packageid` int DEFAULT NULL,
+  `itemid` int NOT NULL DEFAULT '0',
+  `inventorytype` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL DEFAULT '0',
+  `quantity` int NOT NULL DEFAULT '0',
   `owner` tinytext,
   `GM_Log` tinytext,
-  `uniqueid` int(11) NOT NULL DEFAULT '-1',
-  `flag` int(2) NOT NULL DEFAULT '0',
-  `expiredate` bigint(20) NOT NULL DEFAULT '-1',
+  `uniqueid` int NOT NULL DEFAULT '-1',
+  `flag` int NOT NULL DEFAULT '0',
+  `expiredate` bigint NOT NULL DEFAULT '-1',
   `type` tinyint(1) NOT NULL DEFAULT '0',
-  `sender` varchar(15) NOT NULL DEFAULT ''
+  `sender` varchar(15) NOT NULL DEFAULT '',
+  PRIMARY KEY (`inventoryitemid`),
+  KEY `inventoryitems_ibfk_1` (`characterid`),
+  KEY `characterid` (`characterid`),
+  KEY `inventorytype` (`inventorytype`),
+  KEY `accountid` (`accountid`),
+  KEY `packageid` (`packageid`),
+  KEY `characterid_2` (`characterid`,`inventorytype`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24871,34 +25000,37 @@ CREATE TABLE `mtstransfer` (
 --
 
 CREATE TABLE `mtstransferequipment` (
-  `inventoryequipmentid` int(10) UNSIGNED NOT NULL,
-  `inventoryitemid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `upgradeslots` int(11) NOT NULL DEFAULT '0',
-  `level` int(11) NOT NULL DEFAULT '0',
-  `str` int(11) NOT NULL DEFAULT '0',
-  `dex` int(11) NOT NULL DEFAULT '0',
-  `int` int(11) NOT NULL DEFAULT '0',
-  `luk` int(11) NOT NULL DEFAULT '0',
-  `hp` int(11) NOT NULL DEFAULT '0',
-  `mp` int(11) NOT NULL DEFAULT '0',
-  `watk` int(11) NOT NULL DEFAULT '0',
-  `matk` int(11) NOT NULL DEFAULT '0',
-  `wdef` int(11) NOT NULL DEFAULT '0',
-  `mdef` int(11) NOT NULL DEFAULT '0',
-  `acc` int(11) NOT NULL DEFAULT '0',
-  `avoid` int(11) NOT NULL DEFAULT '0',
-  `hands` int(11) NOT NULL DEFAULT '0',
-  `speed` int(11) NOT NULL DEFAULT '0',
-  `jump` int(11) NOT NULL DEFAULT '0',
-  `ViciousHammer` tinyint(2) NOT NULL DEFAULT '0',
-  `itemEXP` int(11) NOT NULL DEFAULT '0',
-  `durability` int(11) NOT NULL DEFAULT '-1',
-  `enhance` tinyint(3) NOT NULL DEFAULT '0',
-  `potential1` smallint(5) NOT NULL DEFAULT '0',
-  `potential2` smallint(5) NOT NULL DEFAULT '0',
-  `potential3` smallint(5) NOT NULL DEFAULT '0',
-  `hpR` smallint(5) NOT NULL DEFAULT '0',
-  `mpR` smallint(5) NOT NULL DEFAULT '0'
+  `inventoryequipmentid` int unsigned NOT NULL AUTO_INCREMENT,
+  `inventoryitemid` int unsigned NOT NULL DEFAULT '0',
+  `upgradeslots` int NOT NULL DEFAULT '0',
+  `level` int NOT NULL DEFAULT '0',
+  `str` int NOT NULL DEFAULT '0',
+  `dex` int NOT NULL DEFAULT '0',
+  `int` int NOT NULL DEFAULT '0',
+  `luk` int NOT NULL DEFAULT '0',
+  `hp` int NOT NULL DEFAULT '0',
+  `mp` int NOT NULL DEFAULT '0',
+  `watk` int NOT NULL DEFAULT '0',
+  `matk` int NOT NULL DEFAULT '0',
+  `wdef` int NOT NULL DEFAULT '0',
+  `mdef` int NOT NULL DEFAULT '0',
+  `acc` int NOT NULL DEFAULT '0',
+  `avoid` int NOT NULL DEFAULT '0',
+  `hands` int NOT NULL DEFAULT '0',
+  `speed` int NOT NULL DEFAULT '0',
+  `jump` int NOT NULL DEFAULT '0',
+  `ViciousHammer` tinyint NOT NULL DEFAULT '0',
+  `itemEXP` int NOT NULL DEFAULT '0',
+  `durability` int NOT NULL DEFAULT '-1',
+  `enhance` tinyint NOT NULL DEFAULT '0',
+  `potential1` smallint NOT NULL DEFAULT '0',
+  `potential2` smallint NOT NULL DEFAULT '0',
+  `potential3` smallint NOT NULL DEFAULT '0',
+  `hpR` smallint NOT NULL DEFAULT '0',
+  `mpR` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`inventoryequipmentid`),
+  KEY `inventoryitemid` (`inventoryitemid`),
+  CONSTRAINT `mtstransferequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `mtstransfer` (`inventoryitemid`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24908,9 +25040,10 @@ CREATE TABLE `mtstransferequipment` (
 --
 
 CREATE TABLE `mts_cart` (
-  `id` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `itemid` int(11) NOT NULL DEFAULT '0'
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
+  `itemid` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24920,12 +25053,13 @@ CREATE TABLE `mts_cart` (
 --
 
 CREATE TABLE `mts_items` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL,
   `tab` tinyint(1) NOT NULL DEFAULT '1',
-  `price` int(11) NOT NULL DEFAULT '0',
-  `characterid` int(11) NOT NULL DEFAULT '0',
+  `price` int NOT NULL DEFAULT '0',
+  `characterid` int NOT NULL DEFAULT '0',
   `seller` varchar(15) NOT NULL DEFAULT '',
-  `expiration` bigint(20) NOT NULL DEFAULT '0'
+  `expiration` bigint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24935,13 +25069,14 @@ CREATE TABLE `mts_items` (
 --
 
 CREATE TABLE `notes` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `to` varchar(15) NOT NULL DEFAULT '',
   `from` varchar(15) NOT NULL DEFAULT '',
   `message` text NOT NULL,
-  `timestamp` bigint(20) UNSIGNED NOT NULL,
-  `gift` tinyint(1) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `timestamp` bigint unsigned NOT NULL,
+  `gift` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 -- --------------------------------------------------------
 
@@ -24951,10 +25086,11 @@ CREATE TABLE `notes` (
 
 CREATE TABLE `nxcode` (
   `code` varchar(15) NOT NULL,
-  `valid` int(11) NOT NULL DEFAULT '1',
+  `valid` int NOT NULL DEFAULT '1',
   `user` varchar(15) DEFAULT NULL,
-  `type` int(11) NOT NULL DEFAULT '0',
-  `item` int(11) NOT NULL DEFAULT '10000'
+  `type` int NOT NULL DEFAULT '0',
+  `item` int NOT NULL DEFAULT '10000',
+  PRIMARY KEY (`code`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -24964,14 +25100,15 @@ CREATE TABLE `nxcode` (
 --
 
 CREATE TABLE `pets` (
-  `petid` int(10) UNSIGNED NOT NULL,
+  `petid` int unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(13) DEFAULT NULL,
-  `level` int(3) UNSIGNED NOT NULL,
-  `closeness` int(6) UNSIGNED NOT NULL,
-  `fullness` int(3) UNSIGNED NOT NULL,
-  `seconds` int(11) NOT NULL DEFAULT '0',
-  `flags` smallint(5) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `level` int unsigned NOT NULL,
+  `closeness` int unsigned NOT NULL,
+  `fullness` int unsigned NOT NULL,
+  `seconds` int NOT NULL DEFAULT '0',
+  `flags` smallint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`petid`)
+) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 --
 -- 資料表的匯出資料 `pets`
@@ -24985,21 +25122,25 @@ CREATE TABLE `pets` (
 --
 
 CREATE TABLE `playernpcs` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(15) NOT NULL,
-  `hair` int(11) NOT NULL,
-  `face` int(11) NOT NULL,
-  `skin` int(11) NOT NULL,
-  `x` int(11) NOT NULL DEFAULT '0',
-  `y` int(11) NOT NULL DEFAULT '0',
-  `map` int(11) NOT NULL,
-  `charid` int(11) NOT NULL,
-  `scriptid` int(11) NOT NULL,
-  `foothold` int(11) NOT NULL,
+  `hair` int NOT NULL,
+  `face` int NOT NULL,
+  `skin` int NOT NULL,
+  `x` int NOT NULL DEFAULT '0',
+  `y` int NOT NULL DEFAULT '0',
+  `map` int NOT NULL,
+  `charid` int NOT NULL,
+  `scriptid` int NOT NULL,
+  `foothold` int NOT NULL,
   `dir` tinyint(1) NOT NULL DEFAULT '0',
   `gender` tinyint(1) NOT NULL DEFAULT '0',
-  `pets` varchar(25) DEFAULT '0,0,0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `pets` varchar(25) DEFAULT '0,0,0',
+  PRIMARY KEY (`id`),
+  KEY `scriptid` (`scriptid`),
+  KEY `playernpcs_ibfk_1` (`charid`),
+  CONSTRAINT `playernpcs_ibfk_1` FOREIGN KEY (`charid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -25008,12 +25149,17 @@ CREATE TABLE `playernpcs` (
 --
 
 CREATE TABLE `playernpcs_equip` (
-  `id` int(11) NOT NULL,
-  `npcid` int(11) NOT NULL,
-  `equipid` int(11) NOT NULL,
-  `equippos` int(11) NOT NULL,
-  `charid` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `npcid` int NOT NULL,
+  `equipid` int NOT NULL,
+  `equippos` int NOT NULL,
+  `charid` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `playernpcs_equip_ibfk_1` (`charid`),
+  KEY `playernpcs_equip_ibfk_2` (`npcid`),
+  CONSTRAINT `playernpcs_equip_ibfk_1` FOREIGN KEY (`charid`) REFERENCES `characters` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `playernpcs_equip_ibfk_2` FOREIGN KEY (`npcid`) REFERENCES `playernpcs` (`scriptid`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
 
@@ -25022,10 +25168,11 @@ CREATE TABLE `playernpcs_equip` (
 --
 
 CREATE TABLE `questactions` (
-  `questactionid` int(10) UNSIGNED NOT NULL,
-  `questid` int(11) NOT NULL DEFAULT '0',
-  `status` int(11) NOT NULL DEFAULT '0',
-  `data` blob NOT NULL
+  `questactionid` int unsigned NOT NULL AUTO_INCREMENT,
+  `questid` int NOT NULL DEFAULT '0',
+  `status` int NOT NULL DEFAULT '0',
+  `data` blob NOT NULL,
+  PRIMARY KEY (`questactionid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -25035,11 +25182,14 @@ CREATE TABLE `questactions` (
 --
 
 CREATE TABLE `questinfo` (
-  `questinfoid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `quest` int(6) NOT NULL DEFAULT '0',
-  `customData` varchar(555) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `questinfoid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
+  `quest` int NOT NULL DEFAULT '0',
+  `customData` varchar(555) DEFAULT NULL,
+  PRIMARY KEY (`questinfoid`),
+  KEY `characterid` (`characterid`),
+  CONSTRAINT `questsinfo_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=351 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `questinfo`
@@ -25053,10 +25203,11 @@ CREATE TABLE `questinfo` (
 --
 
 CREATE TABLE `questrequirements` (
-  `questrequirementid` int(10) UNSIGNED NOT NULL,
-  `questid` int(11) NOT NULL DEFAULT '0',
-  `status` int(11) NOT NULL DEFAULT '0',
-  `data` blob NOT NULL
+  `questrequirementid` int unsigned NOT NULL AUTO_INCREMENT,
+  `questid` int NOT NULL DEFAULT '0',
+  `status` int NOT NULL DEFAULT '0',
+  `data` blob NOT NULL,
+  PRIMARY KEY (`questrequirementid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -25066,14 +25217,17 @@ CREATE TABLE `questrequirements` (
 --
 
 CREATE TABLE `queststatus` (
-  `queststatusid` int(10) UNSIGNED NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `quest` int(6) NOT NULL DEFAULT '0',
-  `status` tinyint(4) NOT NULL DEFAULT '0',
-  `time` int(11) NOT NULL DEFAULT '0',
-  `forfeited` int(11) NOT NULL DEFAULT '0',
-  `customData` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `queststatusid` int unsigned NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
+  `quest` int NOT NULL DEFAULT '0',
+  `status` tinyint NOT NULL DEFAULT '0',
+  `time` int NOT NULL DEFAULT '0',
+  `forfeited` int NOT NULL DEFAULT '0',
+  `customData` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`queststatusid`),
+  KEY `characterid` (`characterid`),
+  CONSTRAINT `queststatus_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=7765 DEFAULT CHARSET=big5;
 
 
 
@@ -25082,11 +25236,14 @@ CREATE TABLE `queststatus` (
 --
 
 CREATE TABLE `queststatusmobs` (
-  `queststatusmobid` int(10) UNSIGNED NOT NULL,
-  `queststatusid` int(10) UNSIGNED NOT NULL DEFAULT '0',
-  `mob` int(11) NOT NULL DEFAULT '0',
-  `count` int(11) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `queststatusmobid` int unsigned NOT NULL AUTO_INCREMENT,
+  `queststatusid` int unsigned NOT NULL DEFAULT '0',
+  `mob` int NOT NULL DEFAULT '0',
+  `count` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`queststatusmobid`),
+  KEY `queststatusid` (`queststatusid`),
+  CONSTRAINT `queststatusmobs_ibfk_1` FOREIGN KEY (`queststatusid`) REFERENCES `queststatus` (`queststatusid`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=215 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 
 -- --------------------------------------------------------
@@ -25096,12 +25253,14 @@ CREATE TABLE `queststatusmobs` (
 --
 
 CREATE TABLE `reactordrops` (
-  `reactordropid` int(10) UNSIGNED NOT NULL,
-  `reactorid` int(11) NOT NULL,
-  `itemid` int(11) NOT NULL,
-  `chance` int(11) NOT NULL,
-  `questid` int(5) NOT NULL DEFAULT '-1'
-) ENGINE=MyISAM DEFAULT CHARSET=big5 PACK_KEYS=1;
+  `reactordropid` int unsigned NOT NULL AUTO_INCREMENT,
+  `reactorid` int NOT NULL,
+  `itemid` int NOT NULL,
+  `chance` int NOT NULL,
+  `questid` int NOT NULL DEFAULT '-1',
+  PRIMARY KEY (`reactordropid`),
+  KEY `reactorid` (`reactorid`)
+) ENGINE=MyISAM AUTO_INCREMENT=883 DEFAULT CHARSET=big5 PACK_KEYS=1;
 
 --
 -- 資料表的匯出資料 `reactordrops`
@@ -26013,10 +26172,11 @@ CREATE TABLE `readable_last_hour_cheatlog` (
 --
 
 CREATE TABLE `regrocklocations` (
-  `trockid` int(11) NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `mapid` int(11) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `trockid` int NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `mapid` int DEFAULT NULL,
+  PRIMARY KEY (`trockid`)
+) ENGINE=MyISAM AUTO_INCREMENT=61587 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `regrocklocations`
@@ -26029,11 +26189,12 @@ CREATE TABLE `regrocklocations` (
 --
 
 CREATE TABLE `rings` (
-  `ringid` int(11) NOT NULL,
-  `partnerRingId` int(11) NOT NULL DEFAULT '0',
-  `partnerChrId` int(11) NOT NULL DEFAULT '0',
-  `itemid` int(11) NOT NULL DEFAULT '0',
-  `partnername` varchar(255) NOT NULL
+  `ringid` int NOT NULL AUTO_INCREMENT,
+  `partnerRingId` int NOT NULL DEFAULT '0',
+  `partnerChrId` int NOT NULL DEFAULT '0',
+  `itemid` int NOT NULL DEFAULT '0',
+  `partnername` varchar(255) NOT NULL,
+  PRIMARY KEY (`ringid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -26043,11 +26204,14 @@ CREATE TABLE `rings` (
 --
 
 CREATE TABLE `savedlocations` (
-  `id` int(11) NOT NULL,
-  `characterid` int(11) NOT NULL,
-  `locationtype` int(11) NOT NULL DEFAULT '0',
-  `map` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL,
+  `locationtype` int NOT NULL DEFAULT '0',
+  `map` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `savedlocations_ibfk_1` (`characterid`),
+  CONSTRAINT `savedlocations_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=316 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 --
 -- 資料表的匯出資料 `savedlocations`
@@ -26061,15 +26225,16 @@ CREATE TABLE `savedlocations` (
 --
 
 CREATE TABLE `shopitems` (
-  `shopitemid` int(10) UNSIGNED NOT NULL,
-  `shopid` int(10) UNSIGNED NOT NULL,
-  `itemid` int(11) NOT NULL,
-  `price` int(11) NOT NULL,
-  `pitch` int(11) NOT NULL DEFAULT '0',
-  `position` int(11) NOT NULL COMMENT 'sort is an arbitrary field designed to give leeway when modifying shops. The lowest number is 104 and it increments by 4 for each item to allow decent space for swapping/inserting/removing items.',
-  `reqitem` int(11) NOT NULL,
-  `reqitemq` int(11) NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `shopitemid` int unsigned NOT NULL AUTO_INCREMENT,
+  `shopid` int unsigned NOT NULL,
+  `itemid` int NOT NULL,
+  `price` int NOT NULL,
+  `pitch` int NOT NULL DEFAULT '0',
+  `position` int NOT NULL COMMENT 'sort is an arbitrary field designed to give leeway when modifying shops. The lowest number is 104 and it increments by 4 for each item to allow decent space for swapping/inserting/removing items.',
+  `reqitem` int NOT NULL,
+  `reqitemq` int NOT NULL,
+  PRIMARY KEY (`shopitemid`)
+) ENGINE=MyISAM AUTO_INCREMENT=20025 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `shopitems`
@@ -29095,9 +29260,10 @@ INSERT INTO `shopitems` (`shopitemid`, `shopid`, `itemid`, `price`, `pitch`, `po
 --
 
 CREATE TABLE `shops` (
-  `shopid` int(10) UNSIGNED NOT NULL,
-  `npcid` int(11) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `shopid` int unsigned NOT NULL AUTO_INCREMENT,
+  `npcid` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`shopid`)
+) ENGINE=MyISAM AUTO_INCREMENT=10000001 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `shops`
@@ -29207,14 +29373,15 @@ INSERT INTO `shops` (`shopid`, `npcid`) VALUES
 --
 
 CREATE TABLE `skillmacros` (
-  `id` int(11) NOT NULL,
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `position` tinyint(11) NOT NULL DEFAULT '0',
-  `skill1` int(11) NOT NULL DEFAULT '0',
-  `skill2` int(11) NOT NULL DEFAULT '0',
-  `skill3` int(11) NOT NULL DEFAULT '0',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `characterid` int NOT NULL DEFAULT '0',
+  `position` tinyint NOT NULL DEFAULT '0',
+  `skill1` int NOT NULL DEFAULT '0',
+  `skill2` int NOT NULL DEFAULT '0',
+  `skill3` int NOT NULL DEFAULT '0',
   `name` varchar(60) DEFAULT NULL,
-  `shout` tinyint(1) NOT NULL DEFAULT '0'
+  `shout` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -29224,13 +29391,16 @@ CREATE TABLE `skillmacros` (
 --
 
 CREATE TABLE `skills` (
-  `id` int(11) NOT NULL,
-  `skillid` int(11) NOT NULL DEFAULT '0',
-  `characterid` int(11) NOT NULL DEFAULT '0',
-  `skilllevel` tinyint(4) NOT NULL DEFAULT '0',
-  `masterlevel` tinyint(4) NOT NULL DEFAULT '0',
-  `expiration` bigint(20) NOT NULL DEFAULT '-1'
-) ENGINE=InnoDB DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `skillid` int NOT NULL DEFAULT '0',
+  `characterid` int NOT NULL DEFAULT '0',
+  `skilllevel` tinyint NOT NULL DEFAULT '0',
+  `masterlevel` tinyint NOT NULL DEFAULT '0',
+  `expiration` bigint NOT NULL DEFAULT '-1',
+  PRIMARY KEY (`id`),
+  KEY `skills_ibfk_1` (`characterid`),
+  CONSTRAINT `skills_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=8132 DEFAULT CHARSET=big5 ROW_FORMAT=DYNAMIC;
 
 --
 -- 資料表的匯出資料 `skills`
@@ -29242,11 +29412,12 @@ CREATE TABLE `skills` (
 --
 
 CREATE TABLE `skills_cooldowns` (
-  `id` int(11) NOT NULL,
-  `charid` int(11) NOT NULL,
-  `SkillID` int(11) NOT NULL,
-  `length` bigint(20) NOT NULL,
-  `StartTime` bigint(20) UNSIGNED NOT NULL
+  `id` int NOT NULL AUTO_INCREMENT,
+  `charid` int NOT NULL,
+  `SkillID` int NOT NULL,
+  `length` bigint NOT NULL,
+  `StartTime` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -29256,12 +29427,13 @@ CREATE TABLE `skills_cooldowns` (
 --
 
 CREATE TABLE `speedruns` (
-  `id` int(11) UNSIGNED NOT NULL,
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
   `type` varchar(13) NOT NULL,
   `leader` varchar(13) NOT NULL,
   `timestring` varchar(1024) NOT NULL,
-  `time` bigint(20) NOT NULL DEFAULT '0',
-  `members` varchar(1024) NOT NULL DEFAULT ''
+  `time` bigint NOT NULL DEFAULT '0',
+  `members` varchar(1024) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -29271,11 +29443,14 @@ CREATE TABLE `speedruns` (
 --
 
 CREATE TABLE `storages` (
-  `storageid` int(10) UNSIGNED NOT NULL,
-  `accountid` int(11) NOT NULL DEFAULT '0',
-  `slots` int(11) NOT NULL DEFAULT '0',
-  `meso` int(11) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=big5;
+  `storageid` int unsigned NOT NULL AUTO_INCREMENT,
+  `accountid` int NOT NULL DEFAULT '0',
+  `slots` int NOT NULL DEFAULT '0',
+  `meso` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`storageid`),
+  KEY `accountid` (`accountid`),
+  CONSTRAINT `storages_ibfk_1` FOREIGN KEY (`accountid`) REFERENCES `accounts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `storages`
@@ -29289,9 +29464,10 @@ CREATE TABLE `storages` (
 --
 
 CREATE TABLE `trocklocations` (
-  `trockid` int(11) NOT NULL,
-  `characterid` int(11) DEFAULT NULL,
-  `mapid` int(11) DEFAULT NULL
+  `trockid` int NOT NULL AUTO_INCREMENT,
+  `characterid` int DEFAULT NULL,
+  `mapid` int DEFAULT NULL,
+  PRIMARY KEY (`trockid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 -- --------------------------------------------------------
@@ -29318,8 +29494,8 @@ CREATE TABLE `uselog` (
 --
 
 CREATE TABLE `wishlist` (
-  `characterid` int(11) NOT NULL,
-  `sn` int(11) NOT NULL
+  `characterid` int NOT NULL,
+  `sn` int NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 --
@@ -29334,25 +29510,26 @@ CREATE TABLE `wishlist` (
 --
 
 CREATE TABLE `wz_mobskilldata` (
-  `id` int(11) NOT NULL,
-  `skillid` int(11) NOT NULL,
-  `level` int(11) NOT NULL,
-  `hp` int(11) NOT NULL DEFAULT '100',
-  `mpcon` int(11) NOT NULL DEFAULT '0',
-  `x` int(11) NOT NULL DEFAULT '1',
-  `y` int(11) NOT NULL DEFAULT '1',
-  `time` int(11) NOT NULL DEFAULT '0',
-  `prop` int(11) NOT NULL DEFAULT '100',
-  `limit` int(11) NOT NULL DEFAULT '0',
-  `spawneffect` int(11) NOT NULL DEFAULT '0',
-  `interval` int(11) NOT NULL DEFAULT '0',
+  `id` int NOT NULL AUTO_INCREMENT,
+  `skillid` int NOT NULL,
+  `level` int NOT NULL,
+  `hp` int NOT NULL DEFAULT '100',
+  `mpcon` int NOT NULL DEFAULT '0',
+  `x` int NOT NULL DEFAULT '1',
+  `y` int NOT NULL DEFAULT '1',
+  `time` int NOT NULL DEFAULT '0',
+  `prop` int NOT NULL DEFAULT '100',
+  `limit` int NOT NULL DEFAULT '0',
+  `spawneffect` int NOT NULL DEFAULT '0',
+  `interval` int NOT NULL DEFAULT '0',
   `summons` varchar(1024) NOT NULL DEFAULT '',
-  `ltx` int(11) NOT NULL DEFAULT '0',
-  `lty` int(11) NOT NULL DEFAULT '0',
-  `rbx` int(11) NOT NULL DEFAULT '0',
-  `rby` int(11) NOT NULL DEFAULT '0',
-  `once` tinyint(1) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=big5;
+  `ltx` int NOT NULL DEFAULT '0',
+  `lty` int NOT NULL DEFAULT '0',
+  `rbx` int NOT NULL DEFAULT '0',
+  `rby` int NOT NULL DEFAULT '0',
+  `once` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=4762 DEFAULT CHARSET=big5;
 
 --
 -- 資料表的匯出資料 `wz_mobskilldata`
@@ -29790,11 +29967,12 @@ INSERT INTO `wz_mobskilldata` (`id`, `skillid`, `level`, `hp`, `mpcon`, `x`, `y`
 --
 
 CREATE TABLE `wz_oxdata` (
-  `questionset` smallint(6) NOT NULL DEFAULT '0',
-  `questionid` smallint(6) NOT NULL DEFAULT '0',
+  `questionset` smallint NOT NULL DEFAULT '0',
+  `questionid` smallint NOT NULL DEFAULT '0',
   `question` varchar(200) NOT NULL DEFAULT '',
   `display` varchar(200) NOT NULL DEFAULT '',
-  `answer` enum('o','x') NOT NULL
+  `answer` enum('o','x') NOT NULL,
+  PRIMARY KEY (`questionset`,`questionid`)
 ) ENGINE=MyISAM DEFAULT CHARSET=big5;
 
 --
@@ -30374,904 +30552,6 @@ DROP TABLE IF EXISTS `readable_last_hour_cheatlog`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `readable_last_hour_cheatlog`  AS  select `a`.`name` AS `accountname`,`a`.`id` AS `accountid`,`c`.`name` AS `name`,`c`.`id` AS `characterid`,sum(`cl`.`count`) AS `numrepos` from ((`cheatlog` `cl` join `characters` `c`) join `accounts` `a`) where ((`cl`.`characterid` = `c`.`id`) and (`a`.`id` = `c`.`accountid`) and (timestampdiff(HOUR,`cl`.`lastoffensetime`,now()) < 1) and (`a`.`banned` = 0)) group by `a`.`id`,`c`.`id` order by sum(`cl`.`count`) desc ;
 
---
--- 已匯出資料表的索引
---
-
---
--- 資料表索引 `accounts`
---
-ALTER TABLE `accounts`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `name` (`name`),
-  ADD KEY `ranking1` (`id`,`banned`,`gm`);
-
---
--- 資料表索引 `alliances`
---
-ALTER TABLE `alliances`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `auth_server_channel_ip`
---
-ALTER TABLE `auth_server_channel_ip`
-  ADD PRIMARY KEY (`channelconfigid`),
-  ADD KEY `channelid` (`channelid`);
-
---
--- 資料表索引 `bbs_replies`
---
-ALTER TABLE `bbs_replies`
-  ADD PRIMARY KEY (`replyid`);
-
---
--- 資料表索引 `bbs_threads`
---
-ALTER TABLE `bbs_threads`
-  ADD PRIMARY KEY (`threadid`);
-
---
--- 資料表索引 `bosslog`
---
-ALTER TABLE `bosslog`
-  ADD PRIMARY KEY (`bosslogid`);
-
---
--- 資料表索引 `buddies`
---
-ALTER TABLE `buddies`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `buddies_ibfk_1` (`characterid`);
-
---
--- 資料表索引 `cashshop_modified_items`
---
-ALTER TABLE `cashshop_modified_items`
-  ADD PRIMARY KEY (`serial`);
-
---
--- 資料表索引 `characters`
---
-ALTER TABLE `characters`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `party` (`party`),
-  ADD KEY `ranking1` (`level`,`exp`),
-  ADD KEY `ranking2` (`gm`,`job`);
-
---
--- 資料表索引 `character_slots`
---
-ALTER TABLE `character_slots`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `cheatlog`
---
-ALTER TABLE `cheatlog`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `cid` (`characterid`) USING BTREE;
-
---
--- 資料表索引 `csequipment`
---
-ALTER TABLE `csequipment`
-  ADD PRIMARY KEY (`inventoryequipmentid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
-
---
--- 資料表索引 `csitems`
---
-ALTER TABLE `csitems`
-  ADD PRIMARY KEY (`inventoryitemid`),
-  ADD KEY `inventoryitems_ibfk_1` (`characterid`),
-  ADD KEY `characterid` (`characterid`),
-  ADD KEY `inventorytype` (`inventorytype`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `packageid` (`packageid`),
-  ADD KEY `characterid_2` (`characterid`,`inventorytype`);
-
---
--- 資料表索引 `drop_data`
---
-ALTER TABLE `drop_data`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `mobid` (`dropperid`);
-
---
--- 資料表索引 `drop_data_global`
---
-ALTER TABLE `drop_data_global`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `mobid` (`continent`) USING BTREE;
-
---
--- 資料表索引 `dueyequipment`
---
-ALTER TABLE `dueyequipment`
-  ADD PRIMARY KEY (`inventoryequipmentid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
-
---
--- 資料表索引 `dueyitems`
---
-ALTER TABLE `dueyitems`
-  ADD PRIMARY KEY (`inventoryitemid`),
-  ADD KEY `inventoryitems_ibfk_1` (`characterid`),
-  ADD KEY `characterid` (`characterid`),
-  ADD KEY `inventorytype` (`inventorytype`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `packageid` (`packageid`),
-  ADD KEY `characterid_2` (`characterid`,`inventorytype`);
-
---
--- 資料表索引 `dueypackages`
---
-ALTER TABLE `dueypackages`
-  ADD PRIMARY KEY (`PackageId`);
-
---
--- 資料表索引 `famelog`
---
-ALTER TABLE `famelog`
-  ADD PRIMARY KEY (`famelogid`),
-  ADD KEY `characterid` (`characterid`);
-
---
--- 資料表索引 `families`
---
-ALTER TABLE `families`
-  ADD PRIMARY KEY (`familyid`);
-
---
--- 資料表索引 `gifts`
---
-ALTER TABLE `gifts`
-  ADD PRIMARY KEY (`giftid`);
-
---
--- 資料表索引 `gmlog`
---
-ALTER TABLE `gmlog`
-  ADD PRIMARY KEY (`gmlogid`);
-
---
--- 資料表索引 `guilds`
---
-ALTER TABLE `guilds`
-  ADD PRIMARY KEY (`guildid`);
-
---
--- 資料表索引 `hiredmerch`
---
-ALTER TABLE `hiredmerch`
-  ADD PRIMARY KEY (`PackageId`);
-
---
--- 資料表索引 `hiredmerchequipment`
---
-ALTER TABLE `hiredmerchequipment`
-  ADD PRIMARY KEY (`inventoryequipmentid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
-
---
--- 資料表索引 `hiredmerchitems`
---
-ALTER TABLE `hiredmerchitems`
-  ADD PRIMARY KEY (`inventoryitemid`),
-  ADD KEY `inventoryitems_ibfk_1` (`characterid`),
-  ADD KEY `characterid` (`characterid`),
-  ADD KEY `inventorytype` (`inventorytype`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `packageid` (`packageid`),
-  ADD KEY `characterid_2` (`characterid`,`inventorytype`);
-
---
--- 資料表索引 `inventoryequipment`
---
-ALTER TABLE `inventoryequipment`
-  ADD PRIMARY KEY (`inventoryequipmentid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
-
---
--- 資料表索引 `inventoryitems`
---
-ALTER TABLE `inventoryitems`
-  ADD PRIMARY KEY (`inventoryitemid`),
-  ADD KEY `inventorytype` (`inventorytype`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `packageid` (`packageid`),
-  ADD KEY `characterid_2` (`characterid`,`inventorytype`);
-
---
--- 資料表索引 `inventoryslot`
---
-ALTER TABLE `inventoryslot`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `invitecodedata`
---
-ALTER TABLE `invitecodedata`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `ipbans`
---
-ALTER TABLE `ipbans`
-  ADD PRIMARY KEY (`ipbanid`);
-
---
--- 資料表索引 `ipvotelog`
---
-ALTER TABLE `ipvotelog`
-  ADD PRIMARY KEY (`vid`);
-
---
--- 資料表索引 `keymap`
---
-ALTER TABLE `keymap`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `keymap_ibfk_1` (`characterid`);
-
---
--- 資料表索引 `macbans`
---
-ALTER TABLE `macbans`
-  ADD PRIMARY KEY (`macbanid`),
-  ADD UNIQUE KEY `mac_2` (`mac`);
-
---
--- 資料表索引 `macfilters`
---
-ALTER TABLE `macfilters`
-  ADD PRIMARY KEY (`macfilterid`);
-
---
--- 資料表索引 `monsterbook`
---
-ALTER TABLE `monsterbook`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `mountdata`
---
-ALTER TABLE `mountdata`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `mtsequipment`
---
-ALTER TABLE `mtsequipment`
-  ADD PRIMARY KEY (`inventoryequipmentid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
-
---
--- 資料表索引 `mtsitems`
---
-ALTER TABLE `mtsitems`
-  ADD PRIMARY KEY (`inventoryitemid`),
-  ADD KEY `inventoryitems_ibfk_1` (`characterid`),
-  ADD KEY `characterid` (`characterid`),
-  ADD KEY `inventorytype` (`inventorytype`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `characterid_2` (`characterid`,`inventorytype`),
-  ADD KEY `packageid` (`packageId`) USING BTREE;
-
---
--- 資料表索引 `mtstransfer`
---
-ALTER TABLE `mtstransfer`
-  ADD PRIMARY KEY (`inventoryitemid`),
-  ADD KEY `inventoryitems_ibfk_1` (`characterid`),
-  ADD KEY `characterid` (`characterid`),
-  ADD KEY `inventorytype` (`inventorytype`),
-  ADD KEY `accountid` (`accountid`),
-  ADD KEY `packageid` (`packageid`),
-  ADD KEY `characterid_2` (`characterid`,`inventorytype`);
-
---
--- 資料表索引 `mtstransferequipment`
---
-ALTER TABLE `mtstransferequipment`
-  ADD PRIMARY KEY (`inventoryequipmentid`),
-  ADD KEY `inventoryitemid` (`inventoryitemid`);
-
---
--- 資料表索引 `mts_cart`
---
-ALTER TABLE `mts_cart`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `mts_items`
---
-ALTER TABLE `mts_items`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `notes`
---
-ALTER TABLE `notes`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `nxcode`
---
-ALTER TABLE `nxcode`
-  ADD PRIMARY KEY (`code`);
-
---
--- 資料表索引 `pets`
---
-ALTER TABLE `pets`
-  ADD PRIMARY KEY (`petid`);
-
---
--- 資料表索引 `playernpcs`
---
-ALTER TABLE `playernpcs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `scriptid` (`scriptid`),
-  ADD KEY `playernpcs_ibfk_1` (`charid`);
-
---
--- 資料表索引 `playernpcs_equip`
---
-ALTER TABLE `playernpcs_equip`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `playernpcs_equip_ibfk_1` (`charid`),
-  ADD KEY `playernpcs_equip_ibfk_2` (`npcid`);
-
---
--- 資料表索引 `questactions`
---
-ALTER TABLE `questactions`
-  ADD PRIMARY KEY (`questactionid`);
-
---
--- 資料表索引 `questinfo`
---
-ALTER TABLE `questinfo`
-  ADD PRIMARY KEY (`questinfoid`),
-  ADD KEY `characterid` (`characterid`);
-
---
--- 資料表索引 `questrequirements`
---
-ALTER TABLE `questrequirements`
-  ADD PRIMARY KEY (`questrequirementid`);
-
---
--- 資料表索引 `queststatus`
---
-ALTER TABLE `queststatus`
-  ADD PRIMARY KEY (`queststatusid`),
-  ADD KEY `characterid` (`characterid`);
-
---
--- 資料表索引 `queststatusmobs`
---
-ALTER TABLE `queststatusmobs`
-  ADD PRIMARY KEY (`queststatusmobid`),
-  ADD KEY `queststatusid` (`queststatusid`);
-
---
--- 資料表索引 `reactordrops`
---
-ALTER TABLE `reactordrops`
-  ADD PRIMARY KEY (`reactordropid`),
-  ADD KEY `reactorid` (`reactorid`);
-
---
--- 資料表索引 `regrocklocations`
---
-ALTER TABLE `regrocklocations`
-  ADD PRIMARY KEY (`trockid`);
-
---
--- 資料表索引 `rings`
---
-ALTER TABLE `rings`
-  ADD PRIMARY KEY (`ringid`);
-
---
--- 資料表索引 `savedlocations`
---
-ALTER TABLE `savedlocations`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `savedlocations_ibfk_1` (`characterid`);
-
---
--- 資料表索引 `shopitems`
---
-ALTER TABLE `shopitems`
-  ADD PRIMARY KEY (`shopitemid`);
-
---
--- 資料表索引 `shops`
---
-ALTER TABLE `shops`
-  ADD PRIMARY KEY (`shopid`);
-
---
--- 資料表索引 `skillmacros`
---
-ALTER TABLE `skillmacros`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `skills`
---
-ALTER TABLE `skills`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `skills_ibfk_1` (`characterid`);
-
---
--- 資料表索引 `skills_cooldowns`
---
-ALTER TABLE `skills_cooldowns`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `speedruns`
---
-ALTER TABLE `speedruns`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `storages`
---
-ALTER TABLE `storages`
-  ADD PRIMARY KEY (`storageid`),
-  ADD KEY `accountid` (`accountid`);
-
---
--- 資料表索引 `trocklocations`
---
-ALTER TABLE `trocklocations`
-  ADD PRIMARY KEY (`trockid`);
-
---
--- 資料表索引 `wz_mobskilldata`
---
-ALTER TABLE `wz_mobskilldata`
-  ADD PRIMARY KEY (`id`);
-
---
--- 資料表索引 `wz_oxdata`
---
-ALTER TABLE `wz_oxdata`
-  ADD PRIMARY KEY (`questionset`,`questionid`);
-
---
--- 在匯出的資料表使用 AUTO_INCREMENT
---
-
---
--- 使用資料表 AUTO_INCREMENT `accounts`
---
-ALTER TABLE `accounts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `alliances`
---
-ALTER TABLE `alliances`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `auth_server_channel_ip`
---
-ALTER TABLE `auth_server_channel_ip`
-  MODIFY `channelconfigid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
---
--- 使用資料表 AUTO_INCREMENT `bbs_replies`
---
-ALTER TABLE `bbs_replies`
-  MODIFY `replyid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `bbs_threads`
---
-ALTER TABLE `bbs_threads`
-  MODIFY `threadid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `bosslog`
---
-ALTER TABLE `bosslog`
-  MODIFY `bosslogid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `buddies`
---
-ALTER TABLE `buddies`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=187;
---
--- 使用資料表 AUTO_INCREMENT `characters`
---
-ALTER TABLE `characters`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `character_slots`
---
-ALTER TABLE `character_slots`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
---
--- 使用資料表 AUTO_INCREMENT `cheatlog`
---
-ALTER TABLE `cheatlog`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=829883;
---
--- 使用資料表 AUTO_INCREMENT `csequipment`
---
-ALTER TABLE `csequipment`
-  MODIFY `inventoryequipmentid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=219;
---
--- 使用資料表 AUTO_INCREMENT `csitems`
---
-ALTER TABLE `csitems`
-  MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=743;
---
--- 使用資料表 AUTO_INCREMENT `drop_data`
---
-ALTER TABLE `drop_data`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39281;
---
--- 使用資料表 AUTO_INCREMENT `drop_data_global`
---
-ALTER TABLE `drop_data_global`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
---
--- 使用資料表 AUTO_INCREMENT `dueyequipment`
---
-ALTER TABLE `dueyequipment`
-  MODIFY `inventoryequipmentid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
---
--- 使用資料表 AUTO_INCREMENT `dueyitems`
---
-ALTER TABLE `dueyitems`
-  MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
---
--- 使用資料表 AUTO_INCREMENT `dueypackages`
---
-ALTER TABLE `dueypackages`
-  MODIFY `PackageId` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
---
--- 使用資料表 AUTO_INCREMENT `famelog`
---
-ALTER TABLE `famelog`
-  MODIFY `famelogid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `families`
---
-ALTER TABLE `families`
-  MODIFY `familyid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `gifts`
---
-ALTER TABLE `gifts`
-  MODIFY `giftid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
---
--- 使用資料表 AUTO_INCREMENT `gmlog`
---
-ALTER TABLE `gmlog`
-  MODIFY `gmlogid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `guilds`
---
-ALTER TABLE `guilds`
-  MODIFY `guildid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `hiredmerch`
---
-ALTER TABLE `hiredmerch`
-  MODIFY `PackageId` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
---
--- 使用資料表 AUTO_INCREMENT `hiredmerchequipment`
---
-ALTER TABLE `hiredmerchequipment`
-  MODIFY `inventoryequipmentid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `hiredmerchitems`
---
-ALTER TABLE `hiredmerchitems`
-  MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
---
--- 使用資料表 AUTO_INCREMENT `inventoryequipment`
---
-ALTER TABLE `inventoryequipment`
-  MODIFY `inventoryequipmentid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `inventoryitems`
---
-ALTER TABLE `inventoryitems`
-  MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `inventoryslot`
---
-ALTER TABLE `inventoryslot`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `invitecodedata`
---
-ALTER TABLE `invitecodedata`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `ipbans`
---
-ALTER TABLE `ipbans`
-  MODIFY `ipbanid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `ipvotelog`
---
-ALTER TABLE `ipvotelog`
-  MODIFY `vid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `keymap`
---
-ALTER TABLE `keymap`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `macbans`
---
-ALTER TABLE `macbans`
-  MODIFY `macbanid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `macfilters`
---
-ALTER TABLE `macfilters`
-  MODIFY `macfilterid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `monsterbook`
---
-ALTER TABLE `monsterbook`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
---
--- 使用資料表 AUTO_INCREMENT `mountdata`
---
-ALTER TABLE `mountdata`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
---
--- 使用資料表 AUTO_INCREMENT `mtsequipment`
---
-ALTER TABLE `mtsequipment`
-  MODIFY `inventoryequipmentid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `mtsitems`
---
-ALTER TABLE `mtsitems`
-  MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `mtstransfer`
---
-ALTER TABLE `mtstransfer`
-  MODIFY `inventoryitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `mtstransferequipment`
---
-ALTER TABLE `mtstransferequipment`
-  MODIFY `inventoryequipmentid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `mts_cart`
---
-ALTER TABLE `mts_cart`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `notes`
---
-ALTER TABLE `notes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
---
--- 使用資料表 AUTO_INCREMENT `pets`
---
-ALTER TABLE `pets`
-  MODIFY `petid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
---
--- 使用資料表 AUTO_INCREMENT `playernpcs`
---
-ALTER TABLE `playernpcs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
---
--- 使用資料表 AUTO_INCREMENT `playernpcs_equip`
---
-ALTER TABLE `playernpcs_equip`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
---
--- 使用資料表 AUTO_INCREMENT `questactions`
---
-ALTER TABLE `questactions`
-  MODIFY `questactionid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `questinfo`
---
-ALTER TABLE `questinfo`
-  MODIFY `questinfoid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=351;
---
--- 使用資料表 AUTO_INCREMENT `questrequirements`
---
-ALTER TABLE `questrequirements`
-  MODIFY `questrequirementid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `queststatus`
---
-ALTER TABLE `queststatus`
-  MODIFY `queststatusid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7765;
---
--- 使用資料表 AUTO_INCREMENT `queststatusmobs`
---
-ALTER TABLE `queststatusmobs`
-  MODIFY `queststatusmobid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=215;
---
--- 使用資料表 AUTO_INCREMENT `reactordrops`
---
-ALTER TABLE `reactordrops`
-  MODIFY `reactordropid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=883;
---
--- 使用資料表 AUTO_INCREMENT `regrocklocations`
---
-ALTER TABLE `regrocklocations`
-  MODIFY `trockid` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61587;
---
--- 使用資料表 AUTO_INCREMENT `rings`
---
-ALTER TABLE `rings`
-  MODIFY `ringid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `savedlocations`
---
-ALTER TABLE `savedlocations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=316;
---
--- 使用資料表 AUTO_INCREMENT `shopitems`
---
-ALTER TABLE `shopitems`
-  MODIFY `shopitemid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20025;
---
--- 使用資料表 AUTO_INCREMENT `shops`
---
-ALTER TABLE `shops`
-  MODIFY `shopid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10000001;
---
--- 使用資料表 AUTO_INCREMENT `skillmacros`
---
-ALTER TABLE `skillmacros`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `skills`
---
-ALTER TABLE `skills`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8132;
---
--- 使用資料表 AUTO_INCREMENT `skills_cooldowns`
---
-ALTER TABLE `skills_cooldowns`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `speedruns`
---
-ALTER TABLE `speedruns`
-  MODIFY `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `storages`
---
-ALTER TABLE `storages`
-  MODIFY `storageid` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
---
--- 使用資料表 AUTO_INCREMENT `trocklocations`
---
-ALTER TABLE `trocklocations`
-  MODIFY `trockid` int(11) NOT NULL AUTO_INCREMENT;
---
--- 使用資料表 AUTO_INCREMENT `wz_mobskilldata`
---
-ALTER TABLE `wz_mobskilldata`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4762;
---
--- 已匯出資料表的限制(Constraint)
---
-
---
--- 資料表的 Constraints `buddies`
---
-ALTER TABLE `buddies`
-  ADD CONSTRAINT `buddies_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `csequipment`
---
-ALTER TABLE `csequipment`
-  ADD CONSTRAINT `csequiptment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `csitems` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `dueyequipment`
---
-ALTER TABLE `dueyequipment`
-  ADD CONSTRAINT `dueyequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `dueyitems` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `famelog`
---
-ALTER TABLE `famelog`
-  ADD CONSTRAINT `famelog_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `hiredmerchequipment`
---
-ALTER TABLE `hiredmerchequipment`
-  ADD CONSTRAINT `hiredmerchantequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `hiredmerchitems` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `inventoryequipment`
---
-ALTER TABLE `inventoryequipment`
-  ADD CONSTRAINT `inventoryequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `inventoryitems` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `keymap`
---
-ALTER TABLE `keymap`
-  ADD CONSTRAINT `keymap_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `mtsequipment`
---
-ALTER TABLE `mtsequipment`
-  ADD CONSTRAINT `mtsequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `mtsitems` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `mtstransferequipment`
---
-ALTER TABLE `mtstransferequipment`
-  ADD CONSTRAINT `mtstransferequipment_ibfk_1` FOREIGN KEY (`inventoryitemid`) REFERENCES `mtstransfer` (`inventoryitemid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `playernpcs`
---
-ALTER TABLE `playernpcs`
-  ADD CONSTRAINT `playernpcs_ibfk_1` FOREIGN KEY (`charid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `playernpcs_equip`
---
-ALTER TABLE `playernpcs_equip`
-  ADD CONSTRAINT `playernpcs_equip_ibfk_1` FOREIGN KEY (`charid`) REFERENCES `characters` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `playernpcs_equip_ibfk_2` FOREIGN KEY (`npcid`) REFERENCES `playernpcs` (`scriptid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `questinfo`
---
-ALTER TABLE `questinfo`
-  ADD CONSTRAINT `questsinfo_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `queststatus`
---
-ALTER TABLE `queststatus`
-  ADD CONSTRAINT `queststatus_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `queststatusmobs`
---
-ALTER TABLE `queststatusmobs`
-  ADD CONSTRAINT `queststatusmobs_ibfk_1` FOREIGN KEY (`queststatusid`) REFERENCES `queststatus` (`queststatusid`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `savedlocations`
---
-ALTER TABLE `savedlocations`
-  ADD CONSTRAINT `savedlocations_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `skills`
---
-ALTER TABLE `skills`
-  ADD CONSTRAINT `skills_ibfk_1` FOREIGN KEY (`characterid`) REFERENCES `characters` (`id`) ON DELETE CASCADE;
-
---
--- 資料表的 Constraints `storages`
---
-ALTER TABLE `storages`
-  ADD CONSTRAINT `storages_ibfk_1` FOREIGN KEY (`accountid`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
-
-
 -- ---------------------------------------------------------------------------
 -- 以下併自舊的 Navicat dump（sql/tms.sql），該檔已移除。
 -- ---------------------------------------------------------------------------
@@ -31311,7 +30591,11 @@ INSERT INTO `drop_data_global` VALUES (3,-1,0,2210042,1,1,0,10000,'萬聖節');
 INSERT INTO `drop_data_global` VALUES (4,-1,0,2210008,1,1,0,1000,'萬聖節');
 --
 -- 2026-11：楓葉（4001126）改為全域掉落，每隻怪 10%。NPC 9010000、9330012 拿它當
--- 兌換材料，而 drop_data 裡沒有任何怪物掉它。說明見 sql/migrations/maple-leaf-global-drop.sql。
+-- 兌換材料（9010000 楓葉武器／盾牌／頭盔／週年慶卷軸，每樣 100～2000 片；9330012
+-- 楓葉武器，每把 1000～10000 片），而 drop_data 裡沒有任何怪物掉它。
+-- chance 的分母是 1,000,000，而且全域掉落「不」乘伺服器的掉落倍率：100000 = 10%。
+-- 要調整就改資料庫裡這一筆（管理面板的全域掉落頁面，或 SQL 後 !reloaddrops）——
+-- 改這裡不會影響已經建好的資料庫，開機檢查不會重灌既有資料表的資料。
 --
 INSERT INTO `drop_data_global` VALUES (5,-1,0,4001126,1,1,0,100000,'楓葉：NPC 9010000、9330012 兌換用');
 
@@ -35177,6 +34461,8 @@ INSERT INTO cashshop_modified_items (serial, showup,itemid,priority,period,gende
 INSERT INTO cashshop_modified_items (serial, showup,itemid,priority,period,gender,count,meso,discount_price,mark, unk_1, unk_2, unk_3, name) VALUES ( 10002702, 1, 0, 0, 0, 2, 0, 0, 89, 0, 0, 0, 0, '卷軸成功提升卡(60%卷軸專用)');
 INSERT INTO cashshop_modified_items (serial, showup,itemid,priority,period,gender,count,meso,discount_price,mark, unk_1, unk_2, unk_3, name) VALUES ( 50300164, 1, 0, 0, 0, 2, 0, 0, 129, 0, 0, 0, 0, '卷軸成功提升卡(10%卷軸專用)');
 INSERT INTO cashshop_modified_items (serial, showup,itemid,priority,period,gender,count,meso,discount_price,mark, unk_1, unk_2, unk_3, name) VALUES ( 50300165, 1, 0, 0, 0, 2, 0, 0, 89, 0, 0, 0, 0, '卷軸成功提升卡(60%卷軸專用)');
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

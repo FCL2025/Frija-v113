@@ -46,9 +46,9 @@ import server.MapleCarnivalChallenge;
  * by the UI. {@code tempban} and {@code birthday} can carry zero dates that
  * Connector/J refuses to convert, so they are read as strings.
  *
- * <p>I3：那兩個欄位有兩種可能的 schema，這個檔案兩種都要吃得下。跑過
- * {@code sql/migrations/i3-zero-dates.sql}（或用現在的 {@code sql/twmsv113.sql}
- * 新匯入）的資料庫是 {@code NULL DEFAULT NULL}；還沒遷移的是 2016 年 dump 留下的
+ * <p>I3：那兩個欄位有兩種可能的 schema，這個檔案兩種都要吃得下。用現在的
+ * {@code sql/twmsv113.sql} 建立（或舊資料庫執行過該檔檔頭 I3 那段 SQL）的
+ * 是 {@code NULL DEFAULT NULL}；還沒改過的是 2016 年 dump 留下的
  * {@code NOT NULL DEFAULT '0000-00-00'}。讀取端（{@link #accountRow},
  * {@code zeroToNull}）對 {@code null} 與零日期字串一視同仁；寫入端刻意**不**寫
  * SQL {@code NULL}，因為未遷移的欄位是 NOT NULL，寫進去會是
@@ -83,7 +83,7 @@ final class AccountsApi {
     /**
      * "Never" for {@code tempban}: the column is NOT NULL and a zero date cannot be written under NO_ZERO_DATE.
      *
-     * <p>I3：{@code sql/migrations/i3-zero-dates.sql} 之後欄位可以吃 {@code NULL}
+     * <p>I3：欄位改成 {@code NULL DEFAULT NULL} 之後可以吃 {@code NULL}
      * 了，這個哨兵值卻**刻意保留**。理由是相容性不對稱 —— 一個 NULL-able 欄位收得下
      * {@code 1970-01-02}，但一個還沒遷移的 NOT NULL 欄位收不下 {@code NULL}
      * （{@code Column 'tempban' cannot be null}）。改寫 {@code NULL} 等於逼所有人

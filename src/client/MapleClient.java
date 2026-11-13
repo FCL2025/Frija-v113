@@ -227,8 +227,8 @@ public class MapleClient {
      * <p>「沒有暫時封鎖」在資料庫裡有三種寫法，這裡三種都要認得，因為這段在登入
      * 路徑上，認錯一種就是所有人都進不來：
      * <ul>
-     * <li>SQL {@code NULL} - 跑過 {@code sql/migrations/i3-zero-dates.sql} 之後
-     * 的樣子，也是現在 {@code sql/twmsv113.sql} 新匯入時的樣子。</li>
+     * <li>SQL {@code NULL} - 現在 {@code sql/twmsv113.sql} 建出來的樣子，也是
+     * 舊資料庫執行過該檔檔頭 I3 那段 SQL 之後的樣子。</li>
      * <li>零日期 {@code 0000-00-00 00:00:00} - 2016 年那份 dump 留下的
      * {@code NOT NULL DEFAULT} 值，還沒遷移的資料庫裡每個沒被封過的帳號都是它。</li>
      * <li>任何已經過去的時間 - 例如管理面板的
@@ -246,7 +246,7 @@ public class MapleClient {
         // the pre-8 connector. Do not replace it with a java.time accessor -
         // getObject(.., LocalDateTime.class) refuses a zero date just as loudly.
         //
-        // I3：等到「所有」資料庫都跑過 sql/migrations/i3-zero-dates.sql，欄位就只會
+        // I3：等到「所有」資料庫都改過欄位（sql/twmsv113.sql 檔頭 I3 那段），欄位就只會
         // 是 NULL 或一個合法時間，屆時整段 getString 迂迴可以換回
         // rs.getTimestamp("tempban")（null 代表沒有封鎖）。在那之前不要拿掉
         // startsWith("0000-00-00")：少了它，未遷移的資料庫會在 getTimestamp 上丟

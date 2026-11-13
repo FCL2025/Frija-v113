@@ -50,4 +50,30 @@ class DatabaseConnectionTest {
         assertEquals("jdbc:mysql://h/db?a=1&connectTimeout=5000&socketTimeout=10000",
                 DatabaseConnection.probeUrl("jdbc:mysql://h/db?&a=1&&"));
     }
+
+    @Test
+    @DisplayName("databaseName reads the path segment of tms.Url, the only place the name is configured")
+    void databaseName() {
+        assertEquals("twmsv113", DatabaseConnection.databaseName(SHIPPED));
+        assertEquals("db", DatabaseConnection.databaseName("jdbc:mysql://h:1/db"));
+        assertEquals(null, DatabaseConnection.databaseName("jdbc:mysql://h:1/?a=1"));
+        assertEquals(null, DatabaseConnection.databaseName("jdbc:mysql://h:1?a=/x"));
+        assertEquals(null, DatabaseConnection.databaseName("jdbc:mysql://h:1"));
+    }
+
+    @Test
+    @DisplayName("withoutDatabase keeps the server and the options, so the database itself can be created")
+    void withoutDatabase() {
+        assertEquals("jdbc:mysql://localhost:3306/?autoReconnect=true&maxReconnects=999"
+                + "&characterEncoding=BIG5&rewriteBatchedStatements=true", DatabaseConnection.withoutDatabase(SHIPPED));
+        assertEquals("jdbc:mysql://h/", DatabaseConnection.withoutDatabase("jdbc:mysql://h/db"));
+        assertEquals("jdbc:mysql://h?a=/x", DatabaseConnection.withoutDatabase("jdbc:mysql://h?a=/x"));
+    }
+
+    @Test
+    @DisplayName("withoutRetries appends the caller's timeouts instead of the probe's")
+    void withoutRetries() {
+        assertEquals("jdbc:mysql://h/db?a=1&connectTimeout=5000",
+                DatabaseConnection.withoutRetries("jdbc:mysql://h/db?autoReconnect=true&a=1&socketTimeout=3", "connectTimeout=5000"));
+    }
 }

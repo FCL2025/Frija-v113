@@ -51,12 +51,14 @@ exit /b 1
 
 rem --- What is stale? One PowerShell call answers two questions:
 rem       NEED_WEB  is anything in panel\ newer than panel\dist\index.html?
-rem       NEED      is anything the jar is built from newer than the jar?
+rem       NEED      is anything the jar is built from newer than the jar, or is
+rem                 a JarLib jar missing from dist\lib? (dist\ is not tracked, so
+rem                 a pull can leave an up-to-date jar with no dist\lib beside it.)
 rem     A frontend rebuild always implies a jar rebuild, since the jar holds it.
 :check
 set "NEED_WEB=0"
 set "NEED=1"
-for /f "usebackq tokens=1,2" %%w in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$web = '0'; $jar = '1'; if (Test-Path 'panel\package.json') { $web = '1'; if (Test-Path 'panel\dist\index.html') { $web = '0'; $d = (Get-Item 'panel\dist\index.html').LastWriteTimeUtc; $files = @(Get-ChildItem -Path 'panel' -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -Path 'panel\src','panel\public' -Recurse -File -ErrorAction SilentlyContinue); foreach ($f in $files) { if ($f.LastWriteTimeUtc -gt $d) { $web = '1'; break } } } }; if (Test-Path 'dist\Frija-v113.jar') { $jar = '0'; $j = (Get-Item 'dist\Frija-v113.jar').LastWriteTimeUtc; foreach ($f in Get-ChildItem -Path 'src','JarLib','manifest.mf','panel\dist' -Recurse -File -ErrorAction SilentlyContinue) { if ($f.LastWriteTimeUtc -gt $j) { $jar = '1'; break } } }; Write-Output ($web + ' ' + $jar)"`) do (
+for /f "usebackq tokens=1,2" %%w in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$web = '0'; $jar = '1'; if (Test-Path 'panel\package.json') { $web = '1'; if (Test-Path 'panel\dist\index.html') { $web = '0'; $d = (Get-Item 'panel\dist\index.html').LastWriteTimeUtc; $files = @(Get-ChildItem -Path 'panel' -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -Path 'panel\src','panel\public' -Recurse -File -ErrorAction SilentlyContinue); foreach ($f in $files) { if ($f.LastWriteTimeUtc -gt $d) { $web = '1'; break } } } }; if (Test-Path 'dist\Frija-v113.jar') { $jar = '0'; $j = (Get-Item 'dist\Frija-v113.jar').LastWriteTimeUtc; foreach ($f in Get-ChildItem -Path 'src','JarLib','manifest.mf','panel\dist' -Recurse -File -ErrorAction SilentlyContinue) { if ($f.LastWriteTimeUtc -gt $j) { $jar = '1'; break } }; foreach ($l in Get-ChildItem -Path 'JarLib\*.jar' -File -ErrorAction SilentlyContinue) { if (-not (Test-Path ('dist\lib\' + $l.Name))) { $jar = '1'; break } } }; Write-Output ($web + ' ' + $jar)"`) do (
     set "NEED_WEB=%%w"
     set "NEED=%%x"
 )

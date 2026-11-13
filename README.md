@@ -15,6 +15,7 @@ Frija 是台服（TWMS）v113 私服的伺服器端，免費、開源。
 | MySQL | 8.0 以上 | |
 | WZ 資料 | v113 台服 | 匯出成 XML 格式，**不包含在專案裡**，需自行準備 |
 | 遊戲客戶端 | v113 台服 | 需能連到你的伺服器 IP，**不包含在專案裡** |
+| 登入器 | [TMSLauncher](https://github.com/zhyonc/TMSLauncher) | 讓客戶端連到你的伺服器，見[第 6 步](#6-連線進遊戲) |
 | Node.js | 20 以上（選用） | 只有網頁管理面板需要，不裝也能正常開服 |
 
 伺服器以 4 GB 記憶體啟動，建議機器至少有 8 GB。
@@ -113,7 +114,34 @@ Loaded Complete ::: 啟動完成於 ...
 
 ### 6. 連線進遊戲
 
-- 客戶端連到 `tms.IP` 的 **8484** 埠（登入伺服器）。
+台服客戶端原本只會連官方伺服器，而且帶有 HackShield 和 CRC 檢查，直接開
+`MapleStory.exe` 連不進私服。請搭配 zhyonc 製作的登入器
+[**TMSLauncher**](https://github.com/zhyonc/TMSLauncher)（支援台服 v113–v194）。
+它會把客戶端的連線導向你的伺服器、拿掉 HackShield 和 CRC 檢查、跳過廣告視窗，
+也修正了舊客戶端在新螢幕上的視窗模式問題。
+
+1. 到 [Releases](https://github.com/zhyonc/TMSLauncher/releases) 下載 `Release.zip`，
+   把裡面的 `Launcher.exe` 和 `Hook.dll` 放進客戶端資料夾（和 `MapleStory.exe` 同一層）。
+2. 之後都從 `Launcher.exe` 進遊戲。
+
+`Release.zip` 裡的版本固定連 `127.0.0.1:8484`，只適合伺服器和客戶端在同一台電腦。
+要連別台主機，就要修改原始碼 `Hook\Resources\Config.h` 的 `ServerAddr`（伺服器的 IP 或網域），
+再用 Visual Studio 以 `Release x86` 編譯，因為這個位址是編譯時寫死的，沒有設定檔可以改。
+`Config.h` 裡另外兩項請維持預設：Frija 不支援連線金鑰和封包 XOR，開了會在第一個封包就被伺服器斷線。
+
+| `Config.h` 設定 | 值 |
+|---|---|
+| `ServerAddr` | 伺服器的 IP 或網域 |
+| `LoginServerPort` | `8484`（維持預設） |
+| `IsSendConnectKey` | `false`（維持預設） |
+| `RecvXOR` / `SendXOR` | `0x00`（維持預設） |
+
+選頻道和進商城時，登入器會照伺服器回傳的 `tms.IP` 連線；只有 `tms.IP` 是 `127.0.0.1` 時，
+才改連 `ServerAddr`。所以 `tms.IP` 照第 4 步填就可以。
+
+連線需要的埠和帳號：
+
+- 登入伺服器固定在 **8484** 埠。
 - 要讓其他電腦連線，防火牆需開放以下 TCP 埠（只在本機玩不用開）：
 
   | 埠 | 用途 |

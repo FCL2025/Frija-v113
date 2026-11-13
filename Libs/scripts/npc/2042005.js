@@ -41,13 +41,13 @@ function action(mode, type, selection) {
 			var mapid = 980030000 + ((selection + 1) * 1000);
 			if (cm.getEventManager("cpq2").getInstance("cpq" + mapid) == null) {
 				if ((cm.getParty() != null && cm.getParty().getMembers().size() > (selection < 4 ? 1 : 2))) {
-					if (checkLevelsAndMap(50, 200) == 1) {
+					if (checkLevelsAndMap(51, 120) == 1) {
 						cm.sendOk("隊伍裡有人等級不符合.");
 						cm.dispose();
-					} else if (checkLevelsAndMap(50, 200) == 2) {
+					} else if (checkLevelsAndMap(51, 120) == 2) {
 						cm.sendOk("隊伍裡有其他人不在本地圖.");
 						cm.dispose();
-				} else if (checkLevelsAndMap(50, 200) == 3) {
+				} else if (checkLevelsAndMap(51, 120) == 3) {
 					cm.sendOk("隊伍裡有其他人不在本頻道.");
 					cm.dispose();
 					} else {
@@ -58,13 +58,13 @@ function action(mode, type, selection) {
 					cm.sendOk("您的隊伍人數不足.");
 				}
 			} else if (cm.getParty() != null && cm.getEventManager("cpq2").getInstance("cpq" + mapid).getPlayerCount() == cm.getParty().getMembers().size() && cm.getParty().getMembers().size() > 1 && cm.getEventManager("cpq2").getInstance("cpq" + mapid).getPlayerCount() > 1) {
-				if (checkLevelsAndMap(50, 200) == 1) {
+				if (checkLevelsAndMap(51, 120) == 1) {
 					cm.sendOk("隊伍裡有人等級不符合.");
 					cm.dispose();
-				} else if (checkLevelsAndMap(50, 200) == 2) {
+				} else if (checkLevelsAndMap(51, 120) == 2) {
 					cm.sendOk("隊伍裡有其他人不在本地圖.");
 					cm.dispose();
-				} else if (checkLevelsAndMap(50, 200) == 3) {
+				} else if (checkLevelsAndMap(51, 120) == 3) {
 					cm.sendOk("隊伍裡有其他人不在本頻道.");
 					cm.dispose();
 				} else {
@@ -72,7 +72,7 @@ function action(mode, type, selection) {
 					var owner = cm.getChannelServer().getPlayerStorage().getCharacterByName(cm.getEventManager("cpq2").getInstance("cpq" + mapid).getPlayers().get(0).getParty().getLeader().getName());
 					owner.addCarnivalRequest(cm.getCarnivalChallenge(cm.getChar()));
 					//if (owner.getConversation() != 1) {
-					cm.openNpc(owner.getClient(), 2042001);
+					cm.openNpc(owner.getClient(), 2042006);
 					//}
 					cm.sendOk("您的挑戰請求已經發送.");
 					cm.dispose();

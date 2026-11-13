@@ -26,7 +26,7 @@ function action(mode, type, selection) {
 		} else if (checkLevelsAndMap(51, 120) == 2) {
 			cm.sendOk("在地圖上找不到您的隊友。");
 			cm.dispose();
-		} else if (checkLevelsAndMap(30, 50) == 3) {
+		} else if (checkLevelsAndMap(51, 120) == 3) {
 			cm.sendOk("在頻道的找不到您的隊友。");
 			cm.dispose();
 		} else if (pt.getMembers().size() < 2) {

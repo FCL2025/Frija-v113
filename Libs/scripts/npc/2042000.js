@@ -54,10 +54,10 @@ function action(mode, type, selection) {
                     cm.sendOk("Your party is not the appropriate size.");
                 }
             } else if (cm.getParty() != null && cm.getEventManager("cpq").getInstance("cpq"+mapid).getPlayerCount() == cm.getParty().getMembers().size()) {
-                if (checkLevelsAndMap(30, 200) == 1) {
+                if (checkLevelsAndMap(30, 50) == 1) {
                     cm.sendOk("請確認你隊伍內玩家的等級!");
                     cm.dispose();
-                } else if (checkLevelsAndMap(30, 200) == 2) {
+                } else if (checkLevelsAndMap(30, 50) == 2) {
                     cm.sendOk("請確認你隊伍內的玩家都在這裡嗎?");
                     cm.dispose();
                 } else {

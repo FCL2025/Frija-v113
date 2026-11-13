@@ -161,14 +161,14 @@ function action(mode, type, selection) {
 		status = 11;
 		if (!cm.getSquadList("BossBalrog", 1)) {
 		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+		    cm.safeDispose();
 		}
-		cm.safeDispose();
 	    } else if (selection == 2) {
 		status = 12;
 		if (!cm.getSquadList("BossBalrog", 2)) {
 		    cm.sendOk("Due to an unknown error, the request for squad has been denied.");
+		    cm.safeDispose();
 		}
-		cm.safeDispose();
 	    } else if (selection == 3) { // get insode
 		if (cm.getSquad("BossBalrog") != null) {
 		    var dd = cm.getEventManager(balrogMode ? "BossBalrog_NORMAL" : "BossBalrog_EASY");

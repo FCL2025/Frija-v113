@@ -1,15 +1,16 @@
-load('nashorn:mozilla_compat.js');
-importPackage(Packages.tools);
-importPackage(Packages.tools.packet);
+/*
+ * Cabin portal out01 of the ship to Ellinia (map 200090001). Boats.js hooks it up; WZ gives the
+ * portal no script. Leads back to the deck and, while the Crimson Balrog is
+ * attacking, replays the invasion music and ship effect for the player who
+ * came up - the rest of the deck already has them.
+ */
 function enter(pi) {
     pi.playPortalSE();
     pi.warp(200090000, 5);
-	if (pi.getPlayer().getClient().getChannelServer().getEventSM().getEventManager("Boats").getProperty("haveBalrog").equals("true")) {
-		pi.changeMusic("Bgm04/ArabPirate");
-		pi.getPlayer().getMap().broadcastMessage(MapPacket.boatEffect(1034));
-    } else if (pi.getPlayer().getClient().getChannelServer().getEventSM().getEventManager("Boats").getProperty("haveBalrog1").equals("true")) {
-		pi.changeMusic("Bgm04/ArabPirate");
-		pi.getPlayer().getMap().broadcastMessage(MapPacket.boatEffect(1034));
-	}
-	return true;
+    var em = pi.getEventManager("Boats");
+    if (em != null && em.getProperty("haveBalrog") == "true") {
+        pi.getClient().send(Packages.tools.packet.MapPacket.musicChange("Bgm04/ArabPirate"));
+        pi.getClient().send(Packages.tools.packet.MapPacket.boatEffect(1034));
+    }
+    return true;
 }

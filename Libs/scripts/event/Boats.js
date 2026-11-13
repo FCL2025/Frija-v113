@@ -6,8 +6,11 @@ function scheduleNew() {
     em.setProperty("docked", "true");
     em.setProperty("entry", "true");
     em.setProperty("haveBalrog", "false");
-    em.schedule("stopentry", 240000); //The time to close the gate [4 min]
-    em.schedule("takeoff", 180000); // The time to begin the ride [5 min]
+    em.schedule("stopentry", 240000); // close the gate at 4 min
+    em.schedule("takeoff", 300000); // take off at 5 min, as every other transport does.
+    // It used to take off at 3 min while the gate stayed open until 4, so for a
+    // minute the ticket NPCs let players into a waiting room the boat had left.
+    wireCabinPortals();
 	
 	em.broadcastShip(200000111, 1548);
     em.broadcastShip(101000300, 1548);
@@ -59,6 +62,18 @@ function invasion() {
     em.setProperty("haveBalrog","true");
     em.broadcastShip(200090000, 1034);
     em.broadcastShip(200090010, 1034);
+}
+
+// The cabins' out00/out01 portals have no script in WZ, so on their own they
+// lead back to the deck without the invasion music and ship effect. Hooking
+// them up again every cycle survives a !reloadmap of either cabin.
+function wireCabinPortals() {
+    var orbisBound = em.getMapFactory().getMap(200090011); // cabin of the ship to Orbis
+    orbisBound.getPortal("out00").setScriptName("OBoat1");
+    orbisBound.getPortal("out01").setScriptName("OBoat2");
+    var elliniaBound = em.getMapFactory().getMap(200090001); // cabin of the ship to Ellinia
+    elliniaBound.getPortal("out00").setScriptName("EBoat1");
+    elliniaBound.getPortal("out01").setScriptName("EBoat2");
 }
 
 function cancelSchedule() {

@@ -11,7 +11,7 @@ Frija 是台服（TWMS）v113 私服的伺服器端，免費、開源。
 | 項目 | 版本 | 下載 | 說明 |
 |---|---|---|---|
 | Windows | 10 / 11 | | 啟動腳本 `Launcher.bat` 是批次檔 |
-| JDK | **26** | [Oracle JDK](https://www.oracle.com/java/technologies/downloads/)／[Eclipse Temurin](https://adoptium.net/temurin/releases/?version=26) | 必須是 **JDK**，不是 JRE（啟動前會自動編譯）。Oracle JDK 或任一 OpenJDK 26 發行版皆可 |
+| JDK | **25**（LTS）以上 | [Eclipse Temurin 25](https://adoptium.net/temurin/releases/?version=25&os=windows&arch=x64&package=jdk)／[Oracle JDK 25](https://www.oracle.com/java/technologies/downloads/#java25) | 必須是 **JDK**，不是 JRE（啟動前會自動編譯）。建議裝長期支援版 25，Oracle JDK 或任一 OpenJDK 25 發行版皆可 |
 | MySQL | 8.0 以上 | [MySQL Community Server](https://dev.mysql.com/downloads/mysql/) | |
 | 遊戲客戶端 | v113 台服 | [v113.7z](https://archive.org/download/twms-maplestory/v113.7z) | 用 [7-Zip](https://www.7-zip.org/) 解壓縮。需能連到你的伺服器 IP，**不包含在專案裡** |
 | WZ 資料 | v113 台服 | 從上面的客戶端匯出 | 匯出成 XML 格式，**不包含在專案裡**，需自行準備，見[第 3 步](#3-放入-wz-資料) |
@@ -22,7 +22,7 @@ Frija 是台服（TWMS）v113 私服的伺服器端，免費、開源。
 
 ## 架設步驟
 
-### 1. 安裝 JDK 26
+### 1. 安裝 JDK 25
 
 安裝完成後，開一個新的命令提示字元確認版本：
 
@@ -30,8 +30,8 @@ Frija 是台服（TWMS）v113 私服的伺服器端，免費、開源。
 java -version
 ```
 
-要看到 `26`。如果電腦裡裝了不只一個 Java，請把系統環境變數 `JAVA_HOME` 設成 JDK 26
-的安裝資料夾（例如 `C:\Program Files\Java\jdk-26`）。
+要看到 `25`（或更新的版本）。如果電腦裡裝了不只一個 Java，請把系統環境變數 `JAVA_HOME` 設成 JDK 25
+的安裝資料夾（例如 `C:\Program Files\Java\jdk-25`）。
 
 ### 2. 安裝 MySQL 並匯入資料庫
 
@@ -190,7 +190,10 @@ MySQL 的帳號密碼錯誤，或 MySQL 服務沒有啟動。帳密錯誤時伺�
 資料庫沒有匯入成功。請重做第 2 步。
 
 **出現 `ERROR: no JDK found` 或 `that is a JRE, not a JDK`**
-沒有安裝 JDK 26，或 `JAVA_HOME` 指到了錯誤的位置。請重做第 1 步。
+沒有安裝 JDK 25，或 `JAVA_HOME` 指到了錯誤的位置。請重做第 1 步。
+
+**出現 `error: release version 25 not supported`**
+找到的 JDK 比 25 舊。請安裝 JDK 25，並把 `JAVA_HOME` 指向它。
 
 **可以登入，但選頻道後斷線或連不上**
 `tms.IP` 填錯，或防火牆沒有開放頻道的埠。

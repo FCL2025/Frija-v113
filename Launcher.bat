@@ -26,7 +26,12 @@ rem       done on *every* jar build, because build\classes is wiped each time.
 rem  A tree without Node, or without panel\node_modules, still builds and
 rem  runs; it just says so, and the panel serves a "not built" page.
 rem
-rem  JDK 26 is required. The sources are UTF-8 and contain Chinese identifiers
+rem  JDK 25 (the current LTS) or newer is required; the build targets
+rem  --release 25, so a newer JDK produces the same class files. Launcher.bat is
+rem  itself one of the inputs the staleness check looks at, so changing a build
+rem  flag here rebuilds the jar on the next start.
+rem
+rem  The sources are UTF-8 and contain Chinese identifiers
 rem  (e.g. the inner classes of PlayerCommand), so -encoding UTF-8 is required.
 rem  There is no ant or IDE project file any more; this script is the build.
 rem
@@ -51,14 +56,15 @@ exit /b 1
 
 rem --- What is stale? One PowerShell call answers two questions:
 rem       NEED_WEB  is anything in panel\ newer than panel\dist\index.html?
-rem       NEED      is anything the jar is built from newer than the jar, or is
+rem       NEED      is anything the jar is built from (src\, JarLib\, manifest.mf,
+rem                 panel\dist\ and this file's own build flags) newer than the jar, or is
 rem                 a JarLib jar missing from dist\lib? (dist\ is not tracked, so
 rem                 a pull can leave an up-to-date jar with no dist\lib beside it.)
 rem     A frontend rebuild always implies a jar rebuild, since the jar holds it.
 :check
 set "NEED_WEB=0"
 set "NEED=1"
-for /f "usebackq tokens=1,2" %%w in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$web = '0'; $jar = '1'; if (Test-Path 'panel\package.json') { $web = '1'; if (Test-Path 'panel\dist\index.html') { $web = '0'; $d = (Get-Item 'panel\dist\index.html').LastWriteTimeUtc; $files = @(Get-ChildItem -Path 'panel' -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -Path 'panel\src','panel\public' -Recurse -File -ErrorAction SilentlyContinue); foreach ($f in $files) { if ($f.LastWriteTimeUtc -gt $d) { $web = '1'; break } } } }; if (Test-Path 'dist\Frija-v113.jar') { $jar = '0'; $j = (Get-Item 'dist\Frija-v113.jar').LastWriteTimeUtc; foreach ($f in Get-ChildItem -Path 'src','JarLib','manifest.mf','panel\dist' -Recurse -File -ErrorAction SilentlyContinue) { if ($f.LastWriteTimeUtc -gt $j) { $jar = '1'; break } }; foreach ($l in Get-ChildItem -Path 'JarLib\*.jar' -File -ErrorAction SilentlyContinue) { if (-not (Test-Path ('dist\lib\' + $l.Name))) { $jar = '1'; break } } }; Write-Output ($web + ' ' + $jar)"`) do (
+for /f "usebackq tokens=1,2" %%w in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$web = '0'; $jar = '1'; if (Test-Path 'panel\package.json') { $web = '1'; if (Test-Path 'panel\dist\index.html') { $web = '0'; $d = (Get-Item 'panel\dist\index.html').LastWriteTimeUtc; $files = @(Get-ChildItem -Path 'panel' -File -ErrorAction SilentlyContinue) + @(Get-ChildItem -Path 'panel\src','panel\public' -Recurse -File -ErrorAction SilentlyContinue); foreach ($f in $files) { if ($f.LastWriteTimeUtc -gt $d) { $web = '1'; break } } } }; if (Test-Path 'dist\Frija-v113.jar') { $jar = '0'; $j = (Get-Item 'dist\Frija-v113.jar').LastWriteTimeUtc; foreach ($f in Get-ChildItem -Path 'src','JarLib','manifest.mf','Launcher.bat','panel\dist' -Recurse -File -ErrorAction SilentlyContinue) { if ($f.LastWriteTimeUtc -gt $j) { $jar = '1'; break } }; foreach ($l in Get-ChildItem -Path 'JarLib\*.jar' -File -ErrorAction SilentlyContinue) { if (-not (Test-Path ('dist\lib\' + $l.Name))) { $jar = '1'; break } } }; Write-Output ($web + ' ' + $jar)"`) do (
     set "NEED_WEB=%%w"
     set "NEED=%%x"
 )
@@ -80,7 +86,7 @@ if not exist "%JAVA_HOME%\bin\javac.exe" (
     for /f "tokens=* delims= " %%a in ("!JAVA_HOME!") do set "JAVA_HOME=%%a"
 )
 if not exist "%JAVA_HOME%\bin\javac.exe" (
-    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 26 installation.
+    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 25 ^(or newer^) installation.
     goto fail
 )
 if not exist "%JAVA_HOME%\bin\jar.exe" (
@@ -108,7 +114,7 @@ echo [4/5] Compiling...
 if exist build\classes rmdir /s /q build\classes
 mkdir build\classes
 dir /s /b src\*.java > build\sources.txt
-"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -Xlint:all -Xmaxwarns 10000 -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
+"%JAVA_HOME%\bin\javac.exe" --release 25 -encoding UTF-8 -Xlint:all -Xmaxwarns 10000 -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
 if errorlevel 1 (
     type build\javac.log
     goto fail
@@ -234,7 +240,7 @@ if not exist "%JAVA_HOME%\bin\javac.exe" (
     for /f "tokens=* delims= " %%a in ("!JAVA_HOME!") do set "JAVA_HOME=%%a"
 )
 if not exist "%JAVA_HOME%\bin\javac.exe" (
-    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 26 installation.
+    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 25 ^(or newer^) installation.
     goto fail
 )
 echo       JAVA_HOME=%JAVA_HOME%
@@ -243,7 +249,7 @@ echo [2/2] Compiling with -Xlint:all...
 if exist build\classes rmdir /s /q build\classes
 mkdir build\classes
 dir /s /b src\*.java > build\sources.txt
-"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -Xlint:all -Xmaxwarns 10000 -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
+"%JAVA_HOME%\bin\javac.exe" --release 25 -encoding UTF-8 -Xlint:all -Xmaxwarns 10000 -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
 if errorlevel 1 (
     type build\javac.log
     goto fail
@@ -279,7 +285,7 @@ if not exist "%JAVA_HOME%\bin\javac.exe" (
     for /f "tokens=* delims= " %%a in ("!JAVA_HOME!") do set "JAVA_HOME=%%a"
 )
 if not exist "%JAVA_HOME%\bin\javac.exe" (
-    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 26 installation.
+    echo ERROR: no JDK found. Set JAVA_HOME to a JDK 25 ^(or newer^) installation.
     goto testfail
 )
 echo       JAVA_HOME=%JAVA_HOME%
@@ -295,7 +301,7 @@ echo [2/4] Compiling src\...
 if exist build\classes rmdir /s /q build\classes
 mkdir build\classes
 dir /s /b src\*.java > build\sources.txt
-"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -nowarn -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
+"%JAVA_HOME%\bin\javac.exe" --release 25 -encoding UTF-8 -nowarn -cp "JarLib/*" -d build\classes "@build\sources.txt" 2> build\javac.log
 if errorlevel 1 (
     type build\javac.log
     goto testfail
@@ -305,7 +311,7 @@ echo [3/4] Compiling test\...
 if exist build\test-classes rmdir /s /q build\test-classes
 mkdir build\test-classes
 dir /s /b test\*.java > build\test-sources.txt
-"%JAVA_HOME%\bin\javac.exe" --release 26 -encoding UTF-8 -nowarn -cp "build\classes;JarLib/*;JarLib/test/*" -d build\test-classes "@build\test-sources.txt" 2> build\javac-test.log
+"%JAVA_HOME%\bin\javac.exe" --release 25 -encoding UTF-8 -nowarn -cp "build\classes;JarLib/*;JarLib/test/*" -d build\test-classes "@build\test-sources.txt" 2> build\javac-test.log
 if errorlevel 1 (
     type build\javac-test.log
     goto testfail

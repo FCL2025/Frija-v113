@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { ApiError, apiFetch } from '@/lib/api'
-import { clearToken, getToken, subscribeToken } from '@/lib/auth'
+import { getLoginRequired, getToken, logout, subscribeToken } from '@/lib/auth'
 import { formatNumber } from '@/lib/format'
 import { PollingContext, type PollingState } from '@/lib/polling'
 import { queryClient } from '@/lib/query'
@@ -29,53 +29,57 @@ const DataSection = lazy(() => import('@/sections/data').then((m) => ({ default:
 
 export default function App() {
   const token = useSyncExternalStore(subscribeToken, getToken)
-  // 已用 /api/ping 驗證過的 token；跟目前 token 不同就代表要重新驗證
+  const loginRequired = useSyncExternalStore(subscribeToken, getLoginRequired)
+  // 已用 /api/ping 驗證過的 token（'' = 不帶 token 也通過，即伺服器沒設 tms.PanelToken）；
+  // 跟目前的不同就代表要重新驗證
   const [verifiedToken, setVerifiedToken] = useState<string | null>(null)
+  const key = token ?? ''
 
-  // 開頁時若已有存好的 token，先打一次 /api/ping 確認還有效。
-  // 401 會由 apiFetch 清掉 token；網路失敗或其他錯誤仍進入主畫面，由各區塊顯示錯誤。
+  // 開頁時先打一次 /api/ping：有存好的 token 就帶著，沒有就空手問。
+  // 401 會由 apiFetch 清掉 token 並轉到登入畫面；網路失敗或其他錯誤仍進入主畫面，由各區塊顯示錯誤。
   useEffect(() => {
-    if (!token || verifiedToken === token) return
+    if (loginRequired || verifiedToken === key) return
     let cancelled = false
     apiFetch<PingResponse>('/api/ping')
       .then(() => {
-        if (!cancelled) setVerifiedToken(token)
+        if (!cancelled) setVerifiedToken(key)
       })
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ApiError && err.isUnauthorized) return
-        setVerifiedToken(token)
+        setVerifiedToken(key)
       })
     return () => {
       cancelled = true
     }
-  }, [token, verifiedToken])
+  }, [key, loginRequired, verifiedToken])
 
   // 登出（或任何一次 401）後把快取清掉，下次登入不會閃出舊資料。
   useEffect(() => {
-    if (!token) {
+    if (loginRequired || !token) {
       setVerifiedToken(null)
       queryClient.clear()
     }
-  }, [token])
+  }, [token, loginRequired])
 
-  if (!token) {
+  if (loginRequired) {
     return <LoginCard onLoggedIn={() => setVerifiedToken(getToken())} />
   }
 
-  if (verifiedToken !== token) {
+  if (verifiedToken !== key) {
     return (
       <div className="flex min-h-svh items-center justify-center gap-2 text-sm text-muted-foreground">
         <LoaderCircle className="size-4 animate-spin" aria-hidden />
-        驗證 Token 中…
+        連線中…
       </div>
     )
   }
 
-  return <Shell onLogout={clearToken} />
+  // 沒有 token 也進得來，代表伺服器不需要登入，也就沒有「登出」可言。
+  return <Shell onLogout={token ? logout : undefined} />
 }
 
-function Shell({ onLogout }: { onLogout: () => void }) {
+function Shell({ onLogout }: { onLogout?: () => void }) {
   const [section, setSection] = useState<SectionId>(() => sectionFromHash())
   const [paused, setPaused] = useState(false)
 
@@ -122,10 +126,12 @@ function Shell({ onLogout }: { onLogout: () => void }) {
               />
             </div>
             <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={onLogout}>
-              <LogOut data-icon="inline-start" aria-hidden />
-              登出
-            </Button>
+            {onLogout && (
+              <Button variant="outline" size="sm" onClick={onLogout}>
+                <LogOut data-icon="inline-start" aria-hidden />
+                登出
+              </Button>
+            )}
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
             {section === 'dashboard' && <DashboardSection />}

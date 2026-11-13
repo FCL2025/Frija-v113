@@ -21,7 +21,7 @@ export interface LoginCardProps {
   onLoggedIn: (ping: PingResponse) => void
 }
 
-/** 貼上伺服器 console 印出的 token，用 /api/ping 驗證後才存起來 */
+/** 伺服器設了 tms.PanelToken 時才會出現：輸入那組 token，用 /api/ping 驗證後才存起來 */
 export function LoginCard({ onLoggedIn }: LoginCardProps) {
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
@@ -61,7 +61,7 @@ export function LoginCard({ onLoggedIn }: LoginCardProps) {
               Frija v113 管理面板
             </CardTitle>
             <CardDescription>
-              請貼上伺服器啟動時印在 console 的存取 Token。
+              這台伺服器設定了登入 Token，請輸入 Settings.ini 裡 tms.PanelToken 的值。
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">

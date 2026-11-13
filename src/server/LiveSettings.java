@@ -207,7 +207,7 @@ public final class LiveSettings {
                     PanelServer.setThreads(intOrZero(v));
                     return null;
                 });
-        live("tms.PanelToken", "固定的面板登入 Token（留空 = 每次啟動隨機）；更換後要用新 Token 重新登入",
+        live("tms.PanelToken", "面板登入 Token（留空 = 不需登入，只限本機瀏覽器）；設定或更換後要用新 Token 重新登入",
                 v -> {
                     if (v.trim().chars().anyMatch(Character::isWhitespace)) {
                         throw new IllegalArgumentException("tms.PanelToken 不可含空白");

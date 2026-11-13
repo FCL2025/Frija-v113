@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -49,9 +47,12 @@ public final class PanelServer {
     /** Size of the request pool. Default {@code max(4, cores)}. */
     public static final String THREADS_PROPERTY = "tms.PanelThreads";
     /**
-     * A fixed login token. When unset, a fresh one is generated at every start
-     * and printed to the console - fine for a machine that is rarely
-     * restarted, tedious while developing.
+     * An optional login token. Unset (the default) means the panel asks for
+     * none: it only listens on loopback, and {@link Router}'s Host / Origin /
+     * Sec-Fetch-Site checks are what keep other web pages in this machine's
+     * browser out, not the token. Set it when other people or programs on
+     * the same machine should not get in - a shared Windows host, a tunnel or
+     * reverse proxy that forwards to 127.0.0.1.
      */
     public static final String TOKEN_PROPERTY = "tms.PanelToken";
 
@@ -65,6 +66,7 @@ public final class PanelServer {
     private final HttpServer server;
     private final ThreadPoolExecutor pool;
     private final Router router;
+    /** {@code null} when no token is required. */
     private volatile String token;
     private final int port;
 
@@ -92,11 +94,11 @@ public final class PanelServer {
             return;
         }
         instance = p;
-        // One record: the two lines are one banner, and two calls would let
-        // another thread log between the address and the token.
+        // The token itself is never printed: when one is set, the
+        // administrator typed it into Settings.ini and already knows it.
         LOG.log(System.Logger.Level.INFO,
-                "[面板] 管理面板：http://127.0.0.1:" + port + "/  （" + p.pool.getMaximumPoolSize() + " 條處理執行緒）"
-                + System.lineSeparator() + "[面板] 登入 Token：" + p.token);
+                "[面板] 管理面板：http://127.0.0.1:" + port + "/  （" + p.pool.getMaximumPoolSize() + " 條處理執行緒"
+                + (p.token == null ? "）" : "，需要 " + TOKEN_PROPERTY + " 登入）"));
     }
 
     /**
@@ -144,10 +146,10 @@ public final class PanelServer {
     }
 
     /**
-     * Changes the login token. Every browser still holding the old one gets a
-     * 401 on its next request and is sent back to the login screen. A blank
-     * value means "a random token per start", and the running panel already
-     * has one, so it keeps it.
+     * Sets, changes or removes the login token. Every browser still holding an
+     * old one gets a 401 on its next request and is sent to the login screen;
+     * a blank value turns the requirement off, and a browser that still sends
+     * a token is simply let in.
      *
      * @return what happened, for the reply
      */
@@ -156,13 +158,16 @@ public final class PanelServer {
         if (p == null) {
             return "管理面板沒有在執行";
         }
-        if (token == null || token.isBlank()) {
-            return "留空代表每次啟動隨機產生；目前這組隨機 Token 繼續有效";
+        final String fresh = normalize(token);
+        final boolean had = p.token != null;
+        p.token = fresh;
+        p.router.setToken(fresh);
+        if (fresh == null) {
+            LOG.log(System.Logger.Level.INFO, "[面板] 已取消登入 Token，本機瀏覽器不需登入即可使用。");
+            return had ? "已取消登入 Token，不需登入即可使用" : "目前本來就不需要登入 Token";
         }
-        p.token = token.trim();
-        p.router.setToken(p.token);
-        LOG.log(System.Logger.Level.INFO, "[面板] 登入 Token 已更換，舊的 Token 立即失效。");
-        return "Token 已更換，請用新的 Token 重新登入";
+        LOG.log(System.Logger.Level.INFO, "[面板] 登入 Token 已" + (had ? "更換，舊的 Token 立即失效。" : "啟用。"));
+        return had ? "Token 已更換，請用新的 Token 重新登入" : "已啟用登入 Token，請用它重新登入";
     }
 
     /** Resizes the request pool. {@code threads <= 0} means the default. */
@@ -276,13 +281,12 @@ public final class PanelServer {
     }
 
     private static String resolveToken() {
-        final String fixed = ServerProperties.getProperty(TOKEN_PROPERTY);
-        if (fixed != null && !fixed.isBlank()) {
-            return fixed.trim();
-        }
-        final byte[] bytes = new byte[24];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return normalize(ServerProperties.getProperty(TOKEN_PROPERTY));
+    }
+
+    /** Blank or absent means "no token required", i.e. {@code null}. */
+    private static String normalize(final String token) {
+        return token == null || token.isBlank() ? null : token.trim();
     }
 
     private static int intProperty(final String key, final int def) {

@@ -1,8 +1,9 @@
 // 管理面板的煙霧測試：用 CDP 驅動無頭 Chrome，對著「正在執行的伺服器」跑一遍。
 //
-//   node panel/tools/smoke.mjs <token> [http://127.0.0.1:8080/]
+//   node panel/tools/smoke.mjs [token] [http://127.0.0.1:8080/]
 //
-// 登入 → 走過每個分頁 → 實際按下倍率 / 廣播 / reload / 設定編輯（改完會改回去）→ 登出，
+// 伺服器設了 tms.PanelToken 才需要給 token（要指定 baseUrl 又沒有 token 時，token 寫 ""）。
+// 登入（有 token 時）→ 走過每個分頁 → 實際按下倍率 / 廣播 / reload / 設定編輯（改完會改回去）→ 登出，
 // 期間收集 console 錯誤與 4xx/5xx 回應，並把每個畫面截圖到 panel/tools/shots/。
 // 只用 Node 24 內建的 fetch 與 WebSocket，沒有任何依賴。這個 repo 沒有測試套件，
 // 這支腳本是最接近的東西。
@@ -13,12 +14,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-const TOKEN = process.argv[2]
+const TOKEN = process.argv[2] || null
 const BASE = (process.argv[3] ?? 'http://127.0.0.1:8080/').replace(/\/?$/, '/')
-if (!TOKEN) {
-  console.error('用法：node panel/tools/smoke.mjs <token> [baseUrl]')
-  process.exit(2)
-}
+const AUTH = TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}
 const CHROME = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
@@ -96,7 +94,7 @@ const setInput = (sel, val) => ev(`(() => { const i = ${sel}; const proto = i.ta
 const clickButton = (txt) => ev(`(() => { const b = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().includes(${JSON.stringify(txt)})); if (!b) return false; b.click(); return true })()`)
 // Radix 的 Tabs 聽的是 pointer 事件，不是 click
 const clickTab = (txt) => ev(`(() => { const el = [...document.querySelectorAll('[role=tab]')].find((x) => x.textContent.includes(${JSON.stringify(txt)})); if (!el) return false; for (const t of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) el.dispatchEvent(new MouseEvent(t, { bubbles: true, button: 0, buttons: t.endsWith('down') ? 1 : 0 })); return true })()`)
-const api = async (p) => (await fetch(BASE.replace(/\/$/, '') + p, { headers: { Authorization: 'Bearer ' + TOKEN } })).json()
+const api = async (p) => (await fetch(BASE.replace(/\/$/, '') + p, { headers: AUTH })).json()
 
 const results = []
 const check = (name, ok, extra = '') => { results.push(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`) }
@@ -109,12 +107,18 @@ try {
   await send('Page.navigate', { url: BASE }); await sleep(1200)
   await ev('localStorage.clear()'); await send('Page.reload'); await sleep(1500)
   let t = await text()
-  check('登入頁', /Token/.test(t))
-  await shot('01-login')
-  await setInput(`document.querySelector('input')`, 'wrong-token'); await ev(`document.querySelector('form').requestSubmit()`); await sleep(800)
-  check('錯誤 token 被拒', /Token 錯誤/.test(await text()))
-  await setInput(`document.querySelector('input')`, TOKEN); await ev(`document.querySelector('form').requestSubmit()`); await sleep(2500)
-  t = await text()
+  if (TOKEN) {
+    check('登入頁', /Token/.test(t))
+    await shot('01-login')
+    await setInput(`document.querySelector('input')`, 'wrong-token'); await ev(`document.querySelector('form').requestSubmit()`); await sleep(800)
+    check('錯誤 token 被拒', /Token 錯誤/.test(await text()))
+    await setInput(`document.querySelector('input')`, TOKEN); await ev(`document.querySelector('form').requestSubmit()`); await sleep(2500)
+    t = await text()
+  } else {
+    await sleep(1000)
+    t = await text()
+    check('不需登入：直接進主畫面、沒有登出按鈕', !/tms\.PanelToken/.test(t) && !/登出/.test(t))
+  }
   check('登入後進儀表板', /線上人數/.test(t) && /頻道數/.test(t))
   const ping = await api('/api/ping')
   check('中文伺服器名稱顯示正確', t.includes(ping.serverName), ping.serverName)
@@ -167,12 +171,12 @@ try {
   const limit0 = (await api('/api/status')).userLimit
   await ev(`(() => { const row = [...document.querySelectorAll('tr')].find((r) => r.textContent.includes('tms.UserLimit')); row.querySelector('button').click() })()`); await sleep(400)
   await setInput(`document.querySelector('tr input')`, String(limit0 + 50)); await sleep(100)
-  check('設定：保存並套用', await clickButton('保存並套用')); await sleep(1500)
+  check('設定：保存（立即生效）', await clickButton('保存（立即生效）')); await sleep(1500)
   check('設定：三態顯示「已套用且已保存」', /已套用且已保存/.test(await text()))
   check('設定：UserLimit 線上生效', (await api('/api/status')).userLimit === limit0 + 50)
   await shot('10-settings-edited')
   await ev(`(() => { const row = [...document.querySelectorAll('tr')].find((r) => r.textContent.includes('tms.UserLimit')); row.querySelector('button').click() })()`); await sleep(400)
-  await setInput(`document.querySelector('tr input')`, String(limit0)); await clickButton('保存並套用'); await sleep(1200)
+  await setInput(`document.querySelector('tr input')`, String(limit0)); await clickButton('保存（立即生效）'); await sleep(1200)
   check('設定：改回原值', (await api('/api/status')).userLimit === limit0)
 
   // --- 腳本 ---------------------------------------------------------------
@@ -196,7 +200,7 @@ try {
   await shot('13-scripts-repaired-portal')
   // 編碼守門：塞一個 BIG5 寫不出來的字元，存檔必須被擋下並指出位置，而且不能碰到檔案。
   const guard = await fetch(BASE.replace(/\/$/, '') + '/api/scripts/file/portal/gh17.js', {
-    method: 'PUT', headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    method: 'PUT', headers: { ...AUTH, 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: gh17.content + '\r\n// \u{1F600}\r\n' }),
   })
   const guardBody = await guard.json()
@@ -303,9 +307,11 @@ try {
   // --- 深色模式與登出 -----------------------------------------------------
   await ev(`document.querySelector('button[aria-label*="深色"]')?.click()`); await sleep(500)
   await go('dashboard', 1500); await shot('14-dashboard-dark')
-  await clickButton('登出'); await sleep(800)
-  t = await text()
-  check('登出回到登入頁', /Token/.test(t) && !/線上人數/.test(t))
+  if (TOKEN) {
+    await clickButton('登出'); await sleep(800)
+    t = await text()
+    check('登出回到登入頁', /Token/.test(t) && !/線上人數/.test(t))
+  }
 } finally {
   ws.close()
   chrome.kill()

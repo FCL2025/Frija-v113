@@ -1,4 +1,4 @@
-import { Server } from 'lucide-react'
+import logo from '@/assets/logo.png'
 import {
   Sidebar,
   SidebarContent,
@@ -42,9 +42,8 @@ export function AppSidebar({ active, onSelect, serverName, version }: AppSidebar
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild tooltip="Frija v113 管理面板">
               <a href="#dashboard" onClick={() => onSelect('dashboard')}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Server className="size-4" aria-hidden />
-                </div>
+                {/* 64px 的楓葉，取自 public/favicon.ico；不到 4KB，Vite 會直接內嵌成 data URL */}
+                <img src={logo} alt="" className="size-8 shrink-0" />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Frija v113 管理面板</span>
                   <span className="truncate text-xs text-muted-foreground">

@@ -18,8 +18,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Dispatches {@code /api/*} requests, and turns every one of them away that
- * does not carry the panel token.
+ * Dispatches {@code /api/*} requests, and turns away every one that did not
+ * come from the panel's own page - or, when {@code tms.PanelToken} is set,
+ * that does not carry it.
  *
  * <p>Binding to {@code 127.0.0.1} keeps other machines out; it does nothing
  * about the browser on this machine. While the administrator has the panel
@@ -34,11 +35,20 @@ import java.util.Set;
  * that hostname in {@code Host}).</li>
  * <li>{@code Origin}, when a browser sends one, must be the panel's own; and
  * {@code Sec-Fetch-Site}, when present, must not say cross-site.</li>
- * <li>{@code Authorization: Bearer <token>} must match. A cross-origin page
- * cannot add that header without a CORS preflight, and this server never
- * answers a preflight with {@code Access-Control-Allow-*}, so the browser
- * refuses to send the real request.</li>
+ * <li>{@code Authorization: Bearer <token>} must match - only when a token
+ * is configured. A cross-origin page cannot add that header without a CORS
+ * preflight, and this server never answers a preflight with
+ * {@code Access-Control-Allow-*}, so the browser refuses to send the real
+ * request.</li>
  * </ol>
+ *
+ * <p>The token is optional because the first two checks are what stop a
+ * foreign page in the administrator's browser: a cross-origin {@code POST}
+ * always carries {@code Origin}, and every current browser marks a
+ * cross-site {@code GET} with {@code Sec-Fetch-Site}. What the token adds is
+ * protection against other <em>programs</em> (or users) on the same machine,
+ * which a single-administrator host does not need. Do not loosen the first
+ * two checks on the strength of a token being optional.
  *
  * <p>Every reply is {@code application/json; charset=utf-8}. Errors are
  * {@code {"error": "…"}} with the matching status, including for exceptions a
@@ -165,20 +175,24 @@ public final class Router implements HttpHandler {
     private record Entry(String method, String[] segments, Route route) {
     }
 
-    /** Replaced whole by {@link #setToken}; read once per request. */
+    /** Replaced whole by {@link #setToken}; read once per request. {@code null} = no token required. */
     private volatile byte[] token;
     private final Set<String> allowedHosts;
     private final Set<String> allowedOrigins;
     private final List<Entry> routes = new ArrayList<>();
 
     Router(final String token, final int port) {
-        this.token = token.getBytes(StandardCharsets.UTF_8);
+        this.token = bytes(token);
         this.allowedHosts = Set.of("127.0.0.1:" + port, "localhost:" + port, "[::1]:" + port);
         this.allowedOrigins = Set.of("http://127.0.0.1:" + port, "http://localhost:" + port, "http://[::1]:" + port);
     }
 
     void setToken(final String token) {
-        this.token = token.getBytes(StandardCharsets.UTF_8);
+        this.token = bytes(token);
+    }
+
+    private static byte[] bytes(final String token) {
+        return token == null ? null : token.getBytes(StandardCharsets.UTF_8);
     }
 
     /** {@code pattern} is a path such as {@code /api/logs/{name}}; segments in braces bind to {@link Request#param}. */
@@ -258,12 +272,16 @@ public final class Router implements HttpHandler {
     }
 
     private void checkToken(final HttpExchange ex) {
+        final byte[] expected = token;
+        if (expected == null) {
+            return;
+        }
         final String auth = ex.getRequestHeaders().getFirst("Authorization");
         if (auth == null || !auth.regionMatches(true, 0, "Bearer ", 0, 7)) {
             throw new HttpError(401, "需要登入 Token");
         }
         final byte[] given = auth.substring(7).trim().getBytes(StandardCharsets.UTF_8);
-        if (!MessageDigest.isEqual(given, token)) {
+        if (!MessageDigest.isEqual(given, expected)) {
             throw new HttpError(401, "Token 錯誤");
         }
     }

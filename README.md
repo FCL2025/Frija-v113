@@ -17,6 +17,7 @@ Frija 是台服（TWMS）v113 私服的伺服器端，免費、開源。
 | WZ 資料 | v113 台服 | 從上面的客戶端匯出 | 匯出成 XML 格式，**不包含在專案裡**，需自行準備，見[第 3 步](#3-放入-wz-資料) |
 | 登入器 | 最新版 | [TMSLauncher](https://github.com/zhyonc/TMSLauncher) | 讓客戶端連到你的伺服器，見[第 6 步](#6-連線進遊戲) |
 | Node.js | 20 以上（選用） | [Node.js](https://nodejs.org/) | 只有網頁管理面板需要，不裝也能正常開服 |
+| Git | 最新版（選用） | [Git for Windows](https://git-scm.com/download/win) | 用來下載專案，之後一行指令就能更新，見[更新到最新版](#更新到最新版) |
 
 伺服器以 4 GB 記憶體啟動，建議機器至少有 8 GB。
 
@@ -33,19 +34,13 @@ java -version
 要看到 `25`（或更新的版本）。如果電腦裡裝了不只一個 Java，請把系統環境變數 `JAVA_HOME` 設成 JDK 25
 的安裝資料夾（例如 `C:\Program Files\Java\jdk-25`）。
 
-### 2. 安裝 MySQL 並匯入資料庫
+### 2. 安裝 MySQL
 
-安裝 MySQL 8，記下 root 密碼。接著在專案根目錄開啟**命令提示字元（cmd）**，執行：
+安裝 MySQL 8，記下 root 密碼，並確認 MySQL 服務已經啟動。
 
-```
-mysql -u root -p < sql\twmsv113.sql
-```
-
-- 這會自動建立 `twmsv113` 資料庫，不需要先手動建立。
-- PowerShell 不支援 `<` 這種寫法，請用 cmd。
-- 找不到 `mysql` 指令時，它在 MySQL 安裝目錄的 `bin\` 底下（例如
-  `C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe`），可以打完整路徑或加進 PATH。
-  也可以改用 MySQL Workbench 的 File → Run SQL Script 匯入同一個檔案。
+**不需要手動建立或匯入資料庫。** 伺服器每次啟動時都會自己檢查：資料庫 `twmsv113`、
+資料表、欄位缺什麼就補什麼，第一次啟動會從 `sql\twmsv113.sql` 把整個資料庫建好。
+之後更新到新版時，新增的資料表或欄位也一樣會自動補上。
 
 ### 3. 放入 WZ 資料
 
@@ -103,7 +98,7 @@ tms.Pass          = 你的MySQL密碼
 
 ### 5. 啟動伺服器
 
-雙擊專案根目錄的 `Launcher.bat`。第一次會先編譯（約 10 秒），接著啟動伺服器。
+雙擊專案根目錄的 `Launcher.bat`。第一次會先編譯（約 10 秒），接著啟動伺服器並自動建立資料庫。
 看到下面這一行就代表開服完成：
 
 ```
@@ -180,6 +175,39 @@ npm install
 之後照常啟動 `Launcher.bat`，它會自動建置面板。伺服器開好後，用瀏覽器開
 <http://127.0.0.1:8080/>，登入用的 Token 會印在伺服器視窗裡。面板只能從伺服器本機開啟。
 
+## 更新到最新版
+
+**先關服**（在伺服器視窗按 Ctrl+C），然後在專案根目錄開啟命令提示字元，執行：
+
+```
+git pull
+```
+
+這樣就完成了。下次啟動 `Launcher.bat` 時會自動重新編譯，新版多出來的資料表或欄位也會在開機時自動補上，
+不用自己處理 SQL。
+
+- `Settings.ini` 和 `wz\` 不在版本控制裡，`git pull` 不會改到它們，設定和 WZ 資料都會保留。
+- 有使用管理面板的話，更新後請到 `panel` 資料夾再執行一次 `npm install`。
+
+**還沒用 git 下載過專案**
+先安裝 [Git for Windows](https://git-scm.com/download/win)，再執行：
+
+```
+git clone https://github.com/FCL2025/Frija-v113.git
+```
+
+用 GitHub「Download ZIP」下載的資料夾沒有 git 紀錄，無法用 `git pull` 更新。請改用上面的指令重新下載一份，
+再把舊資料夾的 `Settings.ini` 和 `wz\` 複製過去。
+
+**`git pull` 出現 `Your local changes ... would be overwritten`**
+代表你改過專案裡的檔案（例如腳本）。可以先把修改收起來，更新完再放回去：
+
+```
+git stash
+git pull
+git stash pop
+```
+
 ## 常見問題
 
 **啟動後停在開頭，很久都沒有進展**
@@ -187,7 +215,8 @@ MySQL 的帳號密碼錯誤，或 MySQL 服務沒有啟動。帳密錯誤時伺�
 30 分鐘。請檢查 `Settings.ini` 的 `tms.User` / `tms.Pass`。
 
 **一啟動就自己結束，訊息提到 `auth_server_channel_ip`**
-資料庫沒有匯入成功。請重做第 2 步。
+伺服器連不上資料庫，所以沒辦法自動建立資料庫。請確認 MySQL 服務已經啟動，以及 `Settings.ini` 的
+`tms.User` / `tms.Pass` 正確，且這個帳號有建立資料庫的權限（用 root 即可）。
 
 **出現 `ERROR: no JDK found` 或 `that is a JRE, not a JDK`**
 沒有安裝 JDK 25，或 `JAVA_HOME` 指到了錯誤的位置。請重做第 1 步。

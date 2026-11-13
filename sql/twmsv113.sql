@@ -25120,6 +25120,12 @@ CREATE TABLE `pets` (
 --
 -- 資料表結構 `playernpcs`
 --
+-- `scriptid` 必須是 UNIQUE：playernpcs_equip.npcid 的外鍵參照它，而 MySQL 8.4 起
+-- 預設（restrict_fk_on_non_standard_key=ON）拒絕參照非唯一欄位的外鍵，
+-- 少了 UNIQUE 時全新安裝會建不出 playernpcs_equip。PlayerNPC.saveToDB 本來就
+-- 先刪同 scriptid 再插入，所以這個欄位實際上一直是唯一的。
+-- 舊資料庫若要補上：ALTER TABLE playernpcs DROP INDEX scriptid, ADD UNIQUE KEY scriptid (scriptid);
+--
 
 CREATE TABLE `playernpcs` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -25137,7 +25143,7 @@ CREATE TABLE `playernpcs` (
   `gender` tinyint(1) NOT NULL DEFAULT '0',
   `pets` varchar(25) DEFAULT '0,0,0',
   PRIMARY KEY (`id`),
-  KEY `scriptid` (`scriptid`),
+  UNIQUE KEY `scriptid` (`scriptid`),
   KEY `playernpcs_ibfk_1` (`charid`),
   CONSTRAINT `playernpcs_ibfk_1` FOREIGN KEY (`charid`) REFERENCES `characters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=big5;
